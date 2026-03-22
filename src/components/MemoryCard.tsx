@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Drop, Sparkle, MapPin, CalendarBlank } from '@phosphor-icons/react'
+import { AudioPlayer } from '@/components/AudioPlayer'
 import { format } from 'date-fns'
 import type { Memory } from '@/lib/types'
 import { toast } from 'sonner'
@@ -122,6 +123,20 @@ export function MemoryCard({
                           {format(new Date(reflection.createdAt), 'MMM d, yyyy')}
                         </p>
                       </motion.div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {memory.audioRecordings && memory.audioRecordings.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                      Audio Recordings
+                    </h3>
+                    {memory.audioRecordings.map((recording) => (
+                      <AudioPlayer key={recording.id} recording={recording} />
                     ))}
                   </div>
                 </>

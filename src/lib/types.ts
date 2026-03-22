@@ -7,6 +7,14 @@ export interface Position {
   y: number
 }
 
+export interface AudioRecording {
+  id: string
+  dataUrl: string
+  duration: number
+  createdAt: string
+  type: 'voice-note' | 'ambient-sound'
+}
+
 export interface Memory {
   id: string
   photoUrl: string
@@ -20,12 +28,14 @@ export interface Memory {
   visitCount: number
   lastVisited?: string
   reflections: Reflection[]
+  audioRecordings: AudioRecording[]
 }
 
 export interface Reflection {
   id: string
   text: string
   createdAt: string
+  audioUrl?: string
 }
 
 export interface UserPreferences {

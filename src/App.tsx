@@ -10,7 +10,7 @@ import { PlantMemoryModal } from '@/components/PlantMemoryModal'
 import { MemoryCard } from '@/components/MemoryCard'
 import { Onboarding } from '@/components/Onboarding'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import type { Memory, UserPreferences } from '@/lib/types'
+import type { Memory, UserPreferences, AudioRecording } from '@/lib/types'
 import { classifyEmotionalTone, generateAIReflection, getPlantStage } from '@/lib/garden-helpers'
 
 type ViewMode = 'garden' | 'timeline' | 'clusters'
@@ -56,6 +56,7 @@ function App() {
     text: string
     date: string
     location?: string
+    audioRecordings: AudioRecording[]
   }) => {
     const reader = new FileReader()
     reader.readAsDataURL(data.photoFile)
@@ -82,6 +83,7 @@ function App() {
             plantStage: 'seed',
             visitCount: 0,
             reflections: [],
+            audioRecordings: data.audioRecordings,
           }
 
           setMemories((currentMemories) => [...(currentMemories || []), newMemory])

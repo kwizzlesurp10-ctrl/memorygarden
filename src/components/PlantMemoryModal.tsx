@@ -7,9 +7,13 @@ import { Input } from '@/components/ui/input'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CalendarBlank, Image as ImageIcon, MapPin, Plant as PlantIcon } from '@phosphor-icons/react'
+import { AudioRecorder } from '@/components/AudioRecorder'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
+import type { AudioRecording } from '@/lib/types'
 
 interface PlantMemoryModalProps {
   open: boolean
@@ -19,6 +23,7 @@ interface PlantMemoryModalProps {
     text: string
     date: string
     location?: string
+    audioRecordings: AudioRecording[]
   }) => void
 }
 
@@ -28,6 +33,8 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
   const [text, setText] = useState('')
   const [date, setDate] = useState<Date>(new Date())
   const [location, setLocation] = useState('')
+  const [audioRecordings, setAudioRecordings] = useState<AudioRecording[]>([])
+  const [recordingType, setRecordingType] = useState<'voice-note' | 'ambient-sound'>('voice-note')
   const [isPlanting, setIsPlanting] = useState(false)
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,6 +51,25 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
       }
       reader.readAsDataURL(file)
     }
+  }
+
+  const handleRecordingComplete = async (audioBlob: Blob, duration: number, type: 'voice-note' | 'ambient-sound') => {
+    const reader = new FileReader()
+    reader.readAsDataURL(audioBlob)
+    
+    return new Promise<void>((resolve) => {
+      reader.onload = () => {
+        const audioRecording: AudioRecording = {
+          id: `audio-${Date.now()}`,
+          dataUrl: reader.result as string,
+          duration,
+          createdAt: new Date().toISOString(),
+          type,
+        }
+        setAudioRecordings(prev => [...prev, audioRecording])
+        resolve()
+      }
+    })
   }
 
   const handlePlant = async () => {
@@ -63,6 +89,7 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
         text: text.trim(),
         date: date.toISOString(),
         location: location.trim() || undefined,
+        audioRecordings,
       })
       
       setPhotoFile(null)
@@ -70,6 +97,7 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
       setText('')
       setDate(new Date())
       setLocation('')
+      setAudioRecordings([])
       onClose()
       
       toast.success('Memory planted! Watch it grow in your garden.')
@@ -174,6 +202,30 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
                 />
               </div>
             </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-3">
+            <Label>Audio (optional)</Label>
+            <Tabs value={recordingType} onValueChange={(v) => setRecordingType(v as 'voice-note' | 'ambient-sound')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="voice-note">Voice Note</TabsTrigger>
+                <TabsTrigger value="ambient-sound">Ambient Sound</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            
+            <AudioRecorder
+              onRecordingComplete={handleRecordingComplete}
+              recordingType={recordingType}
+              maxDuration={120}
+            />
+
+            {audioRecordings.length > 0 && (
+              <div className="text-xs text-muted-foreground">
+                {audioRecordings.length} recording{audioRecordings.length !== 1 ? 's' : ''} added
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
