@@ -4,14 +4,17 @@ import { Toaster, toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { Plant as PlantIcon, Tree, List, GridFour } from '@phosphor-icons/react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Plant as PlantIcon, Tree, List, GridFour, Export, DotsThree } from '@phosphor-icons/react'
 import { GardenCanvas } from '@/components/GardenCanvas'
 import { PlantMemoryModal } from '@/components/PlantMemoryModal'
 import { MemoryCard } from '@/components/MemoryCard'
 import { Onboarding } from '@/components/Onboarding'
+import { ExportGarden } from '@/components/ExportGarden'
+import { MemoryClusters } from '@/components/MemoryClusters'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Memory, UserPreferences, AudioRecording } from '@/lib/types'
-import { classifyEmotionalTone, generateAIReflection, getPlantStage } from '@/lib/garden-helpers'
+import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason } from '@/lib/garden-helpers'
 
 type ViewMode = 'garden' | 'timeline' | 'clusters'
 
@@ -29,6 +32,8 @@ function App() {
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
   const [aiReflection, setAiReflection] = useState<string>('')
   const [isLoadingAI, setIsLoadingAI] = useState(false)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [season, setSeason] = useState(getSeason())
 
   useEffect(() => {
     window.spark.user().then(setUser).catch(() => {
@@ -41,6 +46,13 @@ function App() {
       setTimeout(() => setIsPlantModalOpen(true), 1000)
     }
   }, [preferences, memories])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSeason(getSeason())
+    }, 3600000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleCompleteOnboarding = () => {
     setPreferences((current) => ({
@@ -225,6 +237,19 @@ function App() {
           </Tabs>
 
           <div className="flex items-center gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <DotsThree size={24} weight="bold" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setIsExportModalOpen(true)}>
+                  <Export size={16} className="mr-2" />
+                  Export Garden
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Avatar className="w-9 h-9">
               <AvatarImage src={user.avatarUrl} alt={user.login} />
               <AvatarFallback>{user.login[0]?.toUpperCase()}</AvatarFallback>
@@ -324,14 +349,9 @@ function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="w-full h-full overflow-y-auto p-8 bg-background"
+                className="w-full h-full"
               >
-                <div className="max-w-5xl mx-auto">
-                  <h2 className="text-2xl font-bold mb-8">Memory Clusters</h2>
-                  <p className="text-muted-foreground text-center py-12">
-                    Coming soon: AI-suggested memory clusters by theme, time, and emotion.
-                  </p>
-                </div>
+                <MemoryClusters memories={safeMemories} onMemoryClick={handleMemoryClick} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -371,6 +391,12 @@ function App() {
         onAskAI={handleAskAI}
         aiReflection={aiReflection}
         isLoadingAI={isLoadingAI}
+      />
+
+      <ExportGarden
+        open={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        memories={safeMemories}
       />
     </>
   )

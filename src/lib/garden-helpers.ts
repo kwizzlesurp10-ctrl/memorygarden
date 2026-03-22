@@ -40,13 +40,13 @@ export function getPlantSize(stage: PlantStage): number {
 
 export async function classifyEmotionalTone(text: string): Promise<EmotionalTone> {
   try {
-    const prompt = window.spark.llmPrompt`Analyze the emotional tone of this memory text and classify it as one of: happy, reflective, bittersweet, peaceful, or nostalgic.
+    const promptText = `Analyze the emotional tone of this memory text and classify it as one of: happy, reflective, bittersweet, peaceful, or nostalgic.
 
 Memory text: ${text}
 
 Return ONLY one word from the list above, nothing else.`
     
-    const result = await window.spark.llm(prompt, 'gpt-4o-mini')
+    const result = await window.spark.llm(promptText, 'gpt-4o-mini')
     const tone = result.trim().toLowerCase()
     
     if (['happy', 'reflective', 'bittersweet', 'peaceful', 'nostalgic'].includes(tone)) {
@@ -65,7 +65,7 @@ export async function generateAIReflection(memory: Memory, nearbyMemories: Memor
       ? `\n\nNearby memories in the garden:\n${nearbyMemories.map(m => `- ${m.text.substring(0, 100)}`).join('\n')}`
       : ''
     
-    const prompt = window.spark.llmPrompt`You are a gentle, poetic garden guide helping someone reflect on their memories. Generate a short, thoughtful reflection or question (2-3 sentences) about this memory. Be warm, insightful, and emotionally attuned.
+    const promptText = `You are a gentle, poetic garden guide helping someone reflect on their memories. Generate a short, thoughtful reflection or question (2-3 sentences) about this memory. Be warm, insightful, and emotionally attuned.
 
 Memory: ${memory.text}
 Date: ${new Date(memory.date).toLocaleDateString()}
@@ -74,7 +74,7 @@ Emotional tone: ${memory.emotionalTone}${nearbyContext}
 
 Write a gentle reflection that helps them see this memory in a new light or connect it to the broader tapestry of their life.`
     
-    const result = await window.spark.llm(prompt, 'gpt-4o')
+    const result = await window.spark.llm(promptText, 'gpt-4o')
     return result.trim()
   } catch (error) {
     return "This memory holds a special place in your garden. What feelings arise when you revisit this moment?"
