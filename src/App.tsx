@@ -491,6 +491,7 @@ function App() {
         isLoadingAI={isLoadingAI}
       />
 
+      <ShareMemoryDialog
         open={isShareModalOpen}
         onClose={() => {
           setIsShareModalOpen(false)
@@ -501,16 +502,6 @@ function App() {
       />
 
       <ExportGarden
-      <ExportGarden
-        open={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        memories={safeMemories}
-      />
-    </>
-  )
-}
-
-export default App
         open={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         memories={safeMemories}
