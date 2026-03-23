@@ -137,7 +137,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
             
             ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
             ctx.restore()
-            resolve()
+            resolve(undefined)
           }
           img.onerror = () => reject(new Error('Failed to load image'))
           img.src = memory.photoUrl
@@ -222,7 +222,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
 
     const pageWidth = 2480
     const pageHeight = 3508
-    const pages = []
+    const pages: Blob[] = []
 
     const memoriesPerPage = 6
     const numPages = Math.ceil(sortedMemories.length / memoriesPerPage)
@@ -300,7 +300,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
               ctx.arc(imgX + imgSize / 2, imgY + imgSize / 2, imgSize / 2, 0, Math.PI * 2)
               ctx.stroke()
 
-              resolve()
+              resolve(undefined)
             }
             img.onerror = () => reject(new Error('Failed to load image'))
             img.src = memory.photoUrl
@@ -361,7 +361,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
         pageHeight - 100
       )
 
-      await new Promise((resolve) => {
+      await new Promise<void>((resolve) => {
         canvas.toBlob((blob) => {
           if (blob) pages.push(blob)
           resolve()
@@ -500,6 +500,4 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
       </DialogContent>
     </Dialog>
   )
-}
-
 }
