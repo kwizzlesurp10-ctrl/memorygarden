@@ -13,7 +13,6 @@ interface GardenCanvasProps {
 
 export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: propSeason }: GardenCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [pan, setPan] = useState({ x: 0, y: 0 })
   const [scale, setScale] = useState(1)
   const [draggingMemory, setDraggingMemory] = useState<string | null>(null)
   const [dayPeriod, setDayPeriod] = useState(getDayPeriod())
@@ -41,11 +40,6 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
       const delta = e.deltaY * -0.001
       const newScale = Math.min(Math.max(0.5, scale + delta), 2)
       setScale(newScale)
-    } else {
-      setPan((prev) => ({
-        x: prev.x - e.deltaX,
-        y: prev.y - e.deltaY,
-      }))
     }
   }
 
@@ -54,58 +48,55 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden"
+      className="relative w-full h-full overflow-auto"
       onWheel={handleWheel}
       style={{
         background: backgroundGradient,
-        cursor: draggingMemory ? 'grabbing' : 'grab',
       }}
     >
       <ParallaxBackground dayPeriod={dayPeriod} season={season} />
       <SeasonalEffects season={season} dayPeriod={dayPeriod} />
       
-      <motion.div
-        className="absolute inset-0"
+      <div
+        className="relative min-w-[2000px] min-h-[2000px]"
         style={{
-          x: pan.x,
-          y: pan.y,
-          scale: scale,
+          transform: `scale(${scale})`,
+          transformOrigin: 'top left',
+          cursor: draggingMemory ? 'grabbing' : 'default',
         }}
       >
-        <div className="relative w-full h-full min-w-[2000px] min-h-[2000px]">
-          {memories.map((memory) => (
-            <motion.div
-              key={memory.id}
-              drag
-              dragMomentum={false}
-              dragElastic={0.1}
-              onDragStart={() => setDraggingMemory(memory.id)}
-              onDragEnd={(_, info) => {
-                setDraggingMemory(null)
-                const newX = memory.position.x + info.offset.x / scale
-                const newY = memory.position.y + info.offset.y / scale
-                onMemoryMove(memory.id, { x: newX, y: newY })
+        {memories.map((memory) => (
+          <motion.div
+            key={memory.id}
+            drag
+            dragMomentum={false}
+            dragElastic={0.1}
+            onDragStart={() => setDraggingMemory(memory.id)}
+            onDragEnd={(_, info) => {
+              setDraggingMemory(null)
+              const newX = memory.position.x + info.offset.x / scale
+              const newY = memory.position.y + info.offset.y / scale
+              onMemoryMove(memory.id, { x: newX, y: newY })
+            }}
+            className="absolute"
+            style={{
+              left: memory.position.x,
+              top: memory.position.y,
+            }}
+          >
+            <Plant
+              memory={memory}
+              onClick={() => {
+                if (!draggingMemory) {
+                  onMemoryClick(memory)
+                }
               }}
-              className="absolute"
-              style={{
-                left: memory.position.x,
-                top: memory.position.y,
-              }}
-            >
-              <Plant
-                memory={memory}
-                onClick={() => {
-                  if (!draggingMemory) {
-                    onMemoryClick(memory)
-                  }
-                }}
-                isDragging={draggingMemory === memory.id}
-                season={season}
-              />
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
+              isDragging={draggingMemory === memory.id}
+              season={season}
+            />
+          </motion.div>
+        ))}
+      </div>
     </div>
   )
 }
