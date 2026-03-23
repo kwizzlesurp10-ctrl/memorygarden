@@ -55,29 +55,4 @@ interface ExportGardenProps {
                                                                                                                                                                     setIsExporting(false)
                                                                                                                                                                         }
                                                                                                                                                                           }
-
-                                                                                                                                                                            const exportAsImage = async () => {
-                                                                                                                                                                                setProgress(20)
-                                                                                                                                                                                    
-                                                                                                                                                                                        const canvas = document.createElement('canvas')
-                                                                                                                                                                                            const ctx = canvas.getContext('2d')
-                                                                                                                                                                                                if (!ctx) throw new Error('Canvas not supported')
-
-                                                                                                                                                                                                    const width = 1920
-                                                                                                                                                                                                        const height = 1080
-                                                                                                                                                                                                            canvas.width = width
-                                                                                                                                                                                                                canvas.height = height
-
-                                                                                                                                                                                                                    const gradient = ctx.createLinearGradient(0, 0, 0, height)
-                                                                                                                                                                                                                        gradient.addColorStop(0, '#e8f4f0')
-                                                                                                                                                                                                                            gradient.addColorStop(0.5, '#f3f8f6')
-                                                                                                                                                                                                                                gradient.addColorStop(1, '#e0ede8')
-                                                                                                                                                                                                                                    ctx.fillStyle = gradient
-                                                                                                                                                                                                                                        ctx.fillRect(0, 0, width, height)
-
-                                                                                                                                                                                                                                            setProgress(40)
-
-                                                                                                                                                                                                                                                const sortedMemories = [...memories]
-                                                                                                                                                                                                                                                      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                                                                                                                                                                                                                                                            .slice(0, 12)
-                                                                                                                                                                                                                                                            
+                                                                                                                                                                          
