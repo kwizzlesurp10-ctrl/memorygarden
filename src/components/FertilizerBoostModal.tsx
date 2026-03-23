@@ -70,7 +70,7 @@ export function FertilizerBoostModal({ open, onClose, memory, onApplyBoost }: Fe
 
     setIsApplying(true)
     
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    await new Promise(resolve => setTimeout(resolve, 1200))
     
     onApplyBoost(selectedBoost)
     setIsApplying(false)
@@ -80,7 +80,7 @@ export function FertilizerBoostModal({ open, onClose, memory, onApplyBoost }: Fe
       setShowSuccess(false)
       setSelectedBoost(null)
       onClose()
-    }, 2000)
+    }, 2200)
   }
 
   if (!memory) return null
@@ -125,9 +125,41 @@ export function FertilizerBoostModal({ open, onClose, memory, onApplyBoost }: Fe
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
               >
+                {Array.from({ length: 30 }).map((_, i) => {
+                  const angle = (i * 360) / 30
+                  const distance = 150 + Math.random() * 100
+                  
+                  return (
+                    <motion.div
+                      key={i}
+                      className="absolute left-1/2 top-1/2 w-1 h-1 rounded-full"
+                      style={{
+                        background: selectedOption?.color,
+                      }}
+                      initial={{ 
+                        scale: 0, 
+                        opacity: 1,
+                        x: '-50%',
+                        y: '-50%',
+                      }}
+                      animate={{
+                        scale: [0, 2, 0],
+                        opacity: [1, 0.8, 0],
+                        x: `calc(-50% + ${Math.cos(angle * Math.PI / 180) * distance}px)`,
+                        y: `calc(-50% + ${Math.sin(angle * Math.PI / 180) * distance}px)`,
+                      }}
+                      transition={{
+                        duration: 1.2,
+                        delay: i * 0.02,
+                        ease: 'easeOut',
+                      }}
+                    />
+                  )
+                })}
+                
                 {Array.from({ length: 20 }).map((_, i) => (
                   <motion.div
-                    key={i}
+                    key={`particle-${i}`}
                     className="absolute w-2 h-2 rounded-full"
                     style={{
                       left: `${Math.random() * 100}%`,

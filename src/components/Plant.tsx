@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion'
+import { motion, useAnimation } from 'framer-motion'
+import { useEffect, useRef } from 'react'
 import type { Memory, PlantStage, Season, PlantVariety } from '@/lib/types'
 import { getPlantColor, getPlantSize, getSeasonalPlantModifier, getSeason, calculateGrowthMetrics, getVisualParams } from '@/lib/garden-helpers'
 import { FlowerPlant } from './plants/FlowerPlant'
@@ -10,34 +11,50 @@ interface PlantProps {
   isDragging?: boolean
   season?: Season
   nearbyMemories?: Memory[]
+  isGrowing?: boolean
 }
 
-export function Plant({ memory, onClick, isDragging, season, nearbyMemories = [] }: PlantProps) {
+export function Plant({ memory, onClick, isDragging, season, nearbyMemories = [], isGrowing = false }: PlantProps) {
   const currentSeason = season || getSeason()
   const metrics = calculateGrowthMetrics(memory, nearbyMemories)
   const visual = getVisualParams(memory, metrics)
   
   const isLegendary = visual.specialClass === 'legendary'
+  const controls = useAnimation()
+  const previousVisitCount = useRef(memory.visitCount)
+
+  useEffect(() => {
+    if (memory.visitCount > previousVisitCount.current) {
+      controls.start({
+        scale: [1, 1.3, 1.15, 1.05, 1],
+        rotate: [0, -5, 5, -3, 0],
+        transition: {
+          duration: 1.2,
+          times: [0, 0.3, 0.5, 0.8, 1],
+          ease: [0.68, -0.55, 0.265, 1.55],
+        },
+      })
+    }
+    previousVisitCount.current = memory.visitCount
+  }, [memory.visitCount, controls])
 
   return (
     <motion.div
       initial={{ scale: 0, opacity: 0 }}
-      animate={{
-        scale: isDragging ? 0.9 : 1,
-        opacity: isDragging ? 0.6 : 1,
-      }}
+      animate={controls}
       whileHover={{ scale: 1.05, y: -2 }}
       transition={{
         type: 'spring',
         stiffness: 300,
         damping: 20,
       }}
-      className={`cursor-pointer animate-breathe ${isLegendary ? 'legendary-plant' : ''}`}
+      className={`cursor-pointer animate-breathe ${isLegendary ? 'legendary-plant' : ''} ${isGrowing ? 'relative' : ''}`}
       onClick={onClick}
       style={{ 
         width: visual.size, 
         height: visual.size,
         filter: visual.glow !== 'none' ? `drop-shadow(${visual.glow})` : 'none',
+        opacity: isDragging ? 0.6 : 1,
       }}
     >
       <PlantSVG 
@@ -50,7 +67,42 @@ export function Plant({ memory, onClick, isDragging, season, nearbyMemories = []
         leafOpacity={visual.leafOpacity}
         bloomOpacity={visual.bloomOpacity}
       />
+      
+      {isGrowing && (
+        <GrowthParticles color={visual.color} />
+      )}
     </motion.div>
+  )
+}
+
+function GrowthParticles({ color }: { color: string }) {
+  return (
+    <div className="absolute inset-0 pointer-events-none">
+      {Array.from({ length: 12 }).map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute left-1/2 bottom-0 w-2 h-2 rounded-full"
+          style={{ background: color }}
+          initial={{ 
+            scale: 0, 
+            opacity: 1,
+            x: '-50%',
+            y: 0,
+          }}
+          animate={{
+            scale: [0, 1.5, 0],
+            opacity: [1, 0.8, 0],
+            y: [-20, -60, -100],
+            x: `calc(-50% + ${(Math.random() - 0.5) * 60}px)`,
+          }}
+          transition={{
+            duration: 1.5,
+            delay: i * 0.08,
+            ease: 'easeOut',
+          }}
+        />
+      ))}
+    </div>
   )
 }
 

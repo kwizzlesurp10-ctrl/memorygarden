@@ -45,6 +45,7 @@ function App() {
   const [sharedMemoryView, setSharedMemoryView] = useState<SharedMemory | null>(null)
   const [isBoostModalOpen, setIsBoostModalOpen] = useState(false)
   const [memoryToBoost, setMemoryToBoost] = useState<Memory | null>(null)
+  const [growingMemories, setGrowingMemories] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -333,6 +334,16 @@ function App() {
 
     const boostedMemory = applyPremiumFertilizer(memoryToBoost, boostLevel)
     
+    setGrowingMemories((prev) => new Set(prev).add(memoryToBoost.id))
+    
+    setTimeout(() => {
+      setGrowingMemories((prev) => {
+        const next = new Set(prev)
+        next.delete(memoryToBoost.id)
+        return next
+      })
+    }, 2000)
+    
     setMemories((currentMemories) =>
       (currentMemories || []).map((m) => {
         if (m.id === memoryToBoost.id) {
@@ -483,6 +494,7 @@ function App() {
                     onMemoryClick={handleMemoryClick}
                     onMemoryMove={handleMemoryMove}
                     season={season}
+                    growingMemories={growingMemories}
                   />
                 )}
               </motion.div>
