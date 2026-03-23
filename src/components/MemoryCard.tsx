@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Drop, Sparkle, MapPin, CalendarBlank } from '@phosphor-icons/react'
+import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork } from '@phosphor-icons/react'
 import { AudioPlayer } from '@/components/AudioPlayer'
 import { format } from 'date-fns'
 import type { Memory } from '@/lib/types'
@@ -18,6 +18,7 @@ interface MemoryCardProps {
   onClose: () => void
   onWater: (memoryId: string, reflection: string) => void
   onAskAI: (memoryId: string) => void
+  onShare?: (memoryId: string) => void
   aiReflection?: string
   isLoadingAI?: boolean
 }
@@ -28,6 +29,7 @@ export function MemoryCard({
   onClose,
   onWater,
   onAskAI,
+  onShare,
   aiReflection,
   isLoadingAI,
 }: MemoryCardProps) {
@@ -70,8 +72,8 @@ export function MemoryCard({
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-card/90 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-6">
-              <div className="flex flex-wrap gap-2 mb-2">
+            <div className="absolute bottom-0 left-0 right-0 p-6 flex items-end justify-between">
+              <div className="flex flex-wrap gap-2">
                 <Badge variant="secondary" className="bg-card/80 backdrop-blur-sm">
                   {memory.emotionalTone}
                 </Badge>
@@ -82,6 +84,17 @@ export function MemoryCard({
                   Visited {memory.visitCount} times
                 </Badge>
               </div>
+              {onShare && (
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  onClick={() => onShare(memory.id)}
+                  className="bg-card/80 backdrop-blur-sm hover:bg-card"
+                  title="Share this memory"
+                >
+                  <ShareNetwork size={20} weight="bold" />
+                </Button>
+              )}
             </div>
           </div>
 

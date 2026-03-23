@@ -174,3 +174,11 @@ export function getSeasonalGroundCover(season: Season): string {
   }
   return groundColors[season]
 }
+
+export function generateShareId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+}
+
+export function getShareUrl(shareId: string): string {
+  return `${window.location.origin}?share=${shareId}`
+}

@@ -31,6 +31,24 @@ export interface Memory {
   lastVisited?: string
   reflections: Reflection[]
   audioRecordings: AudioRecording[]
+  shareId?: string
+  shareCreatedAt?: string
+}
+
+export interface SharedMemory {
+  id: string
+  memoryId: string
+  shareId: string
+  photoUrl: string
+  text: string
+  date: string
+  location?: string
+  plantedAt: string
+  emotionalTone: EmotionalTone
+  plantStage: PlantStage
+  audioRecordings: AudioRecording[]
+  sharedBy: string
+  sharedAt: string
 }
 
 export interface Reflection {

@@ -13,8 +13,10 @@ import { Onboarding } from '@/components/Onboarding'
 import { ExportGarden } from '@/components/ExportGarden'
 import { MemoryClusters } from '@/components/MemoryClusters'
 import { SeasonIndicator } from '@/components/SeasonIndicator'
+import { ShareMemoryDialog } from '@/components/ShareMemoryDialog'
+import { SharedMemoryView } from '@/components/SharedMemoryView'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import type { Memory, UserPreferences, AudioRecording } from '@/lib/types'
+import type { Memory, UserPreferences, AudioRecording, SharedMemory } from '@/lib/types'
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason } from '@/lib/garden-helpers'
 import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
 
@@ -23,6 +25,7 @@ type ViewMode = 'garden' | 'timeline' | 'clusters'
 function App() {
   const [user, setUser] = useState<{ login: string; avatarUrl: string } | null>(null)
   const [memories, setMemories] = useKV<Memory[]>('memories', [])
+  const [sharedMemories, setSharedMemories] = useKV<Record<string, SharedMemory>>('shared-memories', {})
   const [preferences, setPreferences] = useKV<UserPreferences>('preferences', {
     hasCompletedOnboarding: false,
     soundEnabled: false,
@@ -36,6 +39,21 @@ function App() {
   const [isLoadingAI, setIsLoadingAI] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [season, setSeason] = useState(getSeason())
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const [memoryToShare, setMemoryToShare] = useState<string | null>(null)
+  const [sharedMemoryView, setSharedMemoryView] = useState<SharedMemory | null>(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const shareId = params.get('share')
+    
+    if (shareId && sharedMemories) {
+      const sharedMem = sharedMemories[shareId]
+      if (sharedMem) {
+        setSharedMemoryView(sharedMem)
+      }
+    }
+  }, [sharedMemories])
 
   const handleProtocolAction = useCallback((action: ProtocolAction) => {
     switch (action.type) {
@@ -212,8 +230,53 @@ function App() {
     }
   }
 
+  const handleShareMemory = (memoryId: string) => {
+    setMemoryToShare(memoryId)
+    setIsShareModalOpen(true)
+  }
+
+  const handleCreateShare = async (shareId: string) => {
+    if (!memoryToShare || !user) return
+
+    const memory = safeMemories.find(m => m.id === memoryToShare)
+    if (!memory) return
+
+    const sharedMemory: SharedMemory = {
+      id: shareId,
+      memoryId: memory.id,
+      shareId,
+      photoUrl: memory.photoUrl,
+      text: memory.text,
+      date: memory.date,
+      location: memory.location,
+      plantedAt: memory.plantedAt,
+      emotionalTone: memory.emotionalTone,
+      plantStage: memory.plantStage,
+      audioRecordings: memory.audioRecordings,
+      sharedBy: user.login,
+      sharedAt: new Date().toISOString(),
+    }
+
+    setSharedMemories((current) => ({
+      ...current,
+      [shareId]: sharedMemory,
+    }))
+
+    setMemories((currentMemories) =>
+      (currentMemories || []).map((m) =>
+        m.id === memoryToShare
+          ? { ...m, shareId, shareCreatedAt: new Date().toISOString() }
+          : m
+      )
+    )
+  }
+
   const safeMemories = memories || []
   const safePreferences = preferences || { hasCompletedOnboarding: false, soundEnabled: false, lastVisit: '' }
+
+  if (sharedMemoryView) {
+    return <SharedMemoryView memory={sharedMemoryView} />
+  }
 
   if (!user) {
     return (
@@ -423,8 +486,19 @@ function App() {
         }}
         onWater={handleWater}
         onAskAI={handleAskAI}
+        onShare={handleShareMemory}
         aiReflection={aiReflection}
         isLoadingAI={isLoadingAI}
+      />
+
+      <ShareMemoryDialog
+        open={isShareModalOpen}
+        onClose={() => {
+          setIsShareModalOpen(false)
+          setMemoryToShare(null)
+        }}
+        onShare={handleCreateShare}
+        existingShareId={memoryToShare ? safeMemories.find(m => m.id === memoryToShare)?.shareId : undefined}
       />
 
       <ExportGarden
