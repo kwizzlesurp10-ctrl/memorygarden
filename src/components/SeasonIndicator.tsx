@@ -1,12 +1,14 @@
 import { motion } from 'framer-motion'
 import type { Season } from '@/lib/types'
 import { Flower, Sun, Leaf, Snowflake } from '@phosphor-icons/react'
+import { cn } from '@/lib/utils'
 
 interface SeasonIndicatorProps {
   season: Season
+  className?: string
 }
 
-export function SeasonIndicator({ season }: SeasonIndicatorProps) {
+export function SeasonIndicator({ season, className }: SeasonIndicatorProps) {
   const seasonConfig = {
     spring: {
       icon: Flower,
@@ -42,7 +44,7 @@ export function SeasonIndicator({ season }: SeasonIndicatorProps) {
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      className="flex items-center gap-2 px-3 py-1.5 rounded-full"
+      className={cn("flex items-center gap-2 px-3 py-1.5 rounded-full", className)}
       style={{
         backgroundColor: config.bgColor,
         color: config.color,

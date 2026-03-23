@@ -214,34 +214,34 @@ function App() {
       />
 
       <div className="w-full h-screen flex flex-col overflow-hidden">
-        <header className="flex items-center justify-between px-6 py-4 border-b border-border bg-card/50 backdrop-blur-sm z-10">
-          <div className="flex items-center gap-3">
-            <Tree size={32} weight="duotone" className="text-primary" />
-            <h1 className="text-xl font-bold">MemoryGarden</h1>
-            <SeasonIndicator season={season} />
+        <header className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-border bg-card/50 backdrop-blur-sm z-10">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0">
+            <Tree size={28} weight="duotone" className="text-primary flex-shrink-0 md:w-8 md:h-8" />
+            <h1 className="text-lg md:text-xl font-bold truncate">MemoryGarden</h1>
+            <SeasonIndicator season={season} className="hidden sm:flex" />
           </div>
 
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="hidden md:block">
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="absolute left-1/2 -translate-x-1/2">
             <TabsList>
-              <TabsTrigger value="garden" className="flex items-center gap-2">
-                <Tree size={18} />
-                Garden
+              <TabsTrigger value="garden" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Garden View">
+                <Tree size={18} className="flex-shrink-0" />
+                <span className="hidden md:inline">Garden</span>
               </TabsTrigger>
-              <TabsTrigger value="timeline" className="flex items-center gap-2">
-                <List size={18} />
-                Timeline
+              <TabsTrigger value="timeline" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Timeline View">
+                <List size={18} className="flex-shrink-0" />
+                <span className="hidden md:inline">Timeline</span>
               </TabsTrigger>
-              <TabsTrigger value="clusters" className="flex items-center gap-2">
-                <GridFour size={18} />
-                Clusters
+              <TabsTrigger value="clusters" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Clusters View">
+                <GridFour size={18} className="flex-shrink-0" />
+                <span className="hidden md:inline">Clusters</span>
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="h-9 w-9">
                   <DotsThree size={24} weight="bold" />
                 </Button>
               </DropdownMenuTrigger>
@@ -252,7 +252,7 @@ function App() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Avatar className="w-9 h-9">
+            <Avatar className="w-8 h-8 md:w-9 md:h-9">
               <AvatarImage src={user.avatarUrl} alt={user.login} />
               <AvatarFallback>{user.login[0]?.toUpperCase()}</AvatarFallback>
             </Avatar>
