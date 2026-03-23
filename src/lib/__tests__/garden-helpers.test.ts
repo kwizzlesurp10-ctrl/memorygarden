@@ -290,7 +290,7 @@ describe('getDayPeriod', () => {
     [0, 'night'],
     [3, 'night'],
     [4, 'night'],
-  ] as const)('returns "%s" at hour %d', (hour, expectedPeriod) => {
+  ] as const)('at hour %d returns "%s"', (hour, expectedPeriod) => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2024, 5, 15, hour, 30, 0))
     expect(getDayPeriod()).toBe(expectedPeriod)
@@ -316,7 +316,7 @@ describe('getSeason', () => {
     [9, 'autumn'],   // October
     [10, 'autumn'],  // November
     [11, 'winter'],  // December
-  ] as const)('returns "%s" for month index %d', (month, expectedSeason) => {
+  ] as const)('for month index %d returns "%s"', (month, expectedSeason) => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2024, month, 15))
     expect(getSeason()).toBe(expectedSeason)
