@@ -189,3 +189,15 @@
 .animate-shimmer {
   animation: shimmer 2s linear infinite;
 }
+
+.animate-fertilizer-sparkle {
+  animation: fertilizer-sparkle 1.5s ease-out infinite;
+}
+
+.animate-fertilizer-glow {
+  animation: fertilizer-glow 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
+}
