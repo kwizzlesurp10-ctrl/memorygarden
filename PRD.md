@@ -76,6 +76,13 @@ This app requires sophisticated state management for memory data, AI integration
 - **Progression**: User chooses export type (image/PDF) → selects memories to include or entire garden → system renders high-quality output → downloads file
 - **Success criteria**: Exported artifacts are print-quality beautiful, generation takes under 30s for 50 memories
 
+### 10. Protocol Handlers & Deep Linking
+- **Functionality**: Register custom web protocols (`web+memorygarden://`, `web+plantmemory://`, `web+viewmemory://`) when installed as PWA, enabling external apps and websites to trigger actions in MemoryGarden
+- **Purpose**: Enable seamless integration with other apps and automation tools, allowing users to quickly plant memories or view specific ones from external sources
+- **Trigger**: External application or website invokes a custom protocol URL, or user clicks a protocol link
+- **Progression**: Protocol URL invoked → app receives protocol request → validates and parses parameters → executes corresponding action (open plant modal, view specific memory, etc.) → provides user feedback
+- **Success criteria**: Protocol handlers register successfully on PWA installation, all three protocols work reliably, invalid requests show appropriate error messages, Share Target API allows direct photo sharing from camera/gallery
+
 ## Edge Case Handling
 
 - **No memories yet**: Show beautiful empty garden with gentle prompt and inspiration to plant first memory

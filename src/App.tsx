@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Toaster, toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Plant as PlantIcon, Tree, List, GridFour, Export, DotsThree } from '@phosphor-icons/react'
+import { Plant as PlantIcon, Tree, List, GridFour, Export, DotsThree, Link as LinkIcon } from '@phosphor-icons/react'
 import { GardenCanvas } from '@/components/GardenCanvas'
 import { PlantMemoryModal } from '@/components/PlantMemoryModal'
 import { MemoryCard } from '@/components/MemoryCard'
@@ -16,6 +16,7 @@ import { SeasonIndicator } from '@/components/SeasonIndicator'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Memory, UserPreferences, AudioRecording } from '@/lib/types'
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason } from '@/lib/garden-helpers'
+import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
 
 type ViewMode = 'garden' | 'timeline' | 'clusters'
 
@@ -35,6 +36,32 @@ function App() {
   const [isLoadingAI, setIsLoadingAI] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [season, setSeason] = useState(getSeason())
+
+  const handleProtocolAction = useCallback((action: ProtocolAction) => {
+    switch (action.type) {
+      case 'plant-memory':
+        if (safePreferences.hasCompletedOnboarding) {
+          setIsPlantModalOpen(true)
+          if (action.data) {
+            toast.info('Opening plant memory modal with data')
+          }
+        }
+        break
+      case 'view-memory':
+        const memory = safeMemories.find(m => m.id === action.id)
+        if (memory) {
+          handleMemoryClick(memory)
+        } else {
+          toast.error('Memory not found')
+        }
+        break
+      case 'unknown':
+        toast.info(`Protocol handler invoked: ${action.protocol}`)
+        break
+    }
+  }, [memories, preferences])
+
+  useProtocolHandler(handleProtocolAction)
 
   useEffect(() => {
     window.spark.user().then(setUser).catch(() => {
@@ -249,6 +276,10 @@ function App() {
                 <DropdownMenuItem onClick={() => setIsExportModalOpen(true)}>
                   <Export size={16} className="mr-2" />
                   Export Garden
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.open('/protocol-test.html', '_blank')}>
+                  <LinkIcon size={16} className="mr-2" />
+                  Protocol Handler Test
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
