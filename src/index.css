@@ -126,6 +126,38 @@
   }
 }
 
+@keyframes fertilizer-sparkle {
+  0% {
+    transform: translateY(0) scale(0) rotate(0deg);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100px) scale(1) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes fertilizer-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
+  }
+  50% {
+    box-shadow: 0 0 20px currentColor, 0 0 40px currentColor, 0 0 60px currentColor;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
 .animate-float {
   animation: float 4s ease-in-out infinite;
 }
@@ -144,4 +176,16 @@
 
 .legendary-plant {
   animation: legendary-pulse 3s ease-in-out infinite;
+}
+
+.animate-fertilizer-sparkle {
+  animation: fertilizer-sparkle 1.5s ease-out infinite;
+}
+
+.animate-fertilizer-glow {
+  animation: fertilizer-glow 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
 }

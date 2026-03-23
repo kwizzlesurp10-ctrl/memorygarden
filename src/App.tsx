@@ -15,9 +15,10 @@ import { MemoryClusters } from '@/components/MemoryClusters'
 import { SeasonIndicator } from '@/components/SeasonIndicator'
 import { ShareMemoryDialog } from '@/components/ShareMemoryDialog'
 import { SharedMemoryView } from '@/components/SharedMemoryView'
+import { FertilizerBoostModal } from '@/components/FertilizerBoostModal'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Memory, UserPreferences, AudioRecording, SharedMemory } from '@/lib/types'
-import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics } from '@/lib/garden-helpers'
+import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer } from '@/lib/garden-helpers'
 import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
 
 type ViewMode = 'garden' | 'timeline' | 'clusters'
@@ -42,6 +43,8 @@ function App() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [memoryToShare, setMemoryToShare] = useState<string | null>(null)
   const [sharedMemoryView, setSharedMemoryView] = useState<SharedMemory | null>(null)
+  const [isBoostModalOpen, setIsBoostModalOpen] = useState(false)
+  const [memoryToBoost, setMemoryToBoost] = useState<Memory | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -317,6 +320,52 @@ function App() {
     )
   }
 
+  const handleOpenBoost = (memoryId: string) => {
+    const memory = safeMemories.find(m => m.id === memoryId)
+    if (memory) {
+      setMemoryToBoost(memory)
+      setIsBoostModalOpen(true)
+    }
+  }
+
+  const handleApplyBoost = (boostLevel: 'standard' | 'premium' | 'legendary') => {
+    if (!memoryToBoost) return
+
+    const boostedMemory = applyPremiumFertilizer(memoryToBoost, boostLevel)
+    
+    setMemories((currentMemories) =>
+      (currentMemories || []).map((m) => {
+        if (m.id === memoryToBoost.id) {
+          const updatedMemory = {
+            ...m,
+            visitCount: boostedMemory.visitCount,
+          }
+          const nearbyMemories = (currentMemories || []).filter(
+            (nm) =>
+              nm.id !== memoryToBoost.id &&
+              Math.abs(nm.position.x - m.position.x) < 300 &&
+              Math.abs(nm.position.y - m.position.y) < 300
+          )
+          const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
+          return {
+            ...updatedMemory,
+            growthMetrics,
+            plantStage: getPlantStage(updatedMemory),
+          }
+        }
+        return m
+      })
+    )
+
+    const boostNames = {
+      standard: 'Garden Boost',
+      premium: 'Premium Fertilizer',
+      legendary: 'Legendary Elixir',
+    }
+
+    toast.success(`${boostNames[boostLevel]} applied! Your memory is flourishing.`)
+  }
+
   const safeMemories = memories || []
   const safePreferences = preferences || { hasCompletedOnboarding: false, soundEnabled: false, lastVisit: '' }
 
@@ -533,6 +582,7 @@ function App() {
         onWater={handleWater}
         onAskAI={handleAskAI}
         onShare={handleShareMemory}
+        onBoost={handleOpenBoost}
         aiReflection={aiReflection}
         isLoadingAI={isLoadingAI}
       />
@@ -545,6 +595,16 @@ function App() {
         }}
         onShare={handleCreateShare}
         existingShareId={memoryToShare ? safeMemories.find(m => m.id === memoryToShare)?.shareId : undefined}
+      />
+
+      <FertilizerBoostModal
+        open={isBoostModalOpen}
+        onClose={() => {
+          setIsBoostModalOpen(false)
+          setMemoryToBoost(null)
+        }}
+        memory={memoryToBoost}
+        onApplyBoost={handleApplyBoost}
       />
 
       <ExportGarden

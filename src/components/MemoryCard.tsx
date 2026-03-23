@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork, ChartBar } from '@phosphor-icons/react'
+import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork, ChartBar, Lightning } from '@phosphor-icons/react'
 import { AudioPlayer } from '@/components/AudioPlayer'
 import { format } from 'date-fns'
 import type { Memory } from '@/lib/types'
@@ -20,6 +20,7 @@ interface MemoryCardProps {
   onWater: (memoryId: string, reflection: string) => void
   onAskAI: (memoryId: string) => void
   onShare?: (memoryId: string) => void
+  onBoost?: (memoryId: string) => void
   aiReflection?: string
   isLoadingAI?: boolean
 }
@@ -31,6 +32,7 @@ export function MemoryCard({
   onWater,
   onAskAI,
   onShare,
+  onBoost,
   aiReflection,
   isLoadingAI,
 }: MemoryCardProps) {
@@ -292,6 +294,25 @@ export function MemoryCard({
                     </AnimatePresence>
                   </Button>
                 </div>
+                
+                {onBoost && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <Button
+                      onClick={() => onBoost(memory.id)}
+                      variant="outline"
+                      className="w-full border-2 border-primary/30 hover:border-primary hover:bg-primary/5 transition-all"
+                    >
+                      <Lightning size={18} weight="fill" className="mr-2 text-primary" />
+                      <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent font-semibold">
+                        Apply Premium Fertilizer
+                      </span>
+                    </Button>
+                  </motion.div>
+                )}
               </div>
             </div>
           </ScrollArea>
