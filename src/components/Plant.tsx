@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion'
-import type { Memory, PlantStage, Season } from '@/lib/types'
+import type { Memory, PlantStage, Season, PlantVariety } from '@/lib/types'
 import { getPlantColor, getPlantSize, getSeasonalPlantModifier, getSeason } from '@/lib/garden-helpers'
+import { FlowerPlant } from './plants/FlowerPlant'
+import { TreePlant, SucculentPlant, VinePlant, HerbPlant, WildflowerPlant } from './plants/OtherPlants'
 
 interface PlantProps {
   memory: Memory
@@ -11,11 +13,8 @@ interface PlantProps {
 
 export function Plant({ memory, onClick, isDragging, season }: PlantProps) {
   const currentSeason = season || getSeason()
-  const baseColor = getPlantColor(memory.emotionalTone)
   const seasonalColor = getSeasonalPlantModifier(currentSeason, memory.emotionalTone)
-  const color = seasonalColor
   const size = getPlantSize(memory.plantStage)
-  const stage = memory.plantStage
 
   return (
     <motion.div
@@ -34,21 +33,36 @@ export function Plant({ memory, onClick, isDragging, season }: PlantProps) {
       onClick={onClick}
       style={{ width: size, height: size }}
     >
-      <svg
-        width={size}
-        height={size}
-        viewBox="0 0 100 100"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        {stage === 'seed' && <SeedSVG color={color} season={currentSeason} />}
-        {stage === 'sprout' && <SproutSVG color={color} season={currentSeason} />}
-        {stage === 'bud' && <BudSVG color={color} season={currentSeason} />}
-        {stage === 'bloom' && <BloomSVG color={color} season={currentSeason} />}
-        {stage === 'mature' && <MatureSVG color={color} season={currentSeason} />}
-        {stage === 'evergreen' && <EvergreenSVG color={color} season={currentSeason} />}
-      </svg>
+      <PlantSVG 
+        variety={memory.plantVariety}
+        stage={memory.plantStage}
+        color={seasonalColor}
+        season={currentSeason}
+        size={size}
+      />
     </motion.div>
+  )
+}
+
+function PlantSVG({ variety, stage, color, season, size }: { 
+  variety: PlantVariety
+  stage: PlantStage
+  color: string
+  season: Season
+  size: number
+}) {
+  const stemColor = season === 'autumn' ? 'oklch(0.52 0.10 145)' : season === 'winter' ? 'oklch(0.48 0.06 160)' : 'oklch(0.55 0.08 155)'
+  const groundColor = season === 'winter' ? 'oklch(0.82 0.02 220)' : 'oklch(0.45 0.05 65)'
+  
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {variety === 'flower' && <FlowerPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} season={season} />}
+      {variety === 'tree' && <TreePlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
+      {variety === 'succulent' && <SucculentPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
+      {variety === 'vine' && <VinePlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
+      {variety === 'herb' && <HerbPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
+      {variety === 'wildflower' && <WildflowerPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} season={season} />}
+    </svg>
   )
 }
 

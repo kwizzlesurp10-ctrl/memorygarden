@@ -1,4 +1,27 @@
-import type { Memory, EmotionalTone, PlantStage } from './types'
+import type { Memory, EmotionalTone, PlantStage, PlantVariety } from './types'
+
+export function selectPlantVariety(emotionalTone: EmotionalTone, text: string): PlantVariety {
+  const textLower = text.toLowerCase()
+  const textLength = text.length
+  
+  if (emotionalTone === 'happy') {
+    return textLength < 100 ? 'wildflower' : 'flower'
+  }
+  
+  if (emotionalTone === 'peaceful') {
+    return textLower.includes('home') || textLower.includes('quiet') ? 'herb' : 'succulent'
+  }
+  
+  if (emotionalTone === 'reflective') {
+    return 'tree'
+  }
+  
+  if (emotionalTone === 'bittersweet') {
+    return 'vine'
+  }
+  
+  return 'flower'
+}
 
 export function getPlantStage(memory: Memory): PlantStage {
   const daysSincePlanted = Math.floor(
@@ -6,13 +29,17 @@ export function getPlantStage(memory: Memory): PlantStage {
   )
   
   const visitCount = memory.visitCount
+  const reflectionCount = memory.reflections.length
+  const interactionScore = visitCount + (reflectionCount * 2)
   
-  if (daysSincePlanted < 1) return 'seed'
-  if (daysSincePlanted < 3 && visitCount < 2) return 'sprout'
-  if (daysSincePlanted < 7 || visitCount < 3) return 'bud'
-  if (daysSincePlanted < 30 || visitCount < 5) return 'bloom'
-  if (daysSincePlanted < 90) return 'mature'
-  return 'evergreen'
+  if (daysSincePlanted < 1 && interactionScore === 0) return 'seed'
+  if (daysSincePlanted < 2 || interactionScore < 2) return 'sprout'
+  if (daysSincePlanted < 5 || interactionScore < 4) return 'seedling'
+  if (daysSincePlanted < 14 || interactionScore < 6) return 'young'
+  if (daysSincePlanted < 30 || interactionScore < 8) return 'bud'
+  if (daysSincePlanted < 60 || interactionScore < 12) return 'bloom'
+  if (daysSincePlanted < 120) return 'mature'
+  return 'elder'
 }
 
 export function getPlantColor(emotionalTone: EmotionalTone): string {
@@ -29,11 +56,13 @@ export function getPlantColor(emotionalTone: EmotionalTone): string {
 export function getPlantSize(stage: PlantStage): number {
   const sizes: Record<PlantStage, number> = {
     seed: 20,
-    sprout: 35,
-    bud: 50,
-    bloom: 70,
-    mature: 90,
-    evergreen: 110,
+    sprout: 32,
+    seedling: 45,
+    young: 58,
+    bud: 70,
+    bloom: 85,
+    mature: 100,
+    elder: 120,
   }
   return sizes[stage]
 }

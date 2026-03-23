@@ -17,7 +17,7 @@ import { ShareMemoryDialog } from '@/components/ShareMemoryDialog'
 import { SharedMemoryView } from '@/components/SharedMemoryView'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Memory, UserPreferences, AudioRecording, SharedMemory } from '@/lib/types'
-import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason } from '@/lib/garden-helpers'
+import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety } from '@/lib/garden-helpers'
 import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
 
 type ViewMode = 'garden' | 'timeline' | 'clusters'
@@ -125,6 +125,7 @@ function App() {
           const photoUrl = reader.result as string
           
           const emotionalTone = await classifyEmotionalTone(data.text)
+          const plantVariety = selectPlantVariety(emotionalTone, data.text)
           
           const newMemory: Memory = {
             id: `memory-${Date.now()}`,
@@ -138,6 +139,7 @@ function App() {
               y: 400 + Math.random() * 800,
             },
             emotionalTone,
+            plantVariety,
             plantStage: 'seed',
             visitCount: 0,
             reflections: [],
@@ -252,6 +254,7 @@ function App() {
       plantedAt: memory.plantedAt,
       emotionalTone: memory.emotionalTone,
       plantStage: memory.plantStage,
+      plantVariety: memory.plantVariety,
       audioRecordings: memory.audioRecordings,
       sharedBy: user.login,
       sharedAt: new Date().toISOString(),

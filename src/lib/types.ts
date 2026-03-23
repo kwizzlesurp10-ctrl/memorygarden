@@ -1,6 +1,8 @@
 export type EmotionalTone = 'happy' | 'reflective' | 'bittersweet' | 'peaceful' | 'nostalgic'
 
-export type PlantStage = 'seed' | 'sprout' | 'bud' | 'bloom' | 'mature' | 'evergreen'
+export type PlantStage = 'seed' | 'sprout' | 'seedling' | 'young' | 'bud' | 'bloom' | 'mature' | 'elder'
+
+export type PlantVariety = 'flower' | 'tree' | 'succulent' | 'vine' | 'herb' | 'wildflower'
 
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter'
 
@@ -27,6 +29,7 @@ export interface Memory {
   position: Position
   emotionalTone: EmotionalTone
   plantStage: PlantStage
+  plantVariety: PlantVariety
   visitCount: number
   lastVisited?: string
   reflections: Reflection[]
@@ -46,6 +49,7 @@ export interface SharedMemory {
   plantedAt: string
   emotionalTone: EmotionalTone
   plantStage: PlantStage
+  plantVariety: PlantVariety
   audioRecordings: AudioRecording[]
   sharedBy: string
   sharedAt: string

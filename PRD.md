@@ -42,11 +42,11 @@ This app requires sophisticated state management for memory data, AI integration
 - **Success criteria**: Plants visually evolve (size, bloom stage) with each interaction, AI responses feel gentle and insightful
 
 ### 5. Plant Visual Evolution
-- **Functionality**: Plants change appearance based on memory age, visit frequency, and emotional tone (bud → flower → mature plant → evergreen)
-- **Purpose**: Make passage of time and emotional patterns visible and beautiful
+- **Functionality**: Plants change appearance based on memory age, visit frequency, emotional tone (bud → flower → mature plant → evergreen), and now include distinct plant varieties (flowers, trees, succulents, vines, herbs, wildflowers) with expanded growth stages
+- **Purpose**: Make passage of time and emotional patterns visible and beautiful, with richer visual diversity representing different types of memories
 - **Trigger**: Automatic background process checking memory metadata
-- **Progression**: New memory starts as small bud → visited memories bloom into flowers → frequently-tended plants grow larger → old unvisited memories mature into trees → emotional tone affects color palette
-- **Success criteria**: Clear visual differentiation between growth stages, changes feel organic not sudden, colors map meaningfully to emotions
+- **Progression**: New memory starts as small seed → with visits becomes sprout → develops into seedling → grows to young plant → matures to full bloom/tree → reaches elder/ancient stage → emotional tone affects color palette, plant variety influences growth pattern and visual metaphor
+- **Success criteria**: Clear visual differentiation between 8 growth stages and 6+ plant varieties, changes feel organic not sudden, colors map meaningfully to emotions, variety selection feels appropriate to memory characteristics
 
 ### 6. Time-Based Garden Changes
 - **Functionality**: Background, plant types, and atmosphere shift with real-world time (day/night cycle) and seasons
