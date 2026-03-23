@@ -1,8 +1,11 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import type { Memory, Season } from '@/lib/types'
 import { Plant } from './Plant'
-import { getDayPeriod, getBackgroundGradient, getSeason } from '@/lib/garden-helpers'
+import { getDayPeriod, getBackgroundGradient, getSeason, getPlantSize } from '@/lib/garden-helpers'
+
+const MIN_CANVAS_SIZE = 2000
+const CANVAS_PADDING = 200
 
 interface GardenCanvasProps {
   memories: Memory[]
@@ -34,16 +37,47 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
     }
   }, [propSeason])
 
-  const handleWheel = (e: React.WheelEvent) => {
+  const canvasSize = useMemo(() => {
+    if (memories.length === 0) {
+      return { width: MIN_CANVAS_SIZE, height: MIN_CANVAS_SIZE }
+    }
+
+    let maxX = 0
+    let maxY = 0
+    for (const memory of memories) {
+      const plantSize = getPlantSize(memory.plantStage)
+      maxX = Math.max(maxX, memory.position.x + plantSize)
+      maxY = Math.max(maxY, memory.position.y + plantSize)
+    }
+
+    return {
+      width: Math.max(MIN_CANVAS_SIZE, maxX + CANVAS_PADDING),
+      height: Math.max(MIN_CANVAS_SIZE, maxY + CANVAS_PADDING),
+    }
+  }, [memories])
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault()
       const delta = e.deltaY * -0.001
-      const newScale = Math.min(Math.max(0.5, scale + delta), 2)
-      setScale(newScale)
+      setScale((prev) => Math.min(Math.max(0.5, prev + delta), 2))
     }
-  }
+  }, [])
+
+  const handleDragEnd = useCallback(
+    (memory: Memory, info: { offset: { x: number; y: number } }) => {
+      setDraggingMemory(null)
+      const newX = Math.max(0, memory.position.x + info.offset.x / scale)
+      const newY = Math.max(0, memory.position.y + info.offset.y / scale)
+      onMemoryMove(memory.id, { x: newX, y: newY })
+    },
+    [scale, onMemoryMove]
+  )
 
   const backgroundGradient = getBackgroundGradient(dayPeriod, season)
+
+  const scaledWidth = canvasSize.width * scale
+  const scaledHeight = canvasSize.height * scale
 
   return (
     <div
@@ -58,44 +92,51 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
       <SeasonalEffects season={season} dayPeriod={dayPeriod} />
       
       <div
-        className="relative min-w-[2000px] min-h-[2000px]"
         style={{
-          transform: `scale(${scale})`,
-          transformOrigin: 'top left',
-          cursor: draggingMemory ? 'grabbing' : 'default',
+          width: scaledWidth,
+          height: scaledHeight,
+          position: 'relative',
         }}
       >
-        {memories.map((memory) => (
-          <motion.div
-            key={memory.id}
-            drag
-            dragMomentum={false}
-            dragElastic={0.1}
-            onDragStart={() => setDraggingMemory(memory.id)}
-            onDragEnd={(_, info) => {
-              setDraggingMemory(null)
-              const newX = memory.position.x + info.offset.x / scale
-              const newY = memory.position.y + info.offset.y / scale
-              onMemoryMove(memory.id, { x: newX, y: newY })
-            }}
-            className="absolute"
-            style={{
-              left: memory.position.x,
-              top: memory.position.y,
-            }}
-          >
-            <Plant
-              memory={memory}
-              onClick={() => {
-                if (!draggingMemory) {
-                  onMemoryClick(memory)
-                }
+        <div
+          style={{
+            width: canvasSize.width,
+            height: canvasSize.height,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            cursor: draggingMemory ? 'grabbing' : 'default',
+          }}
+        >
+          {memories.map((memory) => (
+            <motion.div
+              key={memory.id}
+              drag
+              dragMomentum={false}
+              dragElastic={0.1}
+              onDragStart={() => setDraggingMemory(memory.id)}
+              onDragEnd={(_, info) => handleDragEnd(memory, info)}
+              className="absolute"
+              style={{
+                left: memory.position.x,
+                top: memory.position.y,
               }}
-              isDragging={draggingMemory === memory.id}
-              season={season}
-            />
-          </motion.div>
-        ))}
+            >
+              <Plant
+                memory={memory}
+                onClick={() => {
+                  if (!draggingMemory) {
+                    onMemoryClick(memory)
+                  }
+                }}
+                isDragging={draggingMemory === memory.id}
+                season={season}
+              />
+            </motion.div>
+          ))}
+        </div>
       </div>
     </div>
   )
