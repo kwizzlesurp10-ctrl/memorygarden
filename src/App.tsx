@@ -12,6 +12,7 @@ import { MemoryCard } from '@/components/MemoryCard'
 import { Onboarding } from '@/components/Onboarding'
 import { ExportGarden } from '@/components/ExportGarden'
 import { MemoryClusters } from '@/components/MemoryClusters'
+import { SeasonIndicator } from '@/components/SeasonIndicator'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Memory, UserPreferences, AudioRecording } from '@/lib/types'
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason } from '@/lib/garden-helpers'
@@ -217,6 +218,7 @@ function App() {
           <div className="flex items-center gap-3">
             <Tree size={32} weight="duotone" className="text-primary" />
             <h1 className="text-xl font-bold">MemoryGarden</h1>
+            <SeasonIndicator season={season} />
           </div>
 
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="hidden md:block">
@@ -291,6 +293,7 @@ function App() {
                     memories={safeMemories}
                     onMemoryClick={handleMemoryClick}
                     onMemoryMove={handleMemoryMove}
+                    season={season}
                   />
                 )}
               </motion.div>

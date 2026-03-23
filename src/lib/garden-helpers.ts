@@ -90,7 +90,9 @@ export function getDayPeriod(): 'dawn' | 'day' | 'dusk' | 'night' {
   return 'night'
 }
 
-export function getSeason(): 'spring' | 'summer' | 'autumn' | 'winter' {
+export type Season = 'spring' | 'summer' | 'autumn' | 'winter'
+
+export function getSeason(): Season {
   const month = new Date().getMonth()
   
   if (month >= 2 && month <= 4) return 'spring'
@@ -99,12 +101,76 @@ export function getSeason(): 'spring' | 'summer' | 'autumn' | 'winter' {
   return 'winter'
 }
 
-export function getBackgroundGradient(period: 'dawn' | 'day' | 'dusk' | 'night'): string {
+export function getBackgroundGradient(period: 'dawn' | 'day' | 'dusk' | 'night', season: Season): string {
   const gradients = {
-    dawn: 'linear-gradient(to bottom, oklch(0.85 0.08 60) 0%, oklch(0.92 0.04 85) 50%, oklch(0.88 0.05 95) 100%)',
-    day: 'linear-gradient(to bottom, oklch(0.90 0.05 220) 0%, oklch(0.95 0.02 180) 50%, oklch(0.92 0.03 140) 100%)',
-    dusk: 'linear-gradient(to bottom, oklch(0.75 0.12 30) 0%, oklch(0.82 0.08 50) 50%, oklch(0.88 0.04 80) 100%)',
-    night: 'linear-gradient(to bottom, oklch(0.30 0.08 260) 0%, oklch(0.40 0.06 240) 50%, oklch(0.50 0.04 220) 100%)',
+    spring: {
+      dawn: 'linear-gradient(to bottom, oklch(0.88 0.10 85) 0%, oklch(0.94 0.06 110) 50%, oklch(0.90 0.08 140) 100%)',
+      day: 'linear-gradient(to bottom, oklch(0.92 0.08 200) 0%, oklch(0.96 0.04 170) 50%, oklch(0.94 0.05 150) 100%)',
+      dusk: 'linear-gradient(to bottom, oklch(0.78 0.14 50) 0%, oklch(0.84 0.10 80) 50%, oklch(0.88 0.06 120) 100%)',
+      night: 'linear-gradient(to bottom, oklch(0.35 0.10 250) 0%, oklch(0.45 0.08 230) 50%, oklch(0.52 0.06 210) 100%)',
+    },
+    summer: {
+      dawn: 'linear-gradient(to bottom, oklch(0.90 0.12 70) 0%, oklch(0.95 0.08 95) 50%, oklch(0.92 0.10 120) 100%)',
+      day: 'linear-gradient(to bottom, oklch(0.94 0.10 210) 0%, oklch(0.97 0.06 180) 50%, oklch(0.95 0.08 150) 100%)',
+      dusk: 'linear-gradient(to bottom, oklch(0.82 0.16 40) 0%, oklch(0.88 0.12 65) 50%, oklch(0.92 0.08 90) 100%)',
+      night: 'linear-gradient(to bottom, oklch(0.28 0.08 260) 0%, oklch(0.38 0.06 240) 50%, oklch(0.48 0.04 220) 100%)',
+    },
+    autumn: {
+      dawn: 'linear-gradient(to bottom, oklch(0.82 0.14 45) 0%, oklch(0.88 0.10 65) 50%, oklch(0.85 0.08 85) 100%)',
+      day: 'linear-gradient(to bottom, oklch(0.85 0.08 200) 0%, oklch(0.90 0.06 170) 50%, oklch(0.88 0.07 140) 100%)',
+      dusk: 'linear-gradient(to bottom, oklch(0.72 0.18 35) 0%, oklch(0.78 0.14 55) 50%, oklch(0.82 0.10 75) 100%)',
+      night: 'linear-gradient(to bottom, oklch(0.25 0.08 250) 0%, oklch(0.35 0.06 230) 50%, oklch(0.45 0.04 210) 100%)',
+    },
+    winter: {
+      dawn: 'linear-gradient(to bottom, oklch(0.80 0.04 220) 0%, oklch(0.88 0.02 200) 50%, oklch(0.85 0.03 180) 100%)',
+      day: 'linear-gradient(to bottom, oklch(0.88 0.04 210) 0%, oklch(0.92 0.03 190) 50%, oklch(0.90 0.02 170) 100%)',
+      dusk: 'linear-gradient(to bottom, oklch(0.68 0.08 250) 0%, oklch(0.75 0.06 230) 50%, oklch(0.80 0.04 210) 100%)',
+      night: 'linear-gradient(to bottom, oklch(0.22 0.06 260) 0%, oklch(0.30 0.04 250) 50%, oklch(0.40 0.03 240) 100%)',
+    },
   }
-  return gradients[period]
+  return gradients[season][period]
+}
+
+export function getSeasonalPlantModifier(season: Season, emotionalTone: EmotionalTone): string {
+  const seasonalPalettes = {
+    spring: {
+      happy: 'oklch(0.82 0.16 95)',
+      reflective: 'oklch(0.70 0.14 280)',
+      bittersweet: 'oklch(0.75 0.18 350)',
+      peaceful: 'oklch(0.65 0.12 160)',
+      nostalgic: 'oklch(0.72 0.14 80)',
+    },
+    summer: {
+      happy: 'oklch(0.85 0.18 90)',
+      reflective: 'oklch(0.65 0.15 240)',
+      bittersweet: 'oklch(0.78 0.20 340)',
+      peaceful: 'oklch(0.60 0.12 155)',
+      nostalgic: 'oklch(0.75 0.16 70)',
+    },
+    autumn: {
+      happy: 'oklch(0.75 0.16 60)',
+      reflective: 'oklch(0.58 0.12 30)',
+      bittersweet: 'oklch(0.68 0.18 25)',
+      peaceful: 'oklch(0.52 0.10 145)',
+      nostalgic: 'oklch(0.70 0.14 45)',
+    },
+    winter: {
+      happy: 'oklch(0.82 0.08 220)',
+      reflective: 'oklch(0.72 0.10 260)',
+      bittersweet: 'oklch(0.75 0.12 300)',
+      peaceful: 'oklch(0.68 0.06 180)',
+      nostalgic: 'oklch(0.70 0.08 240)',
+    },
+  }
+  return seasonalPalettes[season][emotionalTone]
+}
+
+export function getSeasonalGroundCover(season: Season): string {
+  const groundColors = {
+    spring: 'oklch(0.70 0.12 130)',
+    summer: 'oklch(0.65 0.14 140)',
+    autumn: 'oklch(0.58 0.12 60)',
+    winter: 'oklch(0.85 0.02 220)',
+  }
+  return groundColors[season]
 }

@@ -2,6 +2,8 @@ export type EmotionalTone = 'happy' | 'reflective' | 'bittersweet' | 'peaceful' 
 
 export type PlantStage = 'seed' | 'sprout' | 'bud' | 'bloom' | 'mature' | 'evergreen'
 
+export type Season = 'spring' | 'summer' | 'autumn' | 'winter'
+
 export interface Position {
   x: number
   y: number
