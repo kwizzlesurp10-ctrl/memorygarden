@@ -1,25 +1,25 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Progress } from '@/components/ui/progr
-import { Label } from '@/components/ui/label'
-import { format } from 'date-fns'
-interface ExportGardenProps {
-  onClose: () => void
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Progress } from '@/components/ui/progress'
+import { Export, Image as ImageIcon, FilePdf } from '@phosphor-icons/react'
 import { toast } from 'sonner'
-type ExportFormat = 'image' | 'pdf'
-import { format } from 'date-fns'
+import { format as formatDate } from 'date-fns'
+import type { Memory } from '@/lib/types'
 
 interface ExportGardenProps {
-  const handleE
+  open: boolean
   onClose: () => void
-    }
+  memories: Memory[]
 }
 
 type ExportFormat = 'image' | 'pdf'
 
 export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
-  const [format, setFormat] = useState<ExportFormat>('image')
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('image')
   const [isExporting, setIsExporting] = useState(false)
   const [progress, setProgress] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
@@ -30,38 +30,32 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
       return
     }
 
+    setIsExporting(true)
+    setProgress(0)
+    setIsComplete(false)
 
-    const height =
-    canvas.height = heig
+    try {
+      if (exportFormat === 'image') {
+        await exportAsImage()
+      } else {
+        await exportAsPDF()
+      }
+      setIsComplete(true)
+      toast.success('Export complete!')
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error('Export failed. Please try again.')
+      setIsExporting(false)
+      setProgress(0)
+    }
+  }
 
-    gradi
-    ctx.fillStyle = gradient
+  const exportAsImage = async () => {
+    setProgress(10)
 
-
-      .sort((a, b) => new D
-
-      
-    const cardHeight = 30
-    const gap = 20
-      
-    const startX = (widt
-
-      const memory = sortedM
-      const ro
-      const y = start
-      ctx.fillStyle = '#ffffff'
-      ctx.shadowBlur = 20
-      ctx.fillR
-      ctx.shadowBlur = 0
-
-   
-
-            ctx.save()
-            ctx.rec
-    
-            const cardAspect = (cardWidth - 20) / 1
-            
-              drawHeight = 180
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Canvas not supported')
 
     const width = 1920
     const height = 1080
@@ -85,7 +79,6 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
     const rows = 3
     const cardWidth = 400
     const cardHeight = 300
-    const padding = 40
     const gap = 20
 
     const totalWidth = cols * cardWidth + (cols - 1) * gap
@@ -128,7 +121,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
               drawWidth = drawHeight * imgAspect
               drawX = x + 10 - (drawWidth - (cardWidth - 20)) / 2
               drawY = y + 10
-      for (let i = 0
+            } else {
               drawWidth = cardWidth - 20
               drawHeight = drawWidth / imgAspect
               drawX = x + 10
@@ -138,17 +131,17 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
             ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
             ctx.restore()
             resolve()
-
+          }
           img.onerror = () => reject(new Error('Failed to load image'))
-                drawX = imgX - (dra
+          img.src = memory.photoUrl
         })
-                drawHei
+      } catch (error) {
         console.error('Failed to load image for memory:', memory.id)
-
+      }
 
       ctx.fillStyle = '#1a1a1a'
       ctx.font = 'bold 16px "Space Grotesk", sans-serif'
-      const dateText = format(new Date(memory.date), 'MMM d, yyyy')
+      const dateText = formatDate(new Date(memory.date), 'MMM d, yyyy')
       ctx.fillText(dateText, x + 15, y + 215)
 
       ctx.fillStyle = '#4a4a4a'
@@ -156,7 +149,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
       const maxTextWidth = cardWidth - 30
       const words = memory.text.split(' ')
       let line = ''
-        ctx.textAlign = '
+      let lineY = y + 240
       const maxLines = 2
 
       for (let j = 0; j < words.length; j++) {
@@ -168,9 +161,9 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
           lineY += 20
           if (lineY > y + 240 + 20 * (maxLines - 1)) {
             ctx.fillText(line.trim() + '...', x + 15, lineY)
-            lineY
+            break
           }
-            }
+        } else {
           line = testLine
         }
       }
@@ -188,29 +181,33 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
 
     ctx.font = '18px "Crimson Pro", serif'
     ctx.fillStyle = '#4a4a4a'
-    setProgress(1
-      `${memories.length} memories • ${format(new Date(), 'MMMM yyyy')}`,
-    <Dialog open
+    ctx.fillText(
+      `${memories.length} memories • ${formatDate(new Date(), 'MMMM yyyy')}`,
+      width / 2,
       90
-     
+    )
 
+    setProgress(90)
 
+    await new Promise<void>((resolve) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `memory-garden-${formatDate(new Date(), 'yyyy-MM-dd')}.png`
+          link.click()
+          URL.revokeObjectURL(url)
+        }
+        resolve()
+      }, 'image/png')
+    })
 
-              <Label>Export F
-      if (blob) {
-                  <Label htmlFor="image" clas
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `memory-garden-${format(new Date(), 'yyyy-MM-dd')}.png`
-                    
-        URL.revokeObjectURL(url)
-
-      }
-                   
+    setProgress(100)
   }
 
   const exportAsPDF = async () => {
-                   
+    setProgress(10)
 
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
@@ -222,65 +219,65 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
 
     const pageWidth = 2480
     const pageHeight = 3508
-        )}
-
-            initial={{ opacit
+    const memoriesPerPage = 5
     const numPages = Math.ceil(sortedMemories.length / memoriesPerPage)
 
+    const pages: Blob[] = []
+
     for (let pageNum = 0; pageNum < numPages; pageNum++) {
-                className="inl
+      canvas.width = pageWidth
       canvas.height = pageHeight
 
       ctx.fillStyle = '#fafaf8'
       ctx.fillRect(0, 0, pageWidth, pageHeight)
 
-        )}
+      if (pageNum === 0) {
         ctx.fillStyle = '#1a1a1a'
         ctx.font = 'bold 80px "Space Grotesk", sans-serif'
         ctx.textAlign = 'center'
         ctx.fillText('My Memory Garden', pageWidth / 2, 300)
 
-                transition={{ type: 'spring', 
         ctx.fillStyle = '#4a4a4a'
-              </motio
+        ctx.font = '40px "Crimson Pro", serif'
+        ctx.fillText(
           `${memories.length} memories collected`,
-              </p>
+          pageWidth / 2,
           400
-      </D
-        ctx.fillText(format(new Date(), 'MMMM d, yyyy'), pageWidth / 2, 460)
+        )
+        ctx.fillText(formatDate(new Date(), 'MMMM d, yyyy'), pageWidth / 2, 460)
+      }
 
-
+      const startY = pageNum === 0 ? 600 : 200
+      const gap = 100
       const startIndex = pageNum * memoriesPerPage
       const endIndex = Math.min(startIndex + memoriesPerPage, sortedMemories.length)
       const pageMemories = sortedMemories.slice(startIndex, endIndex)
 
-
       const cardHeight = 500
-
 
       for (let i = 0; i < pageMemories.length; i++) {
         const memory = pageMemories[i]
         const y = startY + i * (cardHeight + gap)
 
-
+        try {
           const img = new Image()
           img.crossOrigin = 'anonymous'
           await new Promise<void>((resolve, reject) => {
-
+            img.onload = () => {
               const imgSize = 400
               const imgX = 200
               const imgY = y
 
               ctx.save()
-
+              ctx.beginPath()
               ctx.arc(imgX + imgSize / 2, imgY + imgSize / 2, imgSize / 2, 0, Math.PI * 2)
-
+              ctx.clip()
 
               const imgAspect = img.width / img.height
               let drawWidth, drawHeight, drawX, drawY
 
               if (imgAspect > 1) {
-
+                drawHeight = imgSize
                 drawWidth = drawHeight * imgAspect
                 drawX = imgX - (drawWidth - imgSize) / 2
                 drawY = imgY
@@ -288,7 +285,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
                 drawWidth = imgSize
                 drawHeight = drawWidth / imgAspect
                 drawX = imgX
-
+                drawY = imgY - (drawHeight - imgSize) / 2
               }
 
               ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
@@ -296,18 +293,18 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
 
               ctx.strokeStyle = '#d4d4d4'
               ctx.lineWidth = 2
-
+              ctx.beginPath()
               ctx.arc(imgX + imgSize / 2, imgY + imgSize / 2, imgSize / 2, 0, Math.PI * 2)
+              ctx.stroke()
 
-
-
+              resolve()
             }
             img.onerror = () => reject(new Error('Failed to load image'))
             img.src = memory.photoUrl
-
+          })
         } catch (error) {
           console.error('Failed to load image for memory:', memory.id)
-
+        }
 
         const textX = 650
         const textMaxWidth = pageWidth - textX - 200
@@ -315,7 +312,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
         ctx.fillStyle = '#1a1a1a'
         ctx.font = 'bold 36px "Space Grotesk", sans-serif'
         ctx.textAlign = 'left'
-        const dateText = format(new Date(memory.date), 'MMMM d, yyyy')
+        const dateText = formatDate(new Date(memory.date), 'MMMM d, yyyy')
         ctx.fillText(dateText, textX, y + 50)
 
         if (memory.location) {
@@ -324,49 +321,49 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
           ctx.fillText(memory.location, textX, y + 95)
         }
 
-
+        ctx.fillStyle = '#4a4a4a'
         ctx.font = '32px "Crimson Pro", serif'
-
+        const words = memory.text.split(' ')
         let line = ''
         let lineY = y + (memory.location ? 150 : 120)
         const lineHeight = 42
-
+        const maxLines = 6
 
         for (let j = 0; j < words.length; j++) {
           const testLine = line + words[j] + ' '
-
+          const metrics = ctx.measureText(testLine)
           if (metrics.width > textMaxWidth && j > 0) {
-
+            ctx.fillText(line, textX, lineY)
             line = words[j] + ' '
             lineY += lineHeight
             if (lineY > y + (memory.location ? 150 : 120) + lineHeight * (maxLines - 1)) {
               ctx.fillText(line.trim() + '...', textX, lineY)
               break
-
+            }
           } else {
             line = testLine
           }
-
+        }
         if (lineY <= y + (memory.location ? 150 : 120) + lineHeight * (maxLines - 1)) {
           ctx.fillText(line, textX, lineY)
         }
+      }
 
-
-
+      ctx.fillStyle = '#7a7a7a'
       ctx.font = '24px "Space Grotesk", sans-serif'
       ctx.textAlign = 'center'
       ctx.fillText(
         `Page ${pageNum + 1} of ${numPages}`,
         pageWidth / 2,
-
+        pageHeight - 100
       )
 
       await new Promise<void>((resolve) => {
         canvas.toBlob((blob) => {
           if (blob) pages.push(blob)
-
+          resolve()
         }, 'image/png')
-
+      })
 
       setProgress(20 + ((pageNum + 1) / numPages) * 70)
     }
@@ -374,9 +371,9 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
     const link = document.createElement('a')
     const url = URL.createObjectURL(pages[0])
     link.href = url
-    link.download = `memory-garden-booklet-${format(new Date(), 'yyyy-MM-dd')}.png`
+    link.download = `memory-garden-booklet-${formatDate(new Date(), 'yyyy-MM-dd')}.png`
     link.click()
-
+    URL.revokeObjectURL(url)
 
     setProgress(100)
   }
@@ -395,7 +392,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
           <div className="space-y-6 py-4">
             <div className="space-y-3">
               <Label>Export Format</Label>
-              <RadioGroup value={format} onValueChange={(v) => setFormat(v as ExportFormat)}>
+              <RadioGroup value={exportFormat} onValueChange={(v) => setExportFormat(v as ExportFormat)}>
                 <div className="flex items-center space-x-3 p-4 border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
                   <RadioGroupItem value="image" id="image" />
                   <Label htmlFor="image" className="flex-1 cursor-pointer">
@@ -404,97 +401,81 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
                       <div>
                         <div className="font-semibold">Garden Snapshot</div>
                         <div className="text-sm text-muted-foreground">
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                          A single image with up to 12 memories
+                        </div>
+                      </div>
+                    </div>
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-3 p-4 border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
+                  <RadioGroupItem value="pdf" id="pdf" />
+                  <Label htmlFor="pdf" className="flex-1 cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <FilePdf size={24} weight="duotone" className="text-primary" />
+                      <div>
+                        <div className="font-semibold">Memory Booklet</div>
+                        <div className="text-sm text-muted-foreground">
+                          Detailed pages for all memories
+                        </div>
+                      </div>
+                    </div>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <Button onClick={handleExport} className="w-full" size="lg">
+              <Export size={20} weight="bold" className="mr-2" />
+              Export as {exportFormat === 'image' ? 'Image' : 'Booklet'}
+            </Button>
+          </div>
+        )}
+
+        {isExporting && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-4 py-8"
+          >
+            <div className="text-center space-y-2">
+              <p className="text-sm text-muted-foreground">Preparing your export...</p>
+              <Progress value={progress} className="w-full" />
+              <p className="text-xs text-muted-foreground">{Math.round(progress)}%</p>
+            </div>
+          </motion.div>
+        )}
+
+        {isComplete && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', duration: 0.5 }}
+            className="text-center space-y-4 py-8"
+          >
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10">
+              <Export size={32} weight="duotone" className="text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Export Complete!</h3>
+              <p className="text-sm text-muted-foreground mt-2">
+                Your memory garden has been downloaded
+              </p>
+            </div>
+            <Button
+              onClick={() => {
+                setIsComplete(false)
+                setIsExporting(false)
+                setProgress(0)
+                onClose()
+              }}
+              className="w-full"
+            >
+              Done
+            </Button>
+          </motion.div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
