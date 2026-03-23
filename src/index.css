@@ -117,6 +117,15 @@
   }
 }
 
+@keyframes legendary-pulse {
+  0%, 100% {
+    filter: brightness(1) drop-shadow(0 0 8px currentColor);
+  }
+  50% {
+    filter: brightness(1.2) drop-shadow(0 0 16px currentColor);
+  }
+}
+
 .animate-float {
   animation: float 4s ease-in-out infinite;
 }
@@ -131,4 +140,8 @@
 
 .animate-sprout {
   animation: sprout 800ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.legendary-plant {
+  animation: legendary-pulse 3s ease-in-out infinite;
 }

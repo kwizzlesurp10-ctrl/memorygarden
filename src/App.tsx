@@ -17,7 +17,7 @@ import { ShareMemoryDialog } from '@/components/ShareMemoryDialog'
 import { SharedMemoryView } from '@/components/SharedMemoryView'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Memory, UserPreferences, AudioRecording, SharedMemory } from '@/lib/types'
-import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety } from '@/lib/garden-helpers'
+import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics } from '@/lib/garden-helpers'
 import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
 
 type ViewMode = 'garden' | 'timeline' | 'clusters'
@@ -158,17 +158,30 @@ function App() {
   }
 
   const handleMemoryClick = (memory: Memory) => {
+    const nearbyMemories = (memories || []).filter(
+      (m) =>
+        m.id !== memory.id &&
+        Math.abs(m.position.x - memory.position.x) < 300 &&
+        Math.abs(m.position.y - memory.position.y) < 300
+    )
+    
     setMemories((currentMemories) =>
-      (currentMemories || []).map((m) =>
-        m.id === memory.id
-          ? {
-              ...m,
-              visitCount: m.visitCount + 1,
-              lastVisited: new Date().toISOString(),
-              plantStage: getPlantStage({ ...m, visitCount: m.visitCount + 1 }),
-            }
-          : m
-      )
+      (currentMemories || []).map((m) => {
+        if (m.id === memory.id) {
+          const updatedMemory = {
+            ...m,
+            visitCount: m.visitCount + 1,
+            lastVisited: new Date().toISOString(),
+          }
+          const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
+          return {
+            ...updatedMemory,
+            growthMetrics,
+            plantStage: getPlantStage(updatedMemory),
+          }
+        }
+        return m
+      })
     )
     
     const updatedMemory = (memories || []).find((m) => m.id === memory.id)
@@ -186,22 +199,35 @@ function App() {
 
   const handleWater = async (memoryId: string, reflectionText: string) => {
     setMemories((currentMemories) =>
-      (currentMemories || []).map((m) =>
-        m.id === memoryId
-          ? {
-              ...m,
-              reflections: [
-                ...m.reflections,
-                {
-                  id: `reflection-${Date.now()}`,
-                  text: reflectionText,
-                  createdAt: new Date().toISOString(),
-                },
-              ],
-              plantStage: getPlantStage({ ...m, visitCount: m.visitCount + 1 }),
-            }
-          : m
-      )
+      (currentMemories || []).map((m) => {
+        if (m.id === memoryId) {
+          const updatedMemory = {
+            ...m,
+            reflections: [
+              ...m.reflections,
+              {
+                id: `reflection-${Date.now()}`,
+                text: reflectionText,
+                createdAt: new Date().toISOString(),
+                tone: m.emotionalTone,
+              },
+            ],
+          }
+          const nearbyMemories = (currentMemories || []).filter(
+            (nm) =>
+              nm.id !== memoryId &&
+              Math.abs(nm.position.x - m.position.x) < 300 &&
+              Math.abs(nm.position.y - m.position.y) < 300
+          )
+          const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
+          return {
+            ...updatedMemory,
+            growthMetrics,
+            plantStage: getPlantStage(updatedMemory),
+          }
+        }
+        return m
+      })
     )
     
     const updatedMemory = (memories || []).find((m) => m.id === memoryId)
@@ -266,11 +292,28 @@ function App() {
     }))
 
     setMemories((currentMemories) =>
-      (currentMemories || []).map((m) =>
-        m.id === memoryToShare
-          ? { ...m, shareId, shareCreatedAt: new Date().toISOString() }
-          : m
-      )
+      (currentMemories || []).map((m) => {
+        if (m.id === memoryToShare) {
+          const updatedMemory = {
+            ...m,
+            shareId,
+            shareCreatedAt: new Date().toISOString(),
+            shareCount: (m.shareCount || 0) + 1,
+          }
+          const nearbyMemories = (currentMemories || []).filter(
+            (nm) =>
+              nm.id !== memoryToShare &&
+              Math.abs(nm.position.x - m.position.x) < 300 &&
+              Math.abs(nm.position.y - m.position.y) < 300
+          )
+          const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
+          return {
+            ...updatedMemory,
+            growthMetrics,
+          }
+        }
+        return m
+      })
     )
   }
 

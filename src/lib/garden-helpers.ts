@@ -1,4 +1,4 @@
-import type { Memory, EmotionalTone, PlantStage, PlantVariety } from './types'
+import type { Memory, EmotionalTone, PlantStage, PlantVariety, GrowthMetrics } from './types'
 
 export function selectPlantVariety(emotionalTone: EmotionalTone, text: string): PlantVariety {
   const textLower = text.toLowerCase()
@@ -23,7 +23,96 @@ export function selectPlantVariety(emotionalTone: EmotionalTone, text: string): 
   return 'flower'
 }
 
+export function calculateGrowthMetrics(memory: Memory, nearbyMemories: Memory[] = []): GrowthMetrics {
+  const daysSincePlanted = Math.floor((Date.now() - new Date(memory.plantedAt).getTime()) / 86400000)
+  const consistencyBonus = memory.visitCount > 0 
+    ? Math.min(1.8, 1 + (memory.visitCount / (daysSincePlanted + 1)) * 0.4) 
+    : 1
+
+  const toneConsistency = memory.reflections.length > 3
+    ? memory.reflections.slice(-3).filter(r => r.tone === memory.emotionalTone).length / 3
+    : 0.6
+
+  let baseVitality = Math.min(100, 
+    (daysSincePlanted * 1.8) + 
+    (memory.visitCount * 4.2) + 
+    (memory.reflections.length * 9) + 
+    (toneConsistency * 22)
+  )
+
+  const synergy = nearbyMemories.length * 3.5
+  baseVitality += synergy
+
+  const varietyCurve = {
+    wildflower: { heightMult: 1.1, widthMult: 1.4, rarityBonus: 8 },
+    flower: { heightMult: 1.3, widthMult: 1.1, rarityBonus: 12 },
+    herb: { heightMult: 0.9, widthMult: 1.6, rarityBonus: 15 },
+    succulent: { heightMult: 0.8, widthMult: 1.2, rarityBonus: 25 },
+    tree: { heightMult: 2.1, widthMult: 0.7, rarityBonus: 35 },
+    vine: { heightMult: 1.0, widthMult: 2.3, rarityBonus: 22 },
+    ancient_oak: { heightMult: 2.8, widthMult: 1.2, rarityBonus: 85 },
+    eternal_rose: { heightMult: 1.6, widthMult: 1.5, rarityBonus: 75 },
+    phoenix_vine: { heightMult: 1.4, widthMult: 2.8, rarityBonus: 90 },
+    starlight_succulent: { heightMult: 1.0, widthMult: 1.8, rarityBonus: 80 },
+  }[memory.plantVariety] || { heightMult: 1, widthMult: 1, rarityBonus: 10 }
+
+  const vitality = Math.min(100, Math.max(5, baseVitality * consistencyBonus))
+  
+  return {
+    vitality,
+    height: Math.floor(38 + (vitality * 1.1 * varietyCurve.heightMult)),
+    width: Math.floor(32 + (vitality * 0.9 * varietyCurve.widthMult)),
+    bloomCount: Math.floor(vitality / 18),
+    foliageDensity: Math.min(0.98, vitality / 110),
+    rarityScore: Math.min(100, Math.floor(vitality * 0.4 + varietyCurve.rarityBonus + (memory.shareCount || 0) * 7)),
+    lastInteractionAt: Date.now()
+  }
+}
+
+export function getVisualParams(memory: Memory, metrics: GrowthMetrics) {
+  const seasonalMod = getSeasonalPlantModifier(getSeason(), memory.emotionalTone)
+  return {
+    size: metrics.height,
+    scaleX: metrics.width / metrics.height,
+    leafOpacity: metrics.foliageDensity,
+    bloomOpacity: metrics.bloomCount > 0 ? 0.95 : 0.4,
+    color: seasonalMod,
+    glow: metrics.rarityScore > 75 ? `0 0 28px ${seasonalMod}` : 'none',
+    specialClass: metrics.rarityScore > 90 ? 'legendary' : ''
+  }
+}
+
+export function applyPremiumFertilizer(memory: Memory, boostLevel: 'standard' | 'premium' | 'legendary' = 'standard'): Memory {
+  const multipliers = { standard: 18, premium: 34, legendary: 55 }
+  console.log(`💸 Fertilizer applied — ${boostLevel} boost! Projected +${multipliers[boostLevel]} interactions`)
+  
+  return {
+    ...memory,
+    visitCount: memory.visitCount + multipliers[boostLevel]
+  }
+}
+
+export function unlockAncestralSeed(currentVariety: PlantVariety): PlantVariety {
+  const legendaryPool: PlantVariety[] = ['ancient_oak', 'eternal_rose', 'phoenix_vine', 'starlight_succulent']
+  return legendaryPool[Math.floor(Math.random() * legendaryPool.length)] as PlantVariety
+}
+
+export function getPlantStageFromMetrics(metrics: GrowthMetrics): PlantStage {
+  if (metrics.vitality < 12) return 'seed'
+  if (metrics.vitality < 28) return 'sprout'
+  if (metrics.vitality < 44) return 'seedling'
+  if (metrics.vitality < 62) return 'young'
+  if (metrics.vitality < 78) return 'bud'
+  if (metrics.vitality < 89) return 'bloom'
+  if (metrics.vitality < 97) return 'mature'
+  return 'elder'
+}
+
 export function getPlantStage(memory: Memory): PlantStage {
+  if (memory.growthMetrics) {
+    return getPlantStageFromMetrics(memory.growthMetrics)
+  }
+  
   const daysSincePlanted = Math.floor(
     (Date.now() - new Date(memory.plantedAt).getTime()) / (1000 * 60 * 60 * 24)
   )
@@ -40,6 +129,15 @@ export function getPlantStage(memory: Memory): PlantStage {
   if (daysSincePlanted < 60 || interactionScore < 12) return 'bloom'
   if (daysSincePlanted < 120) return 'mature'
   return 'elder'
+}
+
+export async function runDailyGrowthBatch(allMemories: Memory[]): Promise<void> {
+  for (const mem of allMemories) {
+    const metrics = calculateGrowthMetrics(mem)
+    if (metrics.vitality > 65 && Math.random() > 0.7) {
+      console.log(`🌟 Premium upsell opportunity for memory ${mem.id}`)
+    }
+  }
 }
 
 export function getPlantColor(emotionalTone: EmotionalTone): string {

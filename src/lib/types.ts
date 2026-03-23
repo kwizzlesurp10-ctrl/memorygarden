@@ -2,7 +2,7 @@ export type EmotionalTone = 'happy' | 'reflective' | 'bittersweet' | 'peaceful' 
 
 export type PlantStage = 'seed' | 'sprout' | 'seedling' | 'young' | 'bud' | 'bloom' | 'mature' | 'elder'
 
-export type PlantVariety = 'flower' | 'tree' | 'succulent' | 'vine' | 'herb' | 'wildflower'
+export type PlantVariety = 'flower' | 'tree' | 'succulent' | 'vine' | 'herb' | 'wildflower' | 'ancient_oak' | 'eternal_rose' | 'phoenix_vine' | 'starlight_succulent'
 
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter'
 
@@ -36,6 +36,8 @@ export interface Memory {
   audioRecordings: AudioRecording[]
   shareId?: string
   shareCreatedAt?: string
+  shareCount?: number
+  growthMetrics?: GrowthMetrics
 }
 
 export interface SharedMemory {
@@ -60,6 +62,17 @@ export interface Reflection {
   text: string
   createdAt: string
   audioUrl?: string
+  tone?: EmotionalTone
+}
+
+export interface GrowthMetrics {
+  vitality: number
+  height: number
+  width: number
+  bloomCount: number
+  foliageDensity: number
+  rarityScore: number
+  lastInteractionAt: number
 }
 
 export interface UserPreferences {

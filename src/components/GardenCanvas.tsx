@@ -110,32 +110,42 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
             cursor: draggingMemory ? 'grabbing' : 'default',
           }}
         >
-          {memories.map((memory) => (
-            <motion.div
-              key={memory.id}
-              drag
-              dragMomentum={false}
-              dragElastic={0.1}
-              onDragStart={() => setDraggingMemory(memory.id)}
-              onDragEnd={(_, info) => handleDragEnd(memory, info)}
-              className="absolute"
-              style={{
-                left: memory.position.x,
-                top: memory.position.y,
-              }}
-            >
-              <Plant
-                memory={memory}
-                onClick={() => {
-                  if (!draggingMemory) {
-                    onMemoryClick(memory)
-                  }
+          {memories.map((memory) => {
+            const nearbyMemories = memories.filter(
+              (m) =>
+                m.id !== memory.id &&
+                Math.abs(m.position.x - memory.position.x) < 300 &&
+                Math.abs(m.position.y - memory.position.y) < 300
+            )
+            
+            return (
+              <motion.div
+                key={memory.id}
+                drag
+                dragMomentum={false}
+                dragElastic={0.1}
+                onDragStart={() => setDraggingMemory(memory.id)}
+                onDragEnd={(_, info) => handleDragEnd(memory, info)}
+                className="absolute"
+                style={{
+                  left: memory.position.x,
+                  top: memory.position.y,
                 }}
-                isDragging={draggingMemory === memory.id}
-                season={season}
-              />
-            </motion.div>
-          ))}
+              >
+                <Plant
+                  memory={memory}
+                  onClick={() => {
+                    if (!draggingMemory) {
+                      onMemoryClick(memory)
+                    }
+                  }}
+                  isDragging={draggingMemory === memory.id}
+                  season={season}
+                  nearbyMemories={nearbyMemories}
+                />
+              </motion.div>
+            )
+          })}
         </div>
       </div>
     </div>

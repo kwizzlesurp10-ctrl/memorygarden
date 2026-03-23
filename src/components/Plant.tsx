@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import type { Memory, PlantStage, Season, PlantVariety } from '@/lib/types'
-import { getPlantColor, getPlantSize, getSeasonalPlantModifier, getSeason } from '@/lib/garden-helpers'
+import { getPlantColor, getPlantSize, getSeasonalPlantModifier, getSeason, calculateGrowthMetrics, getVisualParams } from '@/lib/garden-helpers'
 import { FlowerPlant } from './plants/FlowerPlant'
 import { TreePlant, SucculentPlant, VinePlant, HerbPlant, WildflowerPlant } from './plants/OtherPlants'
 
@@ -9,12 +9,15 @@ interface PlantProps {
   onClick: () => void
   isDragging?: boolean
   season?: Season
+  nearbyMemories?: Memory[]
 }
 
-export function Plant({ memory, onClick, isDragging, season }: PlantProps) {
+export function Plant({ memory, onClick, isDragging, season, nearbyMemories = [] }: PlantProps) {
   const currentSeason = season || getSeason()
-  const seasonalColor = getSeasonalPlantModifier(currentSeason, memory.emotionalTone)
-  const size = getPlantSize(memory.plantStage)
+  const metrics = calculateGrowthMetrics(memory, nearbyMemories)
+  const visual = getVisualParams(memory, metrics)
+  
+  const isLegendary = visual.specialClass === 'legendary'
 
   return (
     <motion.div
@@ -29,39 +32,53 @@ export function Plant({ memory, onClick, isDragging, season }: PlantProps) {
         stiffness: 300,
         damping: 20,
       }}
-      className="cursor-pointer animate-breathe"
+      className={`cursor-pointer animate-breathe ${isLegendary ? 'legendary-plant' : ''}`}
       onClick={onClick}
-      style={{ width: size, height: size }}
+      style={{ 
+        width: visual.size, 
+        height: visual.size,
+        filter: visual.glow !== 'none' ? `drop-shadow(${visual.glow})` : 'none',
+      }}
     >
       <PlantSVG 
         variety={memory.plantVariety}
         stage={memory.plantStage}
-        color={seasonalColor}
+        color={visual.color}
         season={currentSeason}
-        size={size}
+        size={visual.size}
+        scaleX={visual.scaleX}
+        leafOpacity={visual.leafOpacity}
+        bloomOpacity={visual.bloomOpacity}
       />
     </motion.div>
   )
 }
 
-function PlantSVG({ variety, stage, color, season, size }: { 
+function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity, bloomOpacity }: { 
   variety: PlantVariety
   stage: PlantStage
   color: string
   season: Season
   size: number
+  scaleX: number
+  leafOpacity: number
+  bloomOpacity: number
 }) {
   const stemColor = season === 'autumn' ? 'oklch(0.52 0.10 145)' : season === 'winter' ? 'oklch(0.48 0.06 160)' : 'oklch(0.55 0.08 155)'
   const groundColor = season === 'winter' ? 'oklch(0.82 0.02 220)' : 'oklch(0.45 0.05 65)'
   
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {variety === 'flower' && <FlowerPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} season={season} />}
-      {variety === 'tree' && <TreePlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
-      {variety === 'succulent' && <SucculentPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
-      {variety === 'vine' && <VinePlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
-      {variety === 'herb' && <HerbPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
-      {variety === 'wildflower' && <WildflowerPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} season={season} />}
+      <g transform={`scale(${scaleX}, 1)`} transform-origin="50 50">
+        {variety === 'flower' && <FlowerPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} season={season} />}
+        {variety === 'tree' && <TreePlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
+        {variety === 'succulent' && <SucculentPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
+        {variety === 'vine' && <VinePlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
+        {variety === 'herb' && <HerbPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
+        {variety === 'wildflower' && <WildflowerPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} season={season} />}
+        {(variety === 'ancient_oak' || variety === 'eternal_rose' || variety === 'phoenix_vine' || variety === 'starlight_succulent') && 
+          <LegendaryPlant variety={variety} stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} season={season} />}
+      </g>
     </svg>
   )
 }
@@ -209,4 +226,27 @@ function EvergreenSVG({ color, season }: { color: string; season: Season }) {
       <ellipse cx="50" cy="97" rx="16" ry="4" fill={groundColor} opacity="0.3" />
     </>
   )
+}
+
+function LegendaryPlant({ variety, stage, color, stemColor, groundColor, season }: {
+  variety: PlantVariety
+  stage: PlantStage
+  color: string
+  stemColor: string
+  groundColor: string
+  season: Season
+}) {
+  if (variety === 'ancient_oak') {
+    return <TreePlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />
+  }
+  if (variety === 'eternal_rose') {
+    return <FlowerPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} season={season} />
+  }
+  if (variety === 'phoenix_vine') {
+    return <VinePlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />
+  }
+  if (variety === 'starlight_succulent') {
+    return <SucculentPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />
+  }
+  return null
 }
