@@ -1,25 +1,25 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, Dialog
+import { Label } from '@/components/ui/label'
+import { Progress } from '@/components/ui/progr
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Progress } from '@/components/ui/progress'
 import { Export, Image as ImageIcon, FilePdf } from '@phosphor-icons/react'
-import { toast } from 'sonner'
-import { format as formatDate } from 'date-fns'
-import type { Memory } from '@/lib/types'
-
 interface ExportGardenProps {
-  open: boolean
-  onClose: () => void
+import { format } from 'date-fns'
   memories: Memory[]
-}
+
+type ExportFormat = 'image' |
+  open: boolean
+  const [exportFormat
+  memories: Memory[]
+ 
 
 type ExportFormat = 'image' | 'pdf'
 
 export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
-  const [exportFormat, setExportFormat] = useState<ExportFormat>('image')
+  const [format, setFormat] = useState<ExportFormat>('image')
   const [isExporting, setIsExporting] = useState(false)
   const [progress, setProgress] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
@@ -28,39 +28,39 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
     if (memories.length === 0) {
       toast.error('No memories to export')
       return
-    }
+     
 
-    setIsExporting(true)
-    setProgress(0)
-    setIsComplete(false)
+    const gradient = ctx
+    gradient.addCo
+    ctx.fillStyle = grad
 
-    try {
-      if (exportFormat === 'image') {
-        await exportAsImage()
-      } else {
-        await exportAsPDF()
-      }
-      setIsComplete(true)
-      toast.success('Export complete!')
-    } catch (error) {
-      console.error('Export error:', error)
-      toast.error('Export failed. Please try again.')
-      setIsExporting(false)
-      setProgress(0)
-    }
-  }
 
-  const exportAsImage = async () => {
-    setProgress(10)
+      .sort((a, b) => new Date(
 
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    if (!ctx) throw new Error('Canvas not supported')
+    const rows
+    const cardHeight = 300
 
-    const width = 1920
-    const height = 1080
-    canvas.width = width
-    canvas.height = height
+    const totalHeight = r
+    const startY = (height - totalHeigh
+    for (let i = 0; i
+      const col = i % cols
+      const x = startX + col * (cardWidth + gap)
+
+      ctx.shadowColo
+     
+   
+
+      try {
+        img.crossOr
+
+            ctx.beginPath()
+            ctx.clip()
+            const imgAspect = img.width / img.height
+
+            if (imgAsp
+              drawWidth
+              drawY = y 
+              drawWidth = 
 
     const gradient = ctx.createLinearGradient(0, 0, 0, height)
     gradient.addColorStop(0, '#e8f4f0')
@@ -126,134 +126,134 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
               drawHeight = drawWidth / imgAspect
               drawX = x + 10
               drawY = y + 10 - (drawHeight - 180) / 2
+
+
+
+          const img = new
+          await new P
+           
+              const imgY = y
+              ctx.save()
+          
+
+              let drawWidth, drawHeight, drawX, drawY
+       
+
+                drawY = imgY
+                drawWidth = imgSize
+                drawX = imgX
+              }
+
+
+              ctx.lineWidth = 2
+              ctx.arc(imgX + imgSize / 2,
+
             }
+            img.src = mem
+        } catch (error) 
 
-            ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
-            ctx.restore()
-            resolve()
-          }
-          img.onerror = () => reject(new Error('Failed to load image'))
-          img.src = memory.photoUrl
-        })
-      } catch (error) {
-        console.error('Failed to load image for memory:', memory.id)
-      }
+        const textX = 650
 
-      ctx.fillStyle = '#1a1a1a'
-      ctx.font = 'bold 16px "Space Grotesk", sans-serif'
-      const dateText = formatDate(new Date(memory.date), 'MMM d, yyyy')
-      ctx.fillText(dateText, x + 15, y + 215)
+        ctx.font = 'bold 36px "Space Grotesk", sa
+        const dateText = formatDate(new Date(memory.
 
-      ctx.fillStyle = '#4a4a4a'
-      ctx.font = '14px "Crimson Pro", serif'
-      const maxTextWidth = cardWidth - 30
-      const words = memory.text.split(' ')
-      let line = ''
-      let lineY = y + 240
-      const maxLines = 2
+          ctx.fillStyle = '#7a7
+          ctx.fillTex
 
-      for (let j = 0; j < words.length; j++) {
-        const testLine = line + words[j] + ' '
-        const metrics = ctx.measureText(testLine)
-        if (metrics.width > maxTextWidth && j > 0) {
-          ctx.fillText(line, x + 15, lineY)
-          line = words[j] + ' '
-          lineY += 20
-          if (lineY > y + 240 + 20 * (maxLines - 1)) {
-            ctx.fillText(line.trim() + '...', x + 15, lineY)
-            break
-          }
-        } else {
-          line = testLine
-        }
-      }
-      if (lineY <= y + 240 + 20 * (maxLines - 1)) {
-        ctx.fillText(line, x + 15, lineY)
-      }
+        ctx.font = '32px "Crimson Pro", serif'
+        let line 
+        con
 
-      setProgress(40 + ((i + 1) / sortedMemories.length) * 40)
+          const testLine 
+         
+       
+            if (lineY > y + (memory.location ? 150 
+              break
+       
+
+        if (lineY <= y + (memory.location ? 150 : 120) + lineH
+     
+
+      ctx.font = '24px "Space
+      ctx.fillText(
+        pageWidth / 2,
+      )
+
+          if (blob) pages.push(blob)
+        }, 'image/png')
+
     }
+    const link =
+    link
+    l
 
-    ctx.fillStyle = '#1a1a1a'
-    ctx.font = 'bold 32px "Space Grotesk", sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText('My Memory Garden', width / 2, 60)
-
-    ctx.font = '18px "Crimson Pro", serif'
-    ctx.fillStyle = '#4a4a4a'
-    ctx.fillText(
-      `${memories.length} memories • ${formatDate(new Date(), 'MMMM yyyy')}`,
-      width / 2,
-      90
-    )
-
-    setProgress(90)
-
-    await new Promise<void>((resolve) => {
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const url = URL.createObjectURL(blob)
-          const link = document.createElement('a')
-          link.href = url
-          link.download = `memory-garden-${formatDate(new Date(), 'yyyy-MM-dd')}.png`
-          link.click()
-          URL.revokeObjectURL(url)
-        }
-        resolve()
-      }, 'image/png')
-    })
-
-    setProgress(100)
   }
 
-  const exportAsPDF = async () => {
-    setProgress(10)
+      <DialogContent className="max-w-md">
+          <DialogTitle classNam
+            Export 
+        </DialogHeader>
+        {!isExporting && !isComplete && (
+            <div classNam
+              <RadioGroup value={exportFormat} onValueChange={(v) => setExportFor
+                  <Rad
+                    <div className
+         
+                 
+                     
+      
 
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    if (!ctx) throw new Error('Canvas not supported')
+                <div
+   
 
-    const sortedMemories = [...memories].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    )
+                        <div classN
+                   
 
-    const pageWidth = 2480
-    const pageHeight = 3508
-    const memoriesPerPage = 5
-    const numPages = Math.ceil(sortedMemories.length / memoriesPerPage)
+                  </Label>
+              </RadioGroup>
 
-    const pages: Blob[] = []
 
-    for (let pageNum = 0; pageNum < numPages; pageNum++) {
-      canvas.width = pageWidth
-      canvas.height = pageHeight
+            </Button>
+        )}
+     
 
-      ctx.fillStyle = '#fafaf8'
-      ctx.fillRect(0, 0, pageWidth, pageHeight)
+            className="spa
+            <div className=
+              <Progress value
+            </div>
 
-      if (pageNum === 0) {
-        ctx.fillStyle = '#1a1a1a'
-        ctx.font = 'bold 80px "Space Grotesk", sans-serif'
-        ctx.textAlign = 'center'
-        ctx.fillText('My Memory Garden', pageWidth / 2, 300)
+        {isComplete && (
 
-        ctx.fillStyle = '#4a4a4a'
-        ctx.font = '40px "Crimson Pro", serif'
-        ctx.fillText(
-          `${memories.length} memories collected`,
-          pageWidth / 2,
-          400
-        )
-        ctx.fillText(formatDate(new Date(), 'MMMM d, yyyy'), pageWidth / 2, 460)
-      }
+            transition={{ type: 'spring', duration: 0.5 }}
+          >
+              <Export size={32} 
 
-      const startY = pageNum === 0 ? 600 : 200
-      const gap = 100
-      const startIndex = pageNum * memoriesPerPage
-      const endIndex = Math.min(startIndex + memoriesPerPage, sortedMemories.length)
-      const pageMemories = sortedMemories.slice(startIndex, endIndex)
+              <p className="tex
+              </p>
 
-      const cardHeight = 500
+                setIsCompl
+                setProgress(0)
+              }}
+            >
+            </Button>
+
+    </Dialog>
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
       for (let i = 0; i < pageMemories.length; i++) {
         const memory = pageMemories[i]
@@ -312,7 +312,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
         ctx.fillStyle = '#1a1a1a'
         ctx.font = 'bold 36px "Space Grotesk", sans-serif'
         ctx.textAlign = 'left'
-        const dateText = formatDate(new Date(memory.date), 'MMMM d, yyyy')
+        const dateText = format(new Date(memory.date), 'MMMM d, yyyy')
         ctx.fillText(dateText, textX, y + 50)
 
         if (memory.location) {
@@ -371,7 +371,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
     const link = document.createElement('a')
     const url = URL.createObjectURL(pages[0])
     link.href = url
-    link.download = `memory-garden-booklet-${formatDate(new Date(), 'yyyy-MM-dd')}.png`
+    link.download = `memory-garden-booklet-${format(new Date(), 'yyyy-MM-dd')}.png`
     link.click()
     URL.revokeObjectURL(url)
 
@@ -392,7 +392,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
           <div className="space-y-6 py-4">
             <div className="space-y-3">
               <Label>Export Format</Label>
-              <RadioGroup value={exportFormat} onValueChange={(v) => setExportFormat(v as ExportFormat)}>
+              <RadioGroup value={format} onValueChange={(v) => setFormat(v as ExportFormat)}>
                 <div className="flex items-center space-x-3 p-4 border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
                   <RadioGroupItem value="image" id="image" />
                   <Label htmlFor="image" className="flex-1 cursor-pointer">
@@ -427,7 +427,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
 
             <Button onClick={handleExport} className="w-full" size="lg">
               <Export size={20} weight="bold" className="mr-2" />
-              Export as {exportFormat === 'image' ? 'Image' : 'Booklet'}
+              Export as {format === 'image' ? 'Image' : 'Booklet'}
             </Button>
           </div>
         )}
