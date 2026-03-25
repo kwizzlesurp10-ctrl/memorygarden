@@ -83,6 +83,17 @@ This app requires sophisticated state management for memory data, AI integration
 - **Progression**: Protocol URL invoked → app receives protocol request → validates and parses parameters → executes corresponding action (open plant modal, view specific memory, etc.) → provides user feedback
 - **Success criteria**: Protocol handlers register successfully on PWA installation, all three protocols work reliably, invalid requests show appropriate error messages, Share Target API allows direct photo sharing from camera/gallery
 
+### 11. Fertilizer Boost System
+- **Functionality**: Three-tier fertilizer system that accelerates plant growth with unique visual particle effects for each tier
+- **Purpose**: Provide immediate gratification and visual spectacle for users wanting to rapidly grow specific memories
+- **Trigger**: User clicks "Boost" button on a memory card
+- **Progression**: Click boost → modal opens showing three tiers → user selects tier (Garden Boost/Premium/Legendary) → applies boost → tier-specific particle animation plays in modal → plant receives instant vitality boost → plant displays corresponding growth particle effect in garden → growth animation completes
+- **Success criteria**: Each tier has visually distinct particles, animations feel impactful and satisfying, free tier encourages trying premium options, plant growth is immediately visible
+- **Particle Effects**:
+  - **Standard (Garden Boost)**: Gentle water droplets falling from top with subtle ripple waves radiating outward - calm and nurturing (25 droplets, 8 ripples, 2s duration)
+  - **Premium Fertilizer**: Energetic spiral particles bursting outward with rotating sparkle stars and expanding rings - magical and transformative (40 spirals, 15 sparkles, 3 rings, 1.5s duration)
+  - **Legendary Elixir**: Explosive radial burst with orbiting particles, expanding waves, floating crown stars, and central glow - epic and awe-inspiring (60 burst particles, 30 orbital particles, 8 waves, 20 crown stars, 2.5s duration)
+
 ## Edge Case Handling
 
 - **No memories yet**: Show beautiful empty garden with gentle prompt and inspiration to plant first memory
@@ -131,6 +142,10 @@ Typography should feel literary, warm, and timeless — like handwritten journal
 Animations should feel like watching plants grow in time-lapse — smooth, organic, and mesmerizing. Every movement should have weight and natural physics. Use animations to reinforce the garden metaphor and create moments of quiet delight.
 
 - **Plant Growth**: Elastic spring physics when plants sprout or grow from tending, starting small and bouncing slightly at full size (800ms duration)
+- **Fertilizer Particles**: Tier-specific particle systems that play during and after boost application:
+  - Standard tier uses falling droplets with ripple effects
+  - Premium tier creates spiraling sparkles with rotating stars
+  - Legendary tier produces explosive radial bursts with orbital particles and expanding waves
 - **Canvas Navigation**: Smooth momentum-based panning with gentle deceleration, zoom follows cursor position with 300ms ease-out
 - **Card Transitions**: Fade and subtle scale-up when opening memory cards (400ms), backdrop blur effect
 - **Hover States**: Gentle lift on plants (2px translateY) with soft shadow increase over 200ms
@@ -138,6 +153,7 @@ Animations should feel like watching plants grow in time-lapse — smooth, organ
 - **Time Transitions**: Day/night cycle fades over 2 minutes of real time when crossing threshold hours
 - **Interaction Feedback**: Ripple effect when planting new memory, gentle pulse on "Water" action
 - **Loading States**: Organic skeleton shimmer that feels like sunlight moving through leaves
+- **Button Loading**: Shimmer gradient sweep with floating micro-particles on fertilizer boost button
 
 ## Component Selection
 

@@ -4,6 +4,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Sparkle, Lightning, Crown, Drop, CheckCircle } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
+import { FertilizerParticles } from '@/components/FertilizerParticles'
 import type { Memory } from '@/lib/types'
 
 interface FertilizerBoostModalProps {
@@ -120,66 +121,13 @@ export function FertilizerBoostModal({ open, onClose, memory, onApplyBoost }: Fe
                 <p className="text-muted-foreground">Your memory is flourishing...</p>
               </motion.div>
               
-              <motion.div
-                className="absolute inset-0 pointer-events-none"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
-                {Array.from({ length: 30 }).map((_, i) => {
-                  const angle = (i * 360) / 30
-                  const distance = 150 + Math.random() * 100
-                  
-                  return (
-                    <motion.div
-                      key={i}
-                      className="absolute left-1/2 top-1/2 w-1 h-1 rounded-full"
-                      style={{
-                        background: selectedOption?.color,
-                      }}
-                      initial={{ 
-                        scale: 0, 
-                        opacity: 1,
-                        x: '-50%',
-                        y: '-50%',
-                      }}
-                      animate={{
-                        scale: [0, 2, 0],
-                        opacity: [1, 0.8, 0],
-                        x: `calc(-50% + ${Math.cos(angle * Math.PI / 180) * distance}px)`,
-                        y: `calc(-50% + ${Math.sin(angle * Math.PI / 180) * distance}px)`,
-                      }}
-                      transition={{
-                        duration: 1.2,
-                        delay: i * 0.02,
-                        ease: 'easeOut',
-                      }}
-                    />
-                  )
-                })}
-                
-                {Array.from({ length: 20 }).map((_, i) => (
-                  <motion.div
-                    key={`particle-${i}`}
-                    className="absolute w-2 h-2 rounded-full"
-                    style={{
-                      left: `${Math.random() * 100}%`,
-                      top: `${Math.random() * 100}%`,
-                      background: selectedOption?.color,
-                    }}
-                    initial={{ scale: 0, opacity: 1 }}
-                    animate={{
-                      scale: [0, 1, 0],
-                      opacity: [1, 1, 0],
-                      y: [0, -100],
-                    }}
-                    transition={{
-                      duration: 1.5,
-                      delay: i * 0.05,
-                      ease: 'easeOut',
-                    }}
-                  />
-                ))}
-              </motion.div>
+              {selectedOption && (
+                <FertilizerParticles
+                  tier={selectedOption.level}
+                  color={selectedOption.color}
+                  glowColor={selectedOption.glowColor}
+                />
+              )}
             </motion.div>
           ) : (
             <motion.div
@@ -425,20 +373,47 @@ export function FertilizerBoostModal({ open, onClose, memory, onApplyBoost }: Fe
                     )}
                     
                     {isApplying && selectedOption && (
-                      <motion.div
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                          background: `linear-gradient(90deg, transparent, ${selectedOption.glowColor}, transparent)`,
-                        }}
-                        animate={{
-                          x: ['-100%', '200%'],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          ease: 'linear',
-                        }}
-                      />
+                      <>
+                        <motion.div
+                          className="absolute inset-0 pointer-events-none"
+                          style={{
+                            background: `linear-gradient(90deg, transparent, ${selectedOption.glowColor}, transparent)`,
+                          }}
+                          animate={{
+                            x: ['-100%', '200%'],
+                          }}
+                          transition={{
+                            duration: 1.5,
+                            repeat: Infinity,
+                            ease: 'linear',
+                          }}
+                        />
+                        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <motion.div
+                              key={`button-particle-${i}`}
+                              className="absolute w-1 h-1 rounded-full"
+                              style={{
+                                left: `${20 + i * 15}%`,
+                                top: '50%',
+                                background: selectedOption.color,
+                                boxShadow: `0 0 4px ${selectedOption.glowColor}`,
+                              }}
+                              animate={{
+                                y: [0, -20, 0],
+                                opacity: [0, 1, 0],
+                                scale: [0, 1.5, 0],
+                              }}
+                              transition={{
+                                duration: 1,
+                                repeat: Infinity,
+                                delay: i * 0.2,
+                                ease: 'easeInOut',
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </>
                     )}
                   </Button>
                 </div>

@@ -13,9 +13,10 @@ interface GardenCanvasProps {
   onMemoryMove: (memoryId: string, newPosition: { x: number; y: number }) => void
   season?: Season
   growingMemories?: Set<string>
+  memoryBoostTiers?: Map<string, 'standard' | 'premium' | 'legendary'>
 }
 
-export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: propSeason, growingMemories = new Set() }: GardenCanvasProps) {
+export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: propSeason, growingMemories = new Set(), memoryBoostTiers = new Map() }: GardenCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
   const [draggingMemory, setDraggingMemory] = useState<string | null>(null)
@@ -144,6 +145,7 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
                   season={season}
                   nearbyMemories={nearbyMemories}
                   isGrowing={growingMemories.has(memory.id)}
+                  boostTier={memoryBoostTiers.get(memory.id)}
                 />
               </motion.div>
             )
