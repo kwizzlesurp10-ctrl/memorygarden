@@ -40,6 +40,49 @@ MemoryGarden reimagines how we preserve and interact with our memories. Instead 
 - Subtle parallax animations create a living atmosphere
 - Seasonal changes throughout the year
 
+## Deploying to Vercel
+
+MemoryGarden can be deployed to [Vercel](https://vercel.com) in a few minutes.
+
+### Prerequisites
+
+You will need a **GitHub Personal Access Token** (classic) with the following scopes:
+- `gist` — used to store your memories as a private GitHub Gist
+- `read:user` — used to show your GitHub avatar and username
+
+Optionally, for AI features (emotional analysis, reflections), add one of:
+- `GITHUB_TOKEN` with GitHub Models access, **or**
+- `OPENAI_API_KEY` with access to GPT-4o / GPT-4o-mini
+
+### Steps
+
+1. **Fork** this repository to your GitHub account.
+
+2. **Create a new Vercel project** and import the forked repo.
+
+3. **Add environment variables** in the Vercel project settings:
+
+   | Variable | Description |
+   |---|---|
+   | `GITHUB_TOKEN` | GitHub PAT (classic) with `gist` + `read:user` scopes. Required for persistent storage and GitHub-authenticated identity. Also enables LLM features via GitHub Models. |
+   | `OPENAI_API_KEY` | OpenAI API key. Alternative LLM provider (used only when `GITHUB_TOKEN` is absent or lacks Models access). |
+
+   > Without `GITHUB_TOKEN`, memories are stored in-memory and will be lost when the serverless
+   > function restarts. With a token, memories are saved to a private Gist in your account.
+
+4. **Deploy** — Vercel will run `npm run build` and serve the `dist/` folder.
+
+5. Open your deployment URL and start planting memories. 🌱
+
+### Local development
+
+```bash
+npm install
+npm run dev
+```
+
+---
+
 ## Getting Started
 
 ### Sign In with GitHub
