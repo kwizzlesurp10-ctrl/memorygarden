@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Sparkle, CalendarBlank, MapPin } from '@phosphor-icons/react'
 import type { Memory } from '@/lib/types'
+import { llm } from '@/lib/llm-client'
 import { format } from 'date-fns'
 
 interface MemoryClustersProps {
@@ -66,7 +67,7 @@ Return a JSON object with a "clusters" property containing an array of cluster o
 
 Create 2-4 clusters that reveal meaningful patterns. Ensure every memory belongs to at least one cluster.`
 
-      const result = await window.spark.llm(promptText, 'gpt-4o', true)
+      const result = await llm(promptText, 'gpt-4o', true)
       const parsed = JSON.parse(result)
 
       if (parsed.clusters && Array.isArray(parsed.clusters)) {

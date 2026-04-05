@@ -1,4 +1,5 @@
 import type { Memory, EmotionalTone, PlantStage, PlantVariety, GrowthMetrics, GardenMood, WeatherType, SearchFilters } from './types'
+import { llm } from './llm-client'
 
 export function selectPlantVariety(emotionalTone: EmotionalTone, text: string): PlantVariety {
   const textLower = text.toLowerCase()
@@ -173,7 +174,7 @@ Memory text: ${text}
 
 Return ONLY one word from the list above, nothing else.`
     
-    const result = await window.spark.llm(promptText, 'gpt-4o-mini')
+    const result = await llm(promptText, 'gpt-4o-mini')
     const tone = result.trim().toLowerCase()
     
     if (['happy', 'reflective', 'bittersweet', 'peaceful', 'nostalgic'].includes(tone)) {
@@ -201,7 +202,7 @@ Emotional tone: ${memory.emotionalTone}${nearbyContext}
 
 Write a gentle reflection that helps them see this memory in a new light or connect it to the broader tapestry of their life.`
     
-    const result = await window.spark.llm(promptText, 'gpt-4o')
+    const result = await llm(promptText, 'gpt-4o')
     return result.trim()
   } catch (error) {
     return "This memory holds a special place in your garden. What feelings arise when you revisit this moment?"

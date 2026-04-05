@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useLocalKV } from '@/lib/use-local-kv'
 import { Toaster, toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -33,9 +33,9 @@ type ViewMode = 'garden' | 'timeline' | 'clusters'
 
 function App() {
   const [user, setUser] = useState<{ login: string; avatarUrl: string } | null>(null)
-  const [memories, setMemories] = useKV<Memory[]>('memories', [])
-  const [sharedMemories, setSharedMemories] = useKV<Record<string, SharedMemory>>('shared-memories', {})
-  const [preferences, setPreferences] = useKV<UserPreferences>('preferences', {
+  const [memories, setMemories] = useLocalKV<Memory[]>('memories', [])
+  const [sharedMemories, setSharedMemories] = useLocalKV<Record<string, SharedMemory>>('shared-memories', {})
+  const [preferences, setPreferences] = useLocalKV<UserPreferences>('preferences', {
     hasCompletedOnboarding: false,
     soundEnabled: false,
     lastVisit: new Date().toISOString(),
@@ -66,9 +66,9 @@ function App() {
   })
 
   // Feature 2: Collaborative Gardens state
-  const [collaborativeGardens, setCollaborativeGardens] = useKV<CollaborativeGarden[]>('collaborative-gardens', [])
+  const [collaborativeGardens, setCollaborativeGardens] = useLocalKV<CollaborativeGarden[]>('collaborative-gardens', [])
   const [activeGardenId, setActiveGardenId] = useState<string | null>(null)
-  const [gardenActivities, setGardenActivities] = useKV<Record<string, ActivityEvent[]>>('garden-activities', {})
+  const [gardenActivities, setGardenActivities] = useLocalKV<Record<string, ActivityEvent[]>>('garden-activities', {})
   const [isCreateGardenOpen, setIsCreateGardenOpen] = useState(false)
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
   const [showMembersPanel, setShowMembersPanel] = useState(false)
@@ -115,9 +115,8 @@ function App() {
   useProtocolHandler(handleProtocolAction)
 
   useEffect(() => {
-    window.spark.user().then(setUser).catch(() => {
-      toast.error('Failed to load user. Please refresh the page.')
-    })
+    // Local user identity — no Spark auth required
+    setUser({ login: 'gardener', avatarUrl: '' })
   }, [])
 
   useEffect(() => {
