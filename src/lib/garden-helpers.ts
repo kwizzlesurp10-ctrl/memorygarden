@@ -1,18 +1,143 @@
-import type { Memory, EmotionalTone, PlantStage } from './types'
+import type { Memory, EmotionalTone, PlantStage, PlantVariety, GrowthMetrics, GardenMood, WeatherType, SearchFilters } from './types'
+
+export function selectPlantVariety(emotionalTone: EmotionalTone, text: string): PlantVariety {
+  const textLower = text.toLowerCase()
+  const textLength = text.length
+  
+  if (emotionalTone === 'happy') {
+    return textLength < 100 ? 'wildflower' : 'flower'
+  }
+  
+  if (emotionalTone === 'peaceful') {
+    return textLower.includes('home') || textLower.includes('quiet') ? 'herb' : 'succulent'
+  }
+  
+  if (emotionalTone === 'reflective') {
+    return 'tree'
+  }
+  
+  if (emotionalTone === 'bittersweet') {
+    return 'vine'
+  }
+  
+  return 'flower'
+}
+
+export function calculateGrowthMetrics(memory: Memory, nearbyMemories: Memory[] = []): GrowthMetrics {
+  const daysSincePlanted = Math.floor((Date.now() - new Date(memory.plantedAt).getTime()) / 86400000)
+  const consistencyBonus = memory.visitCount > 0 
+    ? Math.min(1.8, 1 + (memory.visitCount / (daysSincePlanted + 1)) * 0.4) 
+    : 1
+
+  const toneConsistency = memory.reflections.length > 3
+    ? memory.reflections.slice(-3).filter(r => r.tone === memory.emotionalTone).length / 3
+    : 0.6
+
+  let baseVitality = Math.min(100, 
+    (daysSincePlanted * 1.8) + 
+    (memory.visitCount * 4.2) + 
+    (memory.reflections.length * 9) + 
+    (toneConsistency * 22)
+  )
+
+  const synergy = nearbyMemories.length * 3.5
+  baseVitality += synergy
+
+  const varietyCurve = {
+    wildflower: { heightMult: 1.1, widthMult: 1.4, rarityBonus: 8 },
+    flower: { heightMult: 1.3, widthMult: 1.1, rarityBonus: 12 },
+    herb: { heightMult: 0.9, widthMult: 1.6, rarityBonus: 15 },
+    succulent: { heightMult: 0.8, widthMult: 1.2, rarityBonus: 25 },
+    tree: { heightMult: 2.1, widthMult: 0.7, rarityBonus: 35 },
+    vine: { heightMult: 1.0, widthMult: 2.3, rarityBonus: 22 },
+    ancient_oak: { heightMult: 2.8, widthMult: 1.2, rarityBonus: 85 },
+    eternal_rose: { heightMult: 1.6, widthMult: 1.5, rarityBonus: 75 },
+    phoenix_vine: { heightMult: 1.4, widthMult: 2.8, rarityBonus: 90 },
+    starlight_succulent: { heightMult: 1.0, widthMult: 1.8, rarityBonus: 80 },
+  }[memory.plantVariety] || { heightMult: 1, widthMult: 1, rarityBonus: 10 }
+
+  const vitality = Math.min(100, Math.max(5, baseVitality * consistencyBonus))
+  
+  return {
+    vitality,
+    height: Math.floor(38 + (vitality * 1.1 * varietyCurve.heightMult)),
+    width: Math.floor(32 + (vitality * 0.9 * varietyCurve.widthMult)),
+    bloomCount: Math.floor(vitality / 18),
+    foliageDensity: Math.min(0.98, vitality / 110),
+    rarityScore: Math.min(100, Math.floor(vitality * 0.4 + varietyCurve.rarityBonus + (memory.shareCount || 0) * 7)),
+    lastInteractionAt: Date.now()
+  }
+}
+
+export function getVisualParams(memory: Memory, metrics: GrowthMetrics) {
+  const seasonalMod = getSeasonalPlantModifier(getSeason(), memory.emotionalTone)
+  return {
+    size: metrics.height,
+    scaleX: metrics.width / metrics.height,
+    leafOpacity: metrics.foliageDensity,
+    bloomOpacity: metrics.bloomCount > 0 ? 0.95 : 0.4,
+    color: seasonalMod,
+    glow: metrics.rarityScore > 75 ? `0 0 28px ${seasonalMod}` : 'none',
+    specialClass: metrics.rarityScore > 90 ? 'legendary' : ''
+  }
+}
+
+export function applyPremiumFertilizer(memory: Memory, boostLevel: 'standard' | 'premium' | 'legendary' = 'standard'): Memory {
+  const multipliers = { standard: 18, premium: 34, legendary: 55 }
+  console.log(`💸 Fertilizer applied — ${boostLevel} boost! Projected +${multipliers[boostLevel]} interactions`)
+  
+  return {
+    ...memory,
+    visitCount: memory.visitCount + multipliers[boostLevel]
+  }
+}
+
+export function unlockAncestralSeed(currentVariety: PlantVariety): PlantVariety {
+  const legendaryPool: PlantVariety[] = ['ancient_oak', 'eternal_rose', 'phoenix_vine', 'starlight_succulent']
+  return legendaryPool[Math.floor(Math.random() * legendaryPool.length)] as PlantVariety
+}
+
+export function getPlantStageFromMetrics(metrics: GrowthMetrics): PlantStage {
+  if (metrics.vitality < 12) return 'seed'
+  if (metrics.vitality < 28) return 'sprout'
+  if (metrics.vitality < 44) return 'seedling'
+  if (metrics.vitality < 62) return 'young'
+  if (metrics.vitality < 78) return 'bud'
+  if (metrics.vitality < 89) return 'bloom'
+  if (metrics.vitality < 97) return 'mature'
+  return 'elder'
+}
 
 export function getPlantStage(memory: Memory): PlantStage {
+  if (memory.growthMetrics) {
+    return getPlantStageFromMetrics(memory.growthMetrics)
+  }
+  
   const daysSincePlanted = Math.floor(
     (Date.now() - new Date(memory.plantedAt).getTime()) / (1000 * 60 * 60 * 24)
   )
   
   const visitCount = memory.visitCount
+  const reflectionCount = memory.reflections.length
+  const interactionScore = visitCount + (reflectionCount * 2)
   
-  if (daysSincePlanted < 1) return 'seed'
-  if (daysSincePlanted < 3 && visitCount < 2) return 'sprout'
-  if (daysSincePlanted < 7 || visitCount < 3) return 'bud'
-  if (daysSincePlanted < 30 || visitCount < 5) return 'bloom'
-  if (daysSincePlanted < 90) return 'mature'
-  return 'evergreen'
+  if (daysSincePlanted < 1 && interactionScore === 0) return 'seed'
+  if (daysSincePlanted < 2 || interactionScore < 2) return 'sprout'
+  if (daysSincePlanted < 5 || interactionScore < 4) return 'seedling'
+  if (daysSincePlanted < 14 || interactionScore < 6) return 'young'
+  if (daysSincePlanted < 30 || interactionScore < 8) return 'bud'
+  if (daysSincePlanted < 60 || interactionScore < 12) return 'bloom'
+  if (daysSincePlanted < 120) return 'mature'
+  return 'elder'
+}
+
+export async function runDailyGrowthBatch(allMemories: Memory[]): Promise<void> {
+  for (const mem of allMemories) {
+    const metrics = calculateGrowthMetrics(mem)
+    if (metrics.vitality > 65 && Math.random() > 0.7) {
+      console.log(`🌟 Premium upsell opportunity for memory ${mem.id}`)
+    }
+  }
 }
 
 export function getPlantColor(emotionalTone: EmotionalTone): string {
@@ -29,11 +154,13 @@ export function getPlantColor(emotionalTone: EmotionalTone): string {
 export function getPlantSize(stage: PlantStage): number {
   const sizes: Record<PlantStage, number> = {
     seed: 20,
-    sprout: 35,
-    bud: 50,
-    bloom: 70,
-    mature: 90,
-    evergreen: 110,
+    sprout: 32,
+    seedling: 45,
+    young: 58,
+    bud: 70,
+    bloom: 85,
+    mature: 100,
+    elder: 120,
   }
   return sizes[stage]
 }
@@ -173,4 +300,143 @@ export function getSeasonalGroundCover(season: Season): string {
     winter: 'oklch(0.85 0.02 220)',
   }
   return groundColors[season]
+}
+
+export function generateShareId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+}
+
+export function getShareUrl(shareId: string): string {
+  return `${window.location.origin}?share=${shareId}`
+}
+
+// Feature 1: Search/Filter helpers
+
+export function filterMemories(
+  memories: Memory[],
+  searchQuery: string,
+  filters: SearchFilters
+): Memory[] {
+  return memories.filter((memory) => {
+    // Text search
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      const textMatch = memory.text.toLowerCase().includes(query)
+      const locationMatch = memory.location?.toLowerCase().includes(query) ?? false
+      const reflectionMatch = memory.reflections.some((r) =>
+        r.text.toLowerCase().includes(query)
+      )
+      if (!textMatch && !locationMatch && !reflectionMatch) return false
+    }
+
+    // Emotional tone filter (OR within category)
+    if (filters.emotionalTones.length > 0) {
+      if (!filters.emotionalTones.includes(memory.emotionalTone)) return false
+    }
+
+    // Plant stage filter (OR within category)
+    if (filters.plantStages.length > 0) {
+      if (!filters.plantStages.includes(memory.plantStage)) return false
+    }
+
+    // Date range filter
+    if (filters.dateRange.start) {
+      if (new Date(memory.date) < new Date(filters.dateRange.start)) return false
+    }
+    if (filters.dateRange.end) {
+      if (new Date(memory.date) > new Date(filters.dateRange.end)) return false
+    }
+
+    // Location filter (OR within category)
+    if (filters.locations.length > 0) {
+      if (!memory.location || !filters.locations.includes(memory.location)) return false
+    }
+
+    return true
+  })
+}
+
+export function getActiveFilterCount(searchQuery: string, filters: SearchFilters): number {
+  let count = 0
+  if (searchQuery.trim()) count++
+  if (filters.emotionalTones.length > 0) count++
+  if (filters.plantStages.length > 0) count++
+  if (filters.dateRange.start || filters.dateRange.end) count++
+  if (filters.locations.length > 0) count++
+  return count
+}
+
+// Feature 3: Weather/Mood computation
+
+const weatherMap: Record<string, WeatherType> = {
+  happy: 'sunny',
+  peaceful: 'mist',
+  reflective: 'rain',
+  bittersweet: 'rain-sun',
+  nostalgic: 'golden-haze',
+  mixed: 'partly-cloudy',
+}
+
+export function computeGardenMood(memories: Memory[]): GardenMood {
+  if (memories.length === 0) {
+    return { dominantEmotion: 'peaceful', intensity: 0.3, weatherType: 'mist' }
+  }
+
+  const counts: Record<string, number> = {}
+  for (const m of memories) {
+    counts[m.emotionalTone] = (counts[m.emotionalTone] || 0) + 1
+  }
+
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1])
+  const top = sorted[0]
+  const second = sorted[1]
+
+  let dominantEmotion: EmotionalTone | 'mixed'
+  if (second && top[1] - second[1] < top[1] * 0.2) {
+    dominantEmotion = 'mixed'
+  } else {
+    dominantEmotion = top[0] as EmotionalTone
+  }
+
+  const intensity = top[1] / memories.length
+
+  return {
+    dominantEmotion,
+    intensity,
+    weatherType: weatherMap[dominantEmotion] || 'partly-cloudy',
+  }
+}
+
+// Feature 2: Collaborative garden helpers
+
+export function generateInviteToken(): string {
+  return `invite-${Date.now()}-${Math.random().toString(36).substring(2, 14)}`
+}
+
+export function generateGardenId(): string {
+  return `garden-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
+}
+
+// Feature 5: AI Plant prompt construction
+
+export function buildPlantPrompt(
+  plantVariety: PlantVariety,
+  plantStage: PlantStage,
+  emotionalTone: EmotionalTone,
+  season: Season,
+  artStyle: string = 'watercolor',
+  customHints: string = ''
+): string {
+  const stageDescriptions: Record<PlantStage, string> = {
+    seed: 'A tiny seed half-buried in rich soil with a faint crack showing',
+    sprout: 'A delicate green sprout just emerging from the soil with two tiny leaves',
+    seedling: 'A small young plant with 3-4 leaves unfurling',
+    young: 'A growing plant with multiple branches and healthy foliage',
+    bud: 'A plant with prominent buds about to open',
+    bloom: 'A fully flowering plant in glorious bloom',
+    mature: 'A lush, established plant bearing fruit and full foliage',
+    elder: 'An ancient, majestic plant with deep roots and sprawling canopy',
+  }
+
+  return `A ${artStyle} illustration of a ${plantVariety} plant at ${plantStage} stage, ${emotionalTone} mood, ${season} season. ${stageDescriptions[plantStage]}. ${customHints}. White background, centered composition, botanical style.`.trim()
 }

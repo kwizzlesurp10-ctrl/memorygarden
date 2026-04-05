@@ -6,11 +6,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Drop, Sparkle, MapPin, CalendarBlank } from '@phosphor-icons/react'
+import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork, ChartBar, Lightning } from '@phosphor-icons/react'
 import { AudioPlayer } from '@/components/AudioPlayer'
 import { format } from 'date-fns'
 import type { Memory } from '@/lib/types'
 import { toast } from 'sonner'
+import { calculateGrowthMetrics } from '@/lib/garden-helpers'
 
 interface MemoryCardProps {
   memory: Memory | null
@@ -18,6 +19,8 @@ interface MemoryCardProps {
   onClose: () => void
   onWater: (memoryId: string, reflection: string) => void
   onAskAI: (memoryId: string) => void
+  onShare?: (memoryId: string) => void
+  onBoost?: (memoryId: string) => void
   aiReflection?: string
   isLoadingAI?: boolean
 }
@@ -28,13 +31,19 @@ export function MemoryCard({
   onClose,
   onWater,
   onAskAI,
+  onShare,
+  onBoost,
   aiReflection,
   isLoadingAI,
 }: MemoryCardProps) {
   const [newReflection, setNewReflection] = useState('')
   const [isAddingReflection, setIsAddingReflection] = useState(false)
+  const [showMetrics, setShowMetrics] = useState(false)
 
   if (!memory) return null
+
+  const metrics = calculateGrowthMetrics(memory)
+  const isLegendary = metrics.rarityScore > 90
 
   const handleWater = async () => {
     if (newReflection.trim().length < 3) {
@@ -70,8 +79,8 @@ export function MemoryCard({
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-card/90 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-6">
-              <div className="flex flex-wrap gap-2 mb-2">
+            <div className="absolute bottom-0 left-0 right-0 p-6 flex items-end justify-between">
+              <div className="flex flex-wrap gap-2">
                 <Badge variant="secondary" className="bg-card/80 backdrop-blur-sm">
                   {memory.emotionalTone}
                 </Badge>
@@ -81,6 +90,33 @@ export function MemoryCard({
                 <Badge variant="secondary" className="bg-card/80 backdrop-blur-sm">
                   Visited {memory.visitCount} times
                 </Badge>
+                {isLegendary && (
+                  <Badge variant="default" className="bg-accent/90 backdrop-blur-sm">
+                    ✨ Legendary
+                  </Badge>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  onClick={() => setShowMetrics(!showMetrics)}
+                  className="bg-card/80 backdrop-blur-sm hover:bg-card"
+                  title="View growth metrics"
+                >
+                  <ChartBar size={20} weight="bold" />
+                </Button>
+                {onShare && (
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    onClick={() => onShare(memory.id)}
+                    className="bg-card/80 backdrop-blur-sm hover:bg-card"
+                    title="Share this memory"
+                  >
+                    <ShareNetwork size={20} weight="bold" />
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -103,6 +139,49 @@ export function MemoryCard({
                   </div>
                 )}
               </div>
+
+              <AnimatePresence>
+                {showMetrics && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="p-4 bg-muted/30 rounded-lg space-y-3">
+                      <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                        Growth Metrics
+                      </h3>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <div className="text-muted-foreground mb-1">Vitality</div>
+                          <div className="font-semibold">{Math.round(metrics.vitality)}/100</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground mb-1">Height</div>
+                          <div className="font-semibold">{metrics.height}px</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground mb-1">Blooms</div>
+                          <div className="font-semibold">{metrics.bloomCount}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground mb-1">Foliage Density</div>
+                          <div className="font-semibold">{Math.round(metrics.foliageDensity * 100)}%</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground mb-1">Rarity Score</div>
+                          <div className="font-semibold">{metrics.rarityScore}/100</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground mb-1">Width</div>
+                          <div className="font-semibold">{metrics.width}px</div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {memory.reflections.length > 0 && (
                 <>
@@ -215,6 +294,25 @@ export function MemoryCard({
                     </AnimatePresence>
                   </Button>
                 </div>
+                
+                {onBoost && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <Button
+                      onClick={() => onBoost(memory.id)}
+                      variant="outline"
+                      className="w-full border-2 border-primary/30 hover:border-primary hover:bg-primary/5 transition-all"
+                    >
+                      <Lightning size={18} weight="fill" className="mr-2 text-primary" />
+                      <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent font-semibold">
+                        Apply Premium Fertilizer
+                      </span>
+                    </Button>
+                  </motion.div>
+                )}
               </div>
             </div>
           </ScrollArea>

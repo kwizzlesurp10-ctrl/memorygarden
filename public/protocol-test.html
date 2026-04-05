@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MemoryGarden Protocol Handler Test</title>
+    <style>
+        body {
+            font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f3ef;
+            color: #3d3d3d;
+        }
+        h1 {
+            color: #6a9175;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #7a6f5d;
+            margin-bottom: 30px;
+        }
+        .protocol-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 12px;
+            border: 2px solid #d9cfbd;
+        }
+        .protocol-section h2 {
+            color: #6a9175;
+            margin-top: 0;
+            font-size: 1.3em;
+        }
+        .protocol-link {
+            display: inline-block;
+            background: #6a9175;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            margin: 10px 10px 10px 0;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .protocol-link:hover {
+            background: #5a8165;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(106, 145, 117, 0.3);
+        }
+        code {
+            background: #f0ede5;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #7a6f5d;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .warning strong {
+            color: #856404;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #d9cfbd;
+            border-radius: 6px;
+            font-size: 1em;
+            margin: 10px 0;
+            font-family: inherit;
+        }
+        button {
+            background: #c9a97a;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background: #b99868;
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+    <h1>🌱 MemoryGarden Protocol Handlers</h1>
+    <p class="subtitle">Test protocol handlers and deep linking</p>
+
+    <div class="warning">
+        <strong>⚠️ Important:</strong> Protocol handlers only work when MemoryGarden is installed as a Progressive Web App (PWA). 
+        Please install the app first, then return to this page to test the protocol links.
+    </div>
+
+    <div class="protocol-section">
+        <h2>🌿 Plant a Memory</h2>
+        <p>Opens the plant memory modal in MemoryGarden.</p>
+        <a href="web+plantmemory://" class="protocol-link">Plant Memory</a>
+        <br><br>
+        <code>web+plantmemory://</code>
+    </div>
+
+    <div class="protocol-section">
+        <h2>👁️ View Specific Memory</h2>
+        <p>Opens a specific memory by ID. Enter a memory ID to test:</p>
+        <input type="text" id="memoryId" placeholder="Enter memory ID (e.g., memory-1234567890)" />
+        <button onclick="openMemory()">View Memory</button>
+        <br><br>
+        <code>web+viewmemory://&lt;memory-id&gt;</code>
+    </div>
+
+    <div class="protocol-section">
+        <h2>🏡 General Protocol</h2>
+        <p>Invokes the general MemoryGarden protocol handler.</p>
+        <a href="web+memorygarden://test" class="protocol-link">Test General Protocol</a>
+        <br><br>
+        <code>web+memorygarden://&lt;action&gt;</code>
+    </div>
+
+    <div class="protocol-section">
+        <h2>📖 Quick Links</h2>
+        <p>Pre-configured examples for testing:</p>
+        <a href="web+plantmemory://" class="protocol-link">Quick Plant</a>
+        <a href="web+memorygarden://garden" class="protocol-link">Open Garden</a>
+    </div>
+
+    <div class="protocol-section">
+        <h2>🔗 Integration Examples</h2>
+        <p><strong>HTML Link:</strong></p>
+        <code>&lt;a href="web+plantmemory://"&gt;Plant a Memory&lt;/a&gt;</code>
+        
+        <p style="margin-top: 15px;"><strong>JavaScript:</strong></p>
+        <code>window.location.href = 'web+viewmemory://memory-123';</code>
+        
+        <p style="margin-top: 15px;"><strong>With Data:</strong></p>
+        <code>const url = `web+plantmemory://${encodeURIComponent(text)}`;</code>
+    </div>
+
+    <script>
+        function openMemory() {
+            const memoryId = document.getElementById('memoryId').value.trim();
+            if (!memoryId) {
+                alert('Please enter a memory ID');
+                return;
+            }
+            window.location.href = `web+viewmemory://${encodeURIComponent(memoryId)}`;
+        }
+
+        document.getElementById('memoryId').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                openMemory();
+            }
+        });
+    </script>
+</body>
+</html>

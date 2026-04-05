@@ -42,11 +42,11 @@ This app requires sophisticated state management for memory data, AI integration
 - **Success criteria**: Plants visually evolve (size, bloom stage) with each interaction, AI responses feel gentle and insightful
 
 ### 5. Plant Visual Evolution
-- **Functionality**: Plants change appearance based on memory age, visit frequency, and emotional tone (bud → flower → mature plant → evergreen)
-- **Purpose**: Make passage of time and emotional patterns visible and beautiful
+- **Functionality**: Plants change appearance based on memory age, visit frequency, emotional tone (bud → flower → mature plant → evergreen), and now include distinct plant varieties (flowers, trees, succulents, vines, herbs, wildflowers) with expanded growth stages
+- **Purpose**: Make passage of time and emotional patterns visible and beautiful, with richer visual diversity representing different types of memories
 - **Trigger**: Automatic background process checking memory metadata
-- **Progression**: New memory starts as small bud → visited memories bloom into flowers → frequently-tended plants grow larger → old unvisited memories mature into trees → emotional tone affects color palette
-- **Success criteria**: Clear visual differentiation between growth stages, changes feel organic not sudden, colors map meaningfully to emotions
+- **Progression**: New memory starts as small seed → with visits becomes sprout → develops into seedling → grows to young plant → matures to full bloom/tree → reaches elder/ancient stage → emotional tone affects color palette, plant variety influences growth pattern and visual metaphor
+- **Success criteria**: Clear visual differentiation between 8 growth stages and 6+ plant varieties, changes feel organic not sudden, colors map meaningfully to emotions, variety selection feels appropriate to memory characteristics
 
 ### 6. Time-Based Garden Changes
 - **Functionality**: Background, plant types, and atmosphere shift with real-world time (day/night cycle) and seasons
@@ -75,6 +75,24 @@ This app requires sophisticated state management for memory data, AI integration
 - **Trigger**: User clicks export button in settings/menu
 - **Progression**: User chooses export type (image/PDF) → selects memories to include or entire garden → system renders high-quality output → downloads file
 - **Success criteria**: Exported artifacts are print-quality beautiful, generation takes under 30s for 50 memories
+
+### 10. Protocol Handlers & Deep Linking
+- **Functionality**: Register custom web protocols (`web+memorygarden://`, `web+plantmemory://`, `web+viewmemory://`) when installed as PWA, enabling external apps and websites to trigger actions in MemoryGarden
+- **Purpose**: Enable seamless integration with other apps and automation tools, allowing users to quickly plant memories or view specific ones from external sources
+- **Trigger**: External application or website invokes a custom protocol URL, or user clicks a protocol link
+- **Progression**: Protocol URL invoked → app receives protocol request → validates and parses parameters → executes corresponding action (open plant modal, view specific memory, etc.) → provides user feedback
+- **Success criteria**: Protocol handlers register successfully on PWA installation, all three protocols work reliably, invalid requests show appropriate error messages, Share Target API allows direct photo sharing from camera/gallery
+
+### 11. Fertilizer Boost System
+- **Functionality**: Three-tier fertilizer system that accelerates plant growth with unique visual particle effects for each tier
+- **Purpose**: Provide immediate gratification and visual spectacle for users wanting to rapidly grow specific memories
+- **Trigger**: User clicks "Boost" button on a memory card
+- **Progression**: Click boost → modal opens showing three tiers → user selects tier (Garden Boost/Premium/Legendary) → applies boost → tier-specific particle animation plays in modal → plant receives instant vitality boost → plant displays corresponding growth particle effect in garden → growth animation completes
+- **Success criteria**: Each tier has visually distinct particles, animations feel impactful and satisfying, free tier encourages trying premium options, plant growth is immediately visible
+- **Particle Effects**:
+  - **Standard (Garden Boost)**: Gentle water droplets falling from top with subtle ripple waves radiating outward - calm and nurturing (25 droplets, 8 ripples, 2s duration)
+  - **Premium Fertilizer**: Energetic spiral particles bursting outward with rotating sparkle stars and expanding rings - magical and transformative (40 spirals, 15 sparkles, 3 rings, 1.5s duration)
+  - **Legendary Elixir**: Explosive radial burst with orbiting particles, expanding waves, floating crown stars, and central glow - epic and awe-inspiring (60 burst particles, 30 orbital particles, 8 waves, 20 crown stars, 2.5s duration)
 
 ## Edge Case Handling
 
@@ -124,6 +142,10 @@ Typography should feel literary, warm, and timeless — like handwritten journal
 Animations should feel like watching plants grow in time-lapse — smooth, organic, and mesmerizing. Every movement should have weight and natural physics. Use animations to reinforce the garden metaphor and create moments of quiet delight.
 
 - **Plant Growth**: Elastic spring physics when plants sprout or grow from tending, starting small and bouncing slightly at full size (800ms duration)
+- **Fertilizer Particles**: Tier-specific particle systems that play during and after boost application:
+  - Standard tier uses falling droplets with ripple effects
+  - Premium tier creates spiraling sparkles with rotating stars
+  - Legendary tier produces explosive radial bursts with orbital particles and expanding waves
 - **Canvas Navigation**: Smooth momentum-based panning with gentle deceleration, zoom follows cursor position with 300ms ease-out
 - **Card Transitions**: Fade and subtle scale-up when opening memory cards (400ms), backdrop blur effect
 - **Hover States**: Gentle lift on plants (2px translateY) with soft shadow increase over 200ms
@@ -131,6 +153,7 @@ Animations should feel like watching plants grow in time-lapse — smooth, organ
 - **Time Transitions**: Day/night cycle fades over 2 minutes of real time when crossing threshold hours
 - **Interaction Feedback**: Ripple effect when planting new memory, gentle pulse on "Water" action
 - **Loading States**: Organic skeleton shimmer that feels like sunlight moving through leaves
+- **Button Loading**: Shimmer gradient sweep with floating micro-particles on fertilizer boost button
 
 ## Component Selection
 
