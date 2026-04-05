@@ -42,7 +42,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
-    return json(res, 503, { error: 'OPENAI_API_KEY not configured' })
+    return json(res, 503, { error: 'AI features are not available. Please configure the deployment.' })
   }
 
   const { prompt, model = 'gpt-4o', jsonMode = false } = await readBody(req)

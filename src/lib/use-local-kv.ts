@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 
+const STORAGE_PREFIX = 'memorygarden:'
+
 /**
  * Drop-in replacement for @github/spark's useKV hook.
  * Persists state to localStorage with the same API:
@@ -7,10 +9,11 @@ import { useState, useEffect, useCallback, useRef } from 'react'
  */
 export function useLocalKV<T>(key: string, defaultValue: T): [T, (value: T | ((prev: T) => T)) => void] {
   const defaultRef = useRef(defaultValue)
+  const storageKey = `${STORAGE_PREFIX}${key}`
 
   const [state, setState] = useState<T>(() => {
     try {
-      const stored = localStorage.getItem(`memorygarden:${key}`)
+      const stored = localStorage.getItem(storageKey)
       if (stored !== null) {
         return JSON.parse(stored) as T
       }
@@ -23,26 +26,31 @@ export function useLocalKV<T>(key: string, defaultValue: T): [T, (value: T | ((p
   // Persist to localStorage whenever state changes
   useEffect(() => {
     try {
-      localStorage.setItem(`memorygarden:${key}`, JSON.stringify(state))
+      localStorage.setItem(storageKey, JSON.stringify(state))
     } catch {
       // Storage full or unavailable — silent
     }
-  }, [key, state])
+  }, [storageKey, state])
 
   // Listen for changes from other tabs
   useEffect(() => {
     const handler = (e: StorageEvent) => {
-      if (e.key === `memorygarden:${key}` && e.newValue !== null) {
-        try {
-          setState(JSON.parse(e.newValue) as T)
-        } catch {
-          // ignore
+      if (e.key === storageKey) {
+        if (e.newValue === null) {
+          // Item was deleted in another tab — reset to default
+          setState(defaultRef.current)
+        } else {
+          try {
+            setState(JSON.parse(e.newValue) as T)
+          } catch {
+            // ignore
+          }
         }
       }
     }
     window.addEventListener('storage', handler)
     return () => window.removeEventListener('storage', handler)
-  }, [key])
+  }, [storageKey])
 
   const setValue = useCallback((value: T | ((prev: T) => T)) => {
     setState(value)

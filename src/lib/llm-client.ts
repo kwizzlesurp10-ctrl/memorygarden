@@ -28,23 +28,27 @@ export async function llm(prompt: string, model: string = 'gpt-4o', jsonMode: bo
   }
 }
 
+function classifyToneFallback(prompt: string): string {
+  const text = prompt.toLowerCase()
+  if (text.includes('joy') || text.includes('happy') || text.includes('laugh') || text.includes('celebration')) {
+    return 'happy'
+  }
+  if (text.includes('miss') || text.includes('remember') || text.includes('long ago')) {
+    return 'nostalgic'
+  }
+  if (text.includes('think') || text.includes('wonder') || text.includes('learn')) {
+    return 'reflective'
+  }
+  if (text.includes('bitter') || text.includes('sad') || text.includes('loss') || text.includes('goodbye')) {
+    return 'bittersweet'
+  }
+  return 'peaceful'
+}
+
 function getFallbackResponse(prompt: string, jsonMode: boolean): string {
   // For emotional tone classification
   if (prompt.includes('emotional tone') && prompt.includes('classify')) {
-    const text = prompt.toLowerCase()
-    if (text.includes('joy') || text.includes('happy') || text.includes('laugh') || text.includes('celebration')) {
-      return 'happy'
-    }
-    if (text.includes('miss') || text.includes('remember') || text.includes('long ago')) {
-      return 'nostalgic'
-    }
-    if (text.includes('think') || text.includes('wonder') || text.includes('learn')) {
-      return 'reflective'
-    }
-    if (text.includes('bitter') || text.includes('sad') || text.includes('loss') || text.includes('goodbye')) {
-      return 'bittersweet'
-    }
-    return 'peaceful'
+    return classifyToneFallback(prompt)
   }
 
   // For AI reflection generation
