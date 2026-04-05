@@ -26,7 +26,7 @@ export function SearchFilterBar({
 }: SearchFilterBarProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [localQuery, setLocalQuery] = useState(searchQuery)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
     setLocalQuery(searchQuery)
