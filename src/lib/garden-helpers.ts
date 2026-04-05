@@ -410,11 +410,11 @@ export function computeGardenMood(memories: Memory[]): GardenMood {
 // Feature 2: Collaborative garden helpers
 
 export function generateInviteToken(): string {
-  return `invite-${Date.now()}-${Math.random().toString(36).substr(2, 12)}`
+  return `invite-${Date.now()}-${Math.random().toString(36).substring(2, 14)}`
 }
 
 export function generateGardenId(): string {
-  return `garden-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  return `garden-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
 }
 
 // Feature 5: AI Plant prompt construction

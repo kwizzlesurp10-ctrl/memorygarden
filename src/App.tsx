@@ -462,6 +462,15 @@ function App() {
     if (inviteGardenId && inviteToken && user) {
       const garden = safeGardens.find(g => g.id === inviteGardenId && g.inviteToken === inviteToken)
       if (garden && !garden.members.some(m => m.login === user.login)) {
+        // Validate invite token has not expired (tokens valid for 7 days based on garden creation time)
+        const gardenCreatedAt = new Date(garden.createdAt).getTime()
+        const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
+        if (Date.now() - gardenCreatedAt > sevenDaysMs && garden.inviteToken === inviteToken) {
+          toast.error('This invite link has expired. Ask the garden owner for a new one.')
+          window.history.replaceState({}, '', window.location.pathname)
+          return
+        }
+
         if (garden.members.length < garden.settings.maxMembers) {
           setCollaborativeGardens((current) =>
             (current || []).map(g => {
