@@ -21,7 +21,6 @@ interface Cluster {
 
 export function MemoryClusters({ memories, onMemoryClick }: MemoryClustersProps) {
   const [clusters, setClusters] = useState<Cluster[]>([])
-  const [isAnalyzing] = useState(false)
 
   useEffect(() => {
     if (memories.length > 0) {
@@ -100,29 +99,6 @@ export function MemoryClusters({ memories, onMemoryClick }: MemoryClustersProps)
             Plant some memories to discover meaningful patterns and connections
           </p>
         </div>
-      </div>
-    )
-  }
-
-  if (isAnalyzing) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center space-y-4"
-        >
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-          >
-            <Sparkle size={64} weight="duotone" className="text-primary mx-auto" />
-          </motion.div>
-          <h3 className="text-xl font-semibold">Discovering Patterns...</h3>
-          <p className="text-muted-foreground max-w-md">
-            The garden AI is analyzing your memories to find meaningful connections
-          </p>
-        </motion.div>
       </div>
     )
   }

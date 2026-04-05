@@ -2,9 +2,15 @@ const ADJECTIVES = ['Gentle', 'Serene', 'Bright', 'Quiet', 'Warm', 'Calm', 'Soft
 const NOUNS = ['Gardener', 'Dreamer', 'Keeper', 'Wanderer', 'Grower', 'Tender', 'Planter', 'Watcher']
 const STORAGE_KEY = 'memorygarden:user'
 
+function secureRandInt(max: number): number {
+  const arr = new Uint32Array(1)
+  crypto.getRandomValues(arr)
+  return arr[0] % max
+}
+
 function createLocalUser(): { login: string; avatarUrl: string } {
-  const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
-  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)]
+  const adj = ADJECTIVES[secureRandInt(ADJECTIVES.length)]
+  const noun = NOUNS[secureRandInt(NOUNS.length)]
   const login = `${adj}${noun}`
   return { login, avatarUrl: '' }
 }
