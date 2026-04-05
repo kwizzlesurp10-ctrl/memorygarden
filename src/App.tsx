@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Toaster, toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Plant as PlantIcon, Tree, List, GridFour, Export, DotsThree, Link as LinkIcon } from '@phosphor-icons/react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Plant as PlantIcon, Tree, List, GridFour, Export, DotsThree, Link as LinkIcon, Palette, UsersThree } from '@phosphor-icons/react'
 import { GardenCanvas } from '@/components/GardenCanvas'
 import { PlantMemoryModal } from '@/components/PlantMemoryModal'
 import { MemoryCard } from '@/components/MemoryCard'
@@ -16,9 +16,17 @@ import { SeasonIndicator } from '@/components/SeasonIndicator'
 import { ShareMemoryDialog } from '@/components/ShareMemoryDialog'
 import { SharedMemoryView } from '@/components/SharedMemoryView'
 import { FertilizerBoostModal } from '@/components/FertilizerBoostModal'
+import { SearchFilterBar } from '@/components/SearchFilterBar'
+import { WeatherIndicator } from '@/components/WeatherIndicator'
+import { GardenSelector } from '@/components/GardenSelector'
+import { CreateGardenDialog } from '@/components/CreateGardenDialog'
+import { GardenInviteDialog } from '@/components/GardenInviteDialog'
+import { GardenMembersPanel } from '@/components/GardenMembersPanel'
+import { ActivityFeed } from '@/components/ActivityFeed'
+import { PlantStyleCustomizer } from '@/components/PlantStyleCustomizer'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import type { Memory, UserPreferences, AudioRecording, SharedMemory } from '@/lib/types'
-import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer } from '@/lib/garden-helpers'
+import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood } from '@/lib/types'
+import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken } from '@/lib/garden-helpers'
 import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
 
 type ViewMode = 'garden' | 'timeline' | 'clusters'
@@ -47,6 +55,26 @@ function App() {
   const [memoryToBoost, setMemoryToBoost] = useState<Memory | null>(null)
   const [growingMemories, setGrowingMemories] = useState<Set<string>>(new Set())
   const [memoryBoostTiers, setMemoryBoostTiers] = useState<Map<string, 'standard' | 'premium' | 'legendary'>>(new Map())
+
+  // Feature 1: Search/Filter state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filters, setFilters] = useState<SearchFilters>({
+    emotionalTones: [],
+    plantStages: [],
+    dateRange: {},
+    locations: [],
+  })
+
+  // Feature 2: Collaborative Gardens state
+  const [collaborativeGardens, setCollaborativeGardens] = useKV<CollaborativeGarden[]>('collaborative-gardens', [])
+  const [activeGardenId, setActiveGardenId] = useState<string | null>(null)
+  const [gardenActivities, setGardenActivities] = useKV<Record<string, ActivityEvent[]>>('garden-activities', {})
+  const [isCreateGardenOpen, setIsCreateGardenOpen] = useState(false)
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
+  const [showMembersPanel, setShowMembersPanel] = useState(false)
+
+  // Feature 5: AI Plant Style state
+  const [isStyleCustomizerOpen, setIsStyleCustomizerOpen] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -384,8 +412,140 @@ function App() {
     toast.success(`${boostNames[boostLevel]} applied! Your memory is flourishing.`)
   }
 
+  // Feature 2: Collaborative garden handlers
+  const handleCreateGarden = (data: { name: string; description: string; settings: GardenSettings }) => {
+    if (!user) return
+    const gardenId = generateGardenId()
+    const inviteToken = generateInviteToken()
+    const newGarden: CollaborativeGarden = {
+      id: gardenId,
+      name: data.name,
+      description: data.description,
+      ownerId: user.login,
+      ownerLogin: user.login,
+      members: [{
+        userId: user.login,
+        login: user.login,
+        avatarUrl: user.avatarUrl,
+        role: 'owner',
+        joinedAt: new Date().toISOString(),
+      }],
+      createdAt: new Date().toISOString(),
+      settings: data.settings,
+      inviteToken,
+    }
+    setCollaborativeGardens((current) => [...(current || []), newGarden])
+    setActiveGardenId(gardenId)
+    toast.success(`Garden "${data.name}" created!`)
+  }
+
+  const handleSelectGarden = (gardenId: string | null) => {
+    setActiveGardenId(gardenId)
+  }
+
+  const handleInviteToGarden = () => {
+    if (activeGarden) {
+      setIsInviteDialogOpen(true)
+    }
+  }
+
+  const getInviteUrl = () => {
+    if (!activeGarden?.inviteToken) return ''
+    return `${window.location.origin}?invite=${activeGarden.id}&token=${activeGarden.inviteToken}`
+  }
+
+  // Handle invite link in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const inviteGardenId = params.get('invite')
+    const inviteToken = params.get('token')
+    if (inviteGardenId && inviteToken && user) {
+      const garden = safeGardens.find(g => g.id === inviteGardenId && g.inviteToken === inviteToken)
+      if (garden && !garden.members.some(m => m.login === user.login)) {
+        // Validate invite token has not expired (tokens valid for 7 days based on garden creation time)
+        const gardenCreatedAt = new Date(garden.createdAt).getTime()
+        const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
+        if (Date.now() - gardenCreatedAt > sevenDaysMs && garden.inviteToken === inviteToken) {
+          toast.error('This invite link has expired. Ask the garden owner for a new one.')
+          window.history.replaceState({}, '', window.location.pathname)
+          return
+        }
+
+        if (garden.members.length < garden.settings.maxMembers) {
+          setCollaborativeGardens((current) =>
+            (current || []).map(g => {
+              if (g.id === inviteGardenId) {
+                return {
+                  ...g,
+                  members: [...g.members, {
+                    userId: user.login,
+                    login: user.login,
+                    avatarUrl: user.avatarUrl,
+                    role: 'collaborator' as const,
+                    joinedAt: new Date().toISOString(),
+                  }],
+                }
+              }
+              return g
+            })
+          )
+          setActiveGardenId(inviteGardenId)
+          toast.success(`Joined "${garden.name}"!`)
+          window.history.replaceState({}, '', window.location.pathname)
+        } else {
+          toast.error('This garden is full')
+        }
+      }
+    }
+  }, [user, collaborativeGardens])
+
+  // Feature 5: Plant style preference handler
+  const handleSavePlantStyle = (style: PlantStylePreference) => {
+    setPreferences((current) => ({
+      ...(current || { hasCompletedOnboarding: false, soundEnabled: false, lastVisit: '' }),
+      plantStylePreference: style,
+    }))
+    toast.success('Plant art style saved!')
+  }
+
   const safeMemories = memories || []
   const safePreferences = preferences || { hasCompletedOnboarding: false, soundEnabled: false, lastVisit: '' }
+  const safeGardens = collaborativeGardens || []
+  const safeActivities = gardenActivities || {}
+
+  // Feature 1: Filtered memories computation
+  const filteredMemories = useMemo(
+    () => filterMemories(safeMemories, searchQuery, filters),
+    [safeMemories, searchQuery, filters]
+  )
+  const activeFilterCount = useMemo(
+    () => getActiveFilterCount(searchQuery, filters),
+    [searchQuery, filters]
+  )
+  const highlightedMemoryIds = useMemo(
+    () => (activeFilterCount > 0 ? new Set(filteredMemories.map((m) => m.id)) : null),
+    [filteredMemories, activeFilterCount]
+  )
+  const availableLocations = useMemo(
+    () => Array.from(new Set(safeMemories.map((m) => m.location).filter(Boolean) as string[])),
+    [safeMemories]
+  )
+
+  // Feature 3: Garden mood computation
+  const gardenMood = useMemo<GardenMood>(
+    () => computeGardenMood(activeFilterCount > 0 ? filteredMemories : safeMemories),
+    [safeMemories, filteredMemories, activeFilterCount]
+  )
+
+  // Feature 2: Active collaborative garden
+  const activeGarden = useMemo(
+    () => safeGardens.find((g) => g.id === activeGardenId) || null,
+    [safeGardens, activeGardenId]
+  )
+  const activeGardenActivities = useMemo(
+    () => (activeGardenId ? safeActivities[activeGardenId] || [] : []),
+    [activeGardenId, safeActivities]
+  )
 
   if (sharedMemoryView) {
     return <SharedMemoryView memory={sharedMemoryView} />
@@ -422,6 +582,13 @@ function App() {
             <Tree size={28} weight="duotone" className="text-primary flex-shrink-0 md:w-8 md:h-8" />
             <h1 className="text-lg md:text-xl font-bold truncate">MemoryGarden</h1>
             <SeasonIndicator season={season} className="hidden sm:flex" />
+            <WeatherIndicator mood={gardenMood} className="hidden sm:flex" />
+            <GardenSelector
+              gardens={safeGardens}
+              activeGardenId={activeGardenId}
+              onSelectGarden={handleSelectGarden}
+              onCreateGarden={() => setIsCreateGardenOpen(true)}
+            />
           </div>
 
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="absolute left-1/2 -translate-x-1/2">
@@ -453,6 +620,17 @@ function App() {
                   <Export size={16} className="mr-2" />
                   Export Garden
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsStyleCustomizerOpen(true)}>
+                  <Palette size={16} className="mr-2" />
+                  Plant Art Style
+                </DropdownMenuItem>
+                {activeGarden && (
+                  <DropdownMenuItem onClick={handleInviteToGarden}>
+                    <UsersThree size={16} className="mr-2" />
+                    Invite Members
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => window.open('/protocol-test.html', '_blank')}>
                   <LinkIcon size={16} className="mr-2" />
                   Protocol Handler Test
@@ -465,6 +643,16 @@ function App() {
             </Avatar>
           </div>
         </header>
+
+        {/* Feature 1: Search/Filter bar */}
+        <SearchFilterBar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          filters={filters}
+          onFiltersChange={setFilters}
+          activeFilterCount={activeFilterCount}
+          availableLocations={availableLocations}
+        />
 
         <main className="flex-1 relative overflow-hidden">
           <AnimatePresence mode="wait">
@@ -503,6 +691,8 @@ function App() {
                     season={season}
                     growingMemories={growingMemories}
                     memoryBoostTiers={memoryBoostTiers}
+                    highlightedMemoryIds={highlightedMemoryIds}
+                    mood={gardenMood}
                   />
                 )}
               </motion.div>
@@ -518,12 +708,14 @@ function App() {
               >
                 <div className="max-w-4xl mx-auto space-y-6">
                   <h2 className="text-2xl font-bold mb-8">Timeline</h2>
-                  {safeMemories.length === 0 ? (
+                  {filteredMemories.length === 0 ? (
                     <p className="text-muted-foreground text-center py-12">
-                      No memories yet. Plant your first one to get started!
+                      {safeMemories.length === 0
+                        ? 'No memories yet. Plant your first one to get started!'
+                        : 'No memories match your search. Try adjusting your filters.'}
                     </p>
                   ) : (
-                    [...safeMemories]
+                    [...filteredMemories]
                       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                       .map((memory) => (
                         <motion.div
@@ -563,7 +755,7 @@ function App() {
                 exit={{ opacity: 0 }}
                 className="w-full h-full"
               >
-                <MemoryClusters memories={safeMemories} onMemoryClick={handleMemoryClick} />
+                <MemoryClusters memories={activeFilterCount > 0 ? filteredMemories : safeMemories} onMemoryClick={handleMemoryClick} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -630,7 +822,29 @@ function App() {
       <ExportGarden
         open={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        memories={safeMemories}
+        memories={activeFilterCount > 0 ? filteredMemories : safeMemories}
+      />
+
+      {/* Feature 2: Collaborative Garden Dialogs */}
+      <CreateGardenDialog
+        open={isCreateGardenOpen}
+        onClose={() => setIsCreateGardenOpen(false)}
+        onCreate={handleCreateGarden}
+      />
+
+      <GardenInviteDialog
+        open={isInviteDialogOpen}
+        onClose={() => setIsInviteDialogOpen(false)}
+        garden={activeGarden}
+        inviteUrl={getInviteUrl()}
+      />
+
+      {/* Feature 5: Plant Style Customizer */}
+      <PlantStyleCustomizer
+        open={isStyleCustomizerOpen}
+        onClose={() => setIsStyleCustomizerOpen(false)}
+        currentStyle={safePreferences.plantStylePreference}
+        onSave={handleSavePlantStyle}
       />
     </>
   )

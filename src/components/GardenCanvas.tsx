@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import type { Memory, Season } from '@/lib/types'
 import { Plant } from './Plant'
+import { WeatherEffects } from './WeatherEffects'
 import { getDayPeriod, getBackgroundGradient, getSeason, getPlantSize } from '@/lib/garden-helpers'
 
 const MIN_CANVAS_SIZE = 2000
@@ -14,9 +15,11 @@ interface GardenCanvasProps {
   season?: Season
   growingMemories?: Set<string>
   memoryBoostTiers?: Map<string, 'standard' | 'premium' | 'legendary'>
+  highlightedMemoryIds?: Set<string> | null
+  mood?: import('@/lib/types').GardenMood | null
 }
 
-export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: propSeason, growingMemories = new Set(), memoryBoostTiers = new Map() }: GardenCanvasProps) {
+export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: propSeason, growingMemories = new Set(), memoryBoostTiers = new Map(), highlightedMemoryIds = null, mood = null }: GardenCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
   const [draggingMemory, setDraggingMemory] = useState<string | null>(null)
@@ -92,6 +95,7 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
     >
       <ParallaxBackground dayPeriod={dayPeriod} season={season} />
       <SeasonalEffects season={season} dayPeriod={dayPeriod} />
+      {mood && <WeatherEffects mood={mood} season={season} />}
       
       <div
         style={{
@@ -119,11 +123,12 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
                 Math.abs(m.position.x - memory.position.x) < 300 &&
                 Math.abs(m.position.y - memory.position.y) < 300
             )
+            const isDimmed = highlightedMemoryIds !== null && !highlightedMemoryIds.has(memory.id)
             
             return (
               <motion.div
                 key={memory.id}
-                drag
+                drag={!isDimmed}
                 dragMomentum={false}
                 dragElastic={0.1}
                 onDragStart={() => setDraggingMemory(memory.id)}
@@ -132,6 +137,9 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
                 style={{
                   left: memory.position.x,
                   top: memory.position.y,
+                  opacity: isDimmed ? 0.15 : 1,
+                  pointerEvents: isDimmed ? 'none' : 'auto',
+                  transition: 'opacity 0.3s ease',
                 }}
               >
                 <Plant
