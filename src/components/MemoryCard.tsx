@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -64,7 +64,7 @@ export function MemoryCard({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-3xl max-h-[90vh] p-0 overflow-hidden">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -72,6 +72,8 @@ export function MemoryCard({
           exit={{ opacity: 0, y: 20 }}
           className="flex flex-col h-full"
         >
+          <DialogTitle className="sr-only">Memory Details</DialogTitle>
+          <DialogDescription className="sr-only">View and reflect on your memory</DialogDescription>
           <div className="relative w-full h-80 overflow-hidden">
             <img
               src={memory.photoUrl}

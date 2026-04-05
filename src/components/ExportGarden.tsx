@@ -195,7 +195,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
     ctx.font = '18px "Crimson Pro", serif'
     ctx.fillStyle = '#4a4a4a'
     ctx.fillText(
-      `${memories.length} memories collected (${formatDate(new Date(), 'MMMM yyyy')})`,
+      `${memories.length} memories • ${formatDate(new Date(), 'MMMM yyyy')}`,
       width / 2,
       90
     )

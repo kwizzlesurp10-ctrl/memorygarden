@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
@@ -109,13 +109,14 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
   }
 
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
             <PlantIcon className="text-primary" size={28} weight="duotone" />
             Plant a Memory
           </DialogTitle>
+          <DialogDescription className="sr-only">Form to plant a new memory.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Plant, Drop, Sparkle, Tree } from '@phosphor-icons/react'
 
@@ -55,6 +55,8 @@ export function Onboarding({ open, onComplete }: OnboardingProps) {
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="max-w-lg">
+        <DialogTitle className="sr-only">Onboarding</DialogTitle>
+        <DialogDescription className="sr-only">Information about how to use Memory Garden.</DialogDescription>
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
