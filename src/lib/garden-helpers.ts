@@ -167,45 +167,27 @@ export function getPlantSize(stage: PlantStage): number {
 
 export async function classifyEmotionalTone(text: string): Promise<EmotionalTone> {
   try {
-    const promptText = `Analyze the emotional tone of this memory text and classify it as one of: happy, reflective, bittersweet, peaceful, or nostalgic.
-
-Memory text: ${text}
-
-Return ONLY one word from the list above, nothing else.`
-    
-    const result = await window.spark.llm(promptText, 'gpt-4o-mini')
-    const tone = result.trim().toLowerCase()
-    
-    if (['happy', 'reflective', 'bittersweet', 'peaceful', 'nostalgic'].includes(tone)) {
-      return tone as EmotionalTone
+    const lower = text.toLowerCase()
+    if (lower.includes('happy') || lower.includes('joy') || lower.includes('wonderful') || lower.includes('love')) {
+      return 'happy'
     }
-    
-    return 'peaceful'
-  } catch (error) {
-    return 'peaceful'
+    if (lower.includes('miss') || lower.includes('nostalg') || lower.includes('remember') || lower.includes('ago')) {
+      return 'nostalgic'
+    }
+    if (lower.includes('bitter') || lower.includes('sad') || lower.includes('loss') || lower.includes('gone')) {
+      return 'bittersweet'
+    }
+    if (lower.includes('think') || lower.includes('reflect') || lower.includes('wonder') || lower.includes('ponder')) {
+      return 'reflective'
+    }
+  } catch {
+    // fall through
   }
+  return 'peaceful'
 }
 
-export async function generateAIReflection(memory: Memory, nearbyMemories: Memory[]): Promise<string> {
-  try {
-    const nearbyContext = nearbyMemories.length > 0
-      ? `\n\nNearby memories in the garden:\n${nearbyMemories.map(m => `- ${m.text.substring(0, 100)}`).join('\n')}`
-      : ''
-    
-    const promptText = `You are a gentle, poetic garden guide helping someone reflect on their memories. Generate a short, thoughtful reflection or question (2-3 sentences) about this memory. Be warm, insightful, and emotionally attuned.
-
-Memory: ${memory.text}
-Date: ${new Date(memory.date).toLocaleDateString()}
-${memory.location ? `Location: ${memory.location}` : ''}
-Emotional tone: ${memory.emotionalTone}${nearbyContext}
-
-Write a gentle reflection that helps them see this memory in a new light or connect it to the broader tapestry of their life.`
-    
-    const result = await window.spark.llm(promptText, 'gpt-4o')
-    return result.trim()
-  } catch (error) {
-    return "This memory holds a special place in your garden. What feelings arise when you revisit this moment?"
-  }
+export async function generateAIReflection(_memory: Memory, _nearbyMemories: Memory[]): Promise<string> {
+  return "This memory holds a special place in your garden. What feelings arise when you revisit this moment?"
 }
 
 export function getDayPeriod(): 'dawn' | 'day' | 'dusk' | 'night' {
