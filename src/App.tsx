@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useLocalKV as useKV } from '@/lib/use-local-kv'
 import { Toaster, toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood } from '@/lib/types'
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken } from '@/lib/garden-helpers'
 import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
+import { getLocalUser } from '@/lib/local-user'
 
 type ViewMode = 'garden' | 'timeline' | 'clusters'
 
@@ -115,9 +116,7 @@ function App() {
   useProtocolHandler(handleProtocolAction)
 
   useEffect(() => {
-    window.spark.user().then(setUser).catch(() => {
-      toast.error('Failed to load user. Please refresh the page.')
-    })
+    setUser(getLocalUser())
   }, [])
 
   useEffect(() => {

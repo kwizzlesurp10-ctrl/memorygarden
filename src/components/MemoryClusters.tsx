@@ -21,7 +21,6 @@ interface Cluster {
 
 export function MemoryClusters({ memories, onMemoryClick }: MemoryClustersProps) {
   const [clusters, setClusters] = useState<Cluster[]>([])
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   useEffect(() => {
     if (memories.length > 0) {
@@ -42,54 +41,7 @@ export function MemoryClusters({ memories, onMemoryClick }: MemoryClustersProps)
       return
     }
 
-    setIsAnalyzing(true)
-
-    try {
-      const memorySummaries = memories.map(m => ({
-        id: m.id,
-        text: m.text,
-        date: m.date,
-        location: m.location,
-        emotionalTone: m.emotionalTone,
-      }))
-
-      const promptText = `You are analyzing a personal memory garden. Group these memories into meaningful clusters based on themes, time periods, locations, or emotional patterns.
-
-Memories:
-${JSON.stringify(memorySummaries, null, 2)}
-
-Return a JSON object with a "clusters" property containing an array of cluster objects. Each cluster should have:
-- name: A poetic, evocative name (2-4 words)
-- description: One sentence explaining what connects these memories  
-- memoryIds: Array of memory IDs belonging to this cluster
-- theme: One word describing the cluster's essence
-
-Create 2-4 clusters that reveal meaningful patterns. Ensure every memory belongs to at least one cluster.`
-
-      const result = await window.spark.llm(promptText, 'gpt-4o', true)
-      const parsed = JSON.parse(result)
-
-      if (parsed.clusters && Array.isArray(parsed.clusters)) {
-        const analyzedClusters: Cluster[] = parsed.clusters.map((c: any) => ({
-          id: `cluster-${Date.now()}-${Math.random()}`,
-          name: c.name || 'Untitled Cluster',
-          description: c.description || 'Connected memories',
-          memories: (c.memoryIds || [])
-            .map((id: string) => memories.find(m => m.id === id))
-            .filter(Boolean) as Memory[],
-          theme: c.theme || 'peaceful',
-        })).filter((c: Cluster) => c.memories.length > 0)
-
-        setClusters(analyzedClusters.length > 0 ? analyzedClusters : getDefaultClusters())
-      } else {
-        setClusters(getDefaultClusters())
-      }
-    } catch (error) {
-      console.error('Failed to analyze clusters:', error)
-      setClusters(getDefaultClusters())
-    } finally {
-      setIsAnalyzing(false)
-    }
+    setClusters(getDefaultClusters())
   }
 
   const getDefaultClusters = (): Cluster[] => {
@@ -147,29 +99,6 @@ Create 2-4 clusters that reveal meaningful patterns. Ensure every memory belongs
             Plant some memories to discover meaningful patterns and connections
           </p>
         </div>
-      </div>
-    )
-  }
-
-  if (isAnalyzing) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center space-y-4"
-        >
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-          >
-            <Sparkle size={64} weight="duotone" className="text-primary mx-auto" />
-          </motion.div>
-          <h3 className="text-xl font-semibold">Discovering Patterns...</h3>
-          <p className="text-muted-foreground max-w-md">
-            The garden AI is analyzing your memories to find meaningful connections
-          </p>
-        </motion.div>
       </div>
     )
   }
