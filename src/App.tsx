@@ -179,6 +179,17 @@ function App() {
           }
 
           setMemories((currentMemories) => [...(currentMemories || []), newMemory])
+
+          // Trigger sprouting particle animation on the canvas when seed first appears
+          setGrowingMemories((prev) => new Set(prev).add(newMemory.id))
+          setTimeout(() => {
+            setGrowingMemories((prev) => {
+              const next = new Set(prev)
+              next.delete(newMemory.id)
+              return next
+            })
+          }, 3000) // matches PLANTING_CELEBRATION_MS in PlantMemoryModal
+
           resolve()
         } catch (error) {
           reject(error)
