@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -27,6 +27,9 @@ interface PlantMemoryModalProps {
   }) => void
 }
 
+// Duration for the planting celebration animation before auto-closing (ms)
+const PLANTING_CELEBRATION_MS = 3000
+
 export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalProps) {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
@@ -36,6 +39,23 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
   const [audioRecordings, setAudioRecordings] = useState<AudioRecording[]>([])
   const [recordingType, setRecordingType] = useState<'voice-note' | 'ambient-sound'>('voice-note')
   const [isPlanting, setIsPlanting] = useState(false)
+  const [isPlanted, setIsPlanted] = useState(false)
+
+  useEffect(() => {
+    if (!isPlanted) return
+    const timer = setTimeout(() => {
+      setIsPlanted(false)
+      onClose()
+    }, PLANTING_CELEBRATION_MS)
+    return () => clearTimeout(timer)
+  }, [isPlanted, onClose])
+
+  const handleDialogOpenChange = useCallback((isOpen: boolean) => {
+    if (!isOpen) {
+      setIsPlanted(false)
+      onClose()
+    }
+  }, [onClose])
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -98,9 +118,7 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
       setDate(new Date())
       setLocation('')
       setAudioRecordings([])
-      onClose()
-      
-      toast.success('Memory planted! Watch it grow in your garden.')
+      setIsPlanted(true)
     } catch (error) {
       toast.error('Failed to plant memory. Please try again.')
     } finally {
@@ -109,7 +127,7 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
   }
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
@@ -119,7 +137,34 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
           <DialogDescription className="sr-only">Form to plant a new memory.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <AnimatePresence mode="wait">
+          {isPlanted ? (
+            <motion.div
+              key="planted"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center py-10 space-y-4 text-center min-h-[320px]"
+            >
+              <SeedGrowingAnimation />
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="space-y-2"
+              >
+                <h3 className="text-xl font-semibold text-foreground">Memory Planted! 🌱</h3>
+                <p className="text-sm text-muted-foreground">Your seed is taking root in your garden…</p>
+              </motion.div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-6 py-4"
+            >
           <div className="space-y-2">
             <Label htmlFor="photo">Photo *</Label>
             <div className="relative">
@@ -259,8 +304,83 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
               </AnimatePresence>
             </Button>
           </div>
-        </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function SeedGrowingAnimation() {
+  const stemColor = 'oklch(0.55 0.15 145)'
+  const leafColor = 'oklch(0.62 0.18 145)'
+  const seedColor = 'oklch(0.72 0.14 80)'
+  const groundColor = 'oklch(0.55 0.06 65)'
+
+  return (
+    <motion.svg
+      width="140"
+      height="140"
+      viewBox="0 0 100 100"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {/* Ground */}
+      <motion.ellipse
+        cx="50" cy="87" rx="32" ry="9"
+        fill={groundColor}
+        initial={{ opacity: 0, scaleX: 0 }}
+        animate={{ opacity: 0.55, scaleX: 1 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+      />
+
+      {/* Seed — fades out as sprout emerges */}
+      <motion.circle
+        cx="50" cy="84" r="7"
+        fill={seedColor}
+        initial={{ opacity: 1 }}
+        animate={{ opacity: 0 }}
+        transition={{ duration: 0.35, delay: 0.55 }}
+      />
+
+      {/* Stem growing up */}
+      <motion.path
+        d="M 50 84 Q 47 69 50 50"
+        stroke={stemColor}
+        strokeWidth="3.5"
+        strokeLinecap="round"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 1 }}
+        transition={{ duration: 0.85, delay: 0.65, ease: 'easeOut' }}
+      />
+
+      {/* Left leaf */}
+      <motion.ellipse
+        cx="39" cy="63" rx="11" ry="5.5"
+        fill={leafColor}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 0.9 }}
+        transition={{ type: 'spring', stiffness: 320, damping: 16, delay: 1.35 }}
+      />
+
+      {/* Right leaf */}
+      <motion.ellipse
+        cx="61" cy="65" rx="11" ry="5.5"
+        fill={leafColor}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 0.9 }}
+        transition={{ type: 'spring', stiffness: 320, damping: 16, delay: 1.6 }}
+      />
+
+      {/* Tiny bud at the tip */}
+      <motion.circle
+        cx="50" cy="49" r="5"
+        fill={seedColor}
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 14, delay: 1.9 }}
+      />
+    </motion.svg>
   )
 }
