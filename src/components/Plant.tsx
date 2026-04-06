@@ -1,7 +1,7 @@
 import { motion, useAnimation } from 'framer-motion'
 import { useEffect, useRef } from 'react'
 import type { Memory, PlantStage, Season, PlantVariety } from '@/lib/types'
-import { getPlantColor, getPlantSize, getSeasonalPlantModifier, getSeason, calculateGrowthMetrics, getVisualParams } from '@/lib/garden-helpers'
+import { getPlantColor, getPlantSize, getSeasonalPlantModifier, getSeason, calculateGrowthMetrics, getVisualParams, getPlantStage } from '@/lib/garden-helpers'
 import { FlowerPlant } from './plants/FlowerPlant'
 import { TreePlant, SucculentPlant, VinePlant, HerbPlant, WildflowerPlant } from './plants/OtherPlants'
 
@@ -19,10 +19,19 @@ export function Plant({ memory, onClick, isDragging, season, nearbyMemories = []
   const currentSeason = season || getSeason()
   const metrics = calculateGrowthMetrics(memory, nearbyMemories)
   const visual = getVisualParams(memory, metrics)
+  const currentStage = getPlantStage(memory)
   
   const isLegendary = visual.specialClass === 'legendary'
   const controls = useAnimation()
   const previousVisitCount = useRef(memory.visitCount)
+
+  useEffect(() => {
+    controls.start({
+      scale: 1,
+      opacity: 1,
+      transition: { type: 'spring', stiffness: 300, damping: 20 },
+    })
+  }, [controls])
 
   useEffect(() => {
     if (memory.visitCount > previousVisitCount.current) {
@@ -60,7 +69,7 @@ export function Plant({ memory, onClick, isDragging, season, nearbyMemories = []
     >
       <PlantSVG 
         variety={memory.plantVariety}
-        stage={memory.plantStage}
+        stage={currentStage}
         color={visual.color}
         season={currentSeason}
         size={visual.size}
