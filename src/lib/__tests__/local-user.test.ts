@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { getLocalUser } from '../local-user'
 
-// Reset the module-level cache between tests by re-importing the module
-// each time via module isolation.
+// Reset the module-level cache between tests by re-importing the module.
+// vi.resetModules() clears the module registry so each dynamic import
+// in the test cases gets a fresh module instance with _cachedUser === null.
 describe('getLocalUser', () => {
   beforeEach(() => {
     localStorage.clear()

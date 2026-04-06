@@ -110,7 +110,7 @@ describe('calculateGrowthMetrics', () => {
   it('vitality stays in [5, 100]', () => {
     const fresh = makeMemory({ plantedAt: new Date().toISOString(), visitCount: 0 })
     const old = makeMemory({ visitCount: 999, reflections: Array.from({ length: 50 }, (_, i) => ({
-      id: `r${i}`, text: 'nice', createdAt: new Date().toISOString(), tone: 'peaceful' as EmotionalTone
+      id: `r${i}`, text: 'nice', createdAt: new Date().toISOString(),
     })) })
     expect(calculateGrowthMetrics(fresh).vitality).toBeGreaterThanOrEqual(5)
     expect(calculateGrowthMetrics(old).vitality).toBeLessThanOrEqual(100)
@@ -127,7 +127,7 @@ describe('calculateGrowthMetrics', () => {
     const few = makeMemory({ reflections: [] })
     const many = makeMemory({
       reflections: Array.from({ length: 5 }, (_, i) => ({
-        id: `r${i}`, text: 'great', createdAt: new Date().toISOString(), tone: 'peaceful' as EmotionalTone
+        id: `r${i}`, text: 'great', createdAt: new Date().toISOString(),
       })),
     })
     expect(calculateGrowthMetrics(many).vitality).toBeGreaterThan(calculateGrowthMetrics(few).vitality)
