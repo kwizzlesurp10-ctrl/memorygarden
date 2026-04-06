@@ -28,15 +28,45 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood } from '@/lib/types'
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken } from '@/lib/garden-helpers'
 import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
-import { getLocalUser } from '@/lib/local-user'
+import { getLocalUser, type LocalUser } from '@/lib/local-user'
 
 type ViewMode = 'garden' | 'timeline' | 'clusters'
 
+/**
+ * Migrate legacy non-scoped localStorage data into the user-scoped keys so
+ * that memories planted before profile-scoping was introduced are not lost.
+ * The migration is skipped if the destination key already has data.
+ * A module-level set ensures this only runs once per page load per user.
+ */
+const _migratedProfiles = new Set<string>()
+function migrateLegacyData(userId: string) {
+  if (_migratedProfiles.has(userId)) return
+  _migratedProfiles.add(userId)
+  const legacyKeys = ['memories', 'preferences', 'collaborative-gardens', 'garden-activities'] as const
+  for (const key of legacyKeys) {
+    const legacyStorageKey = `memorygarden:${key}`
+    const newStorageKey = `memorygarden:${userId}:${key}`
+    try {
+      const legacy = localStorage.getItem(legacyStorageKey)
+      if (legacy !== null && localStorage.getItem(newStorageKey) === null) {
+        localStorage.setItem(newStorageKey, legacy)
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }
+}
+
 function App() {
-  const [user, setUser] = useState<{ login: string; avatarUrl: string } | null>(null)
-  const [memories, setMemories] = useKV<Memory[]>('memories', [])
+  // Resolve the local user profile synchronously so that profile-scoped storage
+  // keys are stable for the entire component lifecycle.
+  const localUser: LocalUser = getLocalUser()
+  migrateLegacyData(localUser.id)
+
+  const [user, setUser] = useState<LocalUser | null>(localUser)
+  const [memories, setMemories] = useKV<Memory[]>(`${localUser.id}:memories`, [])
   const [sharedMemories, setSharedMemories] = useKV<Record<string, SharedMemory>>('shared-memories', {})
-  const [preferences, setPreferences] = useKV<UserPreferences>('preferences', {
+  const [preferences, setPreferences] = useKV<UserPreferences>(`${localUser.id}:preferences`, {
     hasCompletedOnboarding: false,
     soundEnabled: false,
     lastVisit: new Date().toISOString(),
@@ -67,9 +97,9 @@ function App() {
   })
 
   // Feature 2: Collaborative Gardens state
-  const [collaborativeGardens, setCollaborativeGardens] = useKV<CollaborativeGarden[]>('collaborative-gardens', [])
+  const [collaborativeGardens, setCollaborativeGardens] = useKV<CollaborativeGarden[]>(`${localUser.id}:collaborative-gardens`, [])
   const [activeGardenId, setActiveGardenId] = useState<string | null>(null)
-  const [gardenActivities, setGardenActivities] = useKV<Record<string, ActivityEvent[]>>('garden-activities', {})
+  const [gardenActivities, setGardenActivities] = useKV<Record<string, ActivityEvent[]>>(`${localUser.id}:garden-activities`, {})
   const [isCreateGardenOpen, setIsCreateGardenOpen] = useState(false)
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
   const [showMembersPanel, setShowMembersPanel] = useState(false)
@@ -114,10 +144,6 @@ function App() {
   }, [memories, preferences])
 
   useProtocolHandler(handleProtocolAction)
-
-  useEffect(() => {
-    setUser(getLocalUser())
-  }, [])
 
   useEffect(() => {
     if (preferences && memories && memories.length === 0 && preferences.hasCompletedOnboarding) {
