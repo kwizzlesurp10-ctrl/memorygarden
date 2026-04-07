@@ -422,3 +422,7 @@ export function buildPlantPrompt(
 
   return `A ${artStyle} illustration of a ${plantVariety} plant at ${plantStage} stage, ${emotionalTone} mood, ${season} season. ${stageDescriptions[plantStage]}. ${customHints}. White background, centered composition, botanical style.`.trim()
 }
+
+export function computeUnlocks(memory: Memory): import('./types').TraitUnlock[] {
+  return memory.unlocks || []
+}

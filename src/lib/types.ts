@@ -5,9 +5,9 @@ export type PlantStage = 'seed' | 'sprout' | 'seedling' | 'young' | 'bud' | 'blo
 // ──── Per-plant cosmetic trait system ──────────────────────
 export type TraitSlot = 'palette' | 'pattern' | 'adornment' | 'accent' | 'aura'
 
-export type PaletteId = 'default' | 'dawn' | 'twilight' | 'forest' | 'coral' | 'lavender'
+export type PaletteId = 'default' | 'dawn' | 'twilight' | 'forest' | 'coral' | 'lavender' | 'earthy' | 'warm' | 'cool' | 'ocean' | 'sunset' | 'frost' | 'midnight'
 export type PatternId = 'solid' | 'speckle' | 'gradient' | 'stripe'
-export type AdornmentId = 'none' | 'dew' | 'butterflies' | 'fireflies' | 'pollen'
+export type AdornmentId = 'none' | 'dew' | 'butterflies' | 'fireflies' | 'pollen' | 'dew-drops' | 'sparkles' | 'seasonal-bloom' | 'golden-aura'
 export type AccentId = 'none' | 'sparkle' | 'rings' | 'halo'
 export type AuraId = 'none' | 'softGlow' | 'starlight' | 'aurora'
 
