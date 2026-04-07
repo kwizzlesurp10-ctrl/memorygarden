@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -36,6 +36,13 @@ export function PlantCosmeticsEditor({
   const [selectedPattern, setSelectedPattern] = useState<PatternId | undefined>(
     memory?.cosmetics?.patternId
   )
+
+  // Sync state when the memory prop changes
+  useEffect(() => {
+    setSelectedPalette(memory?.cosmetics?.paletteId)
+    setSelectedAdornment(memory?.cosmetics?.adornmentId)
+    setSelectedPattern(memory?.cosmetics?.patternId)
+  }, [memory?.id, memory?.cosmetics?.paletteId, memory?.cosmetics?.adornmentId, memory?.cosmetics?.patternId])
 
   if (!memory) return null
 

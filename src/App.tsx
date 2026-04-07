@@ -29,7 +29,7 @@ import { PlantCosmeticsEditor } from '@/components/PlantCosmeticsEditor'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState } from '@/lib/types'
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod } from '@/lib/garden-helpers'
-import { ensureUnlockState, generatePlantGenetics, awardForReflection, awardForRevisit, awardForClusterTending, awardForPlanting, applyAward, evaluateUnlocks, applyNewUnlocks, evaluateAchievements, deductRerollCost, canAffordReroll } from '@/lib/unlock-system'
+import { ensureUnlockState, generatePlantGenetics, awardForReflection, awardForRevisit, awardForClusterTending, awardForPlanting, applyAward, evaluateUnlocks, applyNewUnlocks, evaluateAchievements, deductRerollCost, canAffordReroll, UNLOCKABLE_ITEMS } from '@/lib/unlock-system'
 import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
 import { getLocalUser, type LocalUser } from '@/lib/local-user'
 
@@ -126,7 +126,9 @@ function App() {
       state = applyNewUnlocks(state, newUnlocks)
       const allNew = [...newUnlocks.newPalettes, ...newUnlocks.newPatterns, ...newUnlocks.newAdornments]
       for (const id of allNew) {
-        toast.success(`🌿 Unlocked: ${id}`, { description: 'Check your Garden Collection!' })
+        const item = UNLOCKABLE_ITEMS.find(i => i.id === id)
+        const displayName = item?.name || id
+        toast.success(`🌿 Unlocked: ${displayName}`, { description: 'Check your Garden Collection!' })
       }
     }
 
@@ -378,11 +380,13 @@ function App() {
       // Track mature/elder milestones
       const currentStage = getPlantStage(memory)
       if (currentStage === 'mature' || currentStage === 'elder') {
-        const reachedMature = (memories || []).filter(m => {
+        let reachedMature = 0
+        let reachedElder = 0
+        for (const m of (memories || [])) {
           const s = getPlantStage(m)
-          return s === 'mature' || s === 'elder'
-        }).length
-        const reachedElder = (memories || []).filter(m => getPlantStage(m) === 'elder').length
+          if (s === 'mature' || s === 'elder') reachedMature++
+          if (s === 'elder') reachedElder++
+        }
         updated = {
           ...updated,
           counters: {

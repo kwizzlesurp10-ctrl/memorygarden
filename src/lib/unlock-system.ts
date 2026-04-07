@@ -80,7 +80,7 @@ export const UNLOCKABLE_ITEMS: UnlockableItem[] = [
 
 // ── Genetics ────────────────────────────────────────────────────────────────
 
-/** Simple deterministic hash from a string seed → number in [0,1) */
+/** Simple deterministic hash (djb2 variant) from a string seed → number in [0,1) */
 function seedHash(seed: string, salt: number): number {
   let hash = 0
   const str = seed + String(salt)
