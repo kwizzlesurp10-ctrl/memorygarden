@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import type { Memory, Season } from '@/lib/types'
 import { Plant } from './Plant'
 import { WeatherEffects } from './WeatherEffects'
-import { getDayPeriod, getBackgroundGradient, getSeason, getPlantSize } from '@/lib/garden-helpers'
+import { getDayPeriod, getSeason, getSeasonalSky, getPlantSize } from '@/lib/garden-helpers'
 
 const MIN_CANVAS_SIZE = 2000
 const CANVAS_PADDING = 200
@@ -79,7 +79,7 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
     [scale, onMemoryMove]
   )
 
-  const backgroundGradient = getBackgroundGradient(dayPeriod, season)
+  const backgroundGradient = getSeasonalSky(season, dayPeriod)
 
   const scaledWidth = canvasSize.width * scale
   const scaledHeight = canvasSize.height * scale

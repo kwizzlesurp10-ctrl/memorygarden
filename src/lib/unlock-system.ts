@@ -151,6 +151,7 @@ export function applyAward(wallet: CurrencyWallet, award: CurrencyAward): Curren
 type UnlockCheck = (counters: InteractionCounters) => boolean
 
 const PALETTE_UNLOCK_RULES: Record<PaletteId, UnlockCheck> = {
+  default: () => true,
   earthy: () => true,
   warm: (c) => c.totalReflections >= 10,
   cool: (c) => c.uniqueOldMemoriesRevisited >= 5,
@@ -158,6 +159,11 @@ const PALETTE_UNLOCK_RULES: Record<PaletteId, UnlockCheck> = {
   sunset: (c) => c.totalReflections >= 25,
   frost: (c) => c.nightVisitDays >= 7,
   midnight: (c) => c.memoriesReachedMature >= 5,
+  dawn: (c) => c.totalReflections >= 12,
+  twilight: (c) => c.totalMemoriesPlanted >= 15,
+  forest: (c) => c.memoriesReachedMature >= 3,
+  coral: (c) => c.totalReflections >= 8,
+  lavender: (c) => c.nightVisitDays >= 5,
 }
 
 const PATTERN_UNLOCK_RULES: Record<PatternId, UnlockCheck> = {
@@ -169,10 +175,12 @@ const PATTERN_UNLOCK_RULES: Record<PatternId, UnlockCheck> = {
 
 const ADORNMENT_UNLOCK_RULES: Record<AdornmentId, UnlockCheck> = {
   'none': () => true,
+  'dew': (c) => c.memoriesWatered3.length >= 1,
   'dew-drops': (c) => c.memoriesWatered3.length >= 1,
   'butterflies': (c) => c.totalReflections >= 30,
   'fireflies': (c) => c.nightVisitDays >= 7,
   'sparkles': (c) => c.memoriesReachedElder >= 3,
+  'pollen': (c) => c.clustersTended >= 10,
   'seasonal-bloom': (c) => {
     const hasSeasonWith3 = Object.values(c.seasonalPlantings).some(v => v >= 3)
     return hasSeasonWith3 && c.totalReflections >= 5
@@ -322,6 +330,7 @@ export function evaluateAchievements(state: UnlockState): {
 // ── Palette color mappings (OKLCH) ──────────────────────────────────────────
 
 export const PALETTE_COLORS: Record<PaletteId, { primary: string; secondary: string; accent: string }> = {
+  default: { primary: 'oklch(0.60 0.10 155)', secondary: 'oklch(0.50 0.08 150)', accent: 'oklch(0.70 0.12 160)' },
   earthy: { primary: 'oklch(0.55 0.08 65)', secondary: 'oklch(0.45 0.06 55)', accent: 'oklch(0.65 0.10 75)' },
   warm: { primary: 'oklch(0.72 0.16 50)', secondary: 'oklch(0.65 0.14 40)', accent: 'oklch(0.80 0.18 60)' },
   cool: { primary: 'oklch(0.65 0.12 240)', secondary: 'oklch(0.58 0.10 230)', accent: 'oklch(0.72 0.14 250)' },
@@ -329,6 +338,11 @@ export const PALETTE_COLORS: Record<PaletteId, { primary: string; secondary: str
   sunset: { primary: 'oklch(0.75 0.18 35)', secondary: 'oklch(0.68 0.16 25)', accent: 'oklch(0.82 0.20 45)' },
   frost: { primary: 'oklch(0.85 0.04 220)', secondary: 'oklch(0.78 0.06 210)', accent: 'oklch(0.90 0.03 230)' },
   midnight: { primary: 'oklch(0.35 0.12 270)', secondary: 'oklch(0.28 0.10 260)', accent: 'oklch(0.45 0.14 280)' },
+  dawn: { primary: 'oklch(0.80 0.14 65)', secondary: 'oklch(0.72 0.12 55)', accent: 'oklch(0.85 0.16 75)' },
+  twilight: { primary: 'oklch(0.62 0.16 280)', secondary: 'oklch(0.55 0.14 270)', accent: 'oklch(0.70 0.18 290)' },
+  forest: { primary: 'oklch(0.52 0.12 150)', secondary: 'oklch(0.45 0.10 145)', accent: 'oklch(0.60 0.14 155)' },
+  coral: { primary: 'oklch(0.75 0.16 25)', secondary: 'oklch(0.68 0.14 20)', accent: 'oklch(0.82 0.18 30)' },
+  lavender: { primary: 'oklch(0.72 0.14 300)', secondary: 'oklch(0.65 0.12 295)', accent: 'oklch(0.80 0.16 305)' },
 }
 
 /** Get rarity tier display info */

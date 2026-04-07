@@ -258,12 +258,19 @@ export function generateGeneticsSeed(): string {
 // ──── Palette color map ────────────────────────────────────
 
 export const PALETTE_COLORS: Record<PaletteId, string> = {
-  default: '', // use the plant's natural color
+  default: '',
   dawn: 'oklch(0.80 0.14 65)',
   twilight: 'oklch(0.62 0.16 280)',
   forest: 'oklch(0.52 0.12 150)',
   coral: 'oklch(0.75 0.16 25)',
   lavender: 'oklch(0.72 0.14 300)',
+  earthy: 'oklch(0.58 0.10 75)',
+  warm: 'oklch(0.75 0.16 55)',
+  cool: 'oklch(0.65 0.12 230)',
+  ocean: 'oklch(0.60 0.14 200)',
+  sunset: 'oklch(0.72 0.18 45)',
+  frost: 'oklch(0.85 0.06 220)',
+  midnight: 'oklch(0.40 0.12 270)',
 }
 
 // ──── Trait application helpers for rendering ──────────────

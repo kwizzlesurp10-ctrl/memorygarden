@@ -82,7 +82,7 @@ export function Plant({ memory, onClick, isDragging, season, nearbyMemories = []
       style={{ 
         width: visual.size, 
         height: visual.size,
-        filter: visual.glow !== 'none' ? `drop-shadow(${visual.glow})` : 'none',
+        filter: visual.glow !== 0 ? `drop-shadow(0 0 ${visual.glow * 8}px currentColor)` : 'none',
         opacity: isDragging ? 0.6 : 1,
       }}
     >

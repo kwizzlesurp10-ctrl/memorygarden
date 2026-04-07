@@ -23,6 +23,7 @@ interface MemoryCardProps {
   onShare?: (memoryId: string) => void
   onBoost?: (memoryId: string) => void
   onUpdateTraits?: (memoryId: string, traits: PlantTraits) => void
+  onCustomize?: () => void
   aiReflection?: string
   isLoadingAI?: boolean
 }
@@ -46,7 +47,7 @@ export function MemoryCard({
 
   if (!memory) return null
 
-  const metrics = calculateGrowthMetrics(memory)
+  const metrics = calculateGrowthMetrics(memory, [])
   const isLegendary = metrics.rarityScore > 90
 
   const handleWater = async () => {
