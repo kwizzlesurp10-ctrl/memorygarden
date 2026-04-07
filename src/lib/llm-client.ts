@@ -20,7 +20,7 @@ export interface LLMProvider {
 
 function getSparkProvider(): LLMProvider | null {
   if (typeof window === 'undefined') return null
-  const spark = (window as Record<string, unknown>).spark as
+  const spark = (window as unknown as Record<string, unknown>).spark as
     | { llmPrompt: (s: TemplateStringsArray, ...v: unknown[]) => string; llm: (p: string, m?: string, j?: boolean) => Promise<string> }
     | undefined
   if (!spark) return null

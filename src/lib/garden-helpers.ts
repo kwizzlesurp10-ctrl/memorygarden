@@ -117,30 +117,38 @@ export function applyPremiumFertilizer(memory: Memory, boostLevel: 'standard' | 
   }
 }
 
+// Simple memoization cache for deterministic classification
+const _toneCache = new Map<string, EmotionalTone>()
+
 export async function classifyEmotionalTone(text: string): Promise<EmotionalTone> {
   const lower = text.toLowerCase()
+
+  const cached = _toneCache.get(lower)
+  if (cached) return cached
+
+  let result: EmotionalTone
   
   if (lower.includes('happy') || lower.includes('joy') || lower.includes('excited') || lower.includes('love') ||
       lower.includes('wonderful') || lower.includes('amazing') || lower.includes('delighted')) {
-    return 'happy'
-  }
-  
-  if (lower.includes('bitter') || lower.includes('sad') || lower.includes('loss') || lower.includes('gone') ||
+    result = 'happy'
+  } else if (lower.includes('bitter') || lower.includes('sad') || lower.includes('loss') || lower.includes('gone') ||
       lower.includes('miss') || lower.includes('regret')) {
-    return 'bittersweet'
-  }
-  
-  if (lower.includes('remember') || lower.includes('used to') || lower.includes('back then') || lower.includes('childhood') ||
+    result = 'bittersweet'
+  } else if (lower.includes('remember') || lower.includes('used to') || lower.includes('back then') || lower.includes('childhood') ||
       lower.includes('years ago')) {
-    return 'nostalgic'
-  }
-  
-  if (lower.includes('think') || lower.includes('wonder') || lower.includes('realize') || lower.includes('understand') ||
+    result = 'nostalgic'
+  } else if (lower.includes('think') || lower.includes('wonder') || lower.includes('realize') || lower.includes('understand') ||
       lower.includes('learned')) {
-    return 'reflective'
+    result = 'reflective'
+  } else {
+    result = 'peaceful'
   }
-  
-  return 'peaceful'
+
+  // Cap cache size to prevent memory leaks in long-running sessions
+  if (_toneCache.size > 500) _toneCache.clear()
+  _toneCache.set(lower, result)
+
+  return result
 }
 
 export async function generateAIReflection(memory: Memory, nearbyMemories: Memory[]): Promise<string> {
