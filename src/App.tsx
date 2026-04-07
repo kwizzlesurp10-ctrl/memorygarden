@@ -74,7 +74,7 @@ function App() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('garden')
   const [isPlantModalOpen, setIsPlantModalOpen] = useState(false)
-  const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
+  const [selectedMemoryId, setSelectedMemoryId] = useState<string | null>(null)
   const [aiReflection, setAiReflection] = useState<string>('')
   const [isLoadingAI, setIsLoadingAI] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
@@ -227,6 +227,8 @@ function App() {
   }
 
   const handleMemoryClick = (memory: Memory) => {
+    setSelectedMemoryId(memory.id)
+
     const nearbyMemories = (memories || []).filter(
       (m) =>
         m.id !== memory.id &&
@@ -252,9 +254,7 @@ function App() {
         return m
       })
     )
-    
-    const updatedMemory = (memories || []).find((m) => m.id === memory.id)
-    setSelectedMemory(updatedMemory || memory)
+
     setAiReflection('')
   }
 
@@ -298,11 +298,7 @@ function App() {
         return m
       })
     )
-    
-    const updatedMemory = (memories || []).find((m) => m.id === memoryId)
-    if (updatedMemory) {
-      setSelectedMemory(updatedMemory)
-    }
+    // No need to call setSelectedMemoryId here; the derived selectedMemory updates automatically
   }
 
   const handleAskAI = async (memoryId: string) => {
@@ -548,6 +544,12 @@ function App() {
   const safePreferences = preferences || { hasCompletedOnboarding: false, soundEnabled: false, lastVisit: '' }
   const safeGardens = collaborativeGardens || []
   const safeActivities = gardenActivities || {}
+
+  // Derive selectedMemory from safeMemories to avoid stale closure issues
+  const selectedMemory = useMemo(
+    () => (selectedMemoryId ? safeMemories.find(m => m.id === selectedMemoryId) ?? null : null),
+    [selectedMemoryId, safeMemories]
+  )
 
   // Feature 1: Filtered memories computation
   const filteredMemories = useMemo(
@@ -824,7 +826,7 @@ function App() {
         memory={selectedMemory}
         open={selectedMemory !== null}
         onClose={() => {
-          setSelectedMemory(null)
+          setSelectedMemoryId(null)
           setAiReflection('')
         }}
         onWater={handleWater}
