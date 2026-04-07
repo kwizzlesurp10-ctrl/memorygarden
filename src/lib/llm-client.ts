@@ -18,11 +18,14 @@ export interface LLMProvider {
 
 // ── Spark-backed provider ───────────────────────────────────────────────────
 
+interface SparkSDK {
+  llmPrompt: (s: TemplateStringsArray, ...v: unknown[]) => string
+  llm: (p: string, m?: string, j?: boolean) => Promise<string>
+}
+
 function getSparkProvider(): LLMProvider | null {
   if (typeof window === 'undefined') return null
-  const spark = (window as unknown as Record<string, unknown>).spark as
-    | { llmPrompt: (s: TemplateStringsArray, ...v: unknown[]) => string; llm: (p: string, m?: string, j?: boolean) => Promise<string> }
-    | undefined
+  const spark = (window as unknown as Record<string, unknown>).spark as SparkSDK | undefined
   if (!spark) return null
   return {
     prompt: (strings, ...values) => spark.llmPrompt(strings, ...values),

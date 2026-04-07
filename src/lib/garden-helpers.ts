@@ -118,6 +118,7 @@ export function applyPremiumFertilizer(memory: Memory, boostLevel: 'standard' | 
 }
 
 // Simple memoization cache for deterministic classification
+const TONE_CACHE_MAX_SIZE = 500
 const _toneCache = new Map<string, EmotionalTone>()
 
 export async function classifyEmotionalTone(text: string): Promise<EmotionalTone> {
@@ -145,7 +146,7 @@ export async function classifyEmotionalTone(text: string): Promise<EmotionalTone
   }
 
   // Cap cache size to prevent memory leaks in long-running sessions
-  if (_toneCache.size > 500) _toneCache.clear()
+  if (_toneCache.size > TONE_CACHE_MAX_SIZE) _toneCache.clear()
   _toneCache.set(lower, result)
 
   return result
