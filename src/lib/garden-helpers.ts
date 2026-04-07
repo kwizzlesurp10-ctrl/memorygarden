@@ -385,18 +385,40 @@ export function computeGardenMood(memories: Memory[]): GardenMood {
   }
 }
 
-export function getPlantSize(memory: Memory, metrics: GrowthMetrics): { width: number; height: number } {
-  return {
-    width: metrics.width,
-    height: metrics.height,
+export function getPlantSize(memoryOrStage: Memory | PlantStage, metrics?: GrowthMetrics): number | { width: number; height: number } {
+  if (typeof memoryOrStage === 'string') {
+    const stageSizes: Record<PlantStage, number> = {
+      seed: 20,
+      sprout: 30,
+      seedling: 45,
+      young: 60,
+      bud: 75,
+      bloom: 90,
+      mature: 110,
+      elder: 130,
+    }
+    return stageSizes[memoryOrStage] || 50
   }
+  
+  if (metrics) {
+    return {
+      width: metrics.width,
+      height: metrics.height,
+    }
+  }
+  
+  return { width: 50, height: 50 }
 }
 
 export interface VisualParams {
   color: string
-  size: { width: number; height: number }
+  size: number
   bloomCount: number
   specialClass?: 'rare' | 'legendary'
+  glow: number
+  scaleX: number
+  leafOpacity: number
+  bloomOpacity: number
 }
 
 export function getVisualParams(memory: Memory, metrics: GrowthMetrics): VisualParams {
@@ -404,17 +426,40 @@ export function getVisualParams(memory: Memory, metrics: GrowthMetrics): VisualP
   const color = getSeasonalPlantModifier(season, memory.emotionalTone)
   
   let specialClass: 'rare' | 'legendary' | undefined
+  let glow = 0
+  
   if (metrics.rarityScore >= 80) {
     specialClass = 'legendary'
+    glow = 1.5
   } else if (metrics.rarityScore >= 50) {
     specialClass = 'rare'
+    glow = 0.8
   }
+  
+  const stage = getPlantStage(memory)
+  const stageProgress: Record<PlantStage, number> = {
+    seed: 0.1,
+    sprout: 0.2,
+    seedling: 0.35,
+    young: 0.5,
+    bud: 0.65,
+    bloom: 0.8,
+    mature: 0.9,
+    elder: 1.0,
+  }
+  
+  const progress = stageProgress[stage] || 0.5
+  const baseSize = Math.max(metrics.width, metrics.height)
   
   return {
     color,
-    size: { width: metrics.width, height: metrics.height },
+    size: baseSize,
     bloomCount: metrics.bloomCount,
     specialClass,
+    glow,
+    scaleX: 0.9 + (metrics.vitality / 100) * 0.2,
+    leafOpacity: Math.min(1, progress * 1.2),
+    bloomOpacity: Math.max(0, (progress - 0.5) * 2),
   }
 }
 
