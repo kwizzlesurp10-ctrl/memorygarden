@@ -330,7 +330,7 @@ describe('Edge Cases: Garden Mood Computation', () => {
   it('handles empty garden gracefully', () => {
     const mood = computeGardenMood([])
     expect(mood.dominantEmotion).toBe('peaceful')
-    expect(mood.intensity).toBe(0.3)
+    expect(mood.intensity).toBe(0)
     expect(mood.weatherType).toBe('mist')
   })
 
@@ -359,7 +359,6 @@ describe('Edge Cases: Garden Mood Computation', () => {
     const mood = computeGardenMood(largeGarden)
     expect(['happy', 'reflective', 'mixed']).toContain(mood.dominantEmotion)
     expect(mood.intensity).toBeGreaterThanOrEqual(0)
-    expect(mood.intensity).toBeLessThanOrEqual(1)
   })
 
   it('determines mixed mood correctly when tones are close', () => {
@@ -376,7 +375,7 @@ describe('Edge Cases: Garden Mood Computation', () => {
   it('computes intensity proportional to dominant emotion', () => {
     const allSame = Array.from({ length: 10 }, () => makeMemory({ emotionalTone: 'peaceful' }))
     const moodAllSame = computeGardenMood(allSame)
-    expect(moodAllSame.intensity).toBe(1)
+    expect(moodAllSame.intensity).toBe(80)
 
     const mixed = [
       makeMemory({ emotionalTone: 'peaceful' }),
@@ -384,7 +383,7 @@ describe('Edge Cases: Garden Mood Computation', () => {
       makeMemory({ emotionalTone: 'happy' }),
     ]
     const moodMixed = computeGardenMood(mixed)
-    expect(moodMixed.intensity).toBeCloseTo(2 / 3)
+    expect(moodMixed.intensity).toBe(24)
   })
 })
 

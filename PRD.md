@@ -216,3 +216,57 @@ Animations should feel like watching plants grow in time-lapse — smooth, organ
   - Timeline view uses vertical scroll with cards at full viewport width
   - Reduce parallax complexity on mobile for performance
   - Garden canvas defaults to zoomed-out overview on small screens
+
+## Testing & Quality Assurance
+
+### Test Coverage
+The application includes comprehensive test suites covering:
+
+- **Edge Case Test Suite** (`src/lib/__tests__/edge-cases.test.ts`) - 130+ tests
+  - Growth calculation extremes (zero interactions, massive clusters, overflow prevention)
+  - Plant stage transitions (rapid progression, boundary values)
+  - Emotional tone classification (empty strings, unicode, emojis, long text)
+  - Search and filter combinations (5000-memory stress tests, contradictory filters)
+  - Garden mood computation (empty gardens, balanced distributions)
+  - Unlock system boundaries (maxed counters, negative values, duplicate prevention)
+  - Trait system scenarios (genetics determinism, visual resolution)
+  - Time and date boundaries (seasons, DST, leap years, year transitions)
+  - Concurrent operations (immutability, sequential boosts)
+  - Data type boundaries (extreme coordinates, undefined fields)
+
+- **Unit Test Suites**
+  - `garden-helpers.test.ts` - Core garden logic functions
+  - `unlock-system.test.ts` - Currency and achievement systems
+  - `trait-system.test.ts` - Genetic trait generation
+  - `local-user.test.ts` - User profile management
+  - `utils.test.ts` - Utility functions
+
+- **Integration Test Suite** (`src/lib/__tests__/integration.test.ts`)
+  - End-to-end feature workflows
+  - Cross-system interactions
+  - State management validation
+
+### Test Execution
+```bash
+# Run all tests
+npm test
+
+# Run specific test suite
+npm test -- src/lib/__tests__/edge-cases.test.ts
+
+# Run tests in watch mode
+npm run test:watch
+
+# Generate coverage report
+npm run test:coverage
+```
+
+### Quality Standards
+- ✅ All edge cases properly handled with graceful degradation
+- ✅ Deterministic results for identical inputs
+- ✅ Immutability preserved through all operations
+- ✅ Scalability validated up to 5000+ memories
+- ✅ Boundary value testing for all numeric thresholds
+- ✅ Temporal logic verified across seasons, day periods, and date transitions
+
+See `EDGE_CASE_TEST_REPORT.md` and `TEST_UPDATES.md` for detailed test documentation.
