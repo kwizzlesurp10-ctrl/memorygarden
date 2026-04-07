@@ -3,7 +3,6 @@ import type { Memory, GrowthMetrics, SearchFilters, EmotionalTone, PlantStage, P
 import {
   selectPlantVariety,
   calculateGrowthMetrics,
-  getPlantStageFromMetrics,
   getPlantStage,
   getPlantColor,
   getPlantSize,
@@ -11,10 +10,8 @@ import {
   filterMemories,
   getActiveFilterCount,
   computeGardenMood,
-  buildPlantPrompt,
   getSeason,
   getDayPeriod,
-  getBackgroundGradient,
   getSeasonalPlantModifier,
   getSeasonalGroundCover,
   applyPremiumFertilizer,
@@ -97,7 +94,7 @@ describe('selectPlantVariety', () => {
 describe('calculateGrowthMetrics', () => {
   it('returns a GrowthMetrics object with expected keys', () => {
     const memory = makeMemory()
-    const metrics = calculateGrowthMetrics(memory)
+    const metrics = calculateGrowthMetrics(memory, [])
     expect(metrics).toHaveProperty('vitality')
     expect(metrics).toHaveProperty('height')
     expect(metrics).toHaveProperty('width')
@@ -112,8 +109,8 @@ describe('calculateGrowthMetrics', () => {
     const old = makeMemory({ visitCount: 999, reflections: Array.from({ length: 50 }, (_, i) => ({
       id: `r${i}`, text: 'nice', createdAt: new Date().toISOString(),
     })) })
-    expect(calculateGrowthMetrics(fresh).vitality).toBeGreaterThanOrEqual(5)
-    expect(calculateGrowthMetrics(old).vitality).toBeLessThanOrEqual(100)
+    expect(calculateGrowthMetrics(fresh, []).vitality).toBeGreaterThanOrEqual(5)
+    expect(calculateGrowthMetrics(old, []).vitality).toBeLessThanOrEqual(100)
   })
 
   it('nearby memories increase vitality via synergy', () => {
@@ -130,42 +127,15 @@ describe('calculateGrowthMetrics', () => {
         id: `r${i}`, text: 'great', createdAt: new Date().toISOString(),
       })),
     })
-    expect(calculateGrowthMetrics(many).vitality).toBeGreaterThan(calculateGrowthMetrics(few).vitality)
+    expect(calculateGrowthMetrics(many, []).vitality).toBeGreaterThan(calculateGrowthMetrics(few, []).vitality)
   })
 
   it('rarityScore includes shareCount bonus', () => {
     const noShares = makeMemory()
     const withShares = makeMemory({ shareCount: 5 })
-    expect(calculateGrowthMetrics(withShares).rarityScore).toBeGreaterThanOrEqual(
-      calculateGrowthMetrics(noShares).rarityScore
+    expect(calculateGrowthMetrics(withShares, []).rarityScore).toBeGreaterThanOrEqual(
+      calculateGrowthMetrics(noShares, []).rarityScore
     )
-  })
-})
-
-// ─── getPlantStageFromMetrics ──────────────────────────────────────────────
-
-describe('getPlantStageFromMetrics', () => {
-  const cases: [number, PlantStage][] = [
-    [0, 'seed'],
-    [11, 'seed'],
-    [12, 'sprout'],
-    [27, 'sprout'],
-    [28, 'seedling'],
-    [43, 'seedling'],
-    [44, 'young'],
-    [61, 'young'],
-    [62, 'bud'],
-    [77, 'bud'],
-    [78, 'bloom'],
-    [88, 'bloom'],
-    [89, 'mature'],
-    [96, 'mature'],
-    [97, 'elder'],
-    [100, 'elder'],
-  ]
-
-  it.each(cases)('vitality=%i → stage=%s', (vitality, expected) => {
-    expect(getPlantStageFromMetrics(makeMetrics({ vitality }))).toBe(expected)
   })
 })
 
