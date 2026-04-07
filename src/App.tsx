@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useLocalKV as useKV } from '@/lib/use-local-kv'
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
+import { useKV } from '@/lib/storage'
 import { Toaster, toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -10,23 +10,25 @@ import { GardenCanvas } from '@/components/GardenCanvas'
 import { PlantMemoryModal } from '@/components/PlantMemoryModal'
 import { MemoryCard } from '@/components/MemoryCard'
 import { Onboarding } from '@/components/Onboarding'
-import { ExportGarden } from '@/components/ExportGarden'
-import { MemoryClusters } from '@/components/MemoryClusters'
 import { SeasonIndicator } from '@/components/SeasonIndicator'
-import { ShareMemoryDialog } from '@/components/ShareMemoryDialog'
-import { SharedMemoryView } from '@/components/SharedMemoryView'
-import { FertilizerBoostModal } from '@/components/FertilizerBoostModal'
 import { SearchFilterBar } from '@/components/SearchFilterBar'
 import { WeatherIndicator } from '@/components/WeatherIndicator'
 import { GardenSelector } from '@/components/GardenSelector'
-import { CreateGardenDialog } from '@/components/CreateGardenDialog'
-import { GardenInviteDialog } from '@/components/GardenInviteDialog'
-import { GardenMembersPanel } from '@/components/GardenMembersPanel'
-import { ActivityFeed } from '@/components/ActivityFeed'
-import { PlantStyleCustomizer } from '@/components/PlantStyleCustomizer'
-import { GardenUnlocks } from '@/components/GardenUnlocks'
-import { PlantCosmeticsEditor } from '@/components/PlantCosmeticsEditor'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
+// ── Lazy-loaded non-critical components (modals, dialogs, secondary views) ──
+const ExportGarden = lazy(() => import('@/components/ExportGarden').then(m => ({ default: m.ExportGarden })))
+const MemoryClusters = lazy(() => import('@/components/MemoryClusters').then(m => ({ default: m.MemoryClusters })))
+const ShareMemoryDialog = lazy(() => import('@/components/ShareMemoryDialog').then(m => ({ default: m.ShareMemoryDialog })))
+const SharedMemoryView = lazy(() => import('@/components/SharedMemoryView').then(m => ({ default: m.SharedMemoryView })))
+const FertilizerBoostModal = lazy(() => import('@/components/FertilizerBoostModal').then(m => ({ default: m.FertilizerBoostModal })))
+const CreateGardenDialog = lazy(() => import('@/components/CreateGardenDialog').then(m => ({ default: m.CreateGardenDialog })))
+const GardenInviteDialog = lazy(() => import('@/components/GardenInviteDialog').then(m => ({ default: m.GardenInviteDialog })))
+const GardenMembersPanel = lazy(() => import('@/components/GardenMembersPanel').then(m => ({ default: m.GardenMembersPanel })))
+const ActivityFeed = lazy(() => import('@/components/ActivityFeed').then(m => ({ default: m.ActivityFeed })))
+const PlantStyleCustomizer = lazy(() => import('@/components/PlantStyleCustomizer').then(m => ({ default: m.PlantStyleCustomizer })))
+const GardenUnlocks = lazy(() => import('@/components/GardenUnlocks').then(m => ({ default: m.GardenUnlocks })))
+const PlantCosmeticsEditor = lazy(() => import('@/components/PlantCosmeticsEditor').then(m => ({ default: m.PlantCosmeticsEditor })))
 import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits } from '@/lib/types'
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod } from '@/lib/garden-helpers'
 import { ensureUnlockState, generatePlantGenetics, awardForReflection, awardForRevisit, awardForClusterTending, awardForPlanting, applyAward, evaluateUnlocks, applyNewUnlocks, evaluateAchievements, deductRerollCost, canAffordReroll, UNLOCKABLE_ITEMS } from '@/lib/unlock-system'
@@ -816,7 +818,7 @@ function App() {
   )
 
   if (sharedMemoryView) {
-    return <SharedMemoryView memory={sharedMemoryView} />
+    return <Suspense fallback={null}><SharedMemoryView memory={sharedMemoryView} /></Suspense>
   }
 
   if (!user) {
@@ -1027,7 +1029,9 @@ function App() {
                 exit={{ opacity: 0 }}
                 className="w-full h-full"
               >
-                <MemoryClusters memories={activeFilterCount > 0 ? filteredMemories : safeMemories} onMemoryClick={handleMemoryClick} />
+                <Suspense fallback={null}>
+                  <MemoryClusters memories={activeFilterCount > 0 ? filteredMemories : safeMemories} onMemoryClick={handleMemoryClick} />
+                </Suspense>
               </motion.div>
             )}
           </AnimatePresence>
@@ -1073,72 +1077,74 @@ function App() {
         isLoadingAI={isLoadingAI}
       />
 
-      <ShareMemoryDialog
-        open={isShareModalOpen}
-        onClose={() => {
-          setIsShareModalOpen(false)
-          setMemoryToShare(null)
-        }}
-        onShare={handleCreateShare}
-        existingShareId={memoryToShare ? safeMemories.find(m => m.id === memoryToShare)?.shareId : undefined}
-      />
+      <Suspense fallback={null}>
+        <ShareMemoryDialog
+          open={isShareModalOpen}
+          onClose={() => {
+            setIsShareModalOpen(false)
+            setMemoryToShare(null)
+          }}
+          onShare={handleCreateShare}
+          existingShareId={memoryToShare ? safeMemories.find(m => m.id === memoryToShare)?.shareId : undefined}
+        />
 
-      <FertilizerBoostModal
-        open={isBoostModalOpen}
-        onClose={() => {
-          setIsBoostModalOpen(false)
-          setMemoryToBoost(null)
-        }}
-        memory={memoryToBoost}
-        onApplyBoost={handleApplyBoost}
-      />
+        <FertilizerBoostModal
+          open={isBoostModalOpen}
+          onClose={() => {
+            setIsBoostModalOpen(false)
+            setMemoryToBoost(null)
+          }}
+          memory={memoryToBoost}
+          onApplyBoost={handleApplyBoost}
+        />
 
-      <ExportGarden
-        open={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        memories={activeFilterCount > 0 ? filteredMemories : safeMemories}
-      />
+        <ExportGarden
+          open={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+          memories={activeFilterCount > 0 ? filteredMemories : safeMemories}
+        />
 
-      {/* Feature 2: Collaborative Garden Dialogs */}
-      <CreateGardenDialog
-        open={isCreateGardenOpen}
-        onClose={() => setIsCreateGardenOpen(false)}
-        onCreate={handleCreateGarden}
-      />
+        {/* Feature 2: Collaborative Garden Dialogs */}
+        <CreateGardenDialog
+          open={isCreateGardenOpen}
+          onClose={() => setIsCreateGardenOpen(false)}
+          onCreate={handleCreateGarden}
+        />
 
-      <GardenInviteDialog
-        open={isInviteDialogOpen}
-        onClose={() => setIsInviteDialogOpen(false)}
-        garden={activeGarden}
-        inviteUrl={getInviteUrl()}
-      />
+        <GardenInviteDialog
+          open={isInviteDialogOpen}
+          onClose={() => setIsInviteDialogOpen(false)}
+          garden={activeGarden}
+          inviteUrl={getInviteUrl()}
+        />
 
-      {/* Feature 5: Plant Style Customizer */}
-      <PlantStyleCustomizer
-        open={isStyleCustomizerOpen}
-        onClose={() => setIsStyleCustomizerOpen(false)}
-        currentStyle={safePreferences.plantStylePreference}
-        onSave={handleSavePlantStyle}
-      />
+        {/* Feature 5: Plant Style Customizer */}
+        <PlantStyleCustomizer
+          open={isStyleCustomizerOpen}
+          onClose={() => setIsStyleCustomizerOpen(false)}
+          currentStyle={safePreferences.plantStylePreference}
+          onSave={handleSavePlantStyle}
+        />
 
-      {/* Constraint System: Unlocks & Cosmetics */}
-      <GardenUnlocks
-        open={isUnlocksOpen}
-        onClose={() => setIsUnlocksOpen(false)}
-        unlockState={safePreferences.unlockState}
-      />
+        {/* Constraint System: Unlocks & Cosmetics */}
+        <GardenUnlocks
+          open={isUnlocksOpen}
+          onClose={() => setIsUnlocksOpen(false)}
+          unlockState={safePreferences.unlockState}
+        />
 
-      <PlantCosmeticsEditor
-        open={isCosmeticsEditorOpen}
-        onClose={() => {
-          setIsCosmeticsEditorOpen(false)
-          setCosmeticsEditMemory(null)
-        }}
-        memory={cosmeticsEditMemory}
-        unlockState={safePreferences.unlockState}
-        onSave={handleSaveCosmetics}
-        onReroll={handleRerollGenetics}
-      />
+        <PlantCosmeticsEditor
+          open={isCosmeticsEditorOpen}
+          onClose={() => {
+            setIsCosmeticsEditorOpen(false)
+            setCosmeticsEditMemory(null)
+          }}
+          memory={cosmeticsEditMemory}
+          unlockState={safePreferences.unlockState}
+          onSave={handleSaveCosmetics}
+          onReroll={handleRerollGenetics}
+        />
+      </Suspense>
     </>
   )
 }

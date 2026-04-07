@@ -1,15 +1,5 @@
 import type { Memory, EmotionalTone, PlantStage, PlantVariety, GrowthMetrics, GardenMood, WeatherType, SearchFilters, Season, ArtStyle } from './types'
-
-declare global {
-  interface Window {
-    spark: {
-      llmPrompt: (strings: TemplateStringsArray, ...values: any[]) => string
-      llm: (prompt: string, model?: string, jsonMode?: boolean) => Promise<string>
-    }
-  }
-}
-
-const spark = typeof window !== 'undefined' ? window.spark : undefined
+import { getLLMProvider } from './llm-client'
 
 export function selectPlantVariety(emotionalTone: EmotionalTone, text: string): PlantVariety {
   const textLower = text.toLowerCase()
@@ -127,38 +117,49 @@ export function applyPremiumFertilizer(memory: Memory, boostLevel: 'standard' | 
   }
 }
 
+// Simple memoization cache for deterministic classification
+const TONE_CACHE_MAX_SIZE = 500
+const _toneCache = new Map<string, EmotionalTone>()
+
 export async function classifyEmotionalTone(text: string): Promise<EmotionalTone> {
   const lower = text.toLowerCase()
+
+  const cached = _toneCache.get(lower)
+  if (cached) return cached
+
+  let result: EmotionalTone
   
   if (lower.includes('happy') || lower.includes('joy') || lower.includes('excited') || lower.includes('love') ||
       lower.includes('wonderful') || lower.includes('amazing') || lower.includes('delighted')) {
-    return 'happy'
-  }
-  
-  if (lower.includes('bitter') || lower.includes('sad') || lower.includes('loss') || lower.includes('gone') ||
+    result = 'happy'
+  } else if (lower.includes('bitter') || lower.includes('sad') || lower.includes('loss') || lower.includes('gone') ||
       lower.includes('miss') || lower.includes('regret')) {
-    return 'bittersweet'
-  }
-  
-  if (lower.includes('remember') || lower.includes('used to') || lower.includes('back then') || lower.includes('childhood') ||
+    result = 'bittersweet'
+  } else if (lower.includes('remember') || lower.includes('used to') || lower.includes('back then') || lower.includes('childhood') ||
       lower.includes('years ago')) {
-    return 'nostalgic'
-  }
-  
-  if (lower.includes('think') || lower.includes('wonder') || lower.includes('realize') || lower.includes('understand') ||
+    result = 'nostalgic'
+  } else if (lower.includes('think') || lower.includes('wonder') || lower.includes('realize') || lower.includes('understand') ||
       lower.includes('learned')) {
-    return 'reflective'
+    result = 'reflective'
+  } else {
+    result = 'peaceful'
   }
-  
-  return 'peaceful'
+
+  // Cap cache size to prevent memory leaks in long-running sessions
+  if (_toneCache.size > TONE_CACHE_MAX_SIZE) _toneCache.clear()
+  _toneCache.set(lower, result)
+
+  return result
 }
 
 export async function generateAIReflection(memory: Memory, nearbyMemories: Memory[]): Promise<string> {
-  if (!spark) {
+  const llm = getLLMProvider()
+  if (!llm.available) {
     return 'AI reflection is not available in this environment.'
   }
-  
-  const prompt = spark.llmPrompt`Memory text: "${memory.text}"
+
+  try {
+    const prompt = llm.prompt`Memory text: "${memory.text}"
 Emotional tone: ${memory.emotionalTone}
 ${nearbyMemories.length > 0 ? `Nearby memories: ${nearbyMemories.map((m: Memory) => m.text.slice(0, 50)).join('; ')}` : ''}
 
@@ -167,7 +168,10 @@ Write a brief, poetic reflection (2-3 sentences) that honors this memory and off
 - Connect to broader themes of growth, time, or connection if appropriate
 - Be warm and contemplative in tone`
 
-  return await spark.llm(prompt, 'gpt-4o-mini')
+    return await llm.complete(prompt, 'gpt-4o-mini')
+  } catch {
+    return 'A gentle reflection blooms in silence — some moments speak for themselves.'
+  }
 }
 
 export function getPlantColor(emotionalTone: EmotionalTone): string {
