@@ -2,10 +2,9 @@ import type { Memory, EmotionalTone, PlantStage, PlantVariety, GrowthMetrics, Ga
 
 export function selectPlantVariety(emotionalTone: EmotionalTone, text: string): PlantVariety {
   const textLower = text.toLowerCase()
-  if (emotionalTone === 'happy')
   
-  if (emotionalTone === 'peaceful'
-  }
+  if (emotionalTone === 'happy') {
+    return textLower.includes('celebration') || textLower.includes('joy') ? 'wildflower' : 'flower'
   }
   
   if (emotionalTone === 'peaceful') {
@@ -23,30 +22,36 @@ export function selectPlantVariety(emotionalTone: EmotionalTone, text: string): 
   return 'flower'
 }
 
-    (daysSincePlanted * 1.8) + 
+export function calculateGrowthMetrics(memory: Memory, nearbyMemories: Memory[]): GrowthMetrics {
+  const daysSincePlanted = Math.floor(
+    (Date.now() - new Date(memory.plantedAt).getTime()) / 86400000
   )
-
-   
   
-    vine: { heightMult: 1.4, width
-    ancient_oak: { heightMult
-    phoenix_vine: { heightMult:
-  }[memory.plantVariety] || { heigh
-  c
-  return {
-
-    bloomCount: Math.floor(v
-    rarityScore: Math.min(100, vitality * 0.6 + varietyModifiers
-  }
-
-  if (metrics.vitality < 10) return 'seed'
-  if (metrics.vitality < 36) return 'seedling'
-  if (metrics.vitality < 64) return 'bud'
-  if (metrics.vitality < 90) return 'mature'
-}
-export function getPlantStage(memory: Memory): PlantStage {
-    return getPlantStageFromMetrics(memory.growthMetrics)
+  const reflectionCount = memory.reflections.length
+  const visitCount = memory.visitCount
   
+  const baseGrowth = Math.min(
+    100,
+    (visitCount * 2.5) +
+    (reflectionCount * 4.2) +
+    (daysSincePlanted * 1.8) + 
+    (memory.shareCount || 0) * 6
+  )
+  
+  const synergy = Math.min(30, nearbyMemories.length * 4)
+  
+  const varietyModifiers = {
+    flower: { heightMult: 1.0, widthMult: 1.0, rarityBonus: 0 },
+    tree: { heightMult: 1.8, widthMult: 1.4, rarityBonus: 10 },
+    succulent: { heightMult: 0.7, widthMult: 1.2, rarityBonus: 5 },
+    herb: { heightMult: 0.8, widthMult: 0.9, rarityBonus: 3 },
+    vine: { heightMult: 1.4, widthMult: 0.8, rarityBonus: 8 },
+    wildflower: { heightMult: 1.1, widthMult: 1.3, rarityBonus: 6 },
+    ancient_oak: { heightMult: 2.5, widthMult: 2.0, rarityBonus: 50 },
+    eternal_rose: { heightMult: 1.2, widthMult: 1.1, rarityBonus: 40 },
+    phoenix_vine: { heightMult: 1.6, widthMult: 1.0, rarityBonus: 45 },
+    starlight_succulent: { heightMult: 0.9, widthMult: 1.4, rarityBonus: 35 },
+  }[memory.plantVariety] || { heightMult: 1.0, widthMult: 1.0, rarityBonus: 0 }
   
   const vitality = Math.min(100, baseGrowth + synergy)
   
@@ -98,106 +103,82 @@ export function getPlantStage(memory: Memory): PlantStage {
 
 export function applyPremiumFertilizer(memory: Memory, boostLevel: 'standard' | 'premium' | 'legendary'): Memory {
   const multipliers = {
-    young: 58,
-    bloom: 84,
-    elder: 115,
-  r
-
-  const lo
-  if (lower.in
+    standard: 3,
+    premium: 8,
+    legendary: 15,
   }
-  i
- 
-
+  
+  const boostAmount = multipliers[boostLevel]
+  
+  return {
+    ...memory,
+    visitCount: memory.visitCount + boostAmount,
   }
+}
+
+export async function classifyEmotionalTone(text: string): Promise<EmotionalTone> {
+  const lower = text.toLowerCase()
+  
+  if (lower.includes('happy') || lower.includes('joy') || lower.includes('excited') || lower.includes('love') ||
+      lower.includes('wonderful') || lower.includes('amazing') || lower.includes('delighted')) {
+    return 'happy'
+  }
+  
   if (lower.includes('bitter') || lower.includes('sad') || lower.includes('loss') || lower.includes('gone') ||
+      lower.includes('miss') || lower.includes('regret')) {
+    return 'bittersweet'
   }
- 
-
+  
+  if (lower.includes('remember') || lower.includes('used to') || lower.includes('back then') || lower.includes('childhood') ||
+      lower.includes('years ago')) {
+    return 'nostalgic'
+  }
+  
+  if (lower.includes('think') || lower.includes('wonder') || lower.includes('realize') || lower.includes('understand') ||
+      lower.includes('learned')) {
+    return 'reflective'
+  }
+  
   return 'peaceful'
+}
 
+export async function generateAIReflection(memory: Memory, nearbyMemories: Memory[]): Promise<string> {
   const prompt = spark.llmPrompt`
 Memory text: "${memory.text}"
 Emotional tone: ${memory.emotionalTone}
-${nearbyMemories.length > 0 ? `Nearby me
-Write a brief, poetic reflection (2-3
-- O
+${nearbyMemories.length > 0 ? `Nearby memories: ${nearbyMemories.map(m => m.text.slice(0, 50)).join('; ')}` : ''}
 
+Write a brief, poetic reflection (2-3 sentences) that honors this memory and offers gentle insight.
+- Offer perspective without being prescriptive
+- Connect to broader themes of growth, time, or connection if appropriate
+- Be warm and contemplative in tone`
 
-
-export function getDayPeriod(): 'dawn' | 'day' | 'dusk' | 'nig
-  
-  if (hour >=
-  return 'night
-
-  const month 
-  if (month 
-  if (month >=
+  return await spark.llm(prompt, 'gpt-4o-mini')
 }
-export function
-   
-      day: 'linear-gradient(to b
- 
 
-      day: 'linear-gradient(to bottom, oklch(0.90 0.14 240) 0%, oklch(0.94 0.10 220
-      night: 'linear-gradient(to b
-  
-      day: 'linear-gradient(to bottom, oklch(0.85 0.08 200) 0%, oklch(0.90 0.06 190) 100%)',
-      night: 'line
-   
-  
-      night: 'linear-gradient(to bottom, oklch(0.22 0.06 260) 0%, oklch(0.35 0.08 250) 100%)',
+export function getPlantColor(emotionalTone: EmotionalTone): string {
+  const colors: Record<EmotionalTone, string> = {
+    happy: 'oklch(0.85 0.18 85)',
+    peaceful: 'oklch(0.70 0.12 155)',
+    reflective: 'oklch(0.62 0.10 240)',
+    bittersweet: 'oklch(0.72 0.14 350)',
+    nostalgic: 'oklch(0.75 0.12 65)',
   }
-  r
-
-  const modifiers: Record<Season, Record<EmotionalTone, string>> = {
-      happy: 'oklch(0.
-   
-  
-    summer: {
-      peaceful: 'oklch(0
-   
-  
-      happy: 'oklch(0.80 0.18 70)',
-      reflective: 'oklc
-   
-  
-      peaceful: 'ok
- 
-
-  
+  return colors[emotionalTone]
 }
 
-    spring: 'oklch(0.70 0.12 
-    autumn: 'oklch(0.58 0.1
-  }
-}
-export function generateShareId(): string {
-
-export function generateGardenId(): string {
-}
-export function generateInviteToken(): strin
+export function getDayPeriod(): 'dawn' | 'day' | 'dusk' | 'night' {
+  const hour = new Date().getHours()
+  if (hour >= 5 && hour < 8) return 'dawn'
+  if (hour >= 8 && hour < 17) return 'day'
+  if (hour >= 17 && hour < 20) return 'dusk'
+  return 'night'
 }
 
-  plantStage: PlantStage,
-
-): string {
- 
-
-    bud: 'A plant with prominent buds about to open',
-    mature: 'A lush, established pla
-  
-  return `A ${artStyle} illustration of a 
-
-  memories: Memory[],
-  filters: Searc
- 
-
-      const locationMatch = memory.lo
-        r => r.text.toLowerCase().inc
-  
-
-      if (!filters.emotionalTones.includes(memo
+export function getSeason(): Season {
+  const month = new Date().getMonth()
+  if (month >= 2 && month <= 4) return 'spring'
+  if (month >= 5 && month <= 7) return 'summer'
   if (month >= 8 && month <= 10) return 'autumn'
   return 'winter'
 }
@@ -329,80 +310,6 @@ export function filterMemories(
 
     if (filters.emotionalTones.length > 0) {
       if (!filters.emotionalTones.includes(memory.emotionalTone)) return false
-    }
-
-    if (filters.plantStages.length > 0) {
-      if (!filters.plantStages.includes(memory.plantStage)) return false
-    }
-
-    if (filters.dateRange.start) {
-      if (new Date(memory.date) < new Date(filters.dateRange.start)) return false
-    }
-    
-    if (filters.dateRange.end) {
-      if (new Date(memory.date) > new Date(filters.dateRange.end)) return false
-    }
-
-    if (filters.locations.length > 0) {
-      if (!memory.location || !filters.locations.includes(memory.location)) return false
-    }
-
-    return true
-  })
-}
-
-export function getActiveFilterCount(searchQuery: string, filters: SearchFilters): number {
-  let count = 0
-  if (searchQuery.trim()) count++
-  if (filters.emotionalTones.length > 0) count++
-  if (filters.plantStages.length > 0) count++
-  if (filters.locations.length > 0) count++
-  if (filters.dateRange.start || filters.dateRange.end) count++
-  return count
-}
-
-export function computeGardenMood(memories: Memory[]): GardenMood {
-  const weatherMap: Record<EmotionalTone | 'mixed', WeatherType> = {
-    happy: 'sunny',
-    peaceful: 'mist',
-    reflective: 'partly-cloudy',
-    bittersweet: 'rain',
-    nostalgic: 'golden-haze',
-    mixed: 'rain-sun',
-  }
-
-  if (memories.length === 0) {
-    return {
-      dominantEmotion: 'peaceful',
-      intensity: 0,
-      weatherType: 'mist',
-    }
-  }
-
-  const toneCounts: Record<string, number> = {}
-  for (const memory of memories) {
-    toneCounts[memory.emotionalTone] = (toneCounts[memory.emotionalTone] || 0) + 1
-  }
-
-  const sorted = Object.entries(toneCounts).sort((a, b) => b[1] - a[1])
-  const top = sorted[0]
-  const second = sorted[1]
-
-  let dominantEmotion: EmotionalTone | 'mixed'
-  if (second && top[1] - second[1] < top[1] * 0.3) {
-    dominantEmotion = 'mixed'
-  } else {
-    dominantEmotion = top[0] as EmotionalTone
-  }
-
-  const intensity = Math.min(100, (memories.length * 8))
-
-  return {
-    dominantEmotion,
-    intensity,
-    weatherType: weatherMap[dominantEmotion],
-  }
-}
     }
 
     if (filters.plantStages.length > 0) {
