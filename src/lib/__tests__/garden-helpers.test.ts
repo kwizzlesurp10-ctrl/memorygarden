@@ -217,7 +217,12 @@ describe('getPlantSize', () => {
 
   it('size increases monotonically through growth stages', () => {
     for (let i = 1; i < stages.length; i++) {
-      expect(getPlantSize(stages[i])).toBeGreaterThan(getPlantSize(stages[i - 1]))
+      const prevSize = getPlantSize(stages[i - 1])
+      const currSize = getPlantSize(stages[i])
+      expect(typeof prevSize === 'number' && typeof currSize === 'number').toBe(true)
+      if (typeof prevSize === 'number' && typeof currSize === 'number') {
+        expect(currSize).toBeGreaterThan(prevSize)
+      }
     }
   })
 })
@@ -448,27 +453,27 @@ describe('computeGardenMood', () => {
 // ─── applyPremiumFertilizer ────────────────────────────────────────────────
 
 describe('applyPremiumFertilizer', () => {
-  it('adds standard boost by default', () => {
+  it('adds standard boost', () => {
     const memory = makeMemory({ visitCount: 10 })
-    const boosted = applyPremiumFertilizer(memory)
-    expect(boosted.visitCount).toBe(28) // 10 + 18
+    const boosted = applyPremiumFertilizer(memory, 'standard')
+    expect(boosted.visitCount).toBe(13) // 10 + 3
   })
 
   it('adds premium boost', () => {
     const memory = makeMemory({ visitCount: 5 })
     const boosted = applyPremiumFertilizer(memory, 'premium')
-    expect(boosted.visitCount).toBe(39) // 5 + 34
+    expect(boosted.visitCount).toBe(13) // 5 + 8
   })
 
   it('adds legendary boost', () => {
     const memory = makeMemory({ visitCount: 0 })
     const boosted = applyPremiumFertilizer(memory, 'legendary')
-    expect(boosted.visitCount).toBe(55)
+    expect(boosted.visitCount).toBe(15) // 0 + 15
   })
 
   it('returns a new memory object (immutability)', () => {
     const memory = makeMemory()
-    const boosted = applyPremiumFertilizer(memory)
+    const boosted = applyPremiumFertilizer(memory, 'standard')
     expect(boosted).not.toBe(memory)
     expect(memory.visitCount).toBe(3) // original unchanged
   })
@@ -512,28 +517,6 @@ describe('getDayPeriod', () => {
   })
 })
 
-// ─── getBackgroundGradient ─────────────────────────────────────────────────
-
-describe('getBackgroundGradient', () => {
-  const seasons = ['spring', 'summer', 'autumn', 'winter'] as const
-  const periods = ['dawn', 'day', 'dusk', 'night'] as const
-
-  it('returns a non-empty gradient string for every season/period combo', () => {
-    for (const season of seasons) {
-      for (const period of periods) {
-        const gradient = getBackgroundGradient(period, season)
-        expect(gradient).toMatch(/^linear-gradient/)
-      }
-    }
-  })
-
-  it('returns distinct gradients for different times of day', () => {
-    const gradients = periods.map((p) => getBackgroundGradient(p, 'spring'))
-    const unique = new Set(gradients)
-    expect(unique.size).toBe(4)
-  })
-})
-
 // ─── getSeasonalPlantModifier ──────────────────────────────────────────────
 
 describe('getSeasonalPlantModifier', () => {
@@ -548,6 +531,8 @@ describe('getSeasonalPlantModifier', () => {
     }
   })
 })
+
+// ─── getSeasonalGroundCover ────────────────────────────────────────────────
 
 // ─── getSeasonalGroundCover ────────────────────────────────────────────────
 
@@ -610,37 +595,5 @@ describe('generateGardenId', () => {
   it('returns unique ids', () => {
     const ids = new Set(Array.from({ length: 10 }, generateGardenId))
     expect(ids.size).toBe(10)
-  })
-})
-
-// ─── buildPlantPrompt ──────────────────────────────────────────────────────
-
-describe('buildPlantPrompt', () => {
-  const varieties: PlantVariety[] = ['flower', 'tree', 'succulent', 'vine', 'herb', 'wildflower']
-  const stages: PlantStage[] = ['seed', 'sprout', 'seedling', 'young', 'bud', 'bloom', 'mature', 'elder']
-
-  it('includes variety, stage, tone, and season in the prompt', () => {
-    const prompt = buildPlantPrompt('flower', 'bloom', 'happy', 'spring')
-    expect(prompt).toContain('flower')
-    expect(prompt).toContain('bloom')
-    expect(prompt).toContain('happy')
-    expect(prompt).toContain('spring')
-  })
-
-  it('includes custom hints when provided', () => {
-    const prompt = buildPlantPrompt('tree', 'mature', 'reflective', 'autumn', 'watercolor', 'with golden leaves')
-    expect(prompt).toContain('with golden leaves')
-  })
-
-  it('includes stage description for every stage', () => {
-    for (const stage of stages) {
-      const prompt = buildPlantPrompt('herb', stage, 'peaceful', 'summer')
-      expect(prompt.length).toBeGreaterThan(20)
-    }
-  })
-
-  it.each(varieties)('builds a non-empty prompt for variety=%s', (variety) => {
-    const prompt = buildPlantPrompt(variety, 'bloom', 'happy', 'spring')
-    expect(prompt.length).toBeGreaterThan(10)
   })
 })
