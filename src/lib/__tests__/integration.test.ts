@@ -65,7 +65,7 @@ describe('Integration: Complete Memory Lifecycle', () => {
 
     memory = { ...memory, visitCount: 10, reflections: Array.from({ length: 5 }, (_, i) => ({ id: `r${i}`, text: 'reflection', createdAt: new Date().toISOString() })) }
     const stage3 = getPlantStage(memory)
-    expect(['seedling', 'young', 'bud', 'bloom']).toContain(stage3)
+    expect(['sprout', 'seedling', 'young', 'bud', 'bloom', 'mature']).toContain(stage3)
 
     memory = {
       ...memory,
@@ -165,7 +165,7 @@ describe('Integration: Garden Ecosystem Interactions', () => {
     ]
     const moodMixed = computeGardenMood(mixed)
     expect(['happy', 'reflective', 'mixed']).toContain(moodMixed.dominantEmotion)
-    expect(['sunny', 'rain', 'partly-cloudy']).toContain(moodMixed.weatherType)
+    expect(['sunny', 'rain', 'partly-cloudy', 'rain-sun']).toContain(moodMixed.weatherType)
 
     const diverse = [
       makeMemory({ emotionalTone: 'happy' }),

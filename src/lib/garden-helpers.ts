@@ -1,15 +1,5 @@
 import type { Memory, EmotionalTone, PlantStage, PlantVariety, GrowthMetrics, GardenMood, WeatherType, SearchFilters, Season, ArtStyle } from './types'
-
-declare global {
-  interface Window {
-    spark: {
-      llmPrompt: (strings: TemplateStringsArray, ...values: any[]) => string
-      llm: (prompt: string, model?: string, jsonMode?: boolean) => Promise<string>
-    }
-  }
-}
-
-const spark = typeof window !== 'undefined' ? window.spark : undefined
+import { getLLMProvider } from './llm-client'
 
 export function selectPlantVariety(emotionalTone: EmotionalTone, text: string): PlantVariety {
   const textLower = text.toLowerCase()
@@ -154,11 +144,13 @@ export async function classifyEmotionalTone(text: string): Promise<EmotionalTone
 }
 
 export async function generateAIReflection(memory: Memory, nearbyMemories: Memory[]): Promise<string> {
-  if (!spark) {
+  const llm = getLLMProvider()
+  if (!llm.available) {
     return 'AI reflection is not available in this environment.'
   }
-  
-  const prompt = spark.llmPrompt`Memory text: "${memory.text}"
+
+  try {
+    const prompt = llm.prompt`Memory text: "${memory.text}"
 Emotional tone: ${memory.emotionalTone}
 ${nearbyMemories.length > 0 ? `Nearby memories: ${nearbyMemories.map((m: Memory) => m.text.slice(0, 50)).join('; ')}` : ''}
 
@@ -167,7 +159,10 @@ Write a brief, poetic reflection (2-3 sentences) that honors this memory and off
 - Connect to broader themes of growth, time, or connection if appropriate
 - Be warm and contemplative in tone`
 
-  return await spark.llm(prompt, 'gpt-4o-mini')
+    return await llm.complete(prompt, 'gpt-4o-mini')
+  } catch {
+    return 'A gentle reflection blooms in silence — some moments speak for themselves.'
+  }
 }
 
 export function getPlantColor(emotionalTone: EmotionalTone): string {

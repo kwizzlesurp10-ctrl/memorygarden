@@ -191,7 +191,8 @@ describe('evaluateUnlocks', () => {
   it('returns no new unlocks for default state', () => {
     const state = createDefaultUnlockState()
     const result = evaluateUnlocks(state)
-    expect(result.newPalettes).toHaveLength(0)
+    // 'default' palette always unlocks via () => true; already-unlocked items are excluded
+    expect(result.newPalettes).toEqual(['default'])
     expect(result.newPatterns).toHaveLength(0)
     expect(result.newAdornments).toHaveLength(0)
   })

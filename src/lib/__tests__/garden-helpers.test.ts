@@ -421,6 +421,9 @@ describe('computeGardenMood', () => {
     const memories = [
       makeMemory({ emotionalTone: 'happy' }),
       makeMemory({ emotionalTone: 'happy' }),
+      makeMemory({ emotionalTone: 'happy' }),
+      makeMemory({ emotionalTone: 'reflective' }),
+      makeMemory({ emotionalTone: 'reflective' }),
       makeMemory({ emotionalTone: 'reflective' }),
     ]
     const mood = computeGardenMood(memories)
