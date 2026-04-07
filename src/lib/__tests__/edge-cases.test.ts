@@ -254,249 +254,250 @@ describe('Edge Cases: Search and Filter Combinations', () => {
 
   it('handles search query matching no memories', () => {
     const result = filterMemories(testMemories, 'nonexistent-keyword-xyz', emptyFilters)
-    expect(result).toHaveLength(0)
   })
+  it
 
-  it('filters with all filter types active simultaneously', () => {
-    const complexFilters: SearchFilters = {
-      emotionalTones: ['happy', 'reflective'],
-      plantStages: ['bloom', 'seed'],
       dateRange: { start: '2024-03-01', end: '2024-06-30' },
-      locations: ['Paris', 'London'],
     }
-    const result = filterMemories(testMemories, '', complexFilters)
-    expect(result.length).toBeGreaterThanOrEqual(0)
-    expect(result.length).toBeLessThanOrEqual(testMemories.length)
+    expect(result.length).toBeGreaterThanOrEqu
   })
-
-  it('handles contradictory filters that match nothing', () => {
-    const contradictoryFilters: SearchFilters = {
+  it('handles contradictory filters that match nothing', () 
       emotionalTones: ['happy'],
-      plantStages: ['bloom'],
-      dateRange: { start: '2024-01-01', end: '2024-01-31' },
-      locations: ['London'],
+     
     }
-    const result = filterMemories(testMemories, '', contradictoryFilters)
     expect(result).toHaveLength(0)
-  })
 
-  it('handles date range with start after end', () => {
-    const invalidDateRange: SearchFilters = {
-      ...emptyFilters,
-      dateRange: { start: '2024-12-31', end: '2024-01-01' },
-    }
-    const result = filterMemories(testMemories, '', invalidDateRange)
-    expect(result).toHaveLength(0)
-  })
+    
 
-  it('handles search with case sensitivity variations', () => {
-    const lowerResult = filterMemories(testMemories, 'paris', emptyFilters)
-    const upperResult = filterMemories(testMemories, 'PARIS', emptyFilters)
-    const mixedResult = filterMemories(testMemories, 'PaRiS', emptyFilters)
+    const result = filterMemories(testMemories, '', invalidDateR
+  })
+  it('handles search with case s
+    const upperResult = filte
     expect(lowerResult).toEqual(upperResult)
-    expect(upperResult).toEqual(mixedResult)
   })
-
-  it('filters memories without location when location filter is active', () => {
-    const withLocationFilters: SearchFilters = {
+  it(
       ...emptyFilters,
-      locations: ['Paris'],
     }
-    const result = filterMemories(testMemories, '', withLocationFilters)
-    expect(result.every(m => m.location === 'Paris')).toBe(true)
-  })
+    
 
-  it('handles very long search queries', () => {
     const longQuery = 'test '.repeat(1000)
-    const result = filterMemories(testMemories, longQuery, emptyFilters)
     expect(Array.isArray(result)).toBe(true)
-  })
 
-  it('filters by reflections content when present', () => {
     const memoryWithReflection = makeMemory({
-      id: '6',
-      text: 'ordinary day',
-      reflections: [
-        { id: 'r1', text: 'unique-reflection-keyword', createdAt: new Date().toISOString() },
-      ],
+     
+        { id: 'r1', text: 'unique-reflection-keyword', createdAt: new
     })
-    const result = filterMemories([...testMemories, memoryWithReflection], 'unique-reflection-keyword', emptyFilters)
-    expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('6')
-  })
-})
+    
 
-describe('Edge Cases: Garden Mood Computation', () => {
+
   it('handles empty garden gracefully', () => {
-    const mood = computeGardenMood([])
     expect(mood.dominantEmotion).toBe('peaceful')
-    expect(mood.intensity).toBe(0)
     expect(mood.weatherType).toBe('mist')
-  })
 
-  it('handles single memory garden', () => {
-    const mood = computeGardenMood([makeMemory({ emotionalTone: 'happy' })])
-    expect(mood.dominantEmotion).toBe('happy')
-    expect(mood.weatherType).toBe('sunny')
-  })
+    const mood = computeGardenMood([makeMemo
+    
 
-  it('handles perfectly balanced emotional distribution', () => {
     const memories = [
-      makeMemory({ emotionalTone: 'happy' }),
-      makeMemory({ emotionalTone: 'reflective' }),
-      makeMemory({ emotionalTone: 'peaceful' }),
-      makeMemory({ emotionalTone: 'nostalgic' }),
-      makeMemory({ emotionalTone: 'bittersweet' }),
+      makeMemory({ emotionalTone: 'reflective' }
+      makeMemory({ emo
     ]
-    const mood = computeGardenMood(memories)
-    expect(['happy', 'reflective', 'peaceful', 'nostalgic', 'bittersweet', 'mixed']).toContain(mood.dominantEmotion)
-  })
+    e
 
-  it('handles extreme garden size (thousands of memories)', () => {
     const largeGarden = Array.from({ length: 5000 }, (_, i) => 
-      makeMemory({ emotionalTone: i % 2 === 0 ? 'happy' : 'reflective' })
-    )
-    const mood = computeGardenMood(largeGarden)
-    expect(['happy', 'reflective', 'mixed']).toContain(mood.dominantEmotion)
-    expect(mood.intensity).toBeGreaterThanOrEqual(0)
+    
+
   })
-
-  it('determines mixed mood correctly when tones are close', () => {
-    const memories = [
+  it('determines mixed mood correctly when
       makeMemory({ emotionalTone: 'happy' }),
-      makeMemory({ emotionalTone: 'happy' }),
-      makeMemory({ emotionalTone: 'reflective' }),
-      makeMemory({ emotionalTone: 'reflective' }),
-    ]
-    const mood = computeGardenMood(memories)
-    expect(['happy', 'reflective', 'mixed']).toContain(mood.dominantEmotion)
-  })
+      makeMemory({ emotionalTone: 'reflectiv
+    
 
-  it('computes intensity proportional to dominant emotion', () => {
-    const allSame = Array.from({ length: 10 }, () => makeMemory({ emotionalTone: 'peaceful' }))
-    const moodAllSame = computeGardenMood(allSame)
-    expect(moodAllSame.intensity).toBe(80)
 
+    const allSame = Array.from({ length: 10 }
+    expect(moo
     const mixed = [
-      makeMemory({ emotionalTone: 'peaceful' }),
-      makeMemory({ emotionalTone: 'peaceful' }),
-      makeMemory({ emotionalTone: 'happy' }),
+      makeMemory({ e
     ]
-    const moodMixed = computeGardenMood(mixed)
-    expect(moodMixed.intensity).toBe(24)
-  })
+    expe
 })
-
 describe('Edge Cases: Unlock System Boundaries', () => {
-  it('handles state with missing or malformed counters', () => {
     const partialState = {
-      unlockedPalettes: ['earthy'],
-      unlockedAdornments: ['none'],
-      unlockedPatterns: ['solid'],
-      unlockedFrames: [],
-      wallet: { dew: 0, sunlight: 0, pollen: 0, starlight: 0 },
-      counters: {} as any,
-      achievements: [],
-    }
-    const ensured = ensureUnlockState(partialState as UnlockState)
-    expect(ensured.counters.totalReflections).toBe(0)
-    expect(ensured.counters.totalVisits).toBe(0)
-  })
+      unlockedAdornments: ['none']
+    
+  
 
-  it('handles unlock evaluation with maxed-out counters', () => {
-    const state = createDefaultUnlockState()
-    state.counters = {
-      totalReflections: 999999,
-      totalVisits: 999999,
-      totalMemoriesPlanted: 999999,
-      memoriesReachedMature: 999999,
-      memoriesReachedElder: 999999,
-      nightVisitDays: 999999,
-      uniqueOldMemoriesRevisited: 999999,
-      clustersTended: 999999,
-      nightVisitDates: Array.from({ length: 1000 }, (_, i) => `2024-${String(i % 12 + 1).padStart(2, '0')}-01`),
-      memoriesWatered3: Array.from({ length: 1000 }, (_, i) => `mem-${i}`),
-      seasonalPlantings: {
-        'spring-2024': 9999,
-        'summer-2024': 9999,
-        'autumn-2024': 9999,
-        'winter-2024': 9999,
-      },
-    }
-    const unlocks = evaluateUnlocks(state)
-    expect(unlocks.newPalettes.length + unlocks.newPatterns.length + unlocks.newAdornments.length).toBeGreaterThan(0)
+    expect(ensured.counters.totalReflections).toBe(0)
   })
+  it('handles unlock evaluation with m
+    state.counters = {
+      totalVisits: 999999,
+      memoriesReachedMature: 999999,
+    
+
+      memoriesWatered3: Array.from({ length:
+        'spring-2024': 9999,
+        'autumn-2024': 9999,
+      },
+    
 
   it('prevents duplicate achievement awards', () => {
-    const state = createDefaultUnlockState()
-    state.counters.totalReflections = 1
+    state.counters.tot
+    const firstEval = evaluateAchievements(st
     
-    const firstEval = evaluateAchievements(state)
-    expect(firstEval.newAchievements.length).toBeGreaterThan(0)
-    
-    state.achievements = firstEval.newAchievements.map(a => ({
       ...a,
-      unlockedAt: new Date().toISOString(),
     }))
-    
     const secondEval = evaluateAchievements(state)
-    expect(secondEval.newAchievements).toHaveLength(0)
   })
-
-  it('handles reroll with exact cost amount', () => {
-    const wallet = { dew: REROLL_COST, sunlight: 0, pollen: 0, starlight: 0 }
+  it('handles reroll with exact cost amount'
     expect(canAffordReroll(wallet)).toBe(true)
-    const afterDeduct = deductRerollCost(wallet)
-    expect(afterDeduct.dew).toBe(0)
-  })
+    
 
-  it('handles reroll when cost exceeds wallet (should fail)', () => {
-    const wallet = { dew: REROLL_COST - 1, sunlight: 0, pollen: 0, starlight: 0 }
-    expect(canAffordReroll(wallet)).toBe(false)
+    const wallet = { dew: REROLL_COST - 1, sunlight: 0, pollen: 0, 
   })
-
   it('awards for cluster tending scale correctly', () => {
-    const awards = [0, 1, 2, 3, 5, 10, 100].map(nearby => awardForClusterTending(nearby))
-    const nullCount = awards.filter(a => a === null).length
-    const nonNullCount = awards.filter(a => a !== null).length
+    c
     expect(nullCount).toBeGreaterThan(0)
-    expect(nonNullCount).toBeGreaterThan(0)
   })
+  it('awards for revisit vary by memory age', () => 
+    const oldMemory = makeMemory({ plantedAt: new
+    
 
-  it('awards for revisit vary by memory age', () => {
-    const recentMemory = makeMemory({ plantedAt: new Date(Date.now() - 1 * 86400000).toISOString() })
-    const oldMemory = makeMemory({ plantedAt: new Date(Date.now() - 100 * 86400000).toISOString() })
-    
-    const recentAward = awardForRevisit(recentMemory)
-    const oldAward = awardForRevisit(oldMemory)
-    
-    expect(recentAward).toBeNull()
     expect(oldAward).not.toBeNull()
-  })
 
-  it('handles unlock state with negative wallet values gracefully', () => {
     const state = createDefaultUnlockState()
-    state.wallet = { dew: -100, sunlight: -50, pollen: -25, starlight: -10 }
-    expect(canAffordReroll(state.wallet)).toBe(false)
-  })
+    expect(canAffordReroll(state.wallet)).toB
 })
-
-describe('Edge Cases: Trait System Complex Scenarios', () => {
-  it('handles memory with no unlocks attempting to resolve visuals', () => {
-    const memory = makeMemory({ unlocks: [], traits: {} })
-    const visuals = resolveTraitVisuals(memory)
+describe('Edge Cases: Trait System Complex Scenari
+    c
     expect(visuals.pattern).toBe('solid')
-    expect(visuals.adornment).toBe('none')
     expect(visuals.accent).toBe('none')
-    expect(visuals.aura).toBe('none')
   })
 
-  it('computes unlocks for memory at every stage', () => {
-    const stages: PlantStage[] = ['seed', 'sprout', 'seedling', 'young', 'bud', 'bloom', 'mature', 'elder']
     for (const stage of stages) {
-      const memory = makeMemory({ plantStage: stage, visitCount: 15, reflections: Array.from({ length: 5 }, (_, i) => ({ id: `r${i}`, text: 'test', createdAt: new Date().toISOString() })) })
       const unlocks = computeUnlocks(memory)
-      expect(Array.isArray(unlocks)).toBe(true)
+      expect(unlocks.length).toBeGreaterThanOrEqua
+  })
+
+      traits: {
+        pattern: 'gradient',
+        accent: 'sparkle',
+      },
+    }
+    expect(visuals.pattern).toBe('gradient')
+  })
+  it
+  
+
+  it('slot status shows all unlocked for elder stage', (
+    const status = getSlotStatus(memory)
+  })
+  it('handles rapid stage unlock pr
+    const stages: PlantStage[] = ['
+    for (const stage of stages) {
+      const slots = getSl
+      expect(slots.length).toBeLessThanOrEqual(5)
+  })
+  it('genetics generati
+    c
+    expect(gen1).toEqual(gen2)
+
+    const gens = Array.from({ length: 100 }, (_,
+    
+
+    const minimal: Memory = {
+      photoUrl: '',
+      date: '2024-01-0
+      position: { x: 0, y: 0 },
+      plantStage: 'seed',
+      visitCount: 0,
+      audioRecordings: [],
+    const unlocks = computeUnlocks(
+  })
+
+  beforeEach(() => {
+  })
+  afterEach(() => {
+  })
+  it('handles season transit
+      [0, 'winter'], [1, 'wi
+      [5, 'summer'], [6, 'su
+      [11, 'winter'],
+
+     
+    }
+
+    
+
+      [20, 'night'], [23, 'night'], [0, 'night'],
+
+      vi.setSystemTime(new Date(2024, 6
+    
+
+    vi.setSystemTime(new Date(2024, 1, 29, 12, 0, 0))
+  })
+  it('handles year boundary transitions', () => {
+    const b
+    vi.setSystemTime(new Date(2024, 0, 1, 0
+    
+    
+
+    vi.setSystemTime(new Date(2024, 2, 10, 2, 0, 0))
+    
+
+    expect(['night', 'dawn']).toContain(beforeDST)
+  })
+
+  it('handles multiple fertilizer applications i
+    const tier1 = applyPremiumFerti
+    
+
+    expect(tier1.visitCount).toBeGreaterThan(original.visitCount)
+  })
+  it('handles rapid trait unlock cascades', () 
+    
+
+        text: 'reflection',
+      })),
+    })
+    const unlocks = computeUnlocks(memory)
+    expect(uniqueSlots.size).toBeGreater
+  })
+  it
+
+    const boosted = applyPremiumFertilizer(original, 
+    expect(original.visitCount).toBe(originalVisitCount)
+    expect(boosted).not.toBe(original)
+})
+describe('Edge Cases: Data Type Boundaries', () => {
+    const memory: Memory = {
+    
+      date: '2024-01-01',
+      position: { x: 100, y: 100 },
+    
+
+      audioRecordings: [],
+      lastVisited: undefined,
+      shareCreatedAt: undefined,
+    }
+    
+  
+
+      makeMemory({ position: { x: -999999, y: -999999 } }),
+      makeMemory({ position: { x: 0, y: 0 } }),
+    
+      const metrics = calculateGrowthMetrics(me
+    }
+
+    const shortMemory = makeMemory({ te
+    
+    
+
+  })
+  it('handles audio recordings array edge cases', () => {
+    const manyAudio = makeMemory(
+        id: `audio-${i}`,
+        duration: Math.random() * 300,
+        type: 'voice-note' as const,
       expect(unlocks.length).toBeGreaterThanOrEqual(0)
     }
   })
@@ -742,6 +743,16 @@ describe('Edge Cases: Data Type Boundaries', () => {
         duration: Math.random() * 300,
         createdAt: new Date().toISOString(),
         type: 'voice-note' as const,
+      })),
+    })
+    
+    const noAudioMetrics = calculateGrowthMetrics(noAudio, [])
+    const manyAudioMetrics = calculateGrowthMetrics(manyAudio, [])
+    
+    expect(noAudioMetrics.vitality).toBeGreaterThanOrEqual(0)
+    expect(manyAudioMetrics.vitality).toBeGreaterThanOrEqual(0)
+  })
+})
       })),
     })
     
