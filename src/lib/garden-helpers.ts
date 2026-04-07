@@ -384,3 +384,40 @@ export function computeGardenMood(memories: Memory[]): GardenMood {
     weatherType: weatherMap[dominantEmotion],
   }
 }
+
+export function getPlantSize(memory: Memory, metrics: GrowthMetrics): { width: number; height: number } {
+  return {
+    width: metrics.width,
+    height: metrics.height,
+  }
+}
+
+export interface VisualParams {
+  color: string
+  size: { width: number; height: number }
+  bloomCount: number
+  specialClass?: 'rare' | 'legendary'
+}
+
+export function getVisualParams(memory: Memory, metrics: GrowthMetrics): VisualParams {
+  const season = getSeason()
+  const color = getSeasonalPlantModifier(season, memory.emotionalTone)
+  
+  let specialClass: 'rare' | 'legendary' | undefined
+  if (metrics.rarityScore >= 80) {
+    specialClass = 'legendary'
+  } else if (metrics.rarityScore >= 50) {
+    specialClass = 'rare'
+  }
+  
+  return {
+    color,
+    size: { width: metrics.width, height: metrics.height },
+    bloomCount: metrics.bloomCount,
+    specialClass,
+  }
+}
+
+export function getShareUrl(shareId: string): string {
+  return `${window.location.origin}${window.location.pathname}?share=${shareId}`
+}
