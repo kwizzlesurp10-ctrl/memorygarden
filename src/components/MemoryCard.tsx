@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork, ChartBar, Lightning } from '@phosphor-icons/react'
+import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork, ChartBar, Lightning, Palette } from '@phosphor-icons/react'
 import { AudioPlayer } from '@/components/AudioPlayer'
 import { format } from 'date-fns'
 import type { Memory } from '@/lib/types'
@@ -21,6 +21,7 @@ interface MemoryCardProps {
   onAskAI: (memoryId: string) => void
   onShare?: (memoryId: string) => void
   onBoost?: (memoryId: string) => void
+  onCustomize?: () => void
   aiReflection?: string
   isLoadingAI?: boolean
 }
@@ -33,6 +34,7 @@ export function MemoryCard({
   onAskAI,
   onShare,
   onBoost,
+  onCustomize,
   aiReflection,
   isLoadingAI,
 }: MemoryCardProps) {
@@ -312,6 +314,23 @@ export function MemoryCard({
                       <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent font-semibold">
                         Apply Premium Fertilizer
                       </span>
+                    </Button>
+                  </motion.div>
+                )}
+
+                {onCustomize && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <Button
+                      onClick={onCustomize}
+                      variant="outline"
+                      className="w-full border border-border hover:border-primary/50 hover:bg-primary/5 transition-all"
+                    >
+                      <Palette size={18} weight="duotone" className="mr-2 text-primary" />
+                      Customize Plant
                     </Button>
                   </motion.div>
                 )}

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Plant as PlantIcon, Tree, List, GridFour, Export, DotsThree, Link as LinkIcon, Palette, UsersThree } from '@phosphor-icons/react'
+import { Plant as PlantIcon, Tree, List, GridFour, Export, DotsThree, Link as LinkIcon, Palette, UsersThree, Trophy } from '@phosphor-icons/react'
 import { GardenCanvas } from '@/components/GardenCanvas'
 import { PlantMemoryModal } from '@/components/PlantMemoryModal'
 import { MemoryCard } from '@/components/MemoryCard'
@@ -24,9 +24,12 @@ import { GardenInviteDialog } from '@/components/GardenInviteDialog'
 import { GardenMembersPanel } from '@/components/GardenMembersPanel'
 import { ActivityFeed } from '@/components/ActivityFeed'
 import { PlantStyleCustomizer } from '@/components/PlantStyleCustomizer'
+import { GardenUnlocks } from '@/components/GardenUnlocks'
+import { PlantCosmeticsEditor } from '@/components/PlantCosmeticsEditor'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood } from '@/lib/types'
-import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken } from '@/lib/garden-helpers'
+import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState } from '@/lib/types'
+import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod } from '@/lib/garden-helpers'
+import { ensureUnlockState, generatePlantGenetics, awardForReflection, awardForRevisit, awardForClusterTending, awardForPlanting, applyAward, evaluateUnlocks, applyNewUnlocks, evaluateAchievements, deductRerollCost, canAffordReroll } from '@/lib/unlock-system'
 import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
 import { getLocalUser, type LocalUser } from '@/lib/local-user'
 
@@ -106,6 +109,53 @@ function App() {
 
   // Feature 5: AI Plant Style state
   const [isStyleCustomizerOpen, setIsStyleCustomizerOpen] = useState(false)
+
+  // Constraint / Unlock system state
+  const [isUnlocksOpen, setIsUnlocksOpen] = useState(false)
+  const [isCosmeticsEditorOpen, setIsCosmeticsEditorOpen] = useState(false)
+  const [cosmeticsEditMemory, setCosmeticsEditMemory] = useState<Memory | null>(null)
+
+  /** Process unlock state: evaluate new unlocks/achievements and notify */
+  const processUnlockUpdates = useCallback((currentState: UnlockState): UnlockState => {
+    let state = currentState
+
+    // Evaluate cosmetic unlocks
+    const newUnlocks = evaluateUnlocks(state)
+    const hasNewUnlocks = newUnlocks.newPalettes.length > 0 || newUnlocks.newPatterns.length > 0 || newUnlocks.newAdornments.length > 0
+    if (hasNewUnlocks) {
+      state = applyNewUnlocks(state, newUnlocks)
+      const allNew = [...newUnlocks.newPalettes, ...newUnlocks.newPatterns, ...newUnlocks.newAdornments]
+      for (const id of allNew) {
+        toast.success(`🌿 Unlocked: ${id}`, { description: 'Check your Garden Collection!' })
+      }
+    }
+
+    // Evaluate achievements
+    const { newAchievements, starlightEarned } = evaluateAchievements(state)
+    if (newAchievements.length > 0) {
+      state = {
+        ...state,
+        achievements: [...state.achievements, ...newAchievements],
+        wallet: { ...state.wallet, starlight: state.wallet.starlight + starlightEarned },
+      }
+      for (const ach of newAchievements) {
+        toast.success(`🏆 Achievement: ${ach.name}`, { description: ach.description })
+      }
+    }
+
+    return state
+  }, [])
+
+  /** Update the unlock state in preferences with counter changes and process unlocks */
+  const updateUnlockState = useCallback((updater: (state: UnlockState) => UnlockState) => {
+    setPreferences((current) => {
+      const base = current || { hasCompletedOnboarding: false, soundEnabled: false, lastVisit: '' }
+      const currentUnlock = ensureUnlockState(base.unlockState)
+      const updated = updater(currentUnlock)
+      const processed = processUnlockUpdates(updated)
+      return { ...base, unlockState: processed }
+    })
+  }, [setPreferences, processUnlockUpdates])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -202,9 +252,29 @@ function App() {
             visitCount: 0,
             reflections: [],
             audioRecordings: data.audioRecordings,
+            genetics: generatePlantGenetics(`${Date.now()}-${Math.random().toString(36).substring(2)}`),
           }
 
           setMemories((currentMemories) => [...(currentMemories || []), newMemory])
+
+          // Award currency and update counters for planting
+          const currentSeason = getSeason()
+          const seasonKey = `${currentSeason}-${new Date().getFullYear()}`
+          updateUnlockState((state) => {
+            const award = awardForPlanting()
+            return {
+              ...state,
+              wallet: applyAward(state.wallet, award),
+              counters: {
+                ...state.counters,
+                totalMemoriesPlanted: state.counters.totalMemoriesPlanted + 1,
+                seasonalPlantings: {
+                  ...state.counters.seasonalPlantings,
+                  [seasonKey]: (state.counters.seasonalPlantings[seasonKey] || 0) + 1,
+                },
+              },
+            }
+          })
 
           // Trigger sprouting particle animation on the canvas when seed first appears
           setGrowingMemories((prev) => new Set(prev).add(newMemory.id))
@@ -256,6 +326,75 @@ function App() {
     const updatedMemory = (memories || []).find((m) => m.id === memory.id)
     setSelectedMemory(updatedMemory || memory)
     setAiReflection('')
+
+    // Track visit counters and award currencies
+    updateUnlockState((state) => {
+      let updated = { ...state, counters: { ...state.counters, totalVisits: state.counters.totalVisits + 1 } }
+
+      // Night visit tracking
+      const period = getDayPeriod()
+      if (period === 'night') {
+        const today = new Date().toISOString().slice(0, 10)
+        if (!updated.counters.nightVisitDates.includes(today)) {
+          updated = {
+            ...updated,
+            counters: {
+              ...updated.counters,
+              nightVisitDates: [...updated.counters.nightVisitDates, today],
+              nightVisitDays: updated.counters.nightVisitDays + 1,
+            },
+          }
+        }
+      }
+
+      // Sunlight for revisiting old memories
+      const revisitAward = awardForRevisit(memory)
+      if (revisitAward) {
+        updated = { ...updated, wallet: applyAward(updated.wallet, revisitAward) }
+        const daysSincePlanted = Math.floor(
+          (Date.now() - new Date(memory.plantedAt).getTime()) / 86400000
+        )
+        if (daysSincePlanted >= 60) {
+          updated = {
+            ...updated,
+            counters: {
+              ...updated.counters,
+              uniqueOldMemoriesRevisited: updated.counters.uniqueOldMemoriesRevisited + 1,
+            },
+          }
+        }
+      }
+
+      // Pollen for cluster interactions
+      const clusterAward = awardForClusterTending(nearbyMemories.length)
+      if (clusterAward) {
+        updated = {
+          ...updated,
+          wallet: applyAward(updated.wallet, clusterAward),
+          counters: { ...updated.counters, clustersTended: updated.counters.clustersTended + 1 },
+        }
+      }
+
+      // Track mature/elder milestones
+      const currentStage = getPlantStage(memory)
+      if (currentStage === 'mature' || currentStage === 'elder') {
+        const reachedMature = (memories || []).filter(m => {
+          const s = getPlantStage(m)
+          return s === 'mature' || s === 'elder'
+        }).length
+        const reachedElder = (memories || []).filter(m => getPlantStage(m) === 'elder').length
+        updated = {
+          ...updated,
+          counters: {
+            ...updated.counters,
+            memoriesReachedMature: reachedMature,
+            memoriesReachedElder: reachedElder,
+          },
+        }
+      }
+
+      return updated
+    })
   }
 
   const handleMemoryMove = (memoryId: string, newPosition: { x: number; y: number }) => {
@@ -303,6 +442,27 @@ function App() {
     if (updatedMemory) {
       setSelectedMemory(updatedMemory)
     }
+
+    // Award dew for reflection and track counter
+    updateUnlockState((state) => {
+      const award = awardForReflection()
+      const newReflectionCount = (memories || []).reduce((sum, m) => sum + m.reflections.length, 0) + 1
+      const memory = (memories || []).find(m => m.id === memoryId)
+      const waterCount = memory ? memory.reflections.length + 1 : 1
+      const memoriesWatered3 = [...state.counters.memoriesWatered3]
+      if (waterCount >= 3 && !memoriesWatered3.includes(memoryId)) {
+        memoriesWatered3.push(memoryId)
+      }
+      return {
+        ...state,
+        wallet: applyAward(state.wallet, award),
+        counters: {
+          ...state.counters,
+          totalReflections: newReflectionCount,
+          memoriesWatered3,
+        },
+      }
+    })
   }
 
   const handleAskAI = async (memoryId: string) => {
@@ -544,6 +704,44 @@ function App() {
     toast.success('Plant art style saved!')
   }
 
+  // Constraint system: per-memory cosmetic handlers
+  const handleOpenCosmeticsEditor = (memory: Memory) => {
+    setCosmeticsEditMemory(memory)
+    setIsCosmeticsEditorOpen(true)
+  }
+
+  const handleSaveCosmetics = (memoryId: string, cosmetics: PlantCosmetics) => {
+    setMemories((currentMemories) =>
+      (currentMemories || []).map((m) =>
+        m.id === memoryId ? { ...m, cosmetics } : m
+      )
+    )
+    toast.success('Plant cosmetics applied!')
+  }
+
+  const handleRerollGenetics = (memoryId: string) => {
+    const unlockState = ensureUnlockState(safePreferences.unlockState)
+    if (!canAffordReroll(unlockState.wallet)) {
+      toast.error('Not enough dew to re-roll!')
+      return
+    }
+
+    // Deduct cost
+    updateUnlockState((state) => ({
+      ...state,
+      wallet: deductRerollCost(state.wallet),
+    }))
+
+    // Generate new genetics
+    const newGenetics = generatePlantGenetics(`${Date.now()}-${Math.random().toString(36).substring(2)}`)
+    setMemories((currentMemories) =>
+      (currentMemories || []).map((m) =>
+        m.id === memoryId ? { ...m, genetics: newGenetics } : m
+      )
+    )
+    toast.success('Plant appearance re-rolled!')
+  }
+
   const safeMemories = memories || []
   const safePreferences = preferences || { hasCompletedOnboarding: false, soundEnabled: false, lastVisit: '' }
   const safeGardens = collaborativeGardens || []
@@ -652,6 +850,10 @@ function App() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setIsUnlocksOpen(true)}>
+                  <Trophy size={16} className="mr-2" />
+                  Garden Collection
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setIsExportModalOpen(true)}>
                   <Export size={16} className="mr-2" />
                   Export Garden
@@ -831,6 +1033,7 @@ function App() {
         onAskAI={handleAskAI}
         onShare={handleShareMemory}
         onBoost={handleOpenBoost}
+        onCustomize={selectedMemory ? () => handleOpenCosmeticsEditor(selectedMemory) : undefined}
         aiReflection={aiReflection}
         isLoadingAI={isLoadingAI}
       />
@@ -881,6 +1084,25 @@ function App() {
         onClose={() => setIsStyleCustomizerOpen(false)}
         currentStyle={safePreferences.plantStylePreference}
         onSave={handleSavePlantStyle}
+      />
+
+      {/* Constraint System: Unlocks & Cosmetics */}
+      <GardenUnlocks
+        open={isUnlocksOpen}
+        onClose={() => setIsUnlocksOpen(false)}
+        unlockState={safePreferences.unlockState}
+      />
+
+      <PlantCosmeticsEditor
+        open={isCosmeticsEditorOpen}
+        onClose={() => {
+          setIsCosmeticsEditorOpen(false)
+          setCosmeticsEditMemory(null)
+        }}
+        memory={cosmeticsEditMemory}
+        unlockState={safePreferences.unlockState}
+        onSave={handleSaveCosmetics}
+        onReroll={handleRerollGenetics}
       />
     </>
   )
