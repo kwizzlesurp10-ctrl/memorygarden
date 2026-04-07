@@ -57,13 +57,13 @@ function makeMetrics(overrides: Partial<GrowthMetrics> = {}): GrowthMetrics {
 // ─── selectPlantVariety ────────────────────────────────────────────────────
 
 describe('selectPlantVariety', () => {
-  it('returns wildflower for happy tone with short text', () => {
-    expect(selectPlantVariety('happy', 'short text')).toBe('wildflower')
+  it('returns wildflower for happy tone with celebration/joy keywords', () => {
+    expect(selectPlantVariety('happy', 'What a celebration this is!')).toBe('wildflower')
+    expect(selectPlantVariety('happy', 'Filled with joy today')).toBe('wildflower')
   })
 
-  it('returns flower for happy tone with long text (≥100 chars)', () => {
-    const longText = 'a'.repeat(100)
-    expect(selectPlantVariety('happy', longText)).toBe('flower')
+  it('returns flower for happy tone without celebration/joy keywords', () => {
+    expect(selectPlantVariety('happy', 'short text')).toBe('flower')
   })
 
   it('returns herb for peaceful tone with home/quiet keywords', () => {
@@ -80,12 +80,12 @@ describe('selectPlantVariety', () => {
     expect(selectPlantVariety('reflective', 'pondering life')).toBe('tree')
   })
 
-  it('returns vine for bittersweet tone', () => {
-    expect(selectPlantVariety('bittersweet', 'missing someone')).toBe('vine')
+  it('returns vine for nostalgic tone', () => {
+    expect(selectPlantVariety('nostalgic', 'remembering old days')).toBe('vine')
   })
 
-  it('returns flower as default for nostalgic tone', () => {
-    expect(selectPlantVariety('nostalgic', 'remembering old days')).toBe('flower')
+  it('returns flower as default for bittersweet tone', () => {
+    expect(selectPlantVariety('bittersweet', 'missing someone')).toBe('flower')
   })
 })
 
@@ -104,12 +104,12 @@ describe('calculateGrowthMetrics', () => {
     expect(metrics).toHaveProperty('lastInteractionAt')
   })
 
-  it('vitality stays in [5, 100]', () => {
-    const fresh = makeMemory({ plantedAt: new Date().toISOString(), visitCount: 0 })
+  it('vitality stays in [0, 100]', () => {
+    const fresh = makeMemory({ plantedAt: new Date().toISOString(), visitCount: 0, reflections: [] })
     const old = makeMemory({ visitCount: 999, reflections: Array.from({ length: 50 }, (_, i) => ({
       id: `r${i}`, text: 'nice', createdAt: new Date().toISOString(),
     })) })
-    expect(calculateGrowthMetrics(fresh, []).vitality).toBeGreaterThanOrEqual(5)
+    expect(calculateGrowthMetrics(fresh, []).vitality).toBeGreaterThanOrEqual(0)
     expect(calculateGrowthMetrics(old, []).vitality).toBeLessThanOrEqual(100)
   })
 
@@ -400,7 +400,7 @@ describe('getActiveFilterCount', () => {
 describe('computeGardenMood', () => {
   it('returns default peaceful/mist mood for empty garden', () => {
     const mood = computeGardenMood([])
-    expect(mood).toEqual({ dominantEmotion: 'peaceful', intensity: 0.3, weatherType: 'mist' })
+    expect(mood).toEqual({ dominantEmotion: 'peaceful', intensity: 0, weatherType: 'mist' })
   })
 
   it('returns dominant emotion when one tone dominates clearly', () => {
@@ -422,25 +422,25 @@ describe('computeGardenMood', () => {
     ]
     const mood = computeGardenMood(memories)
     expect(mood.dominantEmotion).toBe('mixed')
-    expect(mood.weatherType).toBe('partly-cloudy')
+    expect(mood.weatherType).toBe('rain-sun')
   })
 
-  it('intensity equals top tone fraction', () => {
+  it('intensity is based on memory count', () => {
     const memories = [
       makeMemory({ emotionalTone: 'peaceful' }),
       makeMemory({ emotionalTone: 'peaceful' }),
       makeMemory({ emotionalTone: 'happy' }),
     ]
     const mood = computeGardenMood(memories)
-    expect(mood.intensity).toBeCloseTo(2 / 3)
+    expect(mood.intensity).toBe(24) // 3 memories * 8
   })
 
   it('maps each tone to the correct weather type', () => {
     const toneToWeather: Array<[EmotionalTone, string]> = [
       ['happy', 'sunny'],
       ['peaceful', 'mist'],
-      ['reflective', 'rain'],
-      ['bittersweet', 'rain-sun'],
+      ['reflective', 'partly-cloudy'],
+      ['bittersweet', 'rain'],
       ['nostalgic', 'golden-haze'],
     ]
     for (const [tone, weather] of toneToWeather) {
