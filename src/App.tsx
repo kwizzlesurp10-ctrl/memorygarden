@@ -254,6 +254,9 @@ function App() {
             visitCount: 0,
             reflections: [],
             audioRecordings: data.audioRecordings,
+            geneticsSeed: generateGeneticsSeed(),
+            traits: {},
+            unlocks: [],
             genetics: generatePlantGenetics(`${Date.now()}-${Math.random().toString(36).substring(2)}`),
           }
 
@@ -315,10 +318,14 @@ function App() {
             lastVisited: new Date().toISOString(),
           }
           const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
-          return {
+          const updatedWithStage = {
             ...updatedMemory,
             growthMetrics,
             plantStage: getPlantStage(updatedMemory),
+          }
+          return {
+            ...updatedWithStage,
+            unlocks: computeUnlocks(updatedWithStage),
           }
         }
         return m
@@ -432,10 +439,14 @@ function App() {
               Math.abs(nm.position.y - m.position.y) < 300
           )
           const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
-          return {
+          const updatedWithStage = {
             ...updatedMemory,
             growthMetrics,
             plantStage: getPlantStage(updatedMemory),
+          }
+          return {
+            ...updatedWithStage,
+            unlocks: computeUnlocks(updatedWithStage),
           }
         }
         return m
@@ -610,6 +621,24 @@ function App() {
     }
 
     toast.success(`${boostNames[boostLevel]} applied! Your memory is flourishing.`)
+  }
+
+  const handleUpdateTraits = (memoryId: string, traits: PlantTraits) => {
+    let updatedForSelection: Memory | null = null
+    setMemories((currentMemories) =>
+      (currentMemories || []).map((m) => {
+        if (m.id === memoryId) {
+          const updated = { ...m, traits }
+          updatedForSelection = updated
+          return updated
+        }
+        return m
+      })
+    )
+    if (updatedForSelection) {
+      setSelectedMemory(updatedForSelection)
+    }
+    toast.success('Plant appearance updated!')
   }
 
   // Feature 2: Collaborative garden handlers
@@ -1037,6 +1066,7 @@ function App() {
         onAskAI={handleAskAI}
         onShare={handleShareMemory}
         onBoost={handleOpenBoost}
+        onUpdateTraits={handleUpdateTraits}
         onCustomize={selectedMemory ? () => handleOpenCosmeticsEditor(selectedMemory) : undefined}
         aiReflection={aiReflection}
         isLoadingAI={isLoadingAI}

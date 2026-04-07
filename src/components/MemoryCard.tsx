@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork, ChartBar, Lightning, Palette } from '@phosphor-icons/react'
 import { AudioPlayer } from '@/components/AudioPlayer'
+import { PlantCustomizer } from '@/components/PlantCustomizer'
 import { format } from 'date-fns'
-import type { Memory } from '@/lib/types'
+import type { Memory, PlantTraits } from '@/lib/types'
 import { toast } from 'sonner'
 import { calculateGrowthMetrics } from '@/lib/garden-helpers'
 
@@ -21,7 +22,7 @@ interface MemoryCardProps {
   onAskAI: (memoryId: string) => void
   onShare?: (memoryId: string) => void
   onBoost?: (memoryId: string) => void
-  onCustomize?: () => void
+  onUpdateTraits?: (memoryId: string, traits: PlantTraits) => void
   aiReflection?: string
   isLoadingAI?: boolean
 }
@@ -34,6 +35,7 @@ export function MemoryCard({
   onAskAI,
   onShare,
   onBoost,
+  onUpdateTraits,
   onCustomize,
   aiReflection,
   isLoadingAI,
@@ -239,6 +241,16 @@ export function MemoryCard({
                     </div>
                     <p className="text-sm leading-relaxed italic">{aiReflection}</p>
                   </motion.div>
+                </>
+              )}
+
+              {onUpdateTraits && (
+                <>
+                  <Separator />
+                  <PlantCustomizer
+                    memory={memory}
+                    onUpdateTraits={onUpdateTraits}
+                  />
                 </>
               )}
 
