@@ -461,14 +461,19 @@ function App() {
   }
 
   const handleUpdateTraits = (memoryId: string, traits: PlantTraits) => {
+    let updatedForSelection: Memory | null = null
     setMemories((currentMemories) =>
-      (currentMemories || []).map((m) =>
-        m.id === memoryId ? { ...m, traits } : m
-      )
+      (currentMemories || []).map((m) => {
+        if (m.id === memoryId) {
+          const updated = { ...m, traits }
+          updatedForSelection = updated
+          return updated
+        }
+        return m
+      })
     )
-    const updatedMemory = (memories || []).find((m) => m.id === memoryId)
-    if (updatedMemory) {
-      setSelectedMemory({ ...updatedMemory, traits })
+    if (updatedForSelection) {
+      setSelectedMemory(updatedForSelection)
     }
     toast.success('Plant appearance updated!')
   }

@@ -1,10 +1,24 @@
 import { motion, useAnimation } from 'framer-motion'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useMemo } from 'react'
 import type { Memory, PlantStage, Season, PlantVariety } from '@/lib/types'
 import { getPlantColor, getPlantSize, getSeasonalPlantModifier, getSeason, calculateGrowthMetrics, getVisualParams, getPlantStage } from '@/lib/garden-helpers'
 import { resolveTraitVisuals, type ResolvedTraitVisuals } from '@/lib/trait-system'
 import { FlowerPlant } from './plants/FlowerPlant'
 import { TreePlant, SucculentPlant, VinePlant, HerbPlant, WildflowerPlant } from './plants/OtherPlants'
+
+/** Simple seeded PRNG for deterministic visual positions based on memory id */
+function seededRandom(seed: string): () => number {
+  let hash = 0
+  for (let i = 0; i < seed.length; i++) {
+    const char = seed.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32-bit integer
+  }
+  return () => {
+    hash = (hash * 16807 + 0) % 2147483647
+    return (hash & 0x7fffffff) / 0x7fffffff
+  }
+}
 
 interface PlantProps {
   memory: Memory
@@ -84,7 +98,7 @@ export function Plant({ memory, onClick, isDragging, season, nearbyMemories = []
         traitVisuals={traitVisuals}
       />
       
-      <TraitOverlays traitVisuals={traitVisuals} size={visual.size} />
+      <TraitOverlays traitVisuals={traitVisuals} size={visual.size} seed={memory.geneticsSeed || memory.id} />
       
       {isGrowing && (
         <PlantGrowthParticles color={plantColor} tier={boostTier} />
@@ -93,7 +107,23 @@ export function Plant({ memory, onClick, isDragging, season, nearbyMemories = []
   )
 }
 
-function TraitOverlays({ traitVisuals, size }: { traitVisuals: ResolvedTraitVisuals; size: number }) {
+function TraitOverlays({ traitVisuals, size, seed }: { traitVisuals: ResolvedTraitVisuals; size: number; seed: string }) {
+  // Pre-compute deterministic positions for elements that need randomness
+  const positions = useMemo(() => {
+    const rng = seededRandom(seed)
+    return {
+      starlight: Array.from({ length: 6 }, () => ({
+        left: 20 + rng() * 60,
+        top: 10 + rng() * 60,
+        duration: 2 + rng(),
+      })),
+      pollen: Array.from({ length: 5 }, () => ({
+        left: 10 + rng() * 80,
+        top: 10 + rng() * 60,
+      })),
+    }
+  }, [seed])
+
   return (
     <div className="absolute inset-0 pointer-events-none" style={{ width: size, height: size }}>
       {/* Aura effect */}
@@ -113,18 +143,18 @@ function TraitOverlays({ traitVisuals, size }: { traitVisuals: ResolvedTraitVisu
           className="absolute inset-0"
           style={{ scale: 1.8 }}
         >
-          {Array.from({ length: 6 }).map((_, i) => (
+          {positions.starlight.map((pos, i) => (
             <motion.div
               key={i}
               className="absolute w-1 h-1 rounded-full"
               style={{
                 background: 'oklch(0.90 0.08 220)',
-                left: `${20 + Math.random() * 60}%`,
-                top: `${10 + Math.random() * 60}%`,
+                left: `${pos.left}%`,
+                top: `${pos.top}%`,
                 boxShadow: '0 0 4px oklch(0.90 0.08 220 / 0.6)',
               }}
               animate={{ opacity: [0, 1, 0], scale: [0.5, 1.2, 0.5] }}
-              transition={{ duration: 2 + Math.random(), repeat: Infinity, delay: i * 0.4 }}
+              transition={{ duration: pos.duration, repeat: Infinity, delay: i * 0.4 }}
             />
           ))}
         </motion.div>
@@ -214,14 +244,14 @@ function TraitOverlays({ traitVisuals, size }: { traitVisuals: ResolvedTraitVisu
       {/* Adornment: pollen */}
       {traitVisuals.adornment === 'pollen' && (
         <>
-          {Array.from({ length: 5 }).map((_, i) => (
+          {positions.pollen.map((pos, i) => (
             <motion.div
               key={i}
               className="absolute w-1 h-1 rounded-full"
               style={{
                 background: 'oklch(0.82 0.14 80 / 0.7)',
-                left: `${10 + Math.random() * 80}%`,
-                top: `${10 + Math.random() * 60}%`,
+                left: `${pos.left}%`,
+                top: `${pos.top}%`,
               }}
               animate={{
                 y: [0, -12, -24],

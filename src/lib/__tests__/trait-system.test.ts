@@ -191,6 +191,12 @@ describe('computeUnlocks', () => {
     expect(unlocks.some((u) => u.slot === 'adornment' && u.traitId === 'butterflies')).toBe(true)
   })
 
+  it('does not unlock butterflies when shareCreatedAt is missing', () => {
+    const memory = makeMemory({ shareCount: 1 })
+    const unlocks = computeUnlocks(memory)
+    expect(unlocks.some((u) => u.slot === 'adornment' && u.traitId === 'butterflies')).toBe(false)
+  })
+
   it('unlocks pollen after 3+ shares', () => {
     const memory = makeMemory({ shareCount: 3, shareCreatedAt: '2025-01-05T00:00:00.000Z' })
     const unlocks = computeUnlocks(memory)

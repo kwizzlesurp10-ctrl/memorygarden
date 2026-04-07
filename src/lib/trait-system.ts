@@ -162,11 +162,11 @@ export function computeUnlocks(memory: Memory): TraitUnlock[] {
   }
 
   // --- Share-based unlocks ---
-  if ((memory.shareCount || 0) >= 1) {
-    addUnlock(unlocks, 'adornment', 'butterflies', memory.shareCreatedAt || memory.plantedAt)
+  if ((memory.shareCount || 0) >= 1 && memory.shareCreatedAt) {
+    addUnlock(unlocks, 'adornment', 'butterflies', memory.shareCreatedAt)
   }
-  if ((memory.shareCount || 0) >= 3) {
-    addUnlock(unlocks, 'adornment', 'pollen', memory.shareCreatedAt || memory.plantedAt)
+  if ((memory.shareCount || 0) >= 3 && memory.shareCreatedAt) {
+    addUnlock(unlocks, 'adornment', 'pollen', memory.shareCreatedAt)
   }
 
   // --- Elder-tier unlocks ---
