@@ -28,7 +28,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood } from '@/lib/types'
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken } from '@/lib/garden-helpers'
 import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
-import { getLocalUser, type LocalUser } from '@/lib/local-user'
+import { getLocalUser, generateId, type LocalUser } from '@/lib/local-user'
 
 type ViewMode = 'garden' | 'timeline' | 'clusters'
 
@@ -42,7 +42,7 @@ const _migratedProfiles = new Set<string>()
 function migrateLegacyData(userId: string) {
   if (_migratedProfiles.has(userId)) return
   _migratedProfiles.add(userId)
-  const legacyKeys = ['memories', 'preferences', 'collaborative-gardens', 'garden-activities'] as const
+  const legacyKeys = ['memories', 'preferences', 'collaborative-gardens', 'garden-activities', 'shared-memories'] as const
   for (const key of legacyKeys) {
     const legacyStorageKey = `memorygarden:${key}`
     const newStorageKey = `memorygarden:${userId}:${key}`
@@ -65,7 +65,7 @@ function App() {
 
   const [user, setUser] = useState<LocalUser | null>(localUser)
   const [memories, setMemories] = useKV<Memory[]>(`${localUser.id}:memories`, [])
-  const [sharedMemories, setSharedMemories] = useKV<Record<string, SharedMemory>>('shared-memories', {})
+  const [sharedMemories, setSharedMemories] = useKV<Record<string, SharedMemory>>(`${localUser.id}:shared-memories`, {})
   const [preferences, setPreferences] = useKV<UserPreferences>(`${localUser.id}:preferences`, {
     hasCompletedOnboarding: false,
     soundEnabled: false,
@@ -186,7 +186,7 @@ function App() {
           const plantVariety = selectPlantVariety(emotionalTone, data.text)
           
           const newMemory: Memory = {
-            id: `memory-${Date.now()}`,
+            id: `memory-${generateId()}`,
             photoUrl,
             text: data.text,
             date: data.date,
@@ -234,6 +234,7 @@ function App() {
         Math.abs(m.position.y - memory.position.y) < 300
     )
     
+    let clickedMemory: Memory = memory
     setMemories((currentMemories) =>
       (currentMemories || []).map((m) => {
         if (m.id === memory.id) {
@@ -243,18 +244,18 @@ function App() {
             lastVisited: new Date().toISOString(),
           }
           const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
-          return {
+          clickedMemory = {
             ...updatedMemory,
             growthMetrics,
             plantStage: getPlantStage(updatedMemory),
           }
+          return clickedMemory
         }
         return m
       })
     )
     
-    const updatedMemory = (memories || []).find((m) => m.id === memory.id)
-    setSelectedMemory(updatedMemory || memory)
+    setSelectedMemory(clickedMemory)
     setAiReflection('')
   }
 
@@ -267,6 +268,7 @@ function App() {
   }
 
   const handleWater = async (memoryId: string, reflectionText: string) => {
+    let wateredMemory: Memory | null = null
     setMemories((currentMemories) =>
       (currentMemories || []).map((m) => {
         if (m.id === memoryId) {
@@ -275,7 +277,7 @@ function App() {
             reflections: [
               ...m.reflections,
               {
-                id: `reflection-${Date.now()}`,
+                id: `reflection-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                 text: reflectionText,
                 createdAt: new Date().toISOString(),
                 tone: m.emotionalTone,
@@ -289,19 +291,19 @@ function App() {
               Math.abs(nm.position.y - m.position.y) < 300
           )
           const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
-          return {
+          wateredMemory = {
             ...updatedMemory,
             growthMetrics,
             plantStage: getPlantStage(updatedMemory),
           }
+          return wateredMemory
         }
         return m
       })
     )
     
-    const updatedMemory = (memories || []).find((m) => m.id === memoryId)
-    if (updatedMemory) {
-      setSelectedMemory(updatedMemory)
+    if (wateredMemory) {
+      setSelectedMemory(wateredMemory)
     }
   }
 

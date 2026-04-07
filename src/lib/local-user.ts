@@ -17,7 +17,7 @@ function secureRandInt(max: number): number {
   return arr[0] % max
 }
 
-function generateId(): string {
+export function generateId(): string {
   if (typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
   }

@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CalendarBlank, Image as ImageIcon, MapPin, Plant as PlantIcon } from '@phosphor-icons/react'
 import { AudioRecorder } from '@/components/AudioRecorder'
+import { generateId } from '@/lib/local-user'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import type { AudioRecording } from '@/lib/types'
@@ -80,7 +81,7 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
     return new Promise<void>((resolve) => {
       reader.onload = () => {
         const audioRecording: AudioRecording = {
-          id: `audio-${Date.now()}`,
+          id: `audio-${generateId()}`,
           dataUrl: reader.result as string,
           duration,
           createdAt: new Date().toISOString(),
