@@ -277,7 +277,7 @@ function App() {
             reflections: [
               ...m.reflections,
               {
-                id: `reflection-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                id: `reflection-${generateId()}`,
                 text: reflectionText,
                 createdAt: new Date().toISOString(),
                 tone: m.emotionalTone,
