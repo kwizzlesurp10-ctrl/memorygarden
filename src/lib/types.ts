@@ -2,6 +2,30 @@ export type EmotionalTone = 'happy' | 'reflective' | 'bittersweet' | 'peaceful' 
 
 export type PlantStage = 'seed' | 'sprout' | 'seedling' | 'young' | 'bud' | 'bloom' | 'mature' | 'elder'
 
+// ──── Per-plant cosmetic trait system ──────────────────────
+export type TraitSlot = 'palette' | 'pattern' | 'adornment' | 'accent' | 'aura'
+
+export type PaletteId = 'default' | 'dawn' | 'twilight' | 'forest' | 'coral' | 'lavender'
+export type PatternId = 'solid' | 'speckle' | 'gradient' | 'stripe'
+export type AdornmentId = 'none' | 'dew' | 'butterflies' | 'fireflies' | 'pollen'
+export type AccentId = 'none' | 'sparkle' | 'rings' | 'halo'
+export type AuraId = 'none' | 'softGlow' | 'starlight' | 'aurora'
+
+export interface PlantTraits {
+  paletteId?: PaletteId
+  pattern?: PatternId
+  adornment?: AdornmentId
+  accent?: AccentId
+  aura?: AuraId
+}
+
+/** A concrete unlock earned by a specific plant based on its tending history */
+export interface TraitUnlock {
+  slot: TraitSlot
+  traitId: string
+  unlockedAt: string
+}
+
 export type PlantVariety = 'flower' | 'tree' | 'succulent' | 'vine' | 'herb' | 'wildflower' | 'ancient_oak' | 'eternal_rose' | 'phoenix_vine' | 'starlight_succulent'
 
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter'
@@ -40,6 +64,12 @@ export interface Memory {
   growthMetrics?: GrowthMetrics
   generatedPlantImages?: GeneratedPlantImages
   plantStyle?: PlantStylePreference
+  /** Deterministic seed for procedural appearance variation (set at planting) */
+  geneticsSeed?: string
+  /** Applied cosmetic traits for this plant */
+  traits?: PlantTraits
+  /** Persisted unlocks earned by this plant's tending history */
+  unlocks?: TraitUnlock[]
 }
 
 export interface SharedMemory {

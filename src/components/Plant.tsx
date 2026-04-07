@@ -2,6 +2,7 @@ import { motion, useAnimation } from 'framer-motion'
 import { useEffect, useRef } from 'react'
 import type { Memory, PlantStage, Season, PlantVariety } from '@/lib/types'
 import { getPlantColor, getPlantSize, getSeasonalPlantModifier, getSeason, calculateGrowthMetrics, getVisualParams, getPlantStage } from '@/lib/garden-helpers'
+import { resolveTraitVisuals, type ResolvedTraitVisuals } from '@/lib/trait-system'
 import { FlowerPlant } from './plants/FlowerPlant'
 import { TreePlant, SucculentPlant, VinePlant, HerbPlant, WildflowerPlant } from './plants/OtherPlants'
 
@@ -20,6 +21,10 @@ export function Plant({ memory, onClick, isDragging, season, nearbyMemories = []
   const metrics = calculateGrowthMetrics(memory, nearbyMemories)
   const visual = getVisualParams(memory, metrics)
   const currentStage = getPlantStage(memory)
+  const traitVisuals = resolveTraitVisuals(memory)
+  
+  // Apply palette color override if a non-default palette is selected
+  const plantColor = traitVisuals.colorOverride || visual.color
   
   const isLegendary = visual.specialClass === 'legendary'
   const controls = useAnimation()
@@ -70,18 +75,223 @@ export function Plant({ memory, onClick, isDragging, season, nearbyMemories = []
       <PlantSVG 
         variety={memory.plantVariety}
         stage={currentStage}
-        color={visual.color}
+        color={plantColor}
         season={currentSeason}
         size={visual.size}
         scaleX={visual.scaleX}
         leafOpacity={visual.leafOpacity}
         bloomOpacity={visual.bloomOpacity}
+        traitVisuals={traitVisuals}
       />
       
+      <TraitOverlays traitVisuals={traitVisuals} size={visual.size} />
+      
       {isGrowing && (
-        <PlantGrowthParticles color={visual.color} tier={boostTier} />
+        <PlantGrowthParticles color={plantColor} tier={boostTier} />
       )}
     </motion.div>
+  )
+}
+
+function TraitOverlays({ traitVisuals, size }: { traitVisuals: ResolvedTraitVisuals; size: number }) {
+  return (
+    <div className="absolute inset-0 pointer-events-none" style={{ width: size, height: size }}>
+      {/* Aura effect */}
+      {traitVisuals.aura === 'softGlow' && (
+        <motion.div
+          className="absolute inset-0 rounded-full"
+          style={{
+            background: 'radial-gradient(circle, oklch(0.85 0.12 85 / 0.25) 0%, transparent 70%)',
+            scale: 1.6,
+          }}
+          animate={{ opacity: [0.4, 0.7, 0.4] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      )}
+      {traitVisuals.aura === 'starlight' && (
+        <motion.div
+          className="absolute inset-0"
+          style={{ scale: 1.8 }}
+        >
+          {Array.from({ length: 6 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1 h-1 rounded-full"
+              style={{
+                background: 'oklch(0.90 0.08 220)',
+                left: `${20 + Math.random() * 60}%`,
+                top: `${10 + Math.random() * 60}%`,
+                boxShadow: '0 0 4px oklch(0.90 0.08 220 / 0.6)',
+              }}
+              animate={{ opacity: [0, 1, 0], scale: [0.5, 1.2, 0.5] }}
+              transition={{ duration: 2 + Math.random(), repeat: Infinity, delay: i * 0.4 }}
+            />
+          ))}
+        </motion.div>
+      )}
+      {traitVisuals.aura === 'aurora' && (
+        <motion.div
+          className="absolute inset-0 rounded-full"
+          style={{ scale: 1.5 }}
+          animate={{
+            background: [
+              'radial-gradient(circle, oklch(0.70 0.14 160 / 0.2) 0%, transparent 70%)',
+              'radial-gradient(circle, oklch(0.70 0.14 280 / 0.2) 0%, transparent 70%)',
+              'radial-gradient(circle, oklch(0.70 0.14 160 / 0.2) 0%, transparent 70%)',
+            ],
+          }}
+          transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      )}
+
+      {/* Adornment: dew drops */}
+      {traitVisuals.adornment === 'dew' && (
+        <>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1.5 h-1.5 rounded-full"
+              style={{
+                background: 'oklch(0.92 0.04 210 / 0.8)',
+                left: `${25 + i * 15}%`,
+                top: `${30 + (i % 2) * 20}%`,
+                boxShadow: '0 0 3px oklch(0.92 0.04 210 / 0.5)',
+              }}
+              animate={{ opacity: [0.5, 1, 0.5], scale: [0.9, 1.1, 0.9] }}
+              transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.3 }}
+            />
+          ))}
+        </>
+      )}
+
+      {/* Adornment: butterflies */}
+      {traitVisuals.adornment === 'butterflies' && (
+        <>
+          {Array.from({ length: 2 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute text-xs"
+              style={{
+                left: `${20 + i * 40}%`,
+                top: `${15 + i * 20}%`,
+              }}
+              animate={{
+                x: [0, 8, -4, 6, 0],
+                y: [0, -6, -2, -8, 0],
+              }}
+              transition={{ duration: 4 + i, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              🦋
+            </motion.div>
+          ))}
+        </>
+      )}
+
+      {/* Adornment: fireflies */}
+      {traitVisuals.adornment === 'fireflies' && (
+        <>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1 h-1 rounded-full"
+              style={{
+                background: 'oklch(0.88 0.16 90)',
+                left: `${15 + i * 25}%`,
+                top: `${20 + (i % 2) * 25}%`,
+                boxShadow: '0 0 6px oklch(0.88 0.16 90 / 0.8)',
+              }}
+              animate={{
+                opacity: [0, 0.9, 0],
+                x: [0, (i % 2 === 0 ? 6 : -6), 0],
+                y: [0, -8, 0],
+              }}
+              transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.8 }}
+            />
+          ))}
+        </>
+      )}
+
+      {/* Adornment: pollen */}
+      {traitVisuals.adornment === 'pollen' && (
+        <>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1 h-1 rounded-full"
+              style={{
+                background: 'oklch(0.82 0.14 80 / 0.7)',
+                left: `${10 + Math.random() * 80}%`,
+                top: `${10 + Math.random() * 60}%`,
+              }}
+              animate={{
+                y: [0, -12, -24],
+                x: [0, (i % 2 === 0 ? 8 : -8), (i % 2 === 0 ? 4 : -4)],
+                opacity: [0.7, 0.5, 0],
+              }}
+              transition={{ duration: 3, repeat: Infinity, delay: i * 0.6 }}
+            />
+          ))}
+        </>
+      )}
+
+      {/* Accent: sparkle */}
+      {traitVisuals.accent === 'sparkle' && (
+        <>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute"
+              style={{
+                left: `${20 + i * 18}%`,
+                top: `${15 + (i % 3) * 15}%`,
+              }}
+              animate={{ opacity: [0, 1, 0], scale: [0.5, 1, 0.5] }}
+              transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.5 }}
+            >
+              <svg width="8" height="8" viewBox="0 0 8 8">
+                <path d="M4 0 L5 3 L8 4 L5 5 L4 8 L3 5 L0 4 L3 3 Z" fill="oklch(0.90 0.10 60 / 0.8)" />
+              </svg>
+            </motion.div>
+          ))}
+        </>
+      )}
+
+      {/* Accent: halo */}
+      {traitVisuals.accent === 'halo' && (
+        <motion.div
+          className="absolute left-1/2 rounded-full border"
+          style={{
+            width: size * 0.6,
+            height: size * 0.2,
+            top: '5%',
+            x: '-50%',
+            borderColor: 'oklch(0.85 0.10 60 / 0.4)',
+          }}
+          animate={{ opacity: [0.3, 0.6, 0.3] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      )}
+
+      {/* Accent: growth rings */}
+      {traitVisuals.accent === 'rings' && (
+        <>
+          {Array.from({ length: 2 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute left-1/2 bottom-1/4 rounded-full border"
+              style={{
+                width: size * (0.4 + i * 0.2),
+                height: size * (0.15 + i * 0.08),
+                x: '-50%',
+                borderColor: `oklch(0.65 0.08 155 / ${0.3 - i * 0.1})`,
+              }}
+              animate={{ opacity: [0.2, 0.4, 0.2] }}
+              transition={{ duration: 4, repeat: Infinity, delay: i * 1 }}
+            />
+          ))}
+        </>
+      )}
+    </div>
   )
 }
 
@@ -268,7 +478,7 @@ function PlantGrowthParticles({ color, tier }: { color: string; tier?: 'standard
   return null
 }
 
-function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity, bloomOpacity }: { 
+function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity, bloomOpacity, traitVisuals }: { 
   variety: PlantVariety
   stage: PlantStage
   color: string
@@ -277,12 +487,34 @@ function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity, bl
   scaleX: number
   leafOpacity: number
   bloomOpacity: number
+  traitVisuals?: ResolvedTraitVisuals
 }) {
   const stemColor = season === 'autumn' ? 'oklch(0.52 0.10 145)' : season === 'winter' ? 'oklch(0.48 0.06 160)' : 'oklch(0.55 0.08 155)'
   const groundColor = season === 'winter' ? 'oklch(0.82 0.02 220)' : 'oklch(0.45 0.05 65)'
+  const pattern = traitVisuals?.pattern || 'solid'
   
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* SVG defs for pattern overlays */}
+      <defs>
+        {pattern === 'speckle' && (
+          <pattern id="speckle-pattern" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
+            <circle cx="2" cy="3" r="1" fill="oklch(0.95 0.04 90 / 0.4)" />
+            <circle cx="7" cy="8" r="0.8" fill="oklch(0.95 0.04 90 / 0.3)" />
+          </pattern>
+        )}
+        {pattern === 'gradient' && (
+          <linearGradient id="gradient-overlay" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="oklch(0.95 0.06 90 / 0.3)" />
+            <stop offset="100%" stopColor="oklch(0.40 0.04 90 / 0.1)" />
+          </linearGradient>
+        )}
+        {pattern === 'stripe' && (
+          <pattern id="stripe-pattern" x="0" y="0" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="6" stroke="oklch(0.90 0.04 90 / 0.2)" strokeWidth="1.5" />
+          </pattern>
+        )}
+      </defs>
       <g transform={`scale(${scaleX}, 1)`} transform-origin="50 50">
         {variety === 'flower' && <FlowerPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} season={season} />}
         {variety === 'tree' && <TreePlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
@@ -292,6 +524,10 @@ function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity, bl
         {variety === 'wildflower' && <WildflowerPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} season={season} />}
         {(variety === 'ancient_oak' || variety === 'eternal_rose' || variety === 'phoenix_vine' || variety === 'starlight_succulent') && 
           <LegendaryPlant variety={variety} stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} season={season} />}
+        {/* Pattern overlay applied on top of plant */}
+        {pattern === 'speckle' && <rect x="0" y="0" width="100" height="100" fill="url(#speckle-pattern)" opacity="0.6" />}
+        {pattern === 'gradient' && <rect x="0" y="0" width="100" height="100" fill="url(#gradient-overlay)" />}
+        {pattern === 'stripe' && <rect x="0" y="0" width="100" height="100" fill="url(#stripe-pattern)" opacity="0.5" />}
       </g>
     </svg>
   )

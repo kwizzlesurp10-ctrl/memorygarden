@@ -25,8 +25,9 @@ import { GardenMembersPanel } from '@/components/GardenMembersPanel'
 import { ActivityFeed } from '@/components/ActivityFeed'
 import { PlantStyleCustomizer } from '@/components/PlantStyleCustomizer'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood } from '@/lib/types'
+import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, PlantTraits, GardenMood } from '@/lib/types'
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken } from '@/lib/garden-helpers'
+import { generateGeneticsSeed, computeUnlocks } from '@/lib/trait-system'
 import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
 import { getLocalUser, type LocalUser } from '@/lib/local-user'
 
@@ -202,6 +203,9 @@ function App() {
             visitCount: 0,
             reflections: [],
             audioRecordings: data.audioRecordings,
+            geneticsSeed: generateGeneticsSeed(),
+            traits: {},
+            unlocks: [],
           }
 
           setMemories((currentMemories) => [...(currentMemories || []), newMemory])
@@ -243,10 +247,14 @@ function App() {
             lastVisited: new Date().toISOString(),
           }
           const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
-          return {
+          const updatedWithStage = {
             ...updatedMemory,
             growthMetrics,
             plantStage: getPlantStage(updatedMemory),
+          }
+          return {
+            ...updatedWithStage,
+            unlocks: computeUnlocks(updatedWithStage),
           }
         }
         return m
@@ -289,10 +297,14 @@ function App() {
               Math.abs(nm.position.y - m.position.y) < 300
           )
           const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
-          return {
+          const updatedWithStage = {
             ...updatedMemory,
             growthMetrics,
             plantStage: getPlantStage(updatedMemory),
+          }
+          return {
+            ...updatedWithStage,
+            unlocks: computeUnlocks(updatedWithStage),
           }
         }
         return m
@@ -446,6 +458,19 @@ function App() {
     }
 
     toast.success(`${boostNames[boostLevel]} applied! Your memory is flourishing.`)
+  }
+
+  const handleUpdateTraits = (memoryId: string, traits: PlantTraits) => {
+    setMemories((currentMemories) =>
+      (currentMemories || []).map((m) =>
+        m.id === memoryId ? { ...m, traits } : m
+      )
+    )
+    const updatedMemory = (memories || []).find((m) => m.id === memoryId)
+    if (updatedMemory) {
+      setSelectedMemory({ ...updatedMemory, traits })
+    }
+    toast.success('Plant appearance updated!')
   }
 
   // Feature 2: Collaborative garden handlers
@@ -831,6 +856,7 @@ function App() {
         onAskAI={handleAskAI}
         onShare={handleShareMemory}
         onBoost={handleOpenBoost}
+        onUpdateTraits={handleUpdateTraits}
         aiReflection={aiReflection}
         isLoadingAI={isLoadingAI}
       />
