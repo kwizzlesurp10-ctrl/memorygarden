@@ -50,7 +50,7 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
     let maxX = 0
     let maxY = 0
     for (const memory of memories) {
-      const plantSize = getPlantSize(memory.plantStage)
+      const plantSize = getPlantSize(memory.plantStage) as number
       maxX = Math.max(maxX, memory.position.x + plantSize)
       maxY = Math.max(maxY, memory.position.y + plantSize)
     }
