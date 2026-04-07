@@ -70,6 +70,8 @@ export interface Memory {
   traits?: PlantTraits
   /** Persisted unlocks earned by this plant's tending history */
   unlocks?: TraitUnlock[]
+  genetics?: PlantGenetics
+  cosmetics?: PlantCosmetics
 }
 
 export interface SharedMemory {
@@ -112,6 +114,8 @@ export interface UserPreferences {
   soundEnabled: boolean
   lastVisit: string
   plantStylePreference?: PlantStylePreference
+  unlockState?: UnlockState
+  gardenDefaults?: GardenDefaults
 }
 
 // Feature 1: Search/Filter
@@ -188,4 +192,99 @@ export interface PlantStylePreference {
 
 export interface GeneratedPlantImages {
   [stage: string]: string // PlantStage -> base64 DataURL
+}
+
+// ── Constraint / Unlock System ──────────────────────────────────────────────
+
+/** Non-monetary currencies earned through interaction patterns */
+export type CurrencyType = 'dew' | 'sunlight' | 'pollen' | 'starlight'
+
+/** Rarity tiers for cosmetic unlocks */
+export type RarityTier = 'common' | 'uncommon' | 'rare' | 'legendary'
+
+/** Palette bias presets */
+export type PaletteId = 'earthy' | 'warm' | 'cool' | 'ocean' | 'sunset' | 'frost' | 'midnight'
+
+/** Adornment types that can be applied to plants */
+export type AdornmentId = 'none' | 'dew-drops' | 'butterflies' | 'fireflies' | 'sparkles' | 'seasonal-bloom' | 'golden-aura'
+
+/** Pattern overlays for plant rendering */
+export type PatternId = 'solid' | 'speckle' | 'gradient' | 'stripe'
+
+/** Currency wallet — how much the user currently holds */
+export interface CurrencyWallet {
+  dew: number
+  sunlight: number
+  pollen: number
+  starlight: number
+}
+
+/** Persistent interaction counters used to evaluate unlock rules */
+export interface InteractionCounters {
+  totalReflections: number
+  totalVisits: number
+  totalMemoriesPlanted: number
+  memoriesReachedMature: number
+  memoriesReachedElder: number
+  nightVisitDays: number
+  uniqueOldMemoriesRevisited: number
+  clustersTended: number
+  /** ISO date strings of distinct days the garden was visited at night */
+  nightVisitDates: string[]
+  /** Memory IDs that have been watered 3+ times */
+  memoriesWatered3: string[]
+  /** Season keys for which the user planted 3+ memories */
+  seasonalPlantings: Record<string, number>
+}
+
+/** A single unlockable cosmetic item */
+export interface UnlockableItem {
+  id: string
+  name: string
+  description: string
+  rarity: RarityTier
+  type: 'palette' | 'adornment' | 'pattern' | 'frame'
+  /** Human-readable requirement */
+  requirement: string
+}
+
+/** Achievement flag with timestamp */
+export interface Achievement {
+  id: string
+  name: string
+  description: string
+  unlockedAt: string
+}
+
+/** Per-memory genetics seed + applied cosmetics */
+export interface PlantGenetics {
+  geneticsSeed: string
+  petalSizeMultiplier: number
+  petalRotationOffset: number
+  stemCurveOffset: number
+  leafAngleOffset: number
+  accentColorIndex: number
+}
+
+export interface PlantCosmetics {
+  paletteId?: PaletteId
+  adornmentId?: AdornmentId
+  patternId?: PatternId
+}
+
+/** Unlock state stored in UserPreferences */
+export interface UnlockState {
+  unlockedPalettes: PaletteId[]
+  unlockedAdornments: AdornmentId[]
+  unlockedPatterns: PatternId[]
+  unlockedFrames: string[]
+  wallet: CurrencyWallet
+  counters: InteractionCounters
+  achievements: Achievement[]
+}
+
+/** Global garden defaults (settings modal) */
+export interface GardenDefaults {
+  paletteBias: PaletteId
+  animationIntensity: 'subtle' | 'normal' | 'lively'
 }
