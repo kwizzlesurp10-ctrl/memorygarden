@@ -238,10 +238,10 @@ describe('buildAgeProfiles', () => {
     expect(profiles).toHaveLength(2)
   })
 
-  it('computes correct agedays', () => {
+  it('computes correct ageDays', () => {
     const memory = makeMemory({ plantedAt: new Date(NOW - 10 * DAY).toISOString() })
     const profiles = buildAgeProfiles([memory], NOW)
-    expect(profiles[0].agedays).toBe(10)
+    expect(profiles[0].ageDays).toBe(10)
   })
 
   it('computes engagementRatio as reflections/visits', () => {

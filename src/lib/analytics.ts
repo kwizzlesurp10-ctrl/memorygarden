@@ -34,7 +34,7 @@ export interface GardenStats {
   /** Distribution of memories per season (based on `plantedAt`) */
   seasonDistribution: Record<Season, number>
   /** Average age of memories in days */
-  averageAgedays: number
+  averageAgeDays: number
   /** Age of the oldest memory in days */
   oldestMemoryDays: number
   /** Age of the youngest memory in days */
@@ -203,7 +203,7 @@ export function computeGardenStats(memories: Memory[], now = Date.now()): Garden
     stageDistribution,
     varietyDistribution,
     seasonDistribution: seasonDist,
-    averageAgedays: Math.floor(totalAgeMs / n / 86400000),
+    averageAgeDays: Math.floor(totalAgeMs / n / 86400000),
     oldestMemoryDays: Math.floor(oldestMs / 86400000),
     youngestMemoryDays: Math.floor(youngestMs / 86400000),
     plantedThisWeek,
@@ -289,7 +289,7 @@ export function computeGrowthTrend(
 
 export interface AgeProfile {
   memoryId: string
-  agedays: number
+  ageDays: number
   visitCount: number
   reflectionCount: number
   /** Engagement ratio: reflections per visit (or per day if no visits) */
@@ -302,13 +302,13 @@ export interface AgeProfile {
  */
 export function buildAgeProfiles(memories: Memory[], now = Date.now()): AgeProfile[] {
   return memories.map(m => {
-    const agedays = daysSince(m.plantedAt, now)
+    const ageDays = daysSince(m.plantedAt, now)
     const visitCount = m.visitCount
     const reflectionCount = m.reflections.length
     const engagementRatio = visitCount > 0
       ? reflectionCount / visitCount
-      : (agedays > 0 ? reflectionCount / agedays : 0)
-    return { memoryId: m.id, agedays, visitCount, reflectionCount, engagementRatio }
+      : (ageDays > 0 ? reflectionCount / ageDays : 0)
+    return { memoryId: m.id, ageDays, visitCount, reflectionCount, engagementRatio }
   })
 }
 
@@ -470,7 +470,7 @@ function emptyStats(): GardenStats {
       'ancient_oak', 'eternal_rose', 'phoenix_vine', 'starlight_succulent',
     ]),
     seasonDistribution: zeroRecord(['spring', 'summer', 'autumn', 'winter']),
-    averageAgedays: 0,
+    averageAgeDays: 0,
     oldestMemoryDays: 0,
     youngestMemoryDays: 0,
     plantedThisWeek: 0,

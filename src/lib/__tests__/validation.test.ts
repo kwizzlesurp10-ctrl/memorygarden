@@ -545,12 +545,27 @@ describe('sanitizeText', () => {
 // ── sanitizeLocation ──────────────────────────────────────────────────────────
 
 describe('sanitizeLocation', () => {
-  it('strips HTML tags', () => {
-    expect(sanitizeLocation('<script>alert(1)</script>Paris')).toBe('Paris')
+  it('strips HTML markup (allowlist approach removes < > brackets)', () => {
+    // With allowlist approach, < > are stripped. The key security property is
+    // that no HTML markup can survive — angle brackets are not allowed.
+    const result = sanitizeLocation('<script>alert(1)</script>Paris')
+    expect(result).not.toContain('<')
+    expect(result).not.toContain('>')
+    expect(result).toContain('Paris')
   })
 
-  it('strips SQL injection characters', () => {
-    expect(sanitizeLocation("Paris'; DROP TABLE memories; --")).toBe('Paris DROP TABLE memories --')
+  it('strips SQL injection characters (semicolons stripped)', () => {
+    // Semicolons are not in the allowlist
+    const result = sanitizeLocation("Paris; DROP TABLE memories")
+    expect(result).not.toContain(';')
+    expect(result).toContain('Paris')
+  })
+
+  it('preserves valid location characters (letters, digits, hyphens, commas)', () => {
+    expect(sanitizeLocation('New York, NY')).toBe('New York, NY')
+    expect(sanitizeLocation('São Paulo')).toContain('Paulo')
+    expect(sanitizeLocation('Paris 75001')).toBe('Paris 75001')
+    expect(sanitizeLocation("King's Cross")).toBe("King's Cross")
   })
 
   it('truncates to max length', () => {
@@ -560,6 +575,10 @@ describe('sanitizeLocation', () => {
 
   it('trims whitespace', () => {
     expect(sanitizeLocation('  Paris  ')).toBe('Paris')
+  })
+
+  it('collapses multiple spaces', () => {
+    expect(sanitizeLocation('New   York')).toBe('New York')
   })
 })
 

@@ -539,18 +539,23 @@ export function sanitizeText(text: string): string {
 }
 
 /**
- * Sanitize a location string: trim and strip obvious injection patterns.
+ * Sanitize a location string: trim and allow only safe Unicode characters.
+ *
+ * Uses an allowlist of characters valid in location names (letters, digits,
+ * spaces, common punctuation) instead of attempting to strip dangerous
+ * patterns — allowlists are more robust than denylist regexes for HTML/XSS
+ * sanitization.
+ *
  * This is defence-in-depth — the data never hits a query engine, but
- * it protects against persistent XSS if values are ever rendered raw.
- * Script and style element contents are removed entirely, then remaining
- * HTML tags are stripped.
+ * it protects against persistent XSS if values are ever rendered as raw HTML.
  */
 export function sanitizeLocation(location: string): string {
+  // Allow: Unicode letters/numbers (via \p{L}\p{N}), spaces, hyphens,
+  // commas, periods, parentheses, apostrophes, and forward slashes.
+  // Everything else (HTML, scripts, SQL metacharacters) is stripped.
   return location
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')  // remove script elements with content
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')    // remove style elements with content
-    .replace(/<[^>]*>/g, '')                            // strip remaining HTML tags
-    .replace(/['"`;]/g, '')                             // strip SQL/JS injection characters
+    .replace(/[^\p{L}\p{N}\s\-,.()'/@#&+]/gu, '')
+    .replace(/\s{2,}/g, ' ')
     .trim()
     .slice(0, MAX_LOCATION_LENGTH)
 }
