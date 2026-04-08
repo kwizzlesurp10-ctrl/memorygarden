@@ -19,14 +19,6 @@ export interface PlantTraits {
   aura?: AuraId
 }
 
-export interface PlantTraits {
-  paletteId?: PaletteId
-  pattern?: PatternId
-  adornment?: AdornmentId
-  accent?: AccentId
-  aura?: AuraId
-}
-
 /** A concrete unlock earned by a specific plant based on its tending history */
 export interface TraitUnlock {
   slot: TraitSlot

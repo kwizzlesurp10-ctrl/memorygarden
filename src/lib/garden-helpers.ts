@@ -278,15 +278,24 @@ export function getSeasonalGroundCover(season: Season): string {
 }
 
 export function generateShareId(): string {
-  return `share-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
+  const bytes = new Uint8Array(6)
+  crypto.getRandomValues(bytes)
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+  return `share-${Date.now()}-${hex}`
 }
 
 export function generateGardenId(): string {
-  return `garden-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
+  const bytes = new Uint8Array(6)
+  crypto.getRandomValues(bytes)
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+  return `garden-${Date.now()}-${hex}`
 }
 
 export function generateInviteToken(): string {
-  return `invite-${Date.now()}-${Math.random().toString(36).substring(2, 12)}`
+  const bytes = new Uint8Array(10)
+  crypto.getRandomValues(bytes)
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+  return `invite-${Date.now()}-${hex}`
 }
 
 export function generatePlantImagePrompt(
