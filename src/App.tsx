@@ -414,6 +414,13 @@ function App() {
     })
   }
 
+  const handleNavigateToMemory = (memoryId: string) => {
+    const memory = safeMemories.find(m => m.id === memoryId)
+    if (memory) {
+      handleMemoryClick(memory)
+    }
+  }
+
   const handleMemoryMove = (memoryId: string, newPosition: { x: number; y: number }) => {
     setMemories((currentMemories) =>
       (currentMemories || []).map((m) =>
@@ -1122,6 +1129,8 @@ function App() {
         onCustomize={selectedMemory ? () => handleOpenCosmeticsEditor(selectedMemory) : undefined}
         aiReflection={aiReflection}
         isLoadingAI={isLoadingAI}
+        allMemories={safeMemories}
+        onNavigate={handleNavigateToMemory}
       />
 
       <Suspense fallback={null}>

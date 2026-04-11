@@ -5,13 +5,14 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork, ChartBar, Lightning, Palette } from '@phosphor-icons/react'
+import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork, ChartBar, Lightning, Palette, CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { AudioPlayer } from '@/components/AudioPlayer'
 import { PlantCustomizer } from '@/components/PlantCustomizer'
 import { format } from 'date-fns'
 import type { Memory, PlantTraits } from '@/lib/types'
 import { toast } from 'sonner'
 import { calculateGrowthMetrics } from '@/lib/garden-helpers'
+import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts'
 
 interface MemoryCardProps {
   memory: Memory | null
@@ -25,6 +26,8 @@ interface MemoryCardProps {
   onCustomize?: () => void
   aiReflection?: string
   isLoadingAI?: boolean
+  allMemories?: Memory[]
+  onNavigate?: (memoryId: string) => void
 }
 
 export function MemoryCard({
@@ -39,6 +42,8 @@ export function MemoryCard({
   onCustomize,
   aiReflection,
   isLoadingAI,
+  allMemories = [],
+  onNavigate,
 }: MemoryCardProps) {
   const [newReflection, setNewReflection] = useState('')
   const [isAddingReflection, setIsAddingReflection] = useState(false)
@@ -48,6 +53,69 @@ export function MemoryCard({
 
   const metrics = calculateGrowthMetrics(memory, [])
   const isLegendary = metrics.rarityScore > 90
+
+  const sortedMemories = [...allMemories].sort((a, b) => 
+    new Date(b.plantedAt).getTime() - new Date(a.plantedAt).getTime()
+  )
+  const currentIndex = sortedMemories.findIndex(m => m.id === memory.id)
+  const hasPrevious = currentIndex > 0
+  const hasNext = currentIndex >= 0 && currentIndex < sortedMemories.length - 1
+
+  const handlePrevious = () => {
+    if (hasPrevious && onNavigate) {
+      onNavigate(sortedMemories[currentIndex - 1].id)
+    }
+  }
+
+  const handleNext = () => {
+    if (hasNext && onNavigate) {
+      onNavigate(sortedMemories[currentIndex + 1].id)
+    }
+  }
+
+  useKeyboardShortcuts({
+    shortcuts: [
+      {
+        id: 'memory-card-previous',
+        descriptor: {
+          key: 'ArrowLeft',
+          description: 'Previous memory',
+          category: 'Memory Navigation',
+          global: true,
+        },
+        handler: handlePrevious,
+      },
+      {
+        id: 'memory-card-next',
+        descriptor: {
+          key: 'ArrowRight',
+          description: 'Next memory',
+          category: 'Memory Navigation',
+          global: true,
+        },
+        handler: handleNext,
+      },
+      {
+        id: 'memory-card-previous-j',
+        descriptor: {
+          key: 'j',
+          description: 'Previous memory (J)',
+          category: 'Memory Navigation',
+        },
+        handler: handlePrevious,
+      },
+      {
+        id: 'memory-card-next-k',
+        descriptor: {
+          key: 'k',
+          description: 'Next memory (K)',
+          category: 'Memory Navigation',
+        },
+        handler: handleNext,
+      },
+    ],
+    enabled: open && allMemories.length > 1 && !!onNavigate,
+  })
 
   const handleWater = async () => {
     if (newReflection.trim().length < 3) {
@@ -72,6 +140,31 @@ export function MemoryCard({
       <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 flex flex-col">
         <DialogTitle className="sr-only">Memory Details</DialogTitle>
         <DialogDescription className="sr-only">View and reflect on your memory</DialogDescription>
+        
+        {allMemories.length > 1 && onNavigate && (
+          <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 z-10 pointer-events-none flex items-center justify-between px-4">
+            <Button
+              size="icon"
+              variant="secondary"
+              onClick={handlePrevious}
+              disabled={!hasPrevious}
+              className="pointer-events-auto rounded-full bg-card/90 backdrop-blur-sm hover:bg-card shadow-lg disabled:opacity-30"
+              title="Previous memory (← or J)"
+            >
+              <CaretLeft size={24} weight="bold" />
+            </Button>
+            <Button
+              size="icon"
+              variant="secondary"
+              onClick={handleNext}
+              disabled={!hasNext}
+              className="pointer-events-auto rounded-full bg-card/90 backdrop-blur-sm hover:bg-card shadow-lg disabled:opacity-30"
+              title="Next memory (→ or K)"
+            >
+              <CaretRight size={24} weight="bold" />
+            </Button>
+          </div>
+        )}
         
         <div className="flex-1 overflow-y-auto">
           <motion.div
@@ -100,6 +193,11 @@ export function MemoryCard({
                 {isLegendary && (
                   <Badge variant="default" className="bg-accent/90 backdrop-blur-sm">
                     ✨ Legendary
+                  </Badge>
+                )}
+                {allMemories.length > 1 && (
+                  <Badge variant="outline" className="bg-card/80 backdrop-blur-sm">
+                    {currentIndex + 1} / {sortedMemories.length}
                   </Badge>
                 )}
               </div>
