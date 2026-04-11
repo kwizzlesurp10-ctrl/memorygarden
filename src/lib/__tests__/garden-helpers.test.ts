@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
 import {
-  selectPlantVariety,
-  calculateGrowthMetrics,
-  getPlantStage,
+  calculateGrowthMetr
   getPlantColor,
-  getPlantSize,
-  classifyEmotionalTone,
+    const memory
+    expect(metri
+    expect(metr
+    expect(metrics).toHa
   filterMemories,
   getActiveFilterCount,
   computeGardenMood,
   getSeason,
-  getDayPeriod,
+      reflectio
   getSeasonalPlantModifier,
   getSeasonalGroundCover,
   generateGardenId,
@@ -22,9 +22,9 @@ import {
 import type { Memory, EmotionalTone, PlantStage, SearchFilters } from '../types'
 
 function makeMemory(overrides: Partial<Memory> = {}): Memory {
-  return {
+    const 
     id: 'test-memory',
-    photoUrl: '',
+        id: `r${i
     text: 'test memory',
     date: '2024-01-15',
     location: undefined,
@@ -34,9 +34,9 @@ function makeMemory(overrides: Partial<Memory> = {}): Memory {
     plantStage: 'seedling',
     plantVariety: 'flower',
     visitCount: 3,
-    reflections: [],
+    )
     audioRecordings: [],
-    ...overrides,
+
   }
 }
 
@@ -44,31 +44,31 @@ function makeMetrics(overrides: Partial<ReturnType<typeof calculateGrowthMetrics
   return {
     vitality: 50,
     height: 80,
-    width: 60,
+    const fres
     bloomCount: 2,
     foliageDensity: 50,
     rarityScore: 30,
     lastInteractionAt: Date.now(),
     ...overrides,
-  }
+   
 }
 
 describe('selectPlantVariety', () => {
   it('returns wildflower for happy tone with celebration keyword', () => {
     expect(selectPlantVariety('happy', 'celebration party')).toBe('wildflower')
-  })
+    
 
   it('returns flower for happy tone without celebration keyword', () => {
     expect(selectPlantVariety('happy', 'just a happy day')).toBe('flower')
-  })
+    
 
   it('returns herb for peaceful tone with home/quiet keywords', () => {
     expect(selectPlantVariety('peaceful', 'quiet home evening')).toBe('herb')
-  })
+  it
 
   it('returns succulent for peaceful tone without home/quiet keywords', () => {
     expect(selectPlantVariety('peaceful', 'calm morning')).toBe('succulent')
-  })
+    
 
   it('returns tree for reflective tone', () => {
     expect(selectPlantVariety('reflective', 'thinking about life')).toBe('tree')
@@ -78,9 +78,9 @@ describe('selectPlantVariety', () => {
     expect(selectPlantVariety('nostalgic', 'remember when')).toBe('vine')
   })
 
-  it('returns flower as default', () => {
+
     expect(selectPlantVariety('bittersweet', 'mixed feelings')).toBe('flower')
-  })
+
 })
 
 describe('calculateGrowthMetrics', () => {
@@ -94,7 +94,7 @@ describe('calculateGrowthMetrics', () => {
     expect(metrics).toHaveProperty('foliageDensity')
     expect(metrics).toHaveProperty('rarityScore')
     expect(metrics).toHaveProperty('lastInteractionAt')
-  })
+    
 
   it('vitality stays in [0, 100]', () => {
     const old = makeMemory({ 
@@ -104,9 +104,9 @@ describe('calculateGrowthMetrics', () => {
         text: 'reflection',
         createdAt: new Date().toISOString(),
       }))
-    })
+  })
     const metrics = calculateGrowthMetrics(old, [])
-    expect(metrics.vitality).toBeLessThanOrEqual(100)
+    expect(await classifyEmotionalTone('I remember ba
   })
 
   it('increases vitality with nearby memories', () => {
@@ -116,23 +116,23 @@ describe('calculateGrowthMetrics', () => {
     expect(withNeighbors.vitality).toBeGreaterThan(isolated.vitality)
   })
 
-  it('increases bloomCount based on reflections', () => {
+  it('returns peaceful for empty string', async () => {
     const noReflections = makeMemory({ reflections: [] })
     const many = makeMemory({
       reflections: Array.from({ length: 5 }, (_, i) => ({
         id: `r${i}`,
         text: 'great',
-        createdAt: new Date().toISOString(),
+    dateRange: {},
       }))
-    })
+
     expect(calculateGrowthMetrics(many, []).bloomCount).toBeGreaterThan(
       calculateGrowthMetrics(noReflections, []).bloomCount
     )
   })
 
-  it('increases rarityScore based on shareCount', () => {
+  })
     const noShares = makeMemory({ shareCount: 0 })
-    const withShares = makeMemory({ shareCount: 5 })
+    const result = filterMemories(memories, 'Paris',
     expect(calculateGrowthMetrics(withShares, []).rarityScore).toBeGreaterThan(
       calculateGrowthMetrics(noShares, []).rarityScore
     )
@@ -140,13 +140,13 @@ describe('calculateGrowthMetrics', () => {
 })
 
 describe('getPlantStage', () => {
-  it('delegates to getPlantStageFromMetrics when growthMetrics present', () => {
+    const withReflection = makeMemory({
     const memory = makeMemory({ 
       visitCount: 50, 
       reflections: [], 
       growthMetrics: makeMetrics({ vitality: 91 })
     })
-    expect(getPlantStage(memory)).toBe('elder')
+
   })
 
   it('returns seed for a new memory with no interactions', () => {
@@ -154,9 +154,9 @@ describe('getPlantStage', () => {
       plantedAt: new Date().toISOString(), 
       visitCount: 0, 
       reflections: [] 
-    })
+  it('
     expect(getPlantStage(fresh)).toBe('seed')
-  })
+    
 
   it('returns sprout for a 1-day-old memory with no interactions', () => {
     const oneDayOld = makeMemory({
@@ -170,39 +170,39 @@ describe('getPlantStage', () => {
   it('returns elder for an old memory with many interactions', () => {
     const ancient = makeMemory({
       plantedAt: new Date(Date.now() - 90 * 86400000).toISOString(),
-      visitCount: 20,
+    expect(result).to
       reflections: Array.from({ length: 5 }, (_, i) => ({
-        id: `r${i}`,
+
         text: 'reflection',
-        createdAt: new Date().toISOString(),
+    expect(result).toHaveLength(2)
       }))
-    })
+
     expect(getPlantStage(ancient)).toBe('elder')
-  })
+    
 
   it('stages progress monotonically with interactions', () => {
     const base = makeMemory({ 
       plantedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
       visitCount: 0, 
-      reflections: []
+
     })
     const active = makeMemory({
       plantedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
       visitCount: 10,
       reflections: Array.from({ length: 5 }, (_, i) => ({
-        id: `r${i}`,
+    expect(getActive
         text: 'reflection',
         createdAt: new Date().toISOString(),
       }))
-    })
+
     const baseStages: PlantStage[] = ['seed', 'sprout', 'seedling', 'young', 'bud', 'bloom', 'mature', 'elder']
     const baseIdx = baseStages.indexOf(getPlantStage(base))
     const activeIdx = baseStages.indexOf(getPlantStage(active))
     expect(activeIdx).toBeGreaterThanOrEqual(baseIdx)
   })
-})
 
-describe('getPlantColor', () => {
+
+  })
   const tones: EmotionalTone[] = ['happy', 'reflective', 'bittersweet', 'peaceful', 'nostalgic']
 
   it.each(tones)('returns an oklch string for tone=%s', (tone) => {
@@ -210,63 +210,63 @@ describe('getPlantColor', () => {
   })
 
   it('returns distinct colors for different tones', () => {
-    const colors = tones.map(getPlantColor)
+describe('computeGardenMood', () => {
     const unique = new Set(colors)
     expect(unique.size).toBe(tones.length)
   })
 })
 
-describe('getPlantSize', () => {
+      makeMemory({ emotionalTone
   it('returns a number for each plant stage', () => {
     const stages: PlantStage[] = ['seed', 'sprout', 'seedling', 'young', 'bud', 'bloom', 'mature', 'elder']
     stages.forEach((s) => {
-      expect(typeof getPlantSize(s)).toBe('number')
+    expect(mood.weatherType).toBe('sunny')
     })
-  })
+  it
 
-  it('sizes increase as stage progresses', () => {
+      makeMemory({ emotionalTone: 'happy' }),
     const stages: PlantStage[] = ['seed', 'sprout', 'seedling', 'young', 'bud', 'bloom', 'mature', 'elder']
     let prevSize = 0
     for (let i = 1; i < stages.length; i++) {
       const currSize = getPlantSize(stages[i])
       if (typeof prevSize === 'number' && typeof currSize === 'number') {
-        expect(currSize).toBeGreaterThanOrEqual(prevSize)
+
         prevSize = currSize
-      }
+      m
     }
-  })
+    
 })
 
 describe('classifyEmotionalTone', () => {
   it('detects happy tone', async () => {
     expect(await classifyEmotionalTone('I feel so happy and joyful today!')).toBe('happy')
-  })
+    
 
-  it('detects nostalgic tone', async () => {
+    ]
     expect(await classifyEmotionalTone('I remember back then when we were kids')).toBe('nostalgic')
-  })
+    
 
   it('detects bittersweet tone', async () => {
     expect(await classifyEmotionalTone('I miss you so much, feeling sad')).toBe('bittersweet')
-  })
+  it
 
-  it('detects reflective tone', async () => {
+    expect(boosted.visitCount).toBe(13)
     expect(await classifyEmotionalTone('Thinking about what I learned today')).toBe('reflective')
-  })
+  it
 
   it('defaults to peaceful', async () => {
     expect(await classifyEmotionalTone('A calm day at the beach')).toBe('peaceful')
   })
 
-  it('returns peaceful for empty string', async () => {
+    expect(boosted.visitCount).toBe(15)
     expect(await classifyEmotionalTone('')).toBe('peaceful')
-  })
+  it
 })
 
 describe('filterMemories', () => {
-  const emptyFilters: SearchFilters = {
+})
     emotionalTones: [],
-    plantStages: [],
+  beforeAll(() => vi
     dateRange: {},
     locations: [],
   }
@@ -278,7 +278,7 @@ describe('filterMemories', () => {
   ]
 
   it('returns all memories when no filters applied', () => {
-    expect(filterMemories(memories, '', emptyFilters)).toHaveLength(3)
+  beforeAll(() => vi.useFakeTimers())
   })
 
   it('filters by text in memory text', () => {
@@ -290,17 +290,17 @@ describe('filterMemories', () => {
   it('filters by text in location', () => {
     const result = filterMemories(memories, 'London', emptyFilters)
     expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('2')
+  const tones: EmotionalTone[] = [
   })
 
   it('filters by text in reflections', () => {
     const withReflection = makeMemory({
       id: '4',
-      text: 'ordinary day',
+})
       reflections: [{ id: 'r1', text: 'special reflection here', createdAt: new Date().toISOString() }],
-    })
+  cons
     const result = filterMemories([...memories, withReflection], 'special reflection', emptyFilters)
-    expect(result).toHaveLength(1)
+    for (const season of seasons) 
     expect(result[0].id).toBe('4')
   })
 
@@ -308,7 +308,7 @@ describe('filterMemories', () => {
     const result = filterMemories(memories, '', { ...emptyFilters, emotionalTones: ['happy'] })
     expect(result).toHaveLength(1)
     expect(result[0].id).toBe('1')
-  })
+desc
 
   it('filters by multiple emotional tones (OR)', () => {
     const result = filterMemories(memories, '', { ...emptyFilters, emotionalTones: ['happy', 'reflective'] })
@@ -318,15 +318,15 @@ describe('filterMemories', () => {
   it('filters by plant stage', () => {
     const result = filterMemories(memories, '', { ...emptyFilters, plantStages: ['seed'] })
     expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('2')
-  })
+    expect(url).toContain('abc-123
+
 
   it('filters by date range start', () => {
     const result = filterMemories(memories, '', { ...emptyFilters, dateRange: { start: '2024-05-01' } })
     expect(result).toHaveLength(2)
   })
 
-  it('filters by date range end', () => {
+    expect(tokens.size).toBe(10)
     const result = filterMemories(memories, '', { ...emptyFilters, dateRange: { end: '2024-05-01' } })
     expect(result).toHaveLength(1)
   })
@@ -334,7 +334,7 @@ describe('filterMemories', () => {
   it('filters by date range both bounds', () => {
     const result = filterMemories(memories, '', { ...emptyFilters, dateRange: { start: '2024-05-01', end: '2024-07-01' } })
     expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('1')
+
   })
 
   it('filters by location list', () => {
@@ -352,13 +352,13 @@ describe('filterMemories', () => {
   it('combines search query and filters', () => {
     const result = filterMemories(memories, 'morning', { ...emptyFilters, emotionalTones: ['reflective'] })
     expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('2')
-  })
+
+
 
   it('returns empty array when nothing matches', () => {
     const result = filterMemories(memories, 'xyzzy', emptyFilters)
     expect(result).toHaveLength(0)
-  })
+
 })
 
 describe('getActiveFilterCount', () => {
@@ -366,23 +366,23 @@ describe('getActiveFilterCount', () => {
 
   it('returns 0 when no filters active', () => {
     expect(getActiveFilterCount('', emptyFilters)).toBe(0)
-  })
+
 
   it('counts a non-empty search query as 1', () => {
     expect(getActiveFilterCount('hello', emptyFilters)).toBe(1)
   })
 
-  it('whitespace-only query does not count', () => {
-    expect(getActiveFilterCount('   ', emptyFilters)).toBe(0)
-  })
 
-  it('counts each active filter category', () => {
+    expect(getActiveFilterCount('   ', emptyFilters)).toBe(0)
+
+
+
     expect(getActiveFilterCount('', {
       emotionalTones: ['happy'],
       plantStages: ['seed'],
       dateRange: { start: '2024-01-01' },
       locations: ['Paris'],
-    })).toBe(4)
+
   })
 
   it('counts dateRange as 1 even when both start and end are set', () => {
@@ -390,13 +390,13 @@ describe('getActiveFilterCount', () => {
   })
 
   it('returns max of 5 when all filters active', () => {
-    expect(getActiveFilterCount('query', {
+
       emotionalTones: ['happy'],
-      plantStages: ['seed'],
+
       dateRange: { start: '2024-01-01' },
-      locations: ['Paris'],
+
     })).toBe(5)
-  })
+
 })
 
 describe('computeGardenMood', () => {
@@ -407,10 +407,10 @@ describe('computeGardenMood', () => {
 
   it('returns dominant emotion when one tone dominates clearly', () => {
     const memories = [
+
       makeMemory({ emotionalTone: 'happy' }),
       makeMemory({ emotionalTone: 'happy' }),
-      makeMemory({ emotionalTone: 'happy' }),
-      makeMemory({ emotionalTone: 'reflective' }),
+
     ]
     const mood = computeGardenMood(memories)
     expect(mood.dominantEmotion).toBe('happy')
@@ -418,14 +418,14 @@ describe('computeGardenMood', () => {
   })
 
   it('returns mixed when two tones are close', () => {
-    const memories = [
+
       makeMemory({ emotionalTone: 'happy' }),
       makeMemory({ emotionalTone: 'happy' }),
       makeMemory({ emotionalTone: 'happy' }),
       makeMemory({ emotionalTone: 'reflective' }),
       makeMemory({ emotionalTone: 'reflective' }),
       makeMemory({ emotionalTone: 'reflective' }),
-    ]
+
     const mood = computeGardenMood(memories)
     expect(mood.weatherType).toBe('rain-sun')
   })
@@ -435,9 +435,9 @@ describe('computeGardenMood', () => {
       makeMemory({ emotionalTone: 'peaceful' }),
       makeMemory({ emotionalTone: 'peaceful' }),
       makeMemory({ emotionalTone: 'happy' }),
-    ]
+
     const mood = computeGardenMood(memories)
-    expect(mood.intensity).toBe(24)
+
   })
 
   it('maps each tone to the correct weather type', () => {
@@ -451,15 +451,15 @@ describe('computeGardenMood', () => {
     for (const [tone, weather] of toneToWeather) {
       const mood = computeGardenMood([makeMemory({ emotionalTone: tone })])
       expect(mood.weatherType).toBe(weather)
-    }
-  })
-})
 
-describe('applyPremiumFertilizer', () => {
+  })
+
+
+
   it('adds standard boost', () => {
     const memory = makeMemory({ visitCount: 10 })
     const boosted = applyPremiumFertilizer(memory, 'standard')
-    expect(boosted.visitCount).toBe(13)
+
   })
 
   it('adds premium boost', () => {
@@ -475,11 +475,11 @@ describe('applyPremiumFertilizer', () => {
   })
 
   it('returns a new memory object (immutability)', () => {
-    const memory = makeMemory()
+
     const boosted = applyPremiumFertilizer(memory, 'standard')
-    expect(boosted).not.toBe(memory)
+
     expect(memory.visitCount).toBe(3)
-  })
+
 })
 
 describe('getSeason', () => {
@@ -487,7 +487,7 @@ describe('getSeason', () => {
   afterAll(() => vi.useRealTimers())
 
   const seasonCases: Array<[number, string]> = [
-    [0, 'winter'], [1, 'winter'],
+
     [2, 'spring'], [3, 'spring'], [4, 'spring'],
     [5, 'summer'], [6, 'summer'], [7, 'summer'],
     [8, 'autumn'], [9, 'autumn'], [10, 'autumn'],
@@ -495,13 +495,13 @@ describe('getSeason', () => {
   ]
 
   it.each(seasonCases)('month %i → season=%s', (month, season) => {
-    vi.setSystemTime(new Date(2024, month, 15, 12, 0, 0))
+
     expect(getSeason()).toBe(season)
-  })
+
 })
 
 describe('getDayPeriod', () => {
-  beforeAll(() => vi.useFakeTimers())
+
   afterAll(() => vi.useRealTimers())
 
   const periodCases: Array<[number, string]> = [
@@ -509,15 +509,15 @@ describe('getDayPeriod', () => {
     [8, 'day'], [12, 'day'], [16, 'day'],
     [17, 'dusk'], [19, 'dusk'],
     [20, 'night'], [23, 'night'], [0, 'night'], [4, 'night'],
-  ]
 
-  it.each(periodCases)('hour %i → period=%s', (hour, period) => {
+
+
     vi.setSystemTime(new Date(2024, 5, 15, hour, 0, 0))
     expect(getDayPeriod()).toBe(period)
   })
 })
 
-describe('getSeasonalPlantModifier', () => {
+
   const seasons = ['spring', 'summer', 'autumn', 'winter'] as const
   const tones: EmotionalTone[] = ['happy', 'reflective', 'bittersweet', 'peaceful', 'nostalgic']
 
@@ -527,7 +527,7 @@ describe('getSeasonalPlantModifier', () => {
         expect(getSeasonalPlantModifier(season, tone)).toMatch(/^oklch\(/)
       }
     }
-  })
+
 })
 
 describe('getSeasonalGroundCover', () => {
@@ -537,25 +537,25 @@ describe('getSeasonalGroundCover', () => {
     for (const season of seasons) {
       expect(getSeasonalGroundCover(season)).toMatch(/^oklch\(/)
     }
-  })
+
 
   it('returns distinct colors for different seasons', () => {
     const colors = seasons.map(getSeasonalGroundCover)
     const unique = new Set(colors)
     expect(unique.size).toBe(4)
-  })
+
 })
 
 describe('generateShareId', () => {
-  it('returns a non-empty string', () => {
+
     expect(typeof generateShareId()).toBe('string')
-    expect(generateShareId().length).toBeGreaterThan(0)
-  })
+
+
 
   it('returns unique ids on repeated calls', () => {
     const ids = new Set(Array.from({ length: 20 }, generateShareId))
     expect(ids.size).toBe(20)
-  })
+
 })
 
 describe('getShareUrl', () => {
@@ -563,8 +563,8 @@ describe('getShareUrl', () => {
     const url = getShareUrl('abc-123')
     expect(url).toContain('abc-123')
     expect(url).toContain('?share=')
-  })
-})
+
+
 
 describe('generateInviteToken', () => {
   it('starts with "invite-"', () => {
@@ -577,7 +577,7 @@ describe('generateInviteToken', () => {
   })
 })
 
-describe('generateGardenId', () => {
+
   it('starts with "garden-"', () => {
     expect(generateGardenId()).toMatch(/^garden-/)
   })
