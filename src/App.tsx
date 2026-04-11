@@ -1203,9 +1203,3 @@ function App() {
 }
 
 export default App
-      </Suspense>
-    </>
-  )
-}
-
-export default App
