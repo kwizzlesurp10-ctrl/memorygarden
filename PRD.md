@@ -94,6 +94,20 @@ This app requires sophisticated state management for memory data, AI integration
   - **Premium Fertilizer**: Energetic spiral particles bursting outward with rotating sparkle stars and expanding rings - magical and transformative (40 spirals, 15 sparkles, 3 rings, 1.5s duration)
   - **Legendary Elixir**: Explosive radial burst with orbiting particles, expanding waves, floating crown stars, and central glow - epic and awe-inspiring (60 burst particles, 30 orbital particles, 8 waves, 20 crown stars, 2.5s duration)
 
+### 12. Keyboard Shortcuts
+- **Functionality**: Global keyboard shortcuts for common actions with discoverable help panel
+- **Purpose**: Power users can navigate and interact with the garden efficiently without reaching for the mouse
+- **Trigger**: User presses keyboard shortcut (e.g., Cmd/Ctrl+N to plant a memory) or presses `?` to view all shortcuts
+- **Progression**: User presses shortcut → action executes immediately → OR user presses `?` → shortcuts panel opens → displays categorized list of all available shortcuts with platform-specific formatting (⌘ on Mac, Ctrl on Windows)
+- **Success criteria**: Shortcuts work reliably, don't conflict with browser shortcuts, shortcuts panel is easy to discover, formatting adapts to user's platform
+- **Available Shortcuts**:
+  - **Cmd/Ctrl+N**: Plant a new memory
+  - **1**: Switch to garden view
+  - **2**: Switch to timeline view
+  - **3**: Switch to clusters view
+  - **Cmd/Ctrl+Shift+E**: Export garden
+  - **?**: Show keyboard shortcuts panel
+
 ## Edge Case Handling
 
 - **No memories yet**: Show beautiful empty garden with gentle prompt and inspiration to plant first memory

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Plant as PlantIcon, Tree, List, GridFour, Export, DotsThree, Link as LinkIcon, Palette, UsersThree, Trophy } from '@phosphor-icons/react'
+import { Plant as PlantIcon, Tree, List, GridFour, Export, DotsThree, Link as LinkIcon, Palette, UsersThree, Trophy, Keyboard } from '@phosphor-icons/react'
 import { GardenCanvas } from '@/components/GardenCanvas'
 import { PlantMemoryModal } from '@/components/PlantMemoryModal'
 import { MemoryCard } from '@/components/MemoryCard'
@@ -14,7 +14,9 @@ import { SeasonIndicator } from '@/components/SeasonIndicator'
 import { SearchFilterBar } from '@/components/SearchFilterBar'
 import { WeatherIndicator } from '@/components/WeatherIndicator'
 import { GardenSelector } from '@/components/GardenSelector'
+import { KeyboardShortcutsPanel } from '@/components/KeyboardShortcutsPanel'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useKeyboardShortcuts, APP_SHORTCUTS } from '@/lib/keyboard-shortcuts'
 
 // ── Lazy-loaded non-critical components (modals, dialogs, secondary views) ──
 const ExportGarden = lazy(() => import('@/components/ExportGarden').then(m => ({ default: m.ExportGarden })))
@@ -117,6 +119,7 @@ function App() {
   const [isUnlocksOpen, setIsUnlocksOpen] = useState(false)
   const [isCosmeticsEditorOpen, setIsCosmeticsEditorOpen] = useState(false)
   const [cosmeticsEditMemory, setCosmeticsEditMemory] = useState<Memory | null>(null)
+  const [isShortcutsPanelOpen, setIsShortcutsPanelOpen] = useState(false)
 
   /** Process unlock state: evaluate new unlocks/achievements and notify */
   const processUnlockUpdates = useCallback((currentState: UnlockState): UnlockState => {
@@ -783,6 +786,46 @@ function App() {
   const safeGardens = collaborativeGardens || []
   const safeActivities = gardenActivities || {}
 
+  useKeyboardShortcuts({
+    shortcuts: [
+      {
+        id: 'plant-memory',
+        descriptor: APP_SHORTCUTS.PLANT_MEMORY,
+        handler: () => {
+          if (safePreferences.hasCompletedOnboarding) {
+            setIsPlantModalOpen(true)
+          }
+        },
+      },
+      {
+        id: 'view-garden',
+        descriptor: APP_SHORTCUTS.VIEW_GARDEN,
+        handler: () => setViewMode('garden'),
+      },
+      {
+        id: 'view-timeline',
+        descriptor: APP_SHORTCUTS.VIEW_TIMELINE,
+        handler: () => setViewMode('timeline'),
+      },
+      {
+        id: 'view-clusters',
+        descriptor: APP_SHORTCUTS.VIEW_CLUSTERS,
+        handler: () => setViewMode('clusters'),
+      },
+      {
+        id: 'export',
+        descriptor: APP_SHORTCUTS.EXPORT,
+        handler: () => setIsExportModalOpen(true),
+      },
+      {
+        id: 'shortcuts-help',
+        descriptor: { key: '?', description: 'Show keyboard shortcuts', category: 'Help' },
+        handler: () => setIsShortcutsPanelOpen(true),
+      },
+    ],
+    enabled: safePreferences.hasCompletedOnboarding,
+  })
+
   // Feature 1: Filtered memories computation
   const filteredMemories = useMemo(
     () => filterMemories(safeMemories, searchQuery, filters),
@@ -905,6 +948,10 @@ function App() {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setIsShortcutsPanelOpen(true)}>
+                  <Keyboard size={16} className="mr-2" />
+                  Keyboard Shortcuts
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => window.open('/protocol-test.html', '_blank')}>
                   <LinkIcon size={16} className="mr-2" />
                   Protocol Handler Test
@@ -1143,6 +1190,12 @@ function App() {
           unlockState={safePreferences.unlockState}
           onSave={handleSaveCosmetics}
           onReroll={handleRerollGenetics}
+        />
+
+        {/* Keyboard Shortcuts Panel */}
+        <KeyboardShortcutsPanel
+          open={isShortcutsPanelOpen}
+          onClose={() => setIsShortcutsPanelOpen(false)}
         />
       </Suspense>
     </>
