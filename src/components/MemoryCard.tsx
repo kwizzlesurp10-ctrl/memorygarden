@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork, ChartBar, Lightning, Palette } from '@phosphor-icons/react'
@@ -70,65 +69,65 @@ export function MemoryCard({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] p-0 overflow-hidden flex flex-col">
+      <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 flex flex-col">
         <DialogTitle className="sr-only">Memory Details</DialogTitle>
         <DialogDescription className="sr-only">View and reflect on your memory</DialogDescription>
         
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          className="relative w-full h-80 flex-shrink-0 overflow-hidden"
-        >
-          <img
-            src={memory.photoUrl}
-            alt="Memory"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-card/90 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-6 flex items-end justify-between">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary" className="bg-card/80 backdrop-blur-sm">
-                {memory.emotionalTone}
-              </Badge>
-              <Badge variant="secondary" className="bg-card/80 backdrop-blur-sm">
-                {memory.plantStage}
-              </Badge>
-              <Badge variant="secondary" className="bg-card/80 backdrop-blur-sm">
-                Visited {memory.visitCount} times
-              </Badge>
-              {isLegendary && (
-                <Badge variant="default" className="bg-accent/90 backdrop-blur-sm">
-                  ✨ Legendary
+        <div className="flex-1 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="relative w-full h-80 flex-shrink-0 overflow-hidden"
+          >
+            <img
+              src={memory.photoUrl}
+              alt="Memory"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-card/90 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-6 flex items-end justify-between">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary" className="bg-card/80 backdrop-blur-sm">
+                  {memory.emotionalTone}
                 </Badge>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="icon"
-                variant="secondary"
-                onClick={() => setShowMetrics(!showMetrics)}
-                className="bg-card/80 backdrop-blur-sm hover:bg-card"
-                title="View growth metrics"
-              >
-                <ChartBar size={20} weight="bold" />
-              </Button>
-              {onShare && (
+                <Badge variant="secondary" className="bg-card/80 backdrop-blur-sm">
+                  {memory.plantStage}
+                </Badge>
+                <Badge variant="secondary" className="bg-card/80 backdrop-blur-sm">
+                  Visited {memory.visitCount} times
+                </Badge>
+                {isLegendary && (
+                  <Badge variant="default" className="bg-accent/90 backdrop-blur-sm">
+                    ✨ Legendary
+                  </Badge>
+                )}
+              </div>
+              <div className="flex gap-2">
                 <Button
                   size="icon"
                   variant="secondary"
-                  onClick={() => onShare(memory.id)}
+                  onClick={() => setShowMetrics(!showMetrics)}
                   className="bg-card/80 backdrop-blur-sm hover:bg-card"
-                  title="Share this memory"
+                  title="View growth metrics"
                 >
-                  <ShareNetwork size={20} weight="bold" />
+                  <ChartBar size={20} weight="bold" />
                 </Button>
-              )}
+                {onShare && (
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    onClick={() => onShare(memory.id)}
+                    className="bg-card/80 backdrop-blur-sm hover:bg-card"
+                    title="Share this memory"
+                  >
+                    <ShareNetwork size={20} weight="bold" />
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
 
-        <ScrollArea className="flex-1 min-h-0">
           <div className="p-6 space-y-6">
               <div>
                 <p className="text-lg leading-relaxed">{memory.text}</p>
@@ -349,7 +348,7 @@ export function MemoryCard({
                 )}
               </div>
             </div>
-          </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
     )
