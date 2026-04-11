@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -13,6 +13,7 @@ import type { Memory, PlantTraits } from '@/lib/types'
 import { toast } from 'sonner'
 import { calculateGrowthMetrics } from '@/lib/garden-helpers'
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 interface MemoryCardProps {
   memory: Memory | null
@@ -48,6 +49,12 @@ export function MemoryCard({
   const [newReflection, setNewReflection] = useState('')
   const [isAddingReflection, setIsAddingReflection] = useState(false)
   const [showMetrics, setShowMetrics] = useState(false)
+  const [isSwipeTransitioning, setIsSwipeTransitioning] = useState(false)
+  const isMobile = useIsMobile()
+
+  const dragX = useMotionValue(0)
+  const dragOpacity = useTransform(dragX, [-200, 0, 200], [0.5, 1, 0.5])
+  const dragScale = useTransform(dragX, [-200, 0, 200], [0.95, 1, 0.95])
 
   if (!memory) return null
 
@@ -62,14 +69,31 @@ export function MemoryCard({
   const hasNext = currentIndex >= 0 && currentIndex < sortedMemories.length - 1
 
   const handlePrevious = () => {
-    if (hasPrevious && onNavigate) {
+    if (hasPrevious && onNavigate && !isSwipeTransitioning) {
+      setIsSwipeTransitioning(true)
       onNavigate(sortedMemories[currentIndex - 1].id)
+      setTimeout(() => setIsSwipeTransitioning(false), 300)
     }
   }
 
   const handleNext = () => {
-    if (hasNext && onNavigate) {
+    if (hasNext && onNavigate && !isSwipeTransitioning) {
+      setIsSwipeTransitioning(true)
       onNavigate(sortedMemories[currentIndex + 1].id)
+      setTimeout(() => setIsSwipeTransitioning(false), 300)
+    }
+  }
+
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const swipeThreshold = 100
+    const swipeVelocityThreshold = 500
+
+    if (Math.abs(info.offset.x) > swipeThreshold || Math.abs(info.velocity.x) > swipeVelocityThreshold) {
+      if (info.offset.x > 0 && hasPrevious) {
+        handlePrevious()
+      } else if (info.offset.x < 0 && hasNext) {
+        handleNext()
+      }
     }
   }
 
@@ -137,36 +161,62 @@ export function MemoryCard({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 flex flex-col">
+      <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 flex flex-col overflow-hidden">
         <DialogTitle className="sr-only">Memory Details</DialogTitle>
         <DialogDescription className="sr-only">View and reflect on your memory</DialogDescription>
         
         {allMemories.length > 1 && onNavigate && (
-          <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 z-10 pointer-events-none flex items-center justify-between px-4">
-            <Button
-              size="icon"
-              variant="secondary"
-              onClick={handlePrevious}
-              disabled={!hasPrevious}
-              className="pointer-events-auto rounded-full bg-card/90 backdrop-blur-sm hover:bg-card shadow-lg disabled:opacity-30"
-              title="Previous memory (← or J)"
-            >
-              <CaretLeft size={24} weight="bold" />
-            </Button>
-            <Button
-              size="icon"
-              variant="secondary"
-              onClick={handleNext}
-              disabled={!hasNext}
-              className="pointer-events-auto rounded-full bg-card/90 backdrop-blur-sm hover:bg-card shadow-lg disabled:opacity-30"
-              title="Next memory (→ or K)"
-            >
-              <CaretRight size={24} weight="bold" />
-            </Button>
-          </div>
+          <>
+            <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 z-10 pointer-events-none flex items-center justify-between px-4">
+              <Button
+                size="icon"
+                variant="secondary"
+                onClick={handlePrevious}
+                disabled={!hasPrevious}
+                className="pointer-events-auto rounded-full bg-card/90 backdrop-blur-sm hover:bg-card shadow-lg disabled:opacity-30"
+                title="Previous memory (← or J)"
+              >
+                <CaretLeft size={24} weight="bold" />
+              </Button>
+              <Button
+                size="icon"
+                variant="secondary"
+                onClick={handleNext}
+                disabled={!hasNext}
+                className="pointer-events-auto rounded-full bg-card/90 backdrop-blur-sm hover:bg-card shadow-lg disabled:opacity-30"
+                title="Next memory (→ or K)"
+              >
+                <CaretRight size={24} weight="bold" />
+              </Button>
+            </div>
+
+            {isMobile && (
+              <div className="absolute top-6 left-0 right-0 z-10 flex justify-center pointer-events-none">
+                <div className="px-4 py-2 bg-card/90 backdrop-blur-sm rounded-full shadow-lg text-xs text-muted-foreground">
+                  Swipe to navigate
+                </div>
+              </div>
+            )}
+          </>
         )}
         
-        <div className="flex-1 overflow-y-auto">
+        <motion.div
+          key={memory.id}
+          className="flex-1 overflow-y-auto"
+          drag={isMobile && allMemories.length > 1 && onNavigate ? "x" : false}
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.2}
+          onDragEnd={handleDragEnd}
+          style={{
+            x: dragX,
+            opacity: dragOpacity,
+            scale: dragScale,
+          }}
+          initial={{ opacity: 0, x: 0 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        >
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -446,7 +496,7 @@ export function MemoryCard({
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
         </DialogContent>
       </Dialog>
     )
