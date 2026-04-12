@@ -133,3 +133,35 @@ jobs:
       - name: Run npm audit (high and critical only)
         run: npm audit --audit-level=high
         continue-on-error: true
+
+  bundle-size:
+    name: Bundle Size Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    needs: build
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Check bundle sizes
+        run: |
+          echo "## Bundle Size Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| File | Size (KB) |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|------|-----------|" >> "$GITHUB_STEP_SUMMARY"
+          find dist/assets -name '*.js' -exec sh -c 'size=$(wc -c < "$1"); echo "| $(basename "$1") | $((size / 1024)) |"' _ {} \; | sort -t'|' -k3 -rn >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          # Fail if any single JS chunk exceeds 400KB
+          max_size=409600
+          for f in dist/assets/*.js; do
+            size=$(wc -c < "$f")
+            if [ "$size" -gt "$max_size" ]; then
+              echo "::error::Bundle $(basename "$f") is ${size} bytes (limit: ${max_size})"
+              exit 1
+            fi
+          done
+          echo "✅ All chunks within size budget"

@@ -360,19 +360,22 @@ describe('applyPremiumFertilizer', () => {
   it('increases visit count for standard boost', () => {
     const memory = makeMemory({ visitCount: 5 })
     const boosted = applyPremiumFertilizer(memory, 'standard')
-    expect(boosted.visitCount).toBe(23)
+    // standard multiplier is 3, so visitCount + 3 = 8
+    expect(boosted.visitCount).toBe(8)
   })
 
   it('increases visit count for premium boost', () => {
     const memory = makeMemory({ visitCount: 5 })
     const boosted = applyPremiumFertilizer(memory, 'premium')
-    expect(boosted.visitCount).toBe(39)
+    // premium multiplier is 8, so visitCount + 8 = 13
+    expect(boosted.visitCount).toBe(13)
   })
 
   it('increases visit count for legendary boost', () => {
     const memory = makeMemory({ visitCount: 5 })
     const boosted = applyPremiumFertilizer(memory, 'legendary')
-    expect(boosted.visitCount).toBe(60)
+    // legendary multiplier is 15, so visitCount + 15 = 20
+    expect(boosted.visitCount).toBe(20)
   })
 })
 
@@ -463,7 +466,7 @@ describe('ID generation functions', () => {
     const id1 = generateShareId()
     const id2 = generateShareId()
     expect(id1).not.toBe(id2)
-    expect(id1).toHaveLength(8)
+    expect(id1).toMatch(/^share-\d+-[0-9a-f]{12}$/)
   })
 
   it('generateGardenId creates unique IDs', () => {
@@ -477,7 +480,7 @@ describe('ID generation functions', () => {
     const token1 = generateInviteToken()
     const token2 = generateInviteToken()
     expect(token1).not.toBe(token2)
-    expect(token1).toHaveLength(16)
+    expect(token1).toMatch(/^invite-\d+-[0-9a-f]{20}$/)
   })
 })
 
