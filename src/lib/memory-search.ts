@@ -72,10 +72,12 @@ export function tokenise(query: string): string[] {
  */
 export function highlightTokens(text: string, tokens: string[]): string {
   if (tokens.length === 0) return escapeHtml(text)
-  const escaped = tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-  const pattern = new RegExp(`(${escaped.join('|')})`, 'gi')
-  // Escape first, then wrap matches in <mark> tags
+  // Escape the text first for safe HTML output
   const safeText = escapeHtml(text)
+  // Escape tokens through the same transform so they match the escaped text
+  const escapedTokens = tokens.map(t => escapeHtml(t))
+  const regexEscaped = escapedTokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  const pattern = new RegExp(`(${regexEscaped.join('|')})`, 'gi')
   return safeText.replace(pattern, '<mark>$1</mark>')
 }
 

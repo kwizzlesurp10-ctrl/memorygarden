@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -56,11 +56,15 @@ export function MemoryCard({
   const dragOpacity = useTransform(dragX, [-200, 0, 200], [0.5, 1, 0.5])
   const dragScale = useTransform(dragX, [-200, 0, 200], [0.95, 1, 0.95])
 
-  const sortedMemories = memory
-    ? [...allMemories].sort((a, b) =>
-        new Date(b.plantedAt).getTime() - new Date(a.plantedAt).getTime()
-      )
-    : []
+  const sortedMemories = useMemo(
+    () =>
+      memory
+        ? [...allMemories].sort((a, b) =>
+            new Date(b.plantedAt).getTime() - new Date(a.plantedAt).getTime()
+          )
+        : [],
+    [memory, allMemories],
+  )
   const currentIndex = memory
     ? sortedMemories.findIndex(m => m.id === memory.id)
     : -1

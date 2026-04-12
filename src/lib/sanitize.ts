@@ -2,7 +2,7 @@
  * Lightweight HTML sanitization for user-generated content.
  *
  * Escapes potentially dangerous characters to prevent XSS when
- * rendering user-supplied text in the DOM.  This is a defence-in-depth
+ * rendering user-supplied text in the DOM.  This is a defense-in-depth
  * measure — React already escapes JSX interpolation, but raw
  * innerHTML / `dangerouslySetInnerHTML` paths and `<mark>` highlight
  * injection in search results benefit from explicit sanitization.
@@ -32,9 +32,18 @@ export function escapeHtml(input: string): string {
 
 /**
  * Strip all HTML tags from a string, returning plain text only.
+ * Applies the regex iteratively to handle nested/malformed tags
+ * like `<<script>script>` that a single pass would miss.
  */
 export function stripHtml(input: string): string {
-  return input.replace(/<[^>]*>/g, '')
+  const TAG_RE = /<[^>]*>/g
+  let result = input
+  let previous: string
+  do {
+    previous = result
+    result = result.replace(TAG_RE, '')
+  } while (result !== previous)
+  return result
 }
 
 /**

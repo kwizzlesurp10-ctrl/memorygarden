@@ -34,8 +34,12 @@ describe('stripHtml', () => {
     expect(stripHtml('line<br/>break')).toBe('linebreak')
   })
 
-  it('handles nested tags', () => {
+  it('handles nested/malformed tags', () => {
     expect(stripHtml('<div><span>text</span></div>')).toBe('text')
+  })
+
+  it('handles malicious nested tag injection', () => {
+    expect(stripHtml('<<script>script>alert("xss")<</script>/script>')).toBe('script>alert("xss")/script>')
   })
 
   it('returns empty string for empty input', () => {
