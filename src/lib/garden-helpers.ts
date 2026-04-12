@@ -1,5 +1,6 @@
 import type { Memory, EmotionalTone, PlantStage, PlantVariety, GrowthMetrics, GardenMood, WeatherType, SearchFilters, Season, ArtStyle } from './types'
 import { getLLMProvider } from './llm-client'
+import { withRetry } from './retry'
 
 export function selectPlantVariety(emotionalTone: EmotionalTone, text: string): PlantVariety {
   const textLower = text.toLowerCase()
@@ -168,7 +169,10 @@ Write a brief, poetic reflection (2-3 sentences) that honors this memory and off
 - Connect to broader themes of growth, time, or connection if appropriate
 - Be warm and contemplative in tone`
 
-    return await llm.complete(prompt, 'gpt-4o-mini')
+    return await withRetry(() => llm.complete(prompt, 'gpt-4o-mini'), {
+      maxAttempts: 2,
+      initialDelayMs: 300,
+    })
   } catch {
     return 'A gentle reflection blooms in silence — some moments speak for themselves.'
   }

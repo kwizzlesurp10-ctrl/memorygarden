@@ -11,6 +11,7 @@
 
 import type { Memory, EmotionalTone, PlantStage } from './types'
 import { daysSince } from './date-utils'
+import { escapeHtml } from './sanitize'
 
 // ── Result type ──────────────────────────────────────────────────────────────
 
@@ -70,10 +71,12 @@ export function tokenise(query: string): string[] {
  * not the highlight output).
  */
 export function highlightTokens(text: string, tokens: string[]): string {
-  if (tokens.length === 0) return text
+  if (tokens.length === 0) return escapeHtml(text)
   const escaped = tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
   const pattern = new RegExp(`(${escaped.join('|')})`, 'gi')
-  return text.replace(pattern, '<mark>$1</mark>')
+  // Escape first, then wrap matches in <mark> tags
+  const safeText = escapeHtml(text)
+  return safeText.replace(pattern, '<mark>$1</mark>')
 }
 
 /**
