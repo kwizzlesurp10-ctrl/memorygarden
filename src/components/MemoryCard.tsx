@@ -56,15 +56,14 @@ export function MemoryCard({
   const dragOpacity = useTransform(dragX, [-200, 0, 200], [0.5, 1, 0.5])
   const dragScale = useTransform(dragX, [-200, 0, 200], [0.95, 1, 0.95])
 
-  if (!memory) return null
-
-  const metrics = calculateGrowthMetrics(memory, [])
-  const isLegendary = metrics.rarityScore > 90
-
-  const sortedMemories = [...allMemories].sort((a, b) => 
-    new Date(b.plantedAt).getTime() - new Date(a.plantedAt).getTime()
-  )
-  const currentIndex = sortedMemories.findIndex(m => m.id === memory.id)
+  const sortedMemories = memory
+    ? [...allMemories].sort((a, b) =>
+        new Date(b.plantedAt).getTime() - new Date(a.plantedAt).getTime()
+      )
+    : []
+  const currentIndex = memory
+    ? sortedMemories.findIndex(m => m.id === memory.id)
+    : -1
   const hasPrevious = currentIndex > 0
   const hasNext = currentIndex >= 0 && currentIndex < sortedMemories.length - 1
 
@@ -81,19 +80,6 @@ export function MemoryCard({
       setIsSwipeTransitioning(true)
       onNavigate(sortedMemories[currentIndex + 1].id)
       setTimeout(() => setIsSwipeTransitioning(false), 300)
-    }
-  }
-
-  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const swipeThreshold = 100
-    const swipeVelocityThreshold = 500
-
-    if (Math.abs(info.offset.x) > swipeThreshold || Math.abs(info.velocity.x) > swipeVelocityThreshold) {
-      if (info.offset.x > 0 && hasPrevious) {
-        handlePrevious()
-      } else if (info.offset.x < 0 && hasNext) {
-        handleNext()
-      }
     }
   }
 
@@ -138,8 +124,26 @@ export function MemoryCard({
         handler: handleNext,
       },
     ],
-    enabled: open && allMemories.length > 1 && !!onNavigate,
+    enabled: open && !!memory && allMemories.length > 1 && !!onNavigate,
   })
+
+  if (!memory) return null
+
+  const metrics = calculateGrowthMetrics(memory, [])
+  const isLegendary = metrics.rarityScore > 90
+
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const swipeThreshold = 100
+    const swipeVelocityThreshold = 500
+
+    if (Math.abs(info.offset.x) > swipeThreshold || Math.abs(info.velocity.x) > swipeVelocityThreshold) {
+      if (info.offset.x > 0 && hasPrevious) {
+        handlePrevious()
+      } else if (info.offset.x < 0 && hasNext) {
+        handleNext()
+      }
+    }
+  }
 
   const handleWater = async () => {
     if (newReflection.trim().length < 3) {
