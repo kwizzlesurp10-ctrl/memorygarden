@@ -231,6 +231,11 @@ export const APP_SHORTCUTS = {
     description: 'Switch to clusters view',
     category: 'Navigation',
   },
+  VIEW_BLOOM_WALL: {
+    key: '4',
+    description: 'Switch to bloom wall view',
+    category: 'Navigation',
+  },
   EXPORT: {
     key: 'e',
     modifiers: ['ctrlOrMeta', 'shift'] as ModifierKey[],

@@ -4,8 +4,8 @@ import { Toaster, toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Plant as PlantIcon, Tree, List, GridFour, Export, DotsThree, Link as LinkIcon, Palette, UsersThree, Trophy, Keyboard } from '@phosphor-icons/react'
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Plant as PlantIcon, Tree, List, GridFour, SquaresFour, Export, DotsThree, Link as LinkIcon, Palette, UsersThree, Trophy, Keyboard, SpeakerHigh } from '@phosphor-icons/react'
 import { GardenCanvas } from '@/components/GardenCanvas'
 import { PlantMemoryModal } from '@/components/PlantMemoryModal'
 import { MemoryCard } from '@/components/MemoryCard'
@@ -31,14 +31,16 @@ const ActivityFeed = lazy(() => import('@/components/ActivityFeed').then(m => ({
 const PlantStyleCustomizer = lazy(() => import('@/components/PlantStyleCustomizer').then(m => ({ default: m.PlantStyleCustomizer })))
 const GardenUnlocks = lazy(() => import('@/components/GardenUnlocks').then(m => ({ default: m.GardenUnlocks })))
 const PlantCosmeticsEditor = lazy(() => import('@/components/PlantCosmeticsEditor').then(m => ({ default: m.PlantCosmeticsEditor })))
+const BloomWall = lazy(() => import('@/components/BloomWall').then(m => ({ default: m.BloomWall })))
 import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits } from '@/lib/types'
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod } from '@/lib/garden-helpers'
 import { ensureUnlockState, generatePlantGenetics, awardForReflection, awardForRevisit, awardForClusterTending, awardForPlanting, applyAward, evaluateUnlocks, applyNewUnlocks, evaluateAchievements, deductRerollCost, canAffordReroll, UNLOCKABLE_ITEMS } from '@/lib/unlock-system'
 import { generateGeneticsSeed, computeUnlocks } from '@/lib/trait-system'
 import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
 import { getLocalUser, type LocalUser } from '@/lib/local-user'
+import { GardenAmbientLayer } from '@/components/GardenAmbientLayer'
 
-type ViewMode = 'garden' | 'timeline' | 'clusters'
+type ViewMode = 'garden' | 'timeline' | 'clusters' | 'bloom'
 
 /**
  * Migrate legacy non-scoped localStorage data into the user-scoped keys so
@@ -87,6 +89,7 @@ function App() {
   const [isLoadingAI, setIsLoadingAI] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [season, setSeason] = useState(getSeason())
+  const [dayPeriod, setDayPeriod] = useState(() => getDayPeriod())
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [memoryToShare, setMemoryToShare] = useState<string | null>(null)
   const [sharedMemoryView, setSharedMemoryView] = useState<SharedMemory | null>(null)
@@ -216,6 +219,11 @@ function App() {
     return () => clearInterval(interval)
   }, [])
 
+  useEffect(() => {
+    const id = window.setInterval(() => setDayPeriod(getDayPeriod()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
   const handleCompleteOnboarding = () => {
     setPreferences((current) => ({
       soundEnabled: current?.soundEnabled || false,
@@ -231,6 +239,7 @@ function App() {
     date: string
     location?: string
     audioRecordings: AudioRecording[]
+    plantVariety?: import('@/lib/types').PlantVariety
   }) => {
     const reader = new FileReader()
     reader.readAsDataURL(data.photoFile)
@@ -241,7 +250,7 @@ function App() {
           const photoUrl = reader.result as string
           
           const emotionalTone = await classifyEmotionalTone(data.text)
-          const plantVariety = selectPlantVariety(emotionalTone, data.text)
+          const plantVariety = data.plantVariety ?? selectPlantVariety(emotionalTone, data.text)
           
           const newMemory: Memory = {
             id: `memory-${Date.now()}`,
@@ -820,6 +829,11 @@ function App() {
         handler: () => setViewMode('clusters'),
       },
       {
+        id: 'view-bloom-wall',
+        descriptor: APP_SHORTCUTS.VIEW_BLOOM_WALL,
+        handler: () => setViewMode('bloom'),
+      },
+      {
         id: 'export',
         descriptor: APP_SHORTCUTS.EXPORT,
         handler: () => setIsExportModalOpen(true),
@@ -890,6 +904,16 @@ function App() {
   return (
     <>
       <Toaster position="top-center" richColors />
+
+      {safePreferences.hasCompletedOnboarding && (
+        <GardenAmbientLayer
+          enabled={safePreferences.soundEnabled}
+          season={season}
+          dayPeriod={dayPeriod}
+          weatherType={gardenMood.weatherType}
+          memoryCount={safeMemories.length}
+        />
+      )}
       
       <Onboarding
         open={!safePreferences.hasCompletedOnboarding}
@@ -925,6 +949,10 @@ function App() {
                 <GridFour size={18} className="flex-shrink-0" />
                 <span className="hidden md:inline">Clusters</span>
               </TabsTrigger>
+              <TabsTrigger value="bloom" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Bloom wall">
+                <SquaresFour size={18} className="flex-shrink-0" />
+                <span className="hidden md:inline">Bloom wall</span>
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -936,6 +964,23 @@ function App() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuCheckboxItem
+                  checked={safePreferences.soundEnabled}
+                  onCheckedChange={(checked) => {
+                    setPreferences((c) => ({
+                      ...(c ?? {
+                        hasCompletedOnboarding: false,
+                        soundEnabled: false,
+                        lastVisit: new Date().toISOString(),
+                      }),
+                      soundEnabled: checked,
+                    }))
+                  }}
+                >
+                  <SpeakerHigh size={16} className="mr-2" />
+                  Garden ambience
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setIsUnlocksOpen(true)}>
                   <Trophy size={16} className="mr-2" />
                   Garden Collection
@@ -1085,6 +1130,23 @@ function App() {
               >
                 <Suspense fallback={null}>
                   <MemoryClusters memories={activeFilterCount > 0 ? filteredMemories : safeMemories} onMemoryClick={handleMemoryClick} />
+                </Suspense>
+              </motion.div>
+            )}
+
+            {viewMode === 'bloom' && (
+              <motion.div
+                key="bloom"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full"
+              >
+                <Suspense fallback={null}>
+                  <BloomWall
+                    memories={activeFilterCount > 0 ? filteredMemories : safeMemories}
+                    onMemoryClick={handleMemoryClick}
+                  />
                 </Suspense>
               </motion.div>
             )}

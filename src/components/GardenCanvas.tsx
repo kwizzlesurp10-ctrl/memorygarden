@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import type { Memory, Season } from '@/lib/types'
 import { Plant } from './Plant'
 import { WeatherEffects } from './WeatherEffects'
+import { GardenClusterPaths } from './GardenClusterPaths'
 import { getDayPeriod, getSeason, getSeasonalSky, getPlantSize } from '@/lib/garden-helpers'
 
 const MIN_CANVAS_SIZE = 2000
@@ -116,6 +117,12 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
             cursor: draggingMemory ? 'grabbing' : 'default',
           }}
         >
+          <GardenClusterPaths
+            memories={memories}
+            highlightedMemoryIds={highlightedMemoryIds}
+            canvasWidth={canvasSize.width}
+            canvasHeight={canvasSize.height}
+          />
           {memories.map((memory) => {
             const nearbyMemories = memories.filter(
               (m) =>
