@@ -42,12 +42,11 @@ export function ensureUnlockState(state: UnlockState | undefined): UnlockState {
   if (!state) return createDefaultUnlockState()
   return {
     ...createDefaultUnlockState(),
-        ...state,
-    unlockedPalettes: [...new Set([...createDefaultUnlockState().unlockedPalettes, ...(state.unlockedPalettes || [])]) as PaletteId[]],
-    unlockedAdornments: [...new Set([...createDefaultUnlockState().unlockedAdornments, ...(state.unlockedAdornments || [])]) as AdornmentId[]],
-    unlockedPatterns: [...new Set([...createDefaultUnlockState().unlockedPatterns, ...(state.unlockedPatterns || [])]) as PatternId[]],
+    ...state,
+    unlockedPalettes: ([] as PaletteId[]).concat([...new Set([...createDefaultUnlockState().unlockedPalettes, ...(state.unlockedPalettes || [])])]),
+    unlockedAdornments: ([] as AdornmentId[]).concat([...new Set([...createDefaultUnlockState().unlockedAdornments, ...(state.unlockedAdornments || [])])]),
+    unlockedPatterns: ([] as PatternId[]).concat([...new Set([...createDefaultUnlockState().unlockedPatterns, ...(state.unlockedPatterns || [])])]),
     wallet: { ...createDefaultUnlockState().wallet, ...state.wallet },
-    
     counters: { ...createDefaultUnlockState().counters, ...state.counters },
   }
 }
