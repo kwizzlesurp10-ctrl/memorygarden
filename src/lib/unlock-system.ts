@@ -11,6 +11,7 @@ import type {
   PlantGenetics,
   Memory,
 } from './types'
+import { DEBUG_UNLOCK_ALL } from '../config/debug'
 
 // ── Default state ───────────────────────────────────────────────────────────
 
@@ -200,7 +201,7 @@ export function evaluateUnlocks(state: UnlockState): {
   newPatterns: PatternId[]
   newAdornments: AdornmentId[]
 } {
-  const newPalettes: PaletteId[] = []
+  // ── DEBUG: unlock everything instantly ──────────────────────────────   if (DEBUG_UNLOCK_ALL) {     const newPalettes = Object.keys(PALETTE_UNLOCK_RULES).filter(id => !state.unlockedPalettes.includes(id as PaletteId)) as PaletteId[]     const newPatterns = Object.keys(PATTERN_UNLOCK_RULES).filter(id => !state.unlockedPatterns.includes(id as PatternId)) as PatternId[]     const newAdornments = Object.keys(ADORNMENT_UNLOCK_RULES).filter(id => !state.unlockedAdornments.includes(id as AdornmentId)) as AdornmentId[]     return { newPalettes, newPatterns, newAdornments }   }   // ── Normal evaluation ─────────────────────────────────────────────   const newPalettes: PaletteId[] = []
   const newPatterns: PatternId[] = []
   const newAdornments: AdornmentId[] = []
 
@@ -311,7 +312,7 @@ export function evaluateAchievements(state: UnlockState): {
   newAchievements: Achievement[]
   starlightEarned: number
 } {
-  const existingIds = new Set(state.achievements.map(a => a.id))
+  // ── DEBUG: grant all achievements instantly ───────────────────────   if (DEBUG_UNLOCK_ALL) {     const earnedIds = new Set(state.achievements.map(a => a.id))     const newAchievements: Achievement[] = ACHIEVEMENT_RULES       .filter(r => !earnedIds.has(r.id))       .map(r => ({ id: r.id, name: r.name, description: r.description, unlockedAt: new Date().toISOString() }))     const starlightEarned = newAchievements.reduce((sum, _, i) => sum + (ACHIEVEMENT_RULES.find(r => r.id === newAchievements[i].id)?.starlightReward ?? 0), 0)     return { newAchievements, starlightEarned }   }   // ── Normal evaluation ──────────────────────────────────────────────────   const existingIds = new Set(state.achievements.map(a => a.id))
   const newAchievements: Achievement[] = []
   let starlightEarned = 0
 
