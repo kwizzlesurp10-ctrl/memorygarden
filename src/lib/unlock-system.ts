@@ -42,8 +42,12 @@ export function ensureUnlockState(state: UnlockState | undefined): UnlockState {
   if (!state) return createDefaultUnlockState()
   return {
     ...createDefaultUnlockState(),
-    ...state,
+        ...state,
+    unlockedPalettes: [...new Set([...createDefaultUnlockState().unlockedPalettes, ...(state.unlockedPalettes || [])])],
+    unlockedAdornments: [...new Set([...createDefaultUnlockState().unlockedAdornments, ...(state.unlockedAdornments || [])])],
+    unlockedPatterns: [...new Set([...createDefaultUnlockState().unlockedPatterns, ...(state.unlockedPatterns || [])])],
     wallet: { ...createDefaultUnlockState().wallet, ...state.wallet },
+    
     counters: { ...createDefaultUnlockState().counters, ...state.counters },
   }
 }
