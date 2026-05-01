@@ -16,11 +16,11 @@ import type {
 
 export function createDefaultUnlockState(): UnlockState {
   return {
-    unlockedPalettes: ['earthy'],
-    unlockedAdornments: ['none'],
-    unlockedPatterns: ['solid'],
+        unlockedPalettes: ['earthy', 'warm', 'cool', 'ocean', 'sunset', 'frost', 'midnight', 'dawn', 'twilight', 'forest', 'coral', 'lavender'],
+        unlockedAdornments: ['none', 'dew', 'dew-drops', 'butterflies', 'fireflies', 'sparkles', 'pollen', 'seasonal-bloom', 'golden-aura'],
+        unlockedPatterns: ['solid', 'speckle', 'gradient', 'stripe'],
     unlockedFrames: [],
-    wallet: { dew: 0, sunlight: 0, pollen: 0, starlight: 0 },
+        wallet: { dew: 100, sunlight: 50, pollen: 50, starlight: 20 },
     counters: {
       totalReflections: 0,
       totalVisits: 0,
