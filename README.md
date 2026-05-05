@@ -6,96 +6,108 @@ A peaceful, emotional digital garden where you plant and nurture personal memori
 
 MemoryGarden reimagines how we preserve and interact with our memories. Instead of scrolling through static photo albums, your memories become living plants in a beautiful garden that:
 
-- **Grow over time** - Memories evolve from seeds to sprouts to blooms based on how often you visit them
-- **Reflect emotions** - AI classifies the emotional tone of each memory (happy, nostalgic, peaceful, etc.)
-- **Encourage reflection** - Add new thoughts to memories and ask the Garden AI for gentle, poetic insights
-- **Create connections** - Discover relationships between memories planted near each other
-- **Adapt to seasons** - The garden changes with real-world time and seasons
+- **Grow over time** - Memories evolve from seeds to sprouts to blooms based on how often you visit them.
+- **Reflect emotions** - AI classifies the emotional tone of each memory (happy, nostalgic, peaceful, etc.).
+- **Encourage reflection** - Add new thoughts to memories and receive gentle, poetic insights from the Garden AI.
+- **Create connections** - Discover relationships between memories planted near each other.
+- **Adapt to seasons** - The garden changes with real-world time, seasons, and weather.
 
 ## Features
 
-### 🌿 Plant Memories
-- Upload a photo
-- Write 1-3 sentences about the moment
-- Add optional date and location
-- Watch your memory sprout in the garden
+### 🌿 Plant & Tend Memories
+- **Planting**: Upload a photo, write about the moment, and watch your memory sprout.
+- **Tending**: Visit memories to see them bloom and mature. Add reflections as you revisit moments.
+- **Fertilizer Boost**: Use the three-tier fertilizer system (Garden Boost, Premium, Legendary) to accelerate plant growth with unique visual effects.
 
-### 🌸 Tend & Grow
-- Visit memories to see them bloom and mature
-- Add reflections as you revisit moments
-- Plants grow larger and more beautiful with each visit
-
-### ✨ AI Garden Guide
-- Emotional tone detection for each memory
-- Poetic reflections and questions about your memories
-- Discovery of connections between related memories
+### ✨ AI-Powered Insights
+- **Emotional Detection**: AI analyzes the tone of your memories to influence plant variety and growth.
+- **Garden AI**: Receive poetic reflections and discovery of connections between related memories.
+- **Memory Clusters**: AI-suggested groups of related memories based on theme or time.
 
 ### 🎨 Beautiful Views
-- **Garden** - Infinite canvas with draggable, animated plants
-- **Timeline** - Chronological list of all memories
-- **Clusters** - AI-suggested groups of related memories (coming soon)
+- **Garden**: Infinite canvas with draggable, animated plants and parallax backgrounds.
+- **Timeline**: Chronological list of all your memories.
+- **Clusters**: Grouped view of related memories.
+- **Bloom Wall**: A beautiful gallery of your fully matured memories.
 
-### 🌓 Day/Night Cycle
-- Garden background shifts based on your local time
-- Subtle parallax animations create a living atmosphere
-- Seasonal changes throughout the year
+### 👥 Collaboration & Sharing
+- **Collaborative Gardens**: Create or join shared gardens with others to grow memories together.
+- **Private Sharing**: Share specific memories with unique, secure links.
+
+### 🌓 Living Atmosphere
+- **Day/Night Cycle**: Garden background shifts based on your local time.
+- **Seasonal & Weather Changes**: Subtle animations and visual shifts reflect the current season and the garden's "mood."
+- **Ambient Sound**: Immersive garden sounds that adapt to the time of day and season.
+
+### ⌨️ Power User Features
+- **Keyboard Shortcuts**: Navigate and interact efficiently with shortcuts (press `?` for help).
+- **Protocol Handlers**: Seamlessly plant or view memories from external apps using `web+memorygarden://`.
+- **PWA Support**: Install MemoryGarden as a Progressive Web App for a native-like experience.
+
+## Technical Architecture
+
+MemoryGarden is built as a modern, responsive web application with a focus on smooth, organic interactions.
+
+### Frontend Stack
+- **React 19 + TypeScript**: Core UI framework.
+- **Vite**: Build tool and dev server.
+- **Tailwind CSS**: Styling and responsive design.
+- **Framer Motion**: Organic animations and transitions.
+- **Radix UI**: Accessible UI components.
+- **Spark SDK**: Handles authentication and persistent storage.
+
+### Sub-projects
+- **Volatility Sentinel**: A Python-based agent (located in `/volatility-sentinel`) that monitors price volatility using the CoinGecko API, providing an example of backend-style agent integration.
 
 ## Getting Started
 
-### Sign In with GitHub
+### Prerequisites
+- Node.js (latest LTS recommended)
+- npm or yarn
 
-1. Open the app - you'll be automatically signed in with your GitHub account
-2. Complete the 4-step onboarding to learn about the garden
-3. Plant your first memory immediately after onboarding
+### Installation
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd memory-garden
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-### Navigating Your Garden
+### Development
+Start the development server:
+```bash
+npm run dev
+```
 
-- **Pan** - Click and drag the background or scroll
-- **Zoom** - Hold Ctrl/Cmd and scroll
-- **Move Plants** - Drag any plant to rearrange your garden
-- **View Memory** - Click a plant to open its full card
-- **Plant New** - Click the floating "+" button (bottom right)
+### Building for Production
+Build the application:
+```bash
+npm run build
+```
+The output will be in the `dist` directory.
 
-### Adding Reflections
+## Testing
 
-1. Click any plant in your garden
-2. Read the memory and see previous reflections
-3. Write a new reflection in the text box
-4. Click "Water & Reflect" to save and watch the plant grow
+MemoryGarden includes a comprehensive test suite covering core logic, edge cases, and UI components.
 
-### Ask the Garden AI
+### Running Tests
+- **Run all tests**: `npm test`
+- **Watch mode**: `npm run test:watch`
+- **Coverage report**: `npm run test:coverage`
 
-1. Open any memory card
-2. Click "Ask the Garden"
-3. The AI will analyze your memory and nearby memories
-4. Receive a gentle, poetic reflection or question
+The tests cover:
+- **Growth Logic**: Validating plant progression and metrics.
+- **Unlock System**: Ensuring achievements and currency work correctly.
+- **Edge Cases**: Handling extreme data points and boundary conditions.
 
 ## Privacy & Data
 
-- **Completely Private** - All memories are stored in your GitHub account
-- **No External Services** - Photos and data never leave the Spark platform
-- **You Own Your Data** - Export your garden anytime
-
-## Technology
-
-Built with:
-- **React + TypeScript** for the UI
-- **Framer Motion** for smooth, organic animations
-- **Tailwind CSS** for beautiful, responsive styling
-- **Spark SDK** for GitHub auth and data storage
-- **OpenAI GPT-4** for emotional analysis and reflections
-
-## Tips for a Thriving Garden
-
-- **Plant regularly** - Even small moments become meaningful over time
-- **Revisit often** - Memories grow best when tended with reflection
-- **Arrange thoughtfully** - Put related memories near each other
-- **Add reflections** - Write how you feel revisiting a memory months later
-- **Be honest** - Your garden is private - write from the heart
-
-## Support
-
-Having issues or have suggestions? Create an issue in the repository or reach out to the maintainers.
+- **Completely Private**: All memories are stored securely in your GitHub account via the Spark SDK.
+- **No External Services**: Your personal photos and data never leave the platform.
+- **You Own Your Data**: Export your entire garden at any time from the settings menu.
 
 ---
 
