@@ -426,13 +426,13 @@ export function MemoryCard({
                   />
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <Button
                     onClick={handleWater}
                     disabled={isAddingReflection || newReflection.trim().length < 3}
                     className="flex-1"
                   >
-                    <Drop size={18} weight="fill" className="mr-2" />
+                    <Drop size={18} weight="fill" className="mr-2 flex-shrink-0" />
                     Water & Reflect
                   </Button>
                   <Button

@@ -921,7 +921,7 @@ function App() {
       />
 
       <div className="w-full h-screen flex flex-col overflow-hidden">
-        <header className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-border bg-card/50 backdrop-blur-sm z-10">
+        <header className="flex flex-wrap items-center justify-between gap-y-4 px-4 md:px-6 py-4 border-b border-border bg-card/50 backdrop-blur-sm z-10 relative">
           <div className="flex items-center gap-2 md:gap-3 min-w-0">
             <Tree size={28} weight="duotone" className="text-primary flex-shrink-0 md:w-8 md:h-8" />
             <h1 className="text-lg md:text-xl font-bold truncate">MemoryGarden</h1>
@@ -935,7 +935,7 @@ function App() {
             />
           </div>
 
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="absolute left-1/2 -translate-x-1/2">
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="w-full md:w-auto md:absolute md:left-1/2 md:-translate-x-1/2 order-last md:order-none flex justify-center">
             <TabsList>
               <TabsTrigger value="garden" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Garden View">
                 <Tree size={18} className="flex-shrink-0" />
@@ -1077,7 +1077,7 @@ function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="w-full h-full overflow-y-auto p-8 bg-background"
+                className="w-full h-full overflow-y-auto p-4 md:p-8 bg-background"
               >
                 <div className="max-w-4xl mx-auto space-y-6">
                   <h2 className="text-2xl font-bold mb-8">Timeline</h2>
@@ -1101,7 +1101,7 @@ function App() {
                           <img
                             src={memory.photoUrl}
                             alt="Memory"
-                            className="w-32 h-32 object-cover rounded-md flex-shrink-0"
+                            className="w-20 h-20 md:w-32 md:h-32 object-cover rounded-md flex-shrink-0"
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-muted-foreground mb-2">
