@@ -40,6 +40,7 @@ import { generateGeneticsSeed, computeUnlocks } from '@/lib/trait-system'
 import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
 import { getLocalUser, type LocalUser } from '@/lib/local-user'
 import { GardenAmbientLayer } from '@/components/GardenAmbientLayer'
+import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 
 type ViewMode = 'garden' | 'timeline' | 'clusters' | 'bloom'
 
@@ -1058,16 +1059,18 @@ function App() {
                     </motion.div>
                   </div>
                 ) : (
-                  <GardenCanvas
-                    memories={safeMemories}
-                    onMemoryClick={handleMemoryClick}
-                    onMemoryMove={handleMemoryMove}
-                    season={season}
-                    growingMemories={growingMemories}
-                    memoryBoostTiers={memoryBoostTiers}
-                    highlightedMemoryIds={highlightedMemoryIds}
-                    mood={gardenMood}
-                  />
+                  <SectionErrorBoundary label="garden view">
+                    <GardenCanvas
+                      memories={safeMemories}
+                      onMemoryClick={handleMemoryClick}
+                      onMemoryMove={handleMemoryMove}
+                      season={season}
+                      growingMemories={growingMemories}
+                      memoryBoostTiers={memoryBoostTiers}
+                      highlightedMemoryIds={highlightedMemoryIds}
+                      mood={gardenMood}
+                    />
+                  </SectionErrorBoundary>
                 )}
               </motion.div>
             )}
@@ -1129,9 +1132,11 @@ function App() {
                 exit={{ opacity: 0 }}
                 className="w-full h-full"
               >
-                <Suspense fallback={null}>
-                  <MemoryClusters memories={activeFilterCount > 0 ? filteredMemories : safeMemories} onMemoryClick={handleMemoryClick} />
-                </Suspense>
+                <SectionErrorBoundary label="clusters view">
+                  <Suspense fallback={null}>
+                    <MemoryClusters memories={activeFilterCount > 0 ? filteredMemories : safeMemories} onMemoryClick={handleMemoryClick} />
+                  </Suspense>
+                </SectionErrorBoundary>
               </motion.div>
             )}
 
@@ -1143,12 +1148,14 @@ function App() {
                 exit={{ opacity: 0 }}
                 className="w-full h-full"
               >
-                <Suspense fallback={null}>
-                  <BloomWall
-                    memories={activeFilterCount > 0 ? filteredMemories : safeMemories}
-                    onMemoryClick={handleMemoryClick}
-                  />
-                </Suspense>
+                <SectionErrorBoundary label="bloom wall">
+                  <Suspense fallback={null}>
+                    <BloomWall
+                      memories={activeFilterCount > 0 ? filteredMemories : safeMemories}
+                      onMemoryClick={handleMemoryClick}
+                    />
+                  </Suspense>
+                </SectionErrorBoundary>
               </motion.div>
             )}
           </AnimatePresence>

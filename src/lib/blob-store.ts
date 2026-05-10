@@ -1,18 +1,20 @@
 /**
- * IndexedDB-backed blob storage for memory photos.
+ * IndexedDB-backed blob storage for large data URLs.
  *
- * The garden's localStorage was filling its quota at ~5 large photos
- * because Memory.photoUrl was a Base64 Data URL stored inline. We move
- * the photo bytes to IndexedDB and persist a lightweight `idb://<id>`
- * reference inside the Memory record so the metadata stays compact.
+ * Memory.photoUrl and Memory.audioRecordings[].dataUrl were Base64
+ * data URLs stored inline in the memory record. localStorage caps
+ * around 5MB per origin in most browsers, so a handful of photos or
+ * voice notes fills the quota and the next setMemories() write
+ * throws QuotaExceededError. We move the bytes to IndexedDB and
+ * persist a lightweight `idb://<id>` reference inside the record.
  *
  * Public API:
- *   putPhoto(id, dataUrl) → idb://<id>
- *   getPhoto(idbRef)      → original data URL or null if missing
- *   deletePhoto(idbRef)
- *   isPhotoRef(string)
+ *   putBlob(id, dataUrl) → idb://<id>
+ *   getBlob(idbRef)      → original data URL or null if missing
+ *   deleteBlob(idbRef)
+ *   isBlobRef(value)
  *
- * Falls back to a no-op (just returns the original data URL) when
+ * Falls back to a no-op (returns the original data URL) when
  * IndexedDB is unavailable (private browsing, very old browsers).
  */
 
@@ -48,7 +50,7 @@ function openDB(): Promise<IDBDatabase | null> {
   return _dbPromise
 }
 
-export function isPhotoRef(value: unknown): boolean {
+export function isBlobRef(value: unknown): boolean {
   return typeof value === 'string' && value.startsWith(REF_PREFIX)
 }
 
@@ -68,17 +70,17 @@ function dataUrlByteLength(dataUrl: string): number {
   return Math.floor((b64.length * 3) / 4)
 }
 
-/** Photos under this size stay inline; above it, they spill to IDB. */
+/** Blobs under this size stay inline; above it, they spill to IDB. */
 const INLINE_LIMIT_BYTES = 32 * 1024
 
 /**
- * Persist a photo to IDB and return a reference. Small photos and
+ * Persist a blob to IDB and return a reference. Small blobs and
  * non-data-URL strings (already a ref, or an external URL) are
  * returned unchanged.
  */
-export async function putPhoto(id: string, dataUrl: string): Promise<string> {
+export async function putBlob(id: string, dataUrl: string): Promise<string> {
   if (!dataUrl) return dataUrl
-  if (isPhotoRef(dataUrl)) return dataUrl
+  if (isBlobRef(dataUrl)) return dataUrl
   if (!dataUrl.startsWith('data:')) return dataUrl
   if (dataUrlByteLength(dataUrl) <= INLINE_LIMIT_BYTES) return dataUrl
   const db = await openDB()
@@ -96,8 +98,8 @@ export async function putPhoto(id: string, dataUrl: string): Promise<string> {
   })
 }
 
-export async function getPhoto(ref: string): Promise<string | null> {
-  if (!isPhotoRef(ref)) return ref
+export async function getBlob(ref: string): Promise<string | null> {
+  if (!isBlobRef(ref)) return ref
   const db = await openDB()
   if (!db) return null
   return new Promise<string | null>((resolve) => {
@@ -112,8 +114,8 @@ export async function getPhoto(ref: string): Promise<string | null> {
   })
 }
 
-export async function deletePhoto(ref: string): Promise<void> {
-  if (!isPhotoRef(ref)) return
+export async function deleteBlob(ref: string): Promise<void> {
+  if (!isBlobRef(ref)) return
   const db = await openDB()
   if (!db) return
   return new Promise<void>((resolve) => {
