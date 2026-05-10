@@ -4,19 +4,14 @@ import { useMemoriesKV } from '@/hooks/use-memories-kv'
 import { Toaster, toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Plant as PlantIcon, Tree, List, GridFour, SquaresFour, Export, DotsThree, Link as LinkIcon, Palette, UsersThree, Trophy, Keyboard, SpeakerHigh } from '@phosphor-icons/react'
+import { Plant as PlantIcon, Tree } from '@phosphor-icons/react'
 import { GardenCanvas } from '@/components/GardenCanvas'
 import { PlantMemoryModal } from '@/components/PlantMemoryModal'
 import { MemoryCard } from '@/components/MemoryCard'
 import { Onboarding } from '@/components/Onboarding'
-import { SeasonIndicator } from '@/components/SeasonIndicator'
 import { SearchFilterBar } from '@/components/SearchFilterBar'
-import { WeatherIndicator } from '@/components/WeatherIndicator'
-import { GardenSelector } from '@/components/GardenSelector'
 import { KeyboardShortcutsPanel } from '@/components/KeyboardShortcutsPanel'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AppHeader, type ViewMode } from '@/components/AppHeader'
 import { useKeyboardShortcuts, APP_SHORTCUTS } from '@/lib/keyboard-shortcuts'
 
 // ── Lazy-loaded non-critical components (modals, dialogs, secondary views) ──
@@ -41,8 +36,7 @@ import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-ha
 import { getLocalUser, type LocalUser } from '@/lib/local-user'
 import { GardenAmbientLayer } from '@/components/GardenAmbientLayer'
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
-
-type ViewMode = 'garden' | 'timeline' | 'clusters' | 'bloom'
+import { EmptyGarden } from '@/components/EmptyGarden'
 
 /**
  * Migrate legacy non-scoped localStorage data into the user-scoped keys so
@@ -923,101 +917,35 @@ function App() {
       />
 
       <div className="w-full h-screen flex flex-col overflow-hidden">
-        <header className="flex flex-wrap items-center justify-between gap-y-4 px-4 md:px-6 py-4 border-b border-border bg-card/50 backdrop-blur-sm z-10 relative">
-          <div className="flex items-center gap-2 md:gap-3 min-w-0">
-            <Tree size={28} weight="duotone" className="text-primary flex-shrink-0 md:w-8 md:h-8" />
-            <h1 className="text-lg md:text-xl font-bold truncate">MemoryGarden</h1>
-            <SeasonIndicator season={season} className="hidden sm:flex" />
-            <WeatherIndicator mood={gardenMood} className="hidden sm:flex" />
-            <GardenSelector
-              gardens={safeGardens}
-              activeGardenId={activeGardenId}
-              onSelectGarden={handleSelectGarden}
-              onCreateGarden={() => setIsCreateGardenOpen(true)}
-            />
-          </div>
-
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="w-full md:w-auto md:absolute md:left-1/2 md:-translate-x-1/2 order-last md:order-none flex justify-center">
-            <TabsList>
-              <TabsTrigger value="garden" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Garden View">
-                <Tree size={18} className="flex-shrink-0" />
-                <span className="hidden md:inline">Garden</span>
-              </TabsTrigger>
-              <TabsTrigger value="timeline" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Timeline View">
-                <List size={18} className="flex-shrink-0" />
-                <span className="hidden md:inline">Timeline</span>
-              </TabsTrigger>
-              <TabsTrigger value="clusters" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Clusters View">
-                <GridFour size={18} className="flex-shrink-0" />
-                <span className="hidden md:inline">Clusters</span>
-              </TabsTrigger>
-              <TabsTrigger value="bloom" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Bloom wall">
-                <SquaresFour size={18} className="flex-shrink-0" />
-                <span className="hidden md:inline">Bloom wall</span>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9">
-                  <DotsThree size={24} weight="bold" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuCheckboxItem
-                  checked={safePreferences.soundEnabled}
-                  onCheckedChange={(checked) => {
-                    setPreferences((c) => ({
-                      ...(c ?? {
-                        hasCompletedOnboarding: false,
-                        soundEnabled: false,
-                        lastVisit: new Date().toISOString(),
-                      }),
-                      soundEnabled: checked,
-                    }))
-                  }}
-                >
-                  <SpeakerHigh size={16} className="mr-2" />
-                  Garden ambience
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setIsUnlocksOpen(true)}>
-                  <Trophy size={16} className="mr-2" />
-                  Garden Collection
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setIsExportModalOpen(true)}>
-                  <Export size={16} className="mr-2" />
-                  Export Garden
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setIsStyleCustomizerOpen(true)}>
-                  <Palette size={16} className="mr-2" />
-                  Plant Art Style
-                </DropdownMenuItem>
-                {activeGarden && (
-                  <DropdownMenuItem onClick={handleInviteToGarden}>
-                    <UsersThree size={16} className="mr-2" />
-                    Invite Members
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setIsShortcutsPanelOpen(true)}>
-                  <Keyboard size={16} className="mr-2" />
-                  Keyboard Shortcuts
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => window.open('/protocol-test.html', '_blank')}>
-                  <LinkIcon size={16} className="mr-2" />
-                  Protocol Handler Test
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Avatar className="w-8 h-8 md:w-9 md:h-9">
-              <AvatarImage src={user.avatarUrl} alt={user.login} />
-              <AvatarFallback>{user.login[0]?.toUpperCase()}</AvatarFallback>
-            </Avatar>
-          </div>
-        </header>
+        <AppHeader
+          user={user}
+          season={season}
+          gardenMood={gardenMood}
+          gardens={safeGardens}
+          activeGardenId={activeGardenId}
+          activeGarden={activeGarden}
+          viewMode={viewMode}
+          soundEnabled={safePreferences.soundEnabled}
+          onSelectGarden={handleSelectGarden}
+          onCreateGarden={() => setIsCreateGardenOpen(true)}
+          onViewModeChange={setViewMode}
+          onToggleSound={(checked) => {
+            setPreferences((c) => ({
+              ...(c ?? {
+                hasCompletedOnboarding: false,
+                soundEnabled: false,
+                lastVisit: new Date().toISOString(),
+              }),
+              soundEnabled: checked,
+            }))
+          }}
+          onOpenUnlocks={() => setIsUnlocksOpen(true)}
+          onOpenExport={() => setIsExportModalOpen(true)}
+          onOpenPlantStyle={() => setIsStyleCustomizerOpen(true)}
+          onInviteToGarden={handleInviteToGarden}
+          onOpenShortcuts={() => setIsShortcutsPanelOpen(true)}
+          onOpenProtocolTest={() => window.open('/protocol-test.html', '_blank')}
+        />
 
         {/* Feature 1: Search/Filter bar */}
         <SearchFilterBar
@@ -1040,24 +968,7 @@ function App() {
                 className="w-full h-full"
               >
                 {safeMemories.length === 0 ? (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-background via-background/95 to-primary/5">
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-center space-y-4 max-w-md px-6"
-                    >
-                      <PlantIcon size={80} weight="duotone" className="text-primary mx-auto" />
-                      <h2 className="text-2xl font-bold">Your garden awaits</h2>
-                      <p className="text-muted-foreground leading-relaxed">
-                        Plant your first memory to begin growing your personal sanctuary of
-                        moments, reflections, and connections.
-                      </p>
-                      <Button size="lg" onClick={() => setIsPlantModalOpen(true)} className="mt-6">
-                        <PlantIcon size={20} weight="fill" className="mr-2" />
-                        Plant Your First Memory
-                      </Button>
-                    </motion.div>
-                  </div>
+                  <EmptyGarden onPlantFirst={() => setIsPlantModalOpen(true)} />
                 ) : (
                   <SectionErrorBoundary label="garden view">
                     <GardenCanvas
