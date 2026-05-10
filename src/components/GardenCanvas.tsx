@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import type { Memory, Season } from '@/lib/types'
 import { Plant } from './Plant'
 import { WeatherEffects } from './WeatherEffects'
+import { GardenClusterPaths } from './GardenClusterPaths'
 import { getDayPeriod, getSeason, getSeasonalSky, getPlantSize } from '@/lib/garden-helpers'
 
 const MIN_CANVAS_SIZE = 2000
@@ -69,6 +70,49 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
     }
   }, [])
 
+  // ── Pinch-to-zoom for touch devices ────────────────────────────────────
+  // We track active pointers with `pointerdown/move/up`. With two pointers
+  // active, the distance between them drives `scale`. Single-pointer moves
+  // are left to the browser so panning still uses the native scroll.
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
+  const pinchStartRef = useRef<{ distance: number; scale: number } | null>(null)
+
+  const distanceBetween = (a: { x: number; y: number }, b: { x: number; y: number }): number => {
+    const dx = a.x - b.x
+    const dy = a.y - b.y
+    return Math.hypot(dx, dy)
+  }
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType !== 'touch') return
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (pointersRef.current.size === 2) {
+      const pts = Array.from(pointersRef.current.values())
+      pinchStartRef.current = { distance: distanceBetween(pts[0], pts[1]), scale }
+    }
+  }, [scale])
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType !== 'touch') return
+    if (!pointersRef.current.has(e.pointerId)) return
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (pointersRef.current.size === 2 && pinchStartRef.current) {
+      const pts = Array.from(pointersRef.current.values())
+      const current = distanceBetween(pts[0], pts[1])
+      const ratio = current / pinchStartRef.current.distance
+      const next = Math.min(2, Math.max(0.5, pinchStartRef.current.scale * ratio))
+      setScale(next)
+      e.preventDefault()
+    }
+  }, [])
+
+  const handlePointerEnd = useCallback((e: React.PointerEvent) => {
+    pointersRef.current.delete(e.pointerId)
+    if (pointersRef.current.size < 2) {
+      pinchStartRef.current = null
+    }
+  }, [])
+
   const handleDragEnd = useCallback(
     (memory: Memory, info: { offset: { x: number; y: number } }) => {
       setDraggingMemory(null)
@@ -87,8 +131,12 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-auto"
+      className="relative w-full h-full overflow-auto touch-pan-x touch-pan-y"
       onWheel={handleWheel}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
       style={{
         background: backgroundGradient,
       }}
@@ -116,6 +164,12 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
             cursor: draggingMemory ? 'grabbing' : 'default',
           }}
         >
+          <GardenClusterPaths
+            memories={memories}
+            highlightedMemoryIds={highlightedMemoryIds}
+            canvasWidth={canvasSize.width}
+            canvasHeight={canvasSize.height}
+          />
           {memories.map((memory) => {
             const nearbyMemories = memories.filter(
               (m) =>

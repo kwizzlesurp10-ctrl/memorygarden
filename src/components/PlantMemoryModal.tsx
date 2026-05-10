@@ -9,11 +9,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { CalendarBlank, Image as ImageIcon, MapPin, Plant as PlantIcon } from '@phosphor-icons/react'
+import { CalendarBlank, Image as ImageIcon, MapPin, Plant as PlantIcon, Sparkle } from '@phosphor-icons/react'
 import { AudioRecorder } from '@/components/AudioRecorder'
+import { FlowerPlant } from '@/components/plants/FlowerPlant'
+import { TreePlant, SucculentPlant, VinePlant, HerbPlant, WildflowerPlant } from '@/components/plants/OtherPlants'
+import { classifyEmotionalTone, selectPlantVariety } from '@/lib/garden-helpers'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
-import type { AudioRecording } from '@/lib/types'
+import type { AudioRecording, PlantVariety } from '@/lib/types'
 
 interface PlantMemoryModalProps {
   open: boolean
@@ -24,8 +27,21 @@ interface PlantMemoryModalProps {
     date: string
     location?: string
     audioRecordings: AudioRecording[]
+    plantVariety?: PlantVariety
   }) => void
 }
+
+const PLANT_VARIETIES: { id: PlantVariety; label: string; color: string; tagline: string }[] = [
+  { id: 'flower',     label: 'Flower',     color: 'oklch(0.82 0.16 340)', tagline: 'Open & warm' },
+  { id: 'tree',       label: 'Tree',       color: 'oklch(0.58 0.12 155)', tagline: 'Deep & enduring' },
+  { id: 'succulent',  label: 'Succulent',  color: 'oklch(0.68 0.14 155)', tagline: 'Calm & resilient' },
+  { id: 'herb',       label: 'Herb',       color: 'oklch(0.64 0.14 140)', tagline: 'Grounded & steady' },
+  { id: 'vine',       label: 'Vine',       color: 'oklch(0.72 0.14 100)', tagline: 'Nostalgic & twining' },
+  { id: 'wildflower', label: 'Wildflower', color: 'oklch(0.80 0.16 90)',  tagline: 'Free & joyful' },
+]
+
+const STEM_COLOR   = 'oklch(0.52 0.09 155)'
+const GROUND_COLOR = 'oklch(0.45 0.05 65)'
 
 // Duration for the planting celebration animation before auto-closing (ms)
 const PLANTING_CELEBRATION_MS = 3000
@@ -40,6 +56,18 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
   const [recordingType, setRecordingType] = useState<'voice-note' | 'ambient-sound'>('voice-note')
   const [isPlanting, setIsPlanting] = useState(false)
   const [isPlanted, setIsPlanted] = useState(false)
+
+  // Plant picker state
+  const [selectedVariety, setSelectedVariety] = useState<PlantVariety | null>(null)
+  const [suggestedVariety, setSuggestedVariety] = useState<PlantVariety>('flower')
+
+  // Derive AI suggestion as user types (keyword-based, instant)
+  useEffect(() => {
+    if (text.length < 10) return
+    classifyEmotionalTone(text).then(tone => {
+      setSuggestedVariety(selectPlantVariety(tone, text))
+    })
+  }, [text])
 
   useEffect(() => {
     if (!isPlanted) return
@@ -76,7 +104,7 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
   const handleRecordingComplete = async (audioBlob: Blob, duration: number, type: 'voice-note' | 'ambient-sound') => {
     const reader = new FileReader()
     reader.readAsDataURL(audioBlob)
-    
+
     return new Promise<void>((resolve) => {
       reader.onload = () => {
         const audioRecording: AudioRecording = {
@@ -110,21 +138,28 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
         date: date.toISOString(),
         location: location.trim() || undefined,
         audioRecordings,
+        plantVariety: selectedVariety ?? undefined,
       })
-      
+
       setPhotoFile(null)
       setPhotoPreview(null)
       setText('')
       setDate(new Date())
       setLocation('')
       setAudioRecordings([])
+      setSelectedVariety(null)
+      setSuggestedVariety('flower')
       setIsPlanted(true)
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to plant memory. Please try again.')
     } finally {
       setIsPlanting(false)
     }
   }
+
+  const activeVariety = selectedVariety ?? suggestedVariety
+  const hasOverride   = selectedVariety !== null && selectedVariety !== suggestedVariety
+  const textIsLong    = text.length >= 10
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
@@ -165,150 +200,242 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
               exit={{ opacity: 0 }}
               className="space-y-6 py-4"
             >
-          <div className="space-y-2">
-            <Label htmlFor="photo">Photo *</Label>
-            <div className="relative">
-              <input
-                id="photo"
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoChange}
-                className="hidden"
-              />
-              <label
-                htmlFor="photo"
-                className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
-              >
-                {photoPreview ? (
-                  <motion.img
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    src={photoPreview}
-                    alt="Preview"
-                    className="w-full h-full object-cover rounded-lg"
+              {/* Photo */}
+              <div className="space-y-2">
+                <Label htmlFor="photo">Photo *</Label>
+                <div className="relative">
+                  <input
+                    id="photo"
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className="hidden"
                   />
-                ) : (
-                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <ImageIcon size={48} weight="duotone" />
-                    <p className="text-sm">Click to upload or drag and drop</p>
-                    <p className="text-xs">PNG, JPG up to 5MB</p>
+                  <label
+                    htmlFor="photo"
+                    className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
+                  >
+                    {photoPreview ? (
+                      <motion.img
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        src={photoPreview}
+                        alt="Preview"
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <ImageIcon size={48} weight="duotone" />
+                        <p className="text-sm">Click to upload or drag and drop</p>
+                        <p className="text-xs">PNG, JPG up to 5MB</p>
+                      </div>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              {/* Memory text */}
+              <div className="space-y-2">
+                <Label htmlFor="text">Memory *</Label>
+                <Textarea
+                  id="text"
+                  placeholder="Write a few sentences about this memory... What were you feeling? Who was there? What made this moment special?"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  rows={4}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground">{text.length} characters</p>
+              </div>
+
+              {/* Plant picker */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Plant type</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {textIsLong
+                        ? 'AI suggested based on your memory — feel free to change it.'
+                        : 'Write your memory above and AI will suggest one, or pick yourself.'}
+                    </p>
+                  </div>
+                  {hasOverride && (
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      onClick={() => setSelectedVariety(null)}
+                      className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                    >
+                      Reset to AI pick
+                    </motion.button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                  {PLANT_VARIETIES.map(({ id, label, color, tagline }) => {
+                    const isActive    = activeVariety === id
+                    const isSuggested = suggestedVariety === id && textIsLong
+
+                    return (
+                      <motion.button
+                        key={id}
+                        onClick={() => setSelectedVariety(id)}
+                        whileHover={{ scale: 1.04, y: -2 }}
+                        whileTap={{ scale: 0.97 }}
+                        title={tagline}
+                        className={`relative flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                          isActive
+                            ? 'border-primary bg-primary/8'
+                            : 'border-border hover:border-primary/50 bg-transparent'
+                        }`}
+                      >
+                        {/* AI-suggested badge */}
+                        {isSuggested && (
+                          <motion.span
+                            initial={{ opacity: 0, scale: 0.7 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="absolute -top-2.5 left-1/2 -translate-x-1/2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-primary text-primary-foreground whitespace-nowrap z-10"
+                          >
+                            <Sparkle size={8} weight="fill" />
+                            AI pick
+                          </motion.span>
+                        )}
+
+                        <PlantPreviewSVG variety={id} color={color} />
+
+                        <span className={`text-[11px] font-medium leading-tight ${isActive ? 'text-primary' : 'text-foreground'}`}>
+                          {label}
+                        </span>
+                      </motion.button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Date + Location */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Date *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal">
+                        <CalendarBlank className="mr-2" size={16} />
+                        {format(date, 'PPP')}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={(d) => d && setDate(d)}
+                        disabled={(date) => date > new Date()}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location (optional)</Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                    <Input
+                      id="location"
+                      placeholder="Where was this?"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Audio */}
+              <div className="space-y-3">
+                <Label>Audio (optional)</Label>
+                <Tabs value={recordingType} onValueChange={(v) => setRecordingType(v as 'voice-note' | 'ambient-sound')}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="voice-note">Voice Note</TabsTrigger>
+                    <TabsTrigger value="ambient-sound">Ambient Sound</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+
+                <AudioRecorder
+                  onRecordingComplete={handleRecordingComplete}
+                  recordingType={recordingType}
+                  maxDuration={120}
+                />
+
+                {audioRecordings.length > 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    {audioRecordings.length} recording{audioRecordings.length !== 1 ? 's' : ''} added
                   </div>
                 )}
-              </label>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="text">Memory *</Label>
-            <Textarea
-              id="text"
-              placeholder="Write a few sentences about this memory... What were you feeling? Who was there? What made this moment special?"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              rows={4}
-              className="resize-none"
-            />
-            <p className="text-xs text-muted-foreground">
-              {text.length} characters
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Date *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
-                    <CalendarBlank className="mr-2" size={16} />
-                    {format(date, 'PPP')}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={(d) => d && setDate(d)}
-                    disabled={(date) => date > new Date()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="location">Location (optional)</Label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-                <Input
-                  id="location"
-                  placeholder="Where was this?"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="pl-9"
-                />
               </div>
-            </div>
-          </div>
 
-          <Separator />
-
-          <div className="space-y-3">
-            <Label>Audio (optional)</Label>
-            <Tabs value={recordingType} onValueChange={(v) => setRecordingType(v as 'voice-note' | 'ambient-sound')}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="voice-note">Voice Note</TabsTrigger>
-                <TabsTrigger value="ambient-sound">Ambient Sound</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            
-            <AudioRecorder
-              onRecordingComplete={handleRecordingComplete}
-              recordingType={recordingType}
-              maxDuration={120}
-            />
-
-            {audioRecordings.length > 0 && (
-              <div className="text-xs text-muted-foreground">
-                {audioRecordings.length} recording{audioRecordings.length !== 1 ? 's' : ''} added
+              <div className="flex justify-end gap-3 pt-4">
+                <Button variant="outline" onClick={onClose} disabled={isPlanting}>
+                  Cancel
+                </Button>
+                <Button onClick={handlePlant} disabled={isPlanting} className="min-w-32">
+                  <AnimatePresence mode="wait">
+                    {isPlanting ? (
+                      <motion.span
+                        key="planting"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                      >
+                        Planting...
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="plant"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex items-center gap-2"
+                      >
+                        <PlantIcon size={18} weight="fill" />
+                        Plant Memory
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </Button>
               </div>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4">
-            <Button variant="outline" onClick={onClose} disabled={isPlanting}>
-              Cancel
-            </Button>
-            <Button onClick={handlePlant} disabled={isPlanting} className="min-w-32">
-              <AnimatePresence mode="wait">
-                {isPlanting ? (
-                  <motion.span
-                    key="planting"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    Planting...
-                  </motion.span>
-                ) : (
-                  <motion.span
-                    key="plant"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex items-center gap-2"
-                  >
-                    <PlantIcon size={18} weight="fill" />
-                    Plant Memory
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </Button>
-          </div>
             </motion.div>
           )}
         </AnimatePresence>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// Small plant preview rendered at "mature" stage inside the picker cards.
+function PlantPreviewSVG({ variety, color }: { variety: PlantVariety; color: string }) {
+  return (
+    <svg width="56" height="56" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {variety === 'flower' && (
+        <FlowerPlant stage="mature" color={color} stemColor={STEM_COLOR} groundColor={GROUND_COLOR} season="spring" />
+      )}
+      {variety === 'tree' && (
+        <TreePlant stage="mature" color={color} stemColor={STEM_COLOR} groundColor={GROUND_COLOR} />
+      )}
+      {variety === 'succulent' && (
+        <SucculentPlant stage="mature" color={color} stemColor={STEM_COLOR} groundColor={GROUND_COLOR} />
+      )}
+      {variety === 'herb' && (
+        <HerbPlant stage="mature" color={color} stemColor={STEM_COLOR} groundColor={GROUND_COLOR} />
+      )}
+      {variety === 'vine' && (
+        <VinePlant stage="mature" color={color} stemColor={STEM_COLOR} groundColor={GROUND_COLOR} />
+      )}
+      {variety === 'wildflower' && (
+        <WildflowerPlant stage="mature" color={color} stemColor={STEM_COLOR} groundColor={GROUND_COLOR} />
+      )}
+    </svg>
   )
 }
 

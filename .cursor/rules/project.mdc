@@ -1,0 +1,52 @@
+---
+description: Memory Garden project rules for Cursor AI
+globs: ["**/*.tsx", "**/*.ts", "**/*.css"]
+alwaysApply: true
+---
+
+# Memory Garden — Cursor Rules
+
+## Commands
+```bash
+npm run dev       # Start Vite dev server (port 5173)
+npm run build     # Type-check + Vite build
+npm run lint      # ESLint
+npm run test      # Vitest run
+npm run preview   # Preview production build
+npm run kill      # Kill process on port 5000
+```
+Always run `npm install --legacy-peer-deps` if node_modules is missing.
+
+## Platform
+This is a **GitHub Spark** app. Key SDK APIs:
+- `useKV(key, default)` — persistent KV storage per user (replaces a database)
+- `window.spark.user()` — GitHub-authenticated user info
+- `window.spark.llm(prompt, model)` — LLM calls (`gpt-4o-mini` for classification, `gpt-4o` for generation)
+
+No backend, no external API. All memory data (including photos as Base64 Data URLs) lives in the KV store.
+
+## Architecture
+- `App.tsx` — owns all state; reads/writes `memories` and `preferences` via `useKV`
+- `GardenCanvas.tsx` — infinite pannable/zoomable HTML5 Canvas (primary view)
+- `PlantMemoryModal.tsx` — creation flow (photo upload → Base64, text, date, optional location + audio)
+- `MemoryCard.tsx` — detail/tending view; "Water & Reflect" adds a reflection; "Ask Garden AI" calls LLM
+- `MemoryClusters.tsx` — AI-suggested groupings (secondary view)
+- `Onboarding.tsx` — 4-step first-run tour
+- `src/lib/garden-helpers.ts` — growth logic, OKLCH color maps, seasonal gradients, AI call wrappers
+- `src/lib/types.ts` — core data model
+
+## Core Data Model
+- `Memory` — `id`, `photoUrl` (Base64), `text`, `emotionalTone`, `plantStage`, `position` (x/y), `visitCount`, `reflections[]`
+- `PlantStage`: `seed → sprout → bud → bloom → mature → evergreen`
+- `EmotionalTone`: `happy | reflective | bittersweet | peaceful | nostalgic`
+
+## Conventions
+- **Colors**: OKLCH values only (see `garden-helpers.ts` and `src/styles/theme.css`). No hex/RGB.
+- **Animations**: Framer Motion with spring physics. No abrupt transitions.
+- **UI components**: Radix UI primitives from `src/components/ui/`. No raw HTML equivalents.
+- **Icons**: Phosphor Icons (`@phosphor-icons/react`) for app icons; Lucide for shadcn/ui.
+- **Metaphor**: Everything should feel organic and peaceful — garden metaphor is load-bearing.
+- **AI fallbacks**: All `window.spark.llm` calls must have `try/catch` with graceful fallback.
+- **Photos**: Base64 Data URLs stored inside KV memory objects — no external file storage.
+- **Comments**: Default to no comments. Only explain non-obvious WHY, not what.
+- **State**: No external state library. Pass handlers down from `App.tsx`.

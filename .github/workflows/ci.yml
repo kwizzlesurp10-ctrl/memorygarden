@@ -134,6 +134,29 @@ jobs:
         run: npm audit --audit-level=high
         continue-on-error: true
 
+  volatility-sentinel:
+    name: Volatility Sentinel (Python)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: volatility-sentinel/requirements.txt
+
+      - name: Install deps and pytest
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r volatility-sentinel/requirements.txt
+
+      - name: Run Python tests
+        working-directory: volatility-sentinel
+        run: pytest -q
+
   bundle-size:
     name: Bundle Size Check
     runs-on: ubuntu-latest

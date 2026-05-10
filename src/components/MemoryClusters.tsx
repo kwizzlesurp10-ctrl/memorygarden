@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Sparkle, CalendarBlank, MapPin } from '@phosphor-icons/react'
 import type { Memory } from '@/lib/types'
 import { format } from 'date-fns'
+import { computeEmotionalClusterGroups } from '@/lib/memory-cluster-groups'
 
 interface MemoryClustersProps {
   memories: Memory[]
@@ -20,74 +21,18 @@ interface Cluster {
 }
 
 export function MemoryClusters({ memories, onMemoryClick }: MemoryClustersProps) {
-  const [clusters, setClusters] = useState<Cluster[]>([])
-
-  useEffect(() => {
-    if (memories.length > 0) {
-      analyzeClusters()
-    }
+  const clusters: Cluster[] = useMemo(() => {
+    const groups = computeEmotionalClusterGroups(memories)
+    return groups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      description: g.description,
+      theme: g.theme,
+      memories: g.memoryIds
+        .map((id) => memories.find((m) => m.id === id))
+        .filter((m): m is Memory => Boolean(m)),
+    }))
   }, [memories])
-
-  const analyzeClusters = async () => {
-    if (memories.length < 3) {
-      const simpleClusters: Cluster[] = [{
-        id: 'all',
-        name: 'All Memories',
-        description: 'Your collection is just beginning. Plant more memories to discover meaningful patterns and connections.',
-        memories: memories,
-        theme: 'peaceful',
-      }]
-      setClusters(simpleClusters)
-      return
-    }
-
-    setClusters(getDefaultClusters())
-  }
-
-  const getDefaultClusters = (): Cluster[] => {
-    const emotionalClusters = new Map<string, Memory[]>()
-    
-    memories.forEach(memory => {
-      const tone = memory.emotionalTone
-      if (!emotionalClusters.has(tone)) {
-        emotionalClusters.set(tone, [])
-      }
-      emotionalClusters.get(tone)!.push(memory)
-    })
-
-    const clusterNames: Record<string, { name: string; description: string }> = {
-      happy: {
-        name: 'Joyful Moments',
-        description: 'Memories filled with happiness and light',
-      },
-      nostalgic: {
-        name: 'Looking Back',
-        description: 'Reflections on times past',
-      },
-      peaceful: {
-        name: 'Quiet Calm',
-        description: 'Moments of serenity and peace',
-      },
-      reflective: {
-        name: 'Deep Thoughts',
-        description: 'Memories that inspired contemplation',
-      },
-      bittersweet: {
-        name: 'Mixed Feelings',
-        description: 'Beautiful moments tinged with complexity',
-      },
-    }
-
-    return Array.from(emotionalClusters.entries())
-      .filter(([_, mems]) => mems.length > 0)
-      .map(([tone, mems]) => ({
-        id: `cluster-${tone}`,
-        name: clusterNames[tone]?.name || 'Memories',
-        description: clusterNames[tone]?.description || 'Connected moments',
-        memories: mems,
-        theme: tone,
-      }))
-  }
 
   if (memories.length === 0) {
     return (

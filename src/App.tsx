@@ -1,21 +1,17 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
 import { useKV } from '@/lib/storage'
+import { useMemoriesKV } from '@/hooks/use-memories-kv'
 import { Toaster, toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Plant as PlantIcon, Tree, List, GridFour, Export, DotsThree, Link as LinkIcon, Palette, UsersThree, Trophy, Keyboard } from '@phosphor-icons/react'
+import { Plant as PlantIcon, Tree } from '@phosphor-icons/react'
 import { GardenCanvas } from '@/components/GardenCanvas'
 import { PlantMemoryModal } from '@/components/PlantMemoryModal'
 import { MemoryCard } from '@/components/MemoryCard'
 import { Onboarding } from '@/components/Onboarding'
-import { SeasonIndicator } from '@/components/SeasonIndicator'
 import { SearchFilterBar } from '@/components/SearchFilterBar'
-import { WeatherIndicator } from '@/components/WeatherIndicator'
-import { GardenSelector } from '@/components/GardenSelector'
 import { KeyboardShortcutsPanel } from '@/components/KeyboardShortcutsPanel'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AppHeader, type ViewMode } from '@/components/AppHeader'
 import { useKeyboardShortcuts, APP_SHORTCUTS } from '@/lib/keyboard-shortcuts'
 
 // ── Lazy-loaded non-critical components (modals, dialogs, secondary views) ──
@@ -31,14 +27,34 @@ const ActivityFeed = lazy(() => import('@/components/ActivityFeed').then(m => ({
 const PlantStyleCustomizer = lazy(() => import('@/components/PlantStyleCustomizer').then(m => ({ default: m.PlantStyleCustomizer })))
 const GardenUnlocks = lazy(() => import('@/components/GardenUnlocks').then(m => ({ default: m.GardenUnlocks })))
 const PlantCosmeticsEditor = lazy(() => import('@/components/PlantCosmeticsEditor').then(m => ({ default: m.PlantCosmeticsEditor })))
+const BloomWall = lazy(() => import('@/components/BloomWall').then(m => ({ default: m.BloomWall })))
 import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits } from '@/lib/types'
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod } from '@/lib/garden-helpers'
 import { ensureUnlockState, generatePlantGenetics, awardForReflection, awardForRevisit, awardForClusterTending, awardForPlanting, applyAward, evaluateUnlocks, applyNewUnlocks, evaluateAchievements, deductRerollCost, canAffordReroll, UNLOCKABLE_ITEMS } from '@/lib/unlock-system'
 import { generateGeneticsSeed, computeUnlocks } from '@/lib/trait-system'
 import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
 import { getLocalUser, type LocalUser } from '@/lib/local-user'
+import { GardenAmbientLayer } from '@/components/GardenAmbientLayer'
+import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
+import { EmptyGarden } from '@/components/EmptyGarden'
+import { useCloudSync, type SyncStatus } from '@/hooks/use-cloud-sync'
 
-type ViewMode = 'garden' | 'timeline' | 'clusters'
+function describeSyncStatus(status: SyncStatus): string | null {
+  switch (status.kind) {
+    case 'disabled':
+      return null
+    case 'unavailable':
+      return 'Server has no cloud configured'
+    case 'syncing':
+      return 'Syncing…'
+    case 'idle':
+      return status.lastSyncAt
+        ? `Synced ${new Date(status.lastSyncAt).toLocaleTimeString()}`
+        : 'Connected'
+    case 'error':
+      return `Error: ${status.message}`
+  }
+}
 
 /**
  * Migrate legacy non-scoped localStorage data into the user-scoped keys so
@@ -72,7 +88,7 @@ function App() {
   migrateLegacyData(localUser.id)
 
   const [user, setUser] = useState<LocalUser | null>(localUser)
-  const [memories, setMemories] = useKV<Memory[]>(`${localUser.id}:memories`, [])
+  const [memories, setMemories] = useMemoriesKV(`${localUser.id}:memories`, [])
   const [sharedMemories, setSharedMemories] = useKV<Record<string, SharedMemory>>('shared-memories', {})
   const [preferences, setPreferences] = useKV<UserPreferences>(`${localUser.id}:preferences`, {
     hasCompletedOnboarding: false,
@@ -87,6 +103,7 @@ function App() {
   const [isLoadingAI, setIsLoadingAI] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [season, setSeason] = useState(getSeason())
+  const [dayPeriod, setDayPeriod] = useState(() => getDayPeriod())
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [memoryToShare, setMemoryToShare] = useState<string | null>(null)
   const [sharedMemoryView, setSharedMemoryView] = useState<SharedMemory | null>(null)
@@ -216,6 +233,11 @@ function App() {
     return () => clearInterval(interval)
   }, [])
 
+  useEffect(() => {
+    const id = window.setInterval(() => setDayPeriod(getDayPeriod()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
   const handleCompleteOnboarding = () => {
     setPreferences((current) => ({
       soundEnabled: current?.soundEnabled || false,
@@ -231,6 +253,7 @@ function App() {
     date: string
     location?: string
     audioRecordings: AudioRecording[]
+    plantVariety?: import('@/lib/types').PlantVariety
   }) => {
     const reader = new FileReader()
     reader.readAsDataURL(data.photoFile)
@@ -241,7 +264,7 @@ function App() {
           const photoUrl = reader.result as string
           
           const emotionalTone = await classifyEmotionalTone(data.text)
-          const plantVariety = selectPlantVariety(emotionalTone, data.text)
+          const plantVariety = data.plantVariety ?? selectPlantVariety(emotionalTone, data.text)
           
           const newMemory: Memory = {
             id: `memory-${Date.now()}`,
@@ -793,6 +816,17 @@ function App() {
   const safeGardens = collaborativeGardens || []
   const safeActivities = gardenActivities || {}
 
+  const syncStatus = useCloudSync({
+    enabled: safePreferences.cloudSyncEnabled === true,
+    userId: localUser.id,
+    memories: safeMemories,
+    preferences: safePreferences,
+    onPulled: (mergedMemories, mergedPreferences) => {
+      setMemories(mergedMemories)
+      setPreferences(mergedPreferences)
+    },
+  })
+
   useKeyboardShortcuts({
     shortcuts: [
       {
@@ -818,6 +852,11 @@ function App() {
         id: 'view-clusters',
         descriptor: APP_SHORTCUTS.VIEW_CLUSTERS,
         handler: () => setViewMode('clusters'),
+      },
+      {
+        id: 'view-bloom-wall',
+        descriptor: APP_SHORTCUTS.VIEW_BLOOM_WALL,
+        handler: () => setViewMode('bloom'),
       },
       {
         id: 'export',
@@ -890,6 +929,16 @@ function App() {
   return (
     <>
       <Toaster position="top-center" richColors />
+
+      {safePreferences.hasCompletedOnboarding && (
+        <GardenAmbientLayer
+          enabled={safePreferences.soundEnabled}
+          season={season}
+          dayPeriod={dayPeriod}
+          weatherType={gardenMood.weatherType}
+          memoryCount={safeMemories.length}
+        />
+      )}
       
       <Onboarding
         open={!safePreferences.hasCompletedOnboarding}
@@ -897,80 +946,52 @@ function App() {
       />
 
       <div className="w-full h-screen flex flex-col overflow-hidden">
-        <header className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-border bg-card/50 backdrop-blur-sm z-10">
-          <div className="flex items-center gap-2 md:gap-3 min-w-0">
-            <Tree size={28} weight="duotone" className="text-primary flex-shrink-0 md:w-8 md:h-8" />
-            <h1 className="text-lg md:text-xl font-bold truncate">MemoryGarden</h1>
-            <SeasonIndicator season={season} className="hidden sm:flex" />
-            <WeatherIndicator mood={gardenMood} className="hidden sm:flex" />
-            <GardenSelector
-              gardens={safeGardens}
-              activeGardenId={activeGardenId}
-              onSelectGarden={handleSelectGarden}
-              onCreateGarden={() => setIsCreateGardenOpen(true)}
-            />
-          </div>
-
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="absolute left-1/2 -translate-x-1/2">
-            <TabsList>
-              <TabsTrigger value="garden" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Garden View">
-                <Tree size={18} className="flex-shrink-0" />
-                <span className="hidden md:inline">Garden</span>
-              </TabsTrigger>
-              <TabsTrigger value="timeline" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Timeline View">
-                <List size={18} className="flex-shrink-0" />
-                <span className="hidden md:inline">Timeline</span>
-              </TabsTrigger>
-              <TabsTrigger value="clusters" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Clusters View">
-                <GridFour size={18} className="flex-shrink-0" />
-                <span className="hidden md:inline">Clusters</span>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9">
-                  <DotsThree size={24} weight="bold" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setIsUnlocksOpen(true)}>
-                  <Trophy size={16} className="mr-2" />
-                  Garden Collection
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setIsExportModalOpen(true)}>
-                  <Export size={16} className="mr-2" />
-                  Export Garden
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setIsStyleCustomizerOpen(true)}>
-                  <Palette size={16} className="mr-2" />
-                  Plant Art Style
-                </DropdownMenuItem>
-                {activeGarden && (
-                  <DropdownMenuItem onClick={handleInviteToGarden}>
-                    <UsersThree size={16} className="mr-2" />
-                    Invite Members
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setIsShortcutsPanelOpen(true)}>
-                  <Keyboard size={16} className="mr-2" />
-                  Keyboard Shortcuts
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => window.open('/protocol-test.html', '_blank')}>
-                  <LinkIcon size={16} className="mr-2" />
-                  Protocol Handler Test
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Avatar className="w-8 h-8 md:w-9 md:h-9">
-              <AvatarImage src={user.avatarUrl} alt={user.login} />
-              <AvatarFallback>{user.login[0]?.toUpperCase()}</AvatarFallback>
-            </Avatar>
-          </div>
-        </header>
+        <AppHeader
+          user={user}
+          season={season}
+          gardenMood={gardenMood}
+          gardens={safeGardens}
+          activeGardenId={activeGardenId}
+          activeGarden={activeGarden}
+          viewMode={viewMode}
+          soundEnabled={safePreferences.soundEnabled}
+          cloudSyncEnabled={safePreferences.cloudSyncEnabled === true}
+          cloudSyncStatusLabel={describeSyncStatus(syncStatus)}
+          onSelectGarden={handleSelectGarden}
+          onCreateGarden={() => setIsCreateGardenOpen(true)}
+          onViewModeChange={setViewMode}
+          onToggleSound={(checked) => {
+            setPreferences((c) => ({
+              ...(c ?? {
+                hasCompletedOnboarding: false,
+                soundEnabled: false,
+                lastVisit: new Date().toISOString(),
+              }),
+              soundEnabled: checked,
+            }))
+          }}
+          onToggleCloudSync={(checked) => {
+            setPreferences((c) => ({
+              ...(c ?? {
+                hasCompletedOnboarding: false,
+                soundEnabled: false,
+                lastVisit: new Date().toISOString(),
+              }),
+              cloudSyncEnabled: checked,
+            }))
+            if (checked) {
+              toast.info('Cloud sync enabled — connecting…')
+            } else {
+              toast.info('Cloud sync disabled. Local memories are unchanged.')
+            }
+          }}
+          onOpenUnlocks={() => setIsUnlocksOpen(true)}
+          onOpenExport={() => setIsExportModalOpen(true)}
+          onOpenPlantStyle={() => setIsStyleCustomizerOpen(true)}
+          onInviteToGarden={handleInviteToGarden}
+          onOpenShortcuts={() => setIsShortcutsPanelOpen(true)}
+          onOpenProtocolTest={() => window.open('/protocol-test.html', '_blank')}
+        />
 
         {/* Feature 1: Search/Filter bar */}
         <SearchFilterBar
@@ -993,35 +1014,20 @@ function App() {
                 className="w-full h-full"
               >
                 {safeMemories.length === 0 ? (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-background via-background/95 to-primary/5">
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-center space-y-4 max-w-md px-6"
-                    >
-                      <PlantIcon size={80} weight="duotone" className="text-primary mx-auto" />
-                      <h2 className="text-2xl font-bold">Your garden awaits</h2>
-                      <p className="text-muted-foreground leading-relaxed">
-                        Plant your first memory to begin growing your personal sanctuary of
-                        moments, reflections, and connections.
-                      </p>
-                      <Button size="lg" onClick={() => setIsPlantModalOpen(true)} className="mt-6">
-                        <PlantIcon size={20} weight="fill" className="mr-2" />
-                        Plant Your First Memory
-                      </Button>
-                    </motion.div>
-                  </div>
+                  <EmptyGarden onPlantFirst={() => setIsPlantModalOpen(true)} />
                 ) : (
-                  <GardenCanvas
-                    memories={safeMemories}
-                    onMemoryClick={handleMemoryClick}
-                    onMemoryMove={handleMemoryMove}
-                    season={season}
-                    growingMemories={growingMemories}
-                    memoryBoostTiers={memoryBoostTiers}
-                    highlightedMemoryIds={highlightedMemoryIds}
-                    mood={gardenMood}
-                  />
+                  <SectionErrorBoundary label="garden view">
+                    <GardenCanvas
+                      memories={safeMemories}
+                      onMemoryClick={handleMemoryClick}
+                      onMemoryMove={handleMemoryMove}
+                      season={season}
+                      growingMemories={growingMemories}
+                      memoryBoostTiers={memoryBoostTiers}
+                      highlightedMemoryIds={highlightedMemoryIds}
+                      mood={gardenMood}
+                    />
+                  </SectionErrorBoundary>
                 )}
               </motion.div>
             )}
@@ -1032,7 +1038,7 @@ function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="w-full h-full overflow-y-auto p-8 bg-background"
+                className="w-full h-full overflow-y-auto p-4 md:p-8 bg-background"
               >
                 <div className="max-w-4xl mx-auto space-y-6">
                   <h2 className="text-2xl font-bold mb-8">Timeline</h2>
@@ -1056,7 +1062,7 @@ function App() {
                           <img
                             src={memory.photoUrl}
                             alt="Memory"
-                            className="w-32 h-32 object-cover rounded-md flex-shrink-0"
+                            className="w-20 h-20 md:w-32 md:h-32 object-cover rounded-md flex-shrink-0"
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-muted-foreground mb-2">
@@ -1083,9 +1089,30 @@ function App() {
                 exit={{ opacity: 0 }}
                 className="w-full h-full"
               >
-                <Suspense fallback={null}>
-                  <MemoryClusters memories={activeFilterCount > 0 ? filteredMemories : safeMemories} onMemoryClick={handleMemoryClick} />
-                </Suspense>
+                <SectionErrorBoundary label="clusters view">
+                  <Suspense fallback={null}>
+                    <MemoryClusters memories={activeFilterCount > 0 ? filteredMemories : safeMemories} onMemoryClick={handleMemoryClick} />
+                  </Suspense>
+                </SectionErrorBoundary>
+              </motion.div>
+            )}
+
+            {viewMode === 'bloom' && (
+              <motion.div
+                key="bloom"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full"
+              >
+                <SectionErrorBoundary label="bloom wall">
+                  <Suspense fallback={null}>
+                    <BloomWall
+                      memories={activeFilterCount > 0 ? filteredMemories : safeMemories}
+                      onMemoryClick={handleMemoryClick}
+                    />
+                  </Suspense>
+                </SectionErrorBoundary>
               </motion.div>
             )}
           </AnimatePresence>
