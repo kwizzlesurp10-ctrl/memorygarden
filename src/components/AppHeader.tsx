@@ -22,6 +22,7 @@ import {
   Trophy,
   Keyboard,
   SpeakerHigh,
+  CloudArrowUp,
 } from '@phosphor-icons/react'
 import { SeasonIndicator } from '@/components/SeasonIndicator'
 import { WeatherIndicator } from '@/components/WeatherIndicator'
@@ -40,10 +41,13 @@ export interface AppHeaderProps {
   activeGarden: CollaborativeGarden | null | undefined
   viewMode: ViewMode
   soundEnabled: boolean
+  cloudSyncEnabled: boolean
+  cloudSyncStatusLabel: string | null
   onSelectGarden: (id: string | null) => void
   onCreateGarden: () => void
   onViewModeChange: (mode: ViewMode) => void
   onToggleSound: (enabled: boolean) => void
+  onToggleCloudSync: (enabled: boolean) => void
   onOpenUnlocks: () => void
   onOpenExport: () => void
   onOpenPlantStyle: () => void
@@ -62,10 +66,13 @@ export function AppHeader(props: AppHeaderProps) {
     activeGarden,
     viewMode,
     soundEnabled,
+    cloudSyncEnabled,
+    cloudSyncStatusLabel,
     onSelectGarden,
     onCreateGarden,
     onViewModeChange,
     onToggleSound,
+    onToggleCloudSync,
     onOpenUnlocks,
     onOpenExport,
     onOpenPlantStyle,
@@ -125,6 +132,15 @@ export function AppHeader(props: AppHeaderProps) {
             <DropdownMenuCheckboxItem checked={soundEnabled} onCheckedChange={onToggleSound}>
               <SpeakerHigh size={16} className="mr-2" />
               Garden ambience
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={cloudSyncEnabled} onCheckedChange={onToggleCloudSync}>
+              <CloudArrowUp size={16} className="mr-2" />
+              <div className="flex flex-col">
+                <span>Sync to cloud</span>
+                {cloudSyncStatusLabel && (
+                  <span className="text-xs text-muted-foreground">{cloudSyncStatusLabel}</span>
+                )}
+              </div>
             </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onOpenUnlocks}>

@@ -37,6 +37,24 @@ import { getLocalUser, type LocalUser } from '@/lib/local-user'
 import { GardenAmbientLayer } from '@/components/GardenAmbientLayer'
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 import { EmptyGarden } from '@/components/EmptyGarden'
+import { useCloudSync, type SyncStatus } from '@/hooks/use-cloud-sync'
+
+function describeSyncStatus(status: SyncStatus): string | null {
+  switch (status.kind) {
+    case 'disabled':
+      return null
+    case 'unavailable':
+      return 'Server has no cloud configured'
+    case 'syncing':
+      return 'Syncing…'
+    case 'idle':
+      return status.lastSyncAt
+        ? `Synced ${new Date(status.lastSyncAt).toLocaleTimeString()}`
+        : 'Connected'
+    case 'error':
+      return `Error: ${status.message}`
+  }
+}
 
 /**
  * Migrate legacy non-scoped localStorage data into the user-scoped keys so
@@ -798,6 +816,17 @@ function App() {
   const safeGardens = collaborativeGardens || []
   const safeActivities = gardenActivities || {}
 
+  const syncStatus = useCloudSync({
+    enabled: safePreferences.cloudSyncEnabled === true,
+    userId: localUser.id,
+    memories: safeMemories,
+    preferences: safePreferences,
+    onPulled: (mergedMemories, mergedPreferences) => {
+      setMemories(mergedMemories)
+      setPreferences(mergedPreferences)
+    },
+  })
+
   useKeyboardShortcuts({
     shortcuts: [
       {
@@ -926,6 +955,8 @@ function App() {
           activeGarden={activeGarden}
           viewMode={viewMode}
           soundEnabled={safePreferences.soundEnabled}
+          cloudSyncEnabled={safePreferences.cloudSyncEnabled === true}
+          cloudSyncStatusLabel={describeSyncStatus(syncStatus)}
           onSelectGarden={handleSelectGarden}
           onCreateGarden={() => setIsCreateGardenOpen(true)}
           onViewModeChange={setViewMode}
@@ -938,6 +969,21 @@ function App() {
               }),
               soundEnabled: checked,
             }))
+          }}
+          onToggleCloudSync={(checked) => {
+            setPreferences((c) => ({
+              ...(c ?? {
+                hasCompletedOnboarding: false,
+                soundEnabled: false,
+                lastVisit: new Date().toISOString(),
+              }),
+              cloudSyncEnabled: checked,
+            }))
+            if (checked) {
+              toast.info('Cloud sync enabled — connecting…')
+            } else {
+              toast.info('Cloud sync disabled. Local memories are unchanged.')
+            }
           }}
           onOpenUnlocks={() => setIsUnlocksOpen(true)}
           onOpenExport={() => setIsExportModalOpen(true)}

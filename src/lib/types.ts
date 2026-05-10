@@ -116,6 +116,7 @@ export interface UserPreferences {
   plantStylePreference?: PlantStylePreference
   unlockState?: UnlockState
   gardenDefaults?: GardenDefaults
+  cloudSyncEnabled?: boolean
 }
 
 // Feature 1: Search/Filter

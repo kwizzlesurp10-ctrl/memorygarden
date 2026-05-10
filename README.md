@@ -106,10 +106,14 @@ The tests cover:
 
 ## Deployment
 
-The app deploys to Vercel as a static SPA with one Edge function for AI:
+The app deploys to Vercel as a static SPA with two Edge functions:
 
-1. Set `ANTHROPIC_API_KEY` in your Vercel project's environment variables. Without it, the AI features fall back gracefully (keyword-based tone detection, static reflection text) and the rest of the app keeps working.
-2. Push to `main` — Vercel autodetects Vite and runs `npm install && npm run build`. The repo's `.npmrc` enables `legacy-peer-deps` to satisfy `vite@8` against `@vitejs/plugin-react-swc`.
+1. `/api/llm` — proxies prompts to Anthropic. Requires `ANTHROPIC_API_KEY`. Without it, AI features fall back gracefully and the rest of the app keeps working.
+2. `/api/sync` — optional cloud backup of memory metadata. Requires `KV_REST_API_URL` and `KV_REST_API_TOKEN` (provided automatically when you enable a Vercel KV / Upstash Redis store on the project). Photos and audio recordings are NOT synced — they live on each device's IndexedDB.
+
+Push to `main` — Vercel autodetects Vite and runs `npm install && npm run build`. The repo's `.npmrc` enables `legacy-peer-deps` to satisfy `vite@8` against `@vitejs/plugin-react-swc`.
+
+The "Sync to cloud" toggle in the header dropdown surfaces sync status and disables itself if the server reports `503` (no KV configured), so the UI is honest about what's actually working in your deployment.
 
 ## Privacy & Data
 
