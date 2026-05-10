@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
 import { useKV } from '@/lib/storage'
+import { useMemoriesKV } from '@/hooks/use-memories-kv'
 import { Toaster, toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -74,7 +75,7 @@ function App() {
   migrateLegacyData(localUser.id)
 
   const [user, setUser] = useState<LocalUser | null>(localUser)
-  const [memories, setMemories] = useKV<Memory[]>(`${localUser.id}:memories`, [])
+  const [memories, setMemories] = useMemoriesKV(`${localUser.id}:memories`, [])
   const [sharedMemories, setSharedMemories] = useKV<Record<string, SharedMemory>>('shared-memories', {})
   const [preferences, setPreferences] = useKV<UserPreferences>(`${localUser.id}:preferences`, {
     hasCompletedOnboarding: false,
