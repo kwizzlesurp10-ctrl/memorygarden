@@ -54,7 +54,8 @@ MemoryGarden is built as a modern, responsive web application with a focus on sm
 - **Tailwind CSS**: Styling and responsive design.
 - **Framer Motion**: Organic animations and transitions.
 - **Radix UI**: Accessible UI components.
-- **Spark SDK**: Handles authentication and persistent storage.
+- **localStorage + IndexedDB**: Memory metadata lives in localStorage; photo blobs spill to IndexedDB to avoid the ~5MB quota.
+- **Vercel Edge function**: `/api/llm` proxies AI completions to Anthropic so the API key never reaches the browser.
 
 ### Sub-projects
 - **Volatility Sentinel**: A Python-based agent (located in `/volatility-sentinel`) that monitors price volatility using the CoinGecko API, providing an example of backend-style agent integration.
@@ -103,10 +104,17 @@ The tests cover:
 - **Unlock System**: Ensuring achievements and currency work correctly.
 - **Edge Cases**: Handling extreme data points and boundary conditions.
 
+## Deployment
+
+The app deploys to Vercel as a static SPA with one Edge function for AI:
+
+1. Set `ANTHROPIC_API_KEY` in your Vercel project's environment variables. Without it, the AI features fall back gracefully (keyword-based tone detection, static reflection text) and the rest of the app keeps working.
+2. Push to `main` — Vercel autodetects Vite and runs `npm install && npm run build`. The repo's `.npmrc` enables `legacy-peer-deps` to satisfy `vite@8` against `@vitejs/plugin-react-swc`.
+
 ## Privacy & Data
 
-- **Completely Private**: All memories are stored securely in your GitHub account via the Spark SDK.
-- **No External Services**: Your personal photos and data never leave the platform.
+- **Local-first**: All memories live in your browser (localStorage + IndexedDB). Nothing leaves your device unless you explicitly share a memory or join a collaborative garden.
+- **AI requests are minimal**: Tone classification sends only your memory text (truncated to 600 chars). Reflections include nearby memory text snippets. No photos, no profile data.
 - **You Own Your Data**: Export your entire garden at any time from the settings menu.
 
 ---

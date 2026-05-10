@@ -122,28 +122,52 @@ export function applyPremiumFertilizer(memory: Memory, boostLevel: 'standard' | 
 const TONE_CACHE_MAX_SIZE = 500
 const _toneCache = new Map<string, EmotionalTone>()
 
+const VALID_TONES: readonly EmotionalTone[] = ['happy', 'reflective', 'bittersweet', 'peaceful', 'nostalgic']
+
+function classifyByKeyword(lower: string): EmotionalTone {
+  if (lower.includes('happy') || lower.includes('joy') || lower.includes('excited') || lower.includes('love') ||
+      lower.includes('wonderful') || lower.includes('amazing') || lower.includes('delighted')) {
+    return 'happy'
+  }
+  if (lower.includes('bitter') || lower.includes('sad') || lower.includes('loss') || lower.includes('gone') ||
+      lower.includes('miss') || lower.includes('regret')) {
+    return 'bittersweet'
+  }
+  if (lower.includes('remember') || lower.includes('used to') || lower.includes('back then') || lower.includes('childhood') ||
+      lower.includes('years ago')) {
+    return 'nostalgic'
+  }
+  if (lower.includes('think') || lower.includes('wonder') || lower.includes('realize') || lower.includes('understand') ||
+      lower.includes('learned')) {
+    return 'reflective'
+  }
+  return 'peaceful'
+}
+
 export async function classifyEmotionalTone(text: string): Promise<EmotionalTone> {
   const lower = text.toLowerCase()
 
   const cached = _toneCache.get(lower)
   if (cached) return cached
 
-  let result: EmotionalTone
-  
-  if (lower.includes('happy') || lower.includes('joy') || lower.includes('excited') || lower.includes('love') ||
-      lower.includes('wonderful') || lower.includes('amazing') || lower.includes('delighted')) {
-    result = 'happy'
-  } else if (lower.includes('bitter') || lower.includes('sad') || lower.includes('loss') || lower.includes('gone') ||
-      lower.includes('miss') || lower.includes('regret')) {
-    result = 'bittersweet'
-  } else if (lower.includes('remember') || lower.includes('used to') || lower.includes('back then') || lower.includes('childhood') ||
-      lower.includes('years ago')) {
-    result = 'nostalgic'
-  } else if (lower.includes('think') || lower.includes('wonder') || lower.includes('realize') || lower.includes('understand') ||
-      lower.includes('learned')) {
-    result = 'reflective'
-  } else {
-    result = 'peaceful'
+  // Try the LLM first when it's available; fall back to keyword classifier
+  // on any error so planting never blocks on the network.
+  let result = classifyByKeyword(lower)
+  const llm = getLLMProvider()
+  if (llm.available && text.trim().length >= 12) {
+    try {
+      const prompt = llm.prompt`Classify the emotional tone of this memory in one word.
+Choose exactly one: happy, reflective, bittersweet, peaceful, nostalgic.
+Memory: "${text.slice(0, 600)}"
+Reply with only the word.`
+      const raw = await llm.complete(prompt, 'gpt-4o-mini')
+      const candidate = raw.toLowerCase().replace(/[^a-z]/g, '') as EmotionalTone
+      if (VALID_TONES.includes(candidate)) {
+        result = candidate
+      }
+    } catch {
+      // keep keyword result
+    }
   }
 
   // Cap cache size to prevent memory leaks in long-running sessions
