@@ -21,7 +21,8 @@
  * traits, etc. all sync.
  *
  * Routes:
- *   GET  /api/sync?userId=<id>      → 200 { document } | 404 | 503
+ *   GET  /api/sync?probe=1         → 200 { ok: true } if KV env set, else 503
+ *   GET  /api/sync?userId=<id>     → 200 { document } | 404 | 503
  *   POST /api/sync   { userId, document }  → 200 { updatedAt }
  */
 
@@ -73,6 +74,15 @@ async function kvSet(env: SyncEnv, key: string, value: string): Promise<boolean>
 }
 
 export default async function handler(req: Request): Promise<Response> {
+  if (req.method === 'GET') {
+    const url = new URL(req.url)
+    if (url.searchParams.get('probe') === '1') {
+      const probeEnv = getEnv()
+      if (!probeEnv) return jsonResponse(503, { error: 'Cloud sync not configured' })
+      return jsonResponse(200, { ok: true })
+    }
+  }
+
   const env = getEnv()
   if (!env) {
     return jsonResponse(503, { error: 'Cloud sync not configured' })
