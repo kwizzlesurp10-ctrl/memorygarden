@@ -10,7 +10,7 @@ A private, emotional digital garden where people plant and nurture personal memo
 
 **Complexity Level**: Complex Application (advanced functionality, likely with multiple views)
 
-This app requires sophisticated state management for memory data, AI integration for emotional tone analysis and reflections, real-time growth animations, infinite canvas navigation with drag-and-drop, time-based visual changes, and multiple view modes. The feature set goes well beyond a simple CRUD app.
+This app requires sophisticated state management for memory data, AI integration for emotional tone analysis and reflections, real-time growth animations, infinite canvas navigation with drag-and-drop, time-based visual changes, and multiple view modes. The feature set goes well beyond a simple CRUD app. Implementation is **local-first** (browser storage for memories and media) with **optional** cloud metadata sync and an **Edge-proxied LLM** when hosting provides API keys.
 [/content-to-enhance]
 
 [content-to-enhance id="prd-essential-features"]
@@ -19,7 +19,7 @@ This app requires sophisticated state management for memory data, AI integration
 ### 1. Onboarding Flow
 - **Functionality**: Four-step guided welcome tour introducing garden concept, planting mechanics, growth system, and tending behaviors
 - **Purpose**: Set emotional tone and ensure users understand the metaphor before creating their first memory
-- **Trigger**: First-time user lands on app after GitHub authentication
+- **Trigger**: First-time user opens the app before completing onboarding (local profile established; no external login required for core flows)
 - **Progression**: Welcome screen → Garden philosophy explanation → Planting tutorial → Growth & tending preview → Immediate prompt to plant first memory
 - **Success criteria**: User completes tour and successfully plants their first memory seed within 3 minutes
 
@@ -62,7 +62,7 @@ This app requires sophisticated state management for memory data, AI integration
 - **Functionality**: LLM analyzes memory text to classify emotional tone, suggest memory clusters, and generate gentle reflective prompts
 - **Purpose**: Help users discover patterns and connections between memories they might not notice
 - **Trigger**: User clicks "Ask the Garden AI" on a memory, or views Clusters tab
-- **Progression**: User requests AI reflection → system sends memory text + nearby memory context to Spark LLM → receives poetic reflection or connecting question → displays in card
+- **Progression**: User requests AI reflection → client sends memory text + nearby memory context through the app LLM layer (Edge `/api/llm` → Anthropic when configured; optional Spark SDK in compatible hosts) → receives poetic reflection or connecting question → displays in card
 - **Success criteria**: Responses feel personal and insightful, clustering groups make intuitive sense, emotional tone detection is 80%+ accurate
 
 ### 8. Multiple View Modes
@@ -117,7 +117,7 @@ This app requires sophisticated state management for memory data, AI integration
 
 - **No memories yet**: Show beautiful empty garden with gentle prompt and inspiration to plant first memory
 - **Upload failures**: Graceful retry with clear error message, preserve user's text input
-- **AI unavailable**: Fallback to encouraging message, disable AI features gracefully
+- **AI unavailable** (no API key, 503 from `/api/llm`, or network failure): Fallback copy, disable or soften AI affordances without blocking the rest of the garden
 - **Slow network**: Show skeleton loaders, allow offline viewing of previously loaded memories
 - **Very large gardens (500+ memories)**: Implement virtualization for canvas rendering, lazy-load images
 - **Invalid dates**: Prevent future dates beyond today, handle very old dates (decades ago) gracefully
@@ -271,6 +271,7 @@ The application includes comprehensive test suites covering:
   - `trait-system.test.ts` - Genetic trait generation
   - `local-user.test.ts` - User profile management
   - `utils.test.ts` - Utility functions
+  - `llm-client.test.ts` - LLM provider selection and `/api/llm` HTTP behavior
 
 - **Integration Test Suite** (`src/lib/__tests__/integration.test.ts`)
   - End-to-end feature workflows
