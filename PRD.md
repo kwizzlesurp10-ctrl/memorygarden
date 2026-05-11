@@ -1,5 +1,6 @@
 # MemoryGarden PRD
 
+[content-to-enhance id="prd-overview"]
 A private, emotional digital garden where people plant and nurture personal memories through visual plant metaphors that grow and evolve over time, offering a calm alternative to traditional photo albums.
 
 **Experience Qualities**:
@@ -10,7 +11,9 @@ A private, emotional digital garden where people plant and nurture personal memo
 **Complexity Level**: Complex Application (advanced functionality, likely with multiple views)
 
 This app requires sophisticated state management for memory data, AI integration for emotional tone analysis and reflections, real-time growth animations, infinite canvas navigation with drag-and-drop, time-based visual changes, and multiple view modes. The feature set goes well beyond a simple CRUD app.
+[/content-to-enhance]
 
+[content-to-enhance id="prd-essential-features"]
 ## Essential Features
 
 ### 1. Onboarding Flow
@@ -107,7 +110,9 @@ This app requires sophisticated state management for memory data, AI integration
   - **3**: Switch to clusters view
   - **Cmd/Ctrl+Shift+E**: Export garden
   - **?**: Show keyboard shortcuts panel
+[/content-to-enhance]
 
+[content-to-enhance id="prd-edge-cases"]
 ## Edge Case Handling
 
 - **No memories yet**: Show beautiful empty garden with gentle prompt and inspiration to plant first memory
@@ -118,11 +123,15 @@ This app requires sophisticated state management for memory data, AI integration
 - **Invalid dates**: Prevent future dates beyond today, handle very old dates (decades ago) gracefully
 - **Missing photos**: Allow text-only memories with beautiful typography card
 - **Browser compatibility**: Graceful degradation for browsers without modern canvas features
+[/content-to-enhance]
 
+[content-to-enhance id="prd-design-direction"]
 ## Design Direction
 
 The design should evoke the feeling of stepping into a private, twilit secret garden — soft, nostalgic, and gently alive. Every element should feel organic and handcrafted, not corporate or sterile. The experience should slow users down, encourage presence, and feel like a meditative ritual. Colors should be muted and natural, animations should follow realistic physics with slight elasticity, and typography should feel warm and literary.
+[/content-to-enhance]
 
+[content-to-enhance id="prd-color-selection"]
 ## Color Selection
 
 Drawing from natural garden environments at dusk — the moment between day and night when colors are richest and emotions feel closest to the surface.
@@ -137,7 +146,9 @@ Drawing from natural garden environments at dusk — the moment between day and 
   - Sage green `oklch(0.55 0.08 155)`: White text `oklch(0.98 0 0)` - Ratio 5.2:1 ✓
   - Honey accent `oklch(0.78 0.14 85)`: Dark brown text `oklch(0.25 0.01 65)` - Ratio 7.9:1 ✓
   - Card surfaces (cream) `oklch(0.94 0.02 85)`: Dark charcoal text `oklch(0.25 0.01 95)` - Ratio 11.5:1 ✓
+[/content-to-enhance]
 
+[content-to-enhance id="prd-font-selection"]
 ## Font Selection
 
 Typography should feel literary, warm, and timeless — like handwritten journal entries that have become treasured heirlooms.
@@ -150,7 +161,9 @@ Typography should feel literary, warm, and timeless — like handwritten journal
   - Body (Memory Text): Crimson Pro Regular / 18px / 1.7 line height / dark charcoal
   - UI Labels: Space Grotesk Medium / 14px / 0.02em letter spacing / muted sage
   - Captions (Dates/Locations): Space Grotesk Regular / 12px / 0.03em letter spacing / warm brown
+[/content-to-enhance]
 
+[content-to-enhance id="prd-animations"]
 ## Animations
 
 Animations should feel like watching plants grow in time-lapse — smooth, organic, and mesmerizing. Every movement should have weight and natural physics. Use animations to reinforce the garden metaphor and create moments of quiet delight.
@@ -168,7 +181,9 @@ Animations should feel like watching plants grow in time-lapse — smooth, organ
 - **Interaction Feedback**: Ripple effect when planting new memory, gentle pulse on "Water" action
 - **Loading States**: Organic skeleton shimmer that feels like sunlight moving through leaves
 - **Button Loading**: Shimmer gradient sweep with floating micro-particles on fertilizer boost button
+[/content-to-enhance]
 
+[content-to-enhance id="prd-component-selection"]
 ## Component Selection
 
 - **Components**:
@@ -230,7 +245,9 @@ Animations should feel like watching plants grow in time-lapse — smooth, organ
   - Timeline view uses vertical scroll with cards at full viewport width
   - Reduce parallax complexity on mobile for performance
   - Garden canvas defaults to zoomed-out overview on small screens
+[/content-to-enhance]
 
+[content-to-enhance id="prd-testing-qa"]
 ## Testing & Quality Assurance
 
 ### Test Coverage
@@ -284,3 +301,4 @@ npm run test:coverage
 - ✅ Temporal logic verified across seasons, day periods, and date transitions
 
 See `EDGE_CASE_TEST_REPORT.md` and `TEST_UPDATES.md` for detailed test documentation.
+[/content-to-enhance]

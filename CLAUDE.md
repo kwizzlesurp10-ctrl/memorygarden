@@ -1,5 +1,6 @@
 # CLAUDE.md
 
+[content-to-enhance id="claude-commands"]
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Commands
@@ -13,7 +14,9 @@ npm run kill      # Kill process on port 5000
 ```
 
 No test suite is configured.
+[/content-to-enhance]
 
+[content-to-enhance id="claude-architecture"]
 ## Architecture
 
 **Platform**: This is a GitHub Spark app. The `@github/spark` SDK provides:
@@ -38,7 +41,9 @@ All memory data (including photos as Base64 Data URLs) is stored in the KV store
 - `Onboarding.tsx` — 4-step first-run tour
 
 **Helpers** (`src/lib/garden-helpers.ts`): All growth logic, color mappings (OKLCH), seasonal/day-period background gradients, and AI call wrappers live here.
+[/content-to-enhance]
 
+[content-to-enhance id="claude-conventions"]
 ## Conventions
 
 - **Colors**: Use OKLCH color values as defined in `garden-helpers.ts` and `src/styles/theme.css`. Do not introduce hex/RGB colors.
@@ -48,3 +53,4 @@ All memory data (including photos as Base64 Data URLs) is stored in the KV store
 - **Metaphor**: Every feature should feel organic and peaceful. The garden metaphor is load-bearing — avoid anything that feels sterile or transactional.
 - **AI fallbacks**: `window.spark.llm` calls must have try/catch with a graceful fallback (default tone `'peaceful'`, or a static reflection string).
 - **Photos**: Stored as Base64 Data URLs inside the KV memory objects — no external file storage.
+[/content-to-enhance]
