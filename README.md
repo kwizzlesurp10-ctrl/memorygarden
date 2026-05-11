@@ -1,9 +1,12 @@
 # MemoryGarden 🌱
 
+[content-to-enhance id="introduction"]
 A peaceful, emotional digital garden where you plant and nurture personal memories. Watch your memories grow from seeds to blooms as you revisit and reflect on them over time.
+[/content-to-enhance]
 
 ## What is MemoryGarden?
 
+[content-to-enhance id="memory-garden-concept"]
 MemoryGarden reimagines how we preserve and interact with our memories. Instead of scrolling through static photo albums, your memories become living plants in a beautiful garden that:
 
 - **Grow over time** - Memories evolve from seeds to sprouts to blooms based on how often you visit them.
@@ -11,9 +14,11 @@ MemoryGarden reimagines how we preserve and interact with our memories. Instead 
 - **Encourage reflection** - Add new thoughts to memories and receive gentle, poetic insights from the Garden AI.
 - **Create connections** - Discover relationships between memories planted near each other.
 - **Adapt to seasons** - The garden changes with real-world time, seasons, and weather.
+[/content-to-enhance]
 
 ## Features
 
+[content-to-enhance id="core-features"]
 ### 🌿 Plant & Tend Memories
 - **Planting**: Upload a photo, write about the moment, and watch your memory sprout.
 - **Tending**: Visit memories to see them bloom and mature. Add reflections as you revisit moments.
@@ -43,9 +48,11 @@ MemoryGarden reimagines how we preserve and interact with our memories. Instead 
 - **Keyboard Shortcuts**: Navigate and interact efficiently with shortcuts (press `?` for help).
 - **Protocol Handlers**: Seamlessly plant or view memories from external apps using `web+memorygarden://`.
 - **PWA Support**: Install MemoryGarden as a Progressive Web App for a native-like experience.
+[/content-to-enhance]
 
 ## Technical Architecture
 
+[content-to-enhance id="how-it-works"]
 MemoryGarden is built as a modern, responsive web application with a focus on smooth, organic interactions.
 
 ### Frontend Stack
@@ -59,9 +66,11 @@ MemoryGarden is built as a modern, responsive web application with a focus on sm
 
 ### Sub-projects
 - **Volatility Sentinel**: A Python-based agent (located in `/volatility-sentinel`) that monitors price volatility using the CoinGecko API, providing an example of backend-style agent integration.
+[/content-to-enhance]
 
 ## Getting Started
 
+[content-to-enhance id="usage"]
 ### Prerequisites
 - Node.js (latest LTS recommended)
 - npm or yarn
@@ -103,9 +112,11 @@ The tests cover:
 - **Growth Logic**: Validating plant progression and metrics.
 - **Unlock System**: Ensuring achievements and currency work correctly.
 - **Edge Cases**: Handling extreme data points and boundary conditions.
+[/content-to-enhance]
 
 ## Deployment
 
+[content-to-enhance id="configuration"]
 The app deploys to Vercel as a static SPA with two Edge functions:
 
 1. `/api/llm` — proxies prompts to Anthropic. Requires `ANTHROPIC_API_KEY`. Without it, AI features fall back gracefully and the rest of the app keeps working.
@@ -120,6 +131,30 @@ The "Sync to cloud" toggle in the header dropdown surfaces sync status and disab
 - **Local-first**: All memories live in your browser (localStorage + IndexedDB). Nothing leaves your device unless you explicitly share a memory or join a collaborative garden.
 - **AI requests are minimal**: Tone classification sends only your memory text (truncated to 600 chars). Reflections include nearby memory text snippets. No photos, no profile data.
 - **You Own Your Data**: Export your entire garden at any time from the settings menu.
+[/content-to-enhance]
+
+## Roadmap
+
+[content-to-enhance id="roadmap"]
+Planned improvements and known next steps for MemoryGarden (prioritize and expand this list as the product evolves):
+
+- Deeper collaboration features for shared gardens.
+- Richer export formats and print-ready garden layouts.
+- Additional accessibility and internationalization pass across views.
+[/content-to-enhance]
+
+## FAQ
+
+[content-to-enhance id="faq"]
+**Where is my data stored?**  
+By default, memories stay on your device (browser storage). Cloud sync of metadata is optional and depends on project configuration.
+
+**Do photos get sent to the AI?**  
+No. AI features use text context only, within the limits described in Privacy & Data.
+
+**How do I report issues or contribute?**  
+Use GitHub issues and pull requests on this repository.
+[/content-to-enhance]
 
 ---
 
