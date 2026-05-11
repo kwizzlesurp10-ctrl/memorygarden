@@ -1,5 +1,6 @@
 # MemoryGarden PRD
 
+[content-to-enhance id="prd-overview"]
 A private, emotional digital garden where people plant and nurture personal memories through visual plant metaphors that grow and evolve over time, offering a calm alternative to traditional photo albums.
 
 **Experience Qualities**:
@@ -9,14 +10,16 @@ A private, emotional digital garden where people plant and nurture personal memo
 
 **Complexity Level**: Complex Application (advanced functionality, likely with multiple views)
 
-This app requires sophisticated state management for memory data, AI integration for emotional tone analysis and reflections, real-time growth animations, infinite canvas navigation with drag-and-drop, time-based visual changes, and multiple view modes. The feature set goes well beyond a simple CRUD app.
+This app requires sophisticated state management for memory data, AI integration for emotional tone analysis and reflections, real-time growth animations, infinite canvas navigation with drag-and-drop, time-based visual changes, and multiple view modes. The feature set goes well beyond a simple CRUD app. Implementation is **local-first** (browser storage for memories and media) with **optional** cloud metadata sync and an **Edge-proxied LLM** when hosting provides API keys.
+[/content-to-enhance]
 
+[content-to-enhance id="prd-essential-features"]
 ## Essential Features
 
 ### 1. Onboarding Flow
 - **Functionality**: Four-step guided welcome tour introducing garden concept, planting mechanics, growth system, and tending behaviors
 - **Purpose**: Set emotional tone and ensure users understand the metaphor before creating their first memory
-- **Trigger**: First-time user lands on app after GitHub authentication
+- **Trigger**: First-time user opens the app before completing onboarding (local profile established; no external login required for core flows)
 - **Progression**: Welcome screen → Garden philosophy explanation → Planting tutorial → Growth & tending preview → Immediate prompt to plant first memory
 - **Success criteria**: User completes tour and successfully plants their first memory seed within 3 minutes
 
@@ -59,7 +62,7 @@ This app requires sophisticated state management for memory data, AI integration
 - **Functionality**: LLM analyzes memory text to classify emotional tone, suggest memory clusters, and generate gentle reflective prompts
 - **Purpose**: Help users discover patterns and connections between memories they might not notice
 - **Trigger**: User clicks "Ask the Garden AI" on a memory, or views Clusters tab
-- **Progression**: User requests AI reflection → system sends memory text + nearby memory context to Spark LLM → receives poetic reflection or connecting question → displays in card
+- **Progression**: User requests AI reflection → client sends memory text + nearby memory context through the app LLM layer (Edge `/api/llm` → Anthropic when configured; optional Spark SDK in compatible hosts) → receives poetic reflection or connecting question → displays in card
 - **Success criteria**: Responses feel personal and insightful, clustering groups make intuitive sense, emotional tone detection is 80%+ accurate
 
 ### 8. Multiple View Modes
@@ -107,130 +110,256 @@ This app requires sophisticated state management for memory data, AI integration
   - **3**: Switch to clusters view
   - **Cmd/Ctrl+Shift+E**: Export garden
   - **?**: Show keyboard shortcuts panel
+[/content-to-enhance]
 
+[content-to-enhance id="prd-edge-cases"]
 ## Edge Case Handling
 
 - **No memories yet**: Show beautiful empty garden with gentle prompt and inspiration to plant first memory
 - **Upload failures**: Graceful retry with clear error message, preserve user's text input
-- **AI unavailable**: Fallback to encouraging message, disable AI features gracefully
+- **AI unavailable** (no API key, 503 from `/api/llm`, or network failure): Fallback copy, disable or soften AI affordances without blocking the rest of the garden
 - **Slow network**: Show skeleton loaders, allow offline viewing of previously loaded memories
 - **Very large gardens (500+ memories)**: Implement virtualization for canvas rendering, lazy-load images
 - **Invalid dates**: Prevent future dates beyond today, handle very old dates (decades ago) gracefully
 - **Missing photos**: Allow text-only memories with beautiful typography card
 - **Browser compatibility**: Graceful degradation for browsers without modern canvas features
+[/content-to-enhance]
 
+[content-to-enhance id="prd-design-direction"]
 ## Design Direction
 
-The design should evoke the feeling of stepping into a private, twilit secret garden — soft, nostalgic, and gently alive. Every element should feel organic and handcrafted, not corporate or sterile. The experience should slow users down, encourage presence, and feel like a meditative ritual. Colors should be muted and natural, animations should follow realistic physics with slight elasticity, and typography should feel warm and literary.
+MemoryGarden should feel less like “software” and more like a threshold you cross into a private place: a **twilit garden** where the light is low, the colors are soft, and nothing demands your attention on a schedule. The emotional brief is **nostalgia without kitsch**, **calm without emptiness**, and **life without noise**.
 
+### Qualities to protect
+
+- **Restraint** — The interface never competes with the memories themselves. Chrome stays quiet; motion stays small until it celebrates something meaningful (a new plant, a boost, a seasonal shift).
+- **Tactility** — Surfaces feel slightly organic: rounded corners, soft shadows, paper-like cards. Avoid glassy, neon, or hyper-minimal “dashboard” aesthetics.
+- **Duration** — Interactions reward lingering. Nothing should feel optimized for “time on site” in the attention-economy sense; pacing should feel respectful of grief, joy, and ordinary days alike.
+- **Coherence** — Every pattern ties back to the garden metaphor: growth, seasons, soil, water, light. If a feature cannot be described in that vocabulary, it probably needs reframing.
+
+### What we deliberately avoid
+
+- Transactional language (“Buy,” “Unlock now,” “Don’t miss out”) except where a real purchase or entitlement exists—and even then, soften tone.
+- Sharp contrast spikes, strobing motion, or sudden full-screen flashes (photos already carry emotional weight).
+- Dense data tables or spreadsheet mental models for memories; the spatial canvas and timeline exist precisely to escape that frame.
+
+### Experience pillars
+
+1. **Sanctuary** — The garden is a place to return to, not a feed to scroll. Empty states should feel inviting, not accusatory.
+2. **Ritual** — Planting and tending are small ceremonies: predictable steps, gentle feedback, no punitive errors for imperfect input.
+3. **Continuity** — Day, night, and seasons stitch the digital garden to lived time. Visual change should feel observed, not announced with alarms.
+
+### Art direction summary
+
+Think **hand-tended**, **dusk-lit**, **quietly alive**. Typography reads like a journal; color reads like soil, leaf, petal, and honey; motion reads like growth and weather—not like interface gimmicks.
+[/content-to-enhance]
+
+[content-to-enhance id="prd-color-selection"]
 ## Color Selection
 
-Drawing from natural garden environments at dusk — the moment between day and night when colors are richest and emotions feel closest to the surface.
+The palette is anchored in **dusk in a real garden**—when greens deepen, warm surfaces hold light longer, and small accents (petal, honey) read as precious rather than loud. All specified colors use **OKLCH** so lightness and chroma stay perceptually stable across displays and future theme tuning.
 
-- **Primary Color**: Deep sage green `oklch(0.55 0.08 155)` — grounding, growth-oriented, calming
-- **Secondary Colors**: 
-  - Warm earth brown `oklch(0.45 0.05 65)` — roots, stability, memory foundation
-  - Soft petal pink `oklch(0.75 0.12 15)` — gentle blooms, tender emotions, highlights
-- **Accent Color**: Warm golden honey `oklch(0.78 0.14 85)` — sunlight, moments of joy, important CTAs
-- **Foreground/Background Pairings**: 
-  - Background (soft ivory) `oklch(0.96 0.01 95)`: Dark charcoal text `oklch(0.25 0.01 95)` - Ratio 12.8:1 ✓
-  - Sage green `oklch(0.55 0.08 155)`: White text `oklch(0.98 0 0)` - Ratio 5.2:1 ✓
-  - Honey accent `oklch(0.78 0.14 85)`: Dark brown text `oklch(0.25 0.01 65)` - Ratio 7.9:1 ✓
-  - Card surfaces (cream) `oklch(0.94 0.02 85)`: Dark charcoal text `oklch(0.25 0.01 95)` - Ratio 11.5:1 ✓
+### Semantic roles (how to think before picking a swatch)
 
+- **Structure** — Large fields (page background, card shells) stay high-lightness, low-chroma neutrals so memories and plants remain the focal plane.
+- **Navigation & chrome** — Sage carries “you are in the garden” identity; use it for persistent UI that should feel rooted, not shouty.
+- **Emotion & highlight** — Pink and honey are sparing accents: blooms, gentle emphasis, primary actions that deserve a glint of warmth.
+- **Memory legibility** — Body copy and long-form memory text always prioritize contrast on ivory/cream surfaces over decorative tinting.
+
+### Core tokens
+
+- **Primary — deep sage** `oklch(0.55 0.08 155)`  
+  Use for primary buttons (when paired with appropriate foreground), key navigation affordances, and brand continuity. Reads as **growth and steadiness** without clinical green.
+
+- **Secondary — earth brown** `oklch(0.45 0.05 65)`  
+  Anchors metadata, dividers, and “grounding” UI: dates, captions, roots-and-soil metaphors. Keeps the eye from floating on undifferentiated gray.
+
+- **Secondary — soft petal pink** `oklch(0.75 0.12 15)`  
+  Tender highlights for emotional warmth—secondary labels, subtle fills, gentle emphasis on bittersweet or intimate content. Not bubble-gum; always dusk-tinted.
+
+- **Accent — warm honey** `oklch(0.78 0.14 85)`  
+  Sunlit moments: celebratory CTAs, seasonal hints, “something wonderful happened here.” Use **narrowly** so it never becomes the default button color everywhere.
+
+### Paired surfaces (contrast targets documented for QA)
+
+These pairings are the non-negotiable readability backbone for long reading sessions and outdoor-brightness devices:
+
+| Role | Background | Foreground | Notes |
+|------|------------|------------|------|
+| Page / shell | Soft ivory `oklch(0.96 0.01 95)` | Dark charcoal `oklch(0.25 0.01 95)` | **12.8:1** — primary reading plane |
+| Sage fills | Sage `oklch(0.55 0.08 155)` | Near white `oklch(0.98 0 0)` | **5.2:1** — large type & confident labels |
+| Honey fills | Honey `oklch(0.78 0.14 85)` | Dark brown `oklch(0.25 0.01 65)` | **7.9:1** — short labels & chips |
+| Cards | Cream `oklch(0.94 0.02 85)` | Dark charcoal `oklch(0.25 0.01 95)` | **11.5:1** — memory cards & dialogs |
+
+### Implementation discipline
+
+- Introduce **no ad-hoc hex/RGB** in new UI; extend tokens in OKLCH alongside `garden-helpers` / theme CSS.
+- When emotional tone changes plant tint, **derive** from the shared maps—do not invent one-off saturated hues per memory.
+- Seasonal gradients may shift globally; they should **never** reduce text contrast below comfortable reading for the chosen surface pair.
+[/content-to-enhance]
+
+[content-to-enhance id="prd-font-selection"]
 ## Font Selection
 
-Typography should feel literary, warm, and timeless — like handwritten journal entries that have become treasured heirlooms.
+Typography carries half the emotional signal in MemoryGarden. Users are not scanning dashboards—they are **reading remembered life**. Type should feel **literary**, **warm**, and **enduring**: the visual cousin of a journal passed down, not a system notification.
 
-- **Primary Font**: Crimson Pro (serif) for memory text and body content — elegant, readable, emotionally warm
-- **Secondary Font**: Space Grotesk (geometric sans) for UI labels and buttons — clean contrast with serif, modern but friendly
-- **Typographic Hierarchy**:
-  - H1 (Garden Title): Space Grotesk Bold / 36px / tight letter spacing / sage green
-  - H2 (Memory Titles): Crimson Pro Semibold / 24px / normal spacing / dark charcoal
-  - Body (Memory Text): Crimson Pro Regular / 18px / 1.7 line height / dark charcoal
-  - UI Labels: Space Grotesk Medium / 14px / 0.02em letter spacing / muted sage
-  - Captions (Dates/Locations): Space Grotesk Regular / 12px / 0.03em letter spacing / warm brown
+### Type families
 
+- **Crimson Pro (serif)** — Primary voice for **memory text**, long reflections, and narrative-heavy surfaces. Its rhythm suits paragraphs people read slowly; it photographs beautifully on cream cards and tolerates generous line height.
+- **Space Grotesk (sans)** — Instrumentation layer: **navigation**, **buttons**, **metadata**, **short labels**. Geometric enough to feel contemporary; humanist enough not to clash with Crimson’s warmth. Never use sans for the main memory paragraph unless accessibility overrides demand it—and then increase size/weight deliberately.
+
+### Hierarchy & intent
+
+| Role | Treatment | Color intent |
+|------|-----------|----------------|
+| **Garden / app title (H1)** | Space Grotesk Bold, ~36px, tight tracking | Sage green — establishes place, not shouting brand |
+| **Memory titles (H2)** | Crimson Pro Semibold, ~24px | Dark charcoal on ivory/cream — the emotional headline |
+| **Memory body** | Crimson Pro Regular, ~18px, **1.7** line height | Dark charcoal — optimized for 45–75 character measure inside cards |
+| **UI labels** | Space Grotesk Medium, ~14px, +0.02em tracking | Muted sage — supportive, not competing with memory voice |
+| **Captions** (dates, places, micro-meta) | Space Grotesk Regular, ~12px, +0.03em tracking | Warm brown — ties to “earth” in the palette story |
+
+### Composition rules
+
+- **Measure** — Avoid full-bleed serif lines across ultra-wide modals; constrain text blocks (`max-width` in the `2xl` card neighborhood) so Crimson doesn’t sprawl into fatigue.
+- **Pairing** — When serif and sans sit adjacent (title + date line), align baselines and keep sans **one step smaller** or **one weight lighter** so hierarchy stays obvious without size wars.
+- **Numbers & dates** — Prefer Space Grotesk for numeric clarity; keep separators subtle so dates feel archival, not bureaucratic.
+- **Localization headroom** — German and other expanded languages may need **+10–15% vertical rhythm**; hierarchy specs are targets, not traps—preserve line height before shrinking Crimson.
+
+### Accessibility cross-check
+
+- Minimum body size on mobile should not dip below comfortable reading for extended journaling; if density demands smaller type, **increase contrast** on the surface rather than shrinking forever.
+- Never rely on color alone for tone labels—pair **badge copy** or icons with emotional-tone chips.
+[/content-to-enhance]
+
+[content-to-enhance id="prd-animations"]
 ## Animations
 
-Animations should feel like watching plants grow in time-lapse — smooth, organic, and mesmerizing. Every movement should have weight and natural physics. Use animations to reinforce the garden metaphor and create moments of quiet delight.
+Motion is how the garden **proves it is alive**. Nothing should animate because “apps animate”—every curve should echo growth, weather, water, or breath. Prefer **springs and eased curves** over linear tweens; prefer **layered small moves** over single exaggerated transitions.
 
-- **Plant Growth**: Elastic spring physics when plants sprout or grow from tending, starting small and bouncing slightly at full size (800ms duration)
-- **Fertilizer Particles**: Tier-specific particle systems that play during and after boost application:
-  - Standard tier uses falling droplets with ripple effects
-  - Premium tier creates spiraling sparkles with rotating stars
-  - Legendary tier produces explosive radial bursts with orbital particles and expanding waves
-- **Canvas Navigation**: Smooth momentum-based panning with gentle deceleration, zoom follows cursor position with 300ms ease-out
-- **Card Transitions**: Fade and subtle scale-up when opening memory cards (400ms), backdrop blur effect
-- **Hover States**: Gentle lift on plants (2px translateY) with soft shadow increase over 200ms
-- **Background Elements**: Continuous subtle parallax movement on leaves/grass (3-5 second cycles), randomized per element
-- **Time Transitions**: Day/night cycle fades over 2 minutes of real time when crossing threshold hours
-- **Interaction Feedback**: Ripple effect when planting new memory, gentle pulse on "Water" action
-- **Loading States**: Organic skeleton shimmer that feels like sunlight moving through leaves
-- **Button Loading**: Shimmer gradient sweep with floating micro-particles on fertilizer boost button
+### Principles
 
+- **Cause & effect** — Motion narrates user intent: planting completes with settlement; tending rewards with growth cues; boosts read as nourishment, not slot-machine payoff.
+- **Energy budget** — Canvas and particles may run continuously at low amplitude; dialogs and lists stay conservative to protect focus and battery.
+- **Interruptibility** — Users must never wait on ornamentation; decorative loops yield instantly to input.
+
+### Specified behaviors
+
+- **Plant growth** — On sprout or stage-up, use **elastic spring** easing: start small, overshoot slightly, settle (~**800ms**). This sells organic mass without rubber-band nausea (damping tuned per plant scale).
+
+- **Fertilizer particles** — Tiered spectacle, same emotional grammar:
+  - **Garden Boost** — Droplets + ripples: nurturing rain, low chaos.
+  - **Premium** — Spirals + sparkles: joyful but contained magic.
+  - **Legendary** — Radial burst + orbitals: awe without screen-filling glare; duration capped so it reads as celebration, not obstruction.
+
+- **Canvas navigation** — **Momentum pan** with friction-like deceleration; **zoom** eases toward cursor focal point (~**300ms** ease-out). Avoid hard stops unless snapping to a bookmarked view.
+
+- **Memory cards** — Enter with **fade + subtle scale-up** (~**400ms**); backdrop uses **blur** to isolate the memory photographically. Exit mirrors enter—never blink.
+
+- **Hover on plants** — **~2px lift**, shadow bloom ~**200ms**. Hover should whisper “I’m here,” not jitters.
+
+- **Background ambience** — Parallax leaf/grass drift on **3–5s** loops with **element-level phase offsets** so motion feels organic, not synchronized wallpaper.
+
+- **Day / night** — When crossing threshold hours, transition global lighting over ~**2 minutes** wall-clock (not a snap). Users should *notice* the garden breathing through the day.
+
+- **Interaction ripples** — Planting a seed triggers a soft radial ripple; **Water / Reflect** uses a restrained pulse on the plant body—reassurance, not arcade FX.
+
+- **Loading** — Skeletons use a **slow shimmer** like wind-light through foliage—never harsh diagonal raster stripes.
+
+- **Boost button busy state** — Shimmer sweep plus **micro-particles** tied to selected tier language; must remain legible and cancel-friendly.
+
+### Performance guardrails
+
+- Cap simultaneous particle systems on low-power devices; degrade parallax before dropping frame budget on card transitions.
+- Prefer **transform/opacity** animations; avoid animating expensive shadow chains on every frame during canvas drag.
+[/content-to-enhance]
+
+[content-to-enhance id="prd-component-selection"]
 ## Component Selection
 
-- **Components**:
-  - **Dialog** for memory planting modal and memory detail cards — full-screen on mobile, centered on desktop
-  - **Card** for timeline view memory items and cluster groups — soft shadows, rounded corners
-  - **Button** for primary actions (Plant Memory, Water, AI Reflect) — use variants: default for primary sage, outline for secondary actions, ghost for tertiary
-  - **Textarea** for memory text input and reflection notes — auto-resize, markdown preview toggle
-  - **Calendar** (date-picker) for memory date selection — starts on selected/today, shows past dates primarily
-  - **Tabs** for view mode switching (Garden / Timeline / Clusters) — underline indicator with slide animation
-  - **Avatar** for user profile in header — shows GitHub avatar with subtle border
-  - **Switch** for settings toggles (sound on/off, light/dark mode) — sage green when active
-  - **Popover** for plant hover previews — shows mini memory preview without full card
-  - **Scroll-area** for timeline and cluster views — custom scrollbar styled to match theme
-  - **Separator** between memory sections and settings groups — subtle, uses border color
-  - **Badge** for memory tags (location, emotional tone) — small, muted colors, rounded-full
+Components should read as **garden furniture**: sturdy enough to use every day, quiet enough to disappear behind the plants. We stack **Radix-based primitives** from `src/components/ui/` for accessibility and consistency, then layer **custom canvas/SVG** where metaphor demands it.
 
-- **Customizations**:
-  - Custom infinite canvas component using HTML5 Canvas API for garden view rendering
-  - Custom plant SVG components with animated paths for growth stages
-  - Custom parallax background with layered SVG elements for depth
-  - Custom drag-and-drop system using Framer Motion's drag constraints
-  - Custom ambient audio player with fade in/out
+### Shell & navigation
 
-- **States**:
-  - Buttons: default, hover (slight lift + shadow), active (press down), disabled (reduced opacity + no pointer)
-  - Plants: idle (subtle breathing animation), hover (lift + glow), selected (strong glow), dragging (semi-transparent + cursor grab)
-  - Inputs: empty (placeholder visible), typing (border highlight), filled (checkmark icon), error (red border + message)
-  - Cards: entering (fade + scale up), open (static), exiting (fade + scale down)
+- **Tabs** — Primary view switching (**Garden / Timeline / Clusters**). Use an **underline + sliding indicator** so mode changes feel like sliding along a path, not swapping spreadsheets. Keyboard focus order follows visual order.
 
-- **Icon Selection**:
-  - Plant (for plant memory button)
-  - Drop (for water/reflect action)
-  - Sparkle (for AI reflection button)
-  - CalendarBlank (for date picker)
-  - MapPin (for location)
-  - List (for timeline view)
-  - Tree (for garden view)
-  - GridFour (for clusters view)
-  - Image (for photo upload)
-  - CloudArrowUp (for upload state)
-  - Export (for export feature)
-  - Gear (for settings)
-  - Moon/Sun (for time of day)
+- **Avatar** — Profile anchor in the header: local user identity / optional GitHub image when linked—always **circular**, subtle border using semantic outline tokens (OKLCH), never a loud ring.
 
-- **Spacing**:
-  - Base unit: 4px (Tailwind default)
-  - Canvas padding: 12 (48px) around edges
-  - Card padding: 6 (24px) internal
-  - Button padding: 3 (12px) vertical, 6 (24px) horizontal
-  - Section gaps: 8 (32px) between major sections
-  - Plant minimum spacing: 16 (64px) between plant centers
-  - Memory card max-width: 2xl (672px)
+- **Switch** — Binary preferences (**sound**, **theme**, **sync-related toggles** where applicable). Active track uses **sage** family tones from the palette doc; avoid neon “on” colors.
 
-- **Mobile**:
-  - Navigation tabs become bottom sheet with icons only
-  - Plant memory button becomes fixed bottom-right FAB
-  - Memory cards are full-screen modals on mobile
-  - Canvas gestures: pinch-to-zoom, two-finger pan, tap-and-hold to drag plants
-  - Timeline view uses vertical scroll with cards at full viewport width
-  - Reduce parallax complexity on mobile for performance
-  - Garden canvas defaults to zoomed-out overview on small screens
+### Memory workflows
 
+- **Dialog** — Houses **planting** and **memory detail**. **Full-screen on small viewports** so photography feels immersive; **centered sheet on desktop** with generous breathing room. Trap focus; restore on close.
+
+- **Card** — Timeline rows and cluster tiles: **soft shadow**, **rounded corners**, hover elevation subtle enough for long lists.
+
+- **Button** — Variants map to intent:
+  - **Primary** — Plant / affirm actions (sage fill when contrast-approved).
+  - **Outline** — Secondary paths that still deserve weight.
+  - **Ghost** — Tertiary actions that must not compete with memory content.
+
+- **Textarea** — Memory body + reflections: **auto-grow**, optional **markdown preview** toggle; placeholder copy should sound human, not form-like.
+
+- **Calendar** — Memory dates biased toward **past** selection; default intelligently to **today** or **memory’s existing date** when editing.
+
+- **Popover** — Lightweight plant hover: **thumbnail + title snippet**, opens quickly, never obscures the canvas unnecessarily.
+
+- **Scroll-area** — Timeline / clusters: theme-styled scrollbar; preserve **scroll-padding** so focused cards don’t sit under sticky headers.
+
+- **Separator** & **Badge** — Separate sections within settings and tag metadata (**location**, **tone**). Badges stay **small**, **rounded-full**, **muted fills**—labels carry meaning, color only reinforces.
+
+### Custom systems (non-Radix core)
+
+- **Garden canvas** — HTML5 Canvas **infinite plane**: pan, zoom, layered rendering. Must degrade gracefully when GPU budget tightens.
+- **Plant SVG system** — Stage-accurate silhouettes / paths with **Framer Motion**-driven growth transitions tied to `PlantStage`.
+- **Parallax stack** — Layered SVG / canvas backgrounds for depth without stealing contrast from plants.
+- **Drag & drop** — Framer Motion constraints for repositioning memories; collision/nudging rules respect **minimum plant spacing** below.
+- **Ambient audio** — Optional loop player with **fade in/out** tied to user sound toggle and time-of-day profiles.
+
+### Interaction states (contract for designers & engineers)
+
+- **Buttons** — default → hover (lift + shadow) → active (compress) → disabled (opacity + `pointer-events: none`). Loading states swap label for **non-blocking** spinner/shimmer where appropriate.
+- **Plants** — idle “breath” → hover lift → selected glow → dragging translucency + grab cursor. Selection glow must stay **readable on all seasonal backgrounds**.
+- **Inputs** — empty placeholder → focused ring/highlight → filled validation → **error** with semantic destructive outline + text (derive from theme tokens, not one-off reds).
+- **Cards / dialogs** — mount (fade + scale) → steady → unmount mirror; respect **reduced-motion** overrides.
+
+### Icon vocabulary (Phosphor family unless noted)
+
+Keep metaphors literal to gardening and archives:
+
+| Icon | Use |
+|------|-----|
+| Plant | Primary “plant memory” |
+| Drop | Water / reflect |
+| Sparkle | Ask Garden AI |
+| CalendarBlank | Date picking |
+| MapPin | Location |
+| List / Tree / GridFour | Timeline / Garden / Clusters |
+| Image / CloudArrowUp | Photo picker & upload progress |
+| Export | Share / export flows |
+| Gear | Settings |
+| Moon / Sun | Time-of-day hints |
+
+### Spacing scale (Tailwind-native)
+
+- **Base unit**: 4px.
+- **Canvas edge padding**: `12` (48px) so plants never hug the bezel awkwardly on notched phones.
+- **Card interior**: `6` (24px); **buttons**: `py-3 px-6` equivalent unless compact rows demand tighter rhythm.
+- **Section gaps**: `8` (32px) between major settings clusters.
+- **Minimum plant spacing**: `16` (64px) between centers at default zoom bands—prevents unreadable overlap without forbidding dense gardens at higher zoom-out.
+- **Memory dialog max width**: ~`2xl` (672px) for comfortable Crimson measure.
+
+### Mobile adaptations
+
+- **Tabs** compress to **bottom icon bar** or equivalent thumb-friendly control; labels optional where icons are universal.
+- **FAB** for planting — fixed **bottom-end**, safe-area aware.
+- **Memory surfaces** — prefer **full-screen dialog** over cramped split views.
+- **Canvas gestures** — pinch-zoom, two-finger pan, **long-press drag** for plants; tune sensitivity so pans don’t fight vertical scroll on hybrid devices.
+- **Timeline** — single-column cards at **full bleed width** with comfortable vertical rhythm.
+- **Performance** — reduce parallax layers and particle counts before lowering canvas resolution; never silently drop text contrast when saving GPU budget.
+- **Default zoom** — slightly **zoomed-out overview** on first land so large gardens feel navigable on small screens.
+[/content-to-enhance]
+
+[content-to-enhance id="prd-testing-qa"]
 ## Testing & Quality Assurance
 
 ### Test Coverage
@@ -254,6 +383,7 @@ The application includes comprehensive test suites covering:
   - `trait-system.test.ts` - Genetic trait generation
   - `local-user.test.ts` - User profile management
   - `utils.test.ts` - Utility functions
+  - `llm-client.test.ts` - LLM provider selection and `/api/llm` HTTP behavior
 
 - **Integration Test Suite** (`src/lib/__tests__/integration.test.ts`)
   - End-to-end feature workflows
@@ -284,3 +414,4 @@ npm run test:coverage
 - ✅ Temporal logic verified across seasons, day periods, and date transitions
 
 See `EDGE_CASE_TEST_REPORT.md` and `TEST_UPDATES.md` for detailed test documentation.
+[/content-to-enhance]
