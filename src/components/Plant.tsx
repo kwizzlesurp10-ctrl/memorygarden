@@ -5,6 +5,7 @@ import { getPlantColor, getPlantSize, getSeasonalPlantModifier, getSeason, calcu
 import { resolveTraitVisuals, type ResolvedTraitVisuals } from '@/lib/trait-system'
 import { FlowerPlant } from './plants/FlowerPlant'
 import { TreePlant, SucculentPlant, VinePlant, HerbPlant, WildflowerPlant } from './plants/OtherPlants'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 
 /** Simple seeded PRNG for deterministic visual positions based on memory id */
 function seededRandom(seed: string): () => number {
@@ -43,6 +44,7 @@ export function Plant({ memory, onClick, isDragging, season, nearbyMemories = []
   const isLegendary = visual.specialClass === 'legendary'
   const controls = useAnimation()
   const previousVisitCount = useRef(memory.visitCount)
+  const shouldReduceMotion = useReducedMotion()
 
   useEffect(() => {
     controls.start({
@@ -53,6 +55,7 @@ export function Plant({ memory, onClick, isDragging, season, nearbyMemories = []
   }, [controls])
 
   useEffect(() => {
+    if (shouldReduceMotion) return
     if (memory.visitCount > previousVisitCount.current) {
       controls.start({
         scale: [1, 1.3, 1.15, 1.05, 1],
@@ -65,13 +68,13 @@ export function Plant({ memory, onClick, isDragging, season, nearbyMemories = []
       })
     }
     previousVisitCount.current = memory.visitCount
-  }, [memory.visitCount, controls])
+  }, [memory.visitCount, controls, shouldReduceMotion])
 
   return (
     <motion.div
       initial={{ scale: 0, opacity: 0 }}
       animate={controls}
-      whileHover={{ scale: 1.05, y: -2 }}
+      whileHover={shouldReduceMotion ? {} : { scale: 1.05, y: -2 }}
       transition={{
         type: 'spring',
         stiffness: 300,
@@ -98,16 +101,16 @@ export function Plant({ memory, onClick, isDragging, season, nearbyMemories = []
         traitVisuals={traitVisuals}
       />
       
-      <TraitOverlays traitVisuals={traitVisuals} size={visual.size} seed={memory.geneticsSeed || memory.id} />
+      <TraitOverlays traitVisuals={traitVisuals} size={visual.size} seed={memory.geneticsSeed || memory.id} shouldReduceMotion={shouldReduceMotion} />
       
-      {isGrowing && (
-        <PlantGrowthParticles color={plantColor} tier={boostTier} />
+      {isGrowing && !shouldReduceMotion && (
+        <PlantGrowthParticles color={plantColor} tier={boostTier} shouldReduceMotion={shouldReduceMotion} />
       )}
     </motion.div>
   )
 }
 
-function TraitOverlays({ traitVisuals, size, seed }: { traitVisuals: ResolvedTraitVisuals; size: number; seed: string }) {
+function TraitOverlays({ traitVisuals, size, seed, shouldReduceMotion }: { traitVisuals: ResolvedTraitVisuals; size: number; seed: string; shouldReduceMotion: boolean }) {
   // Pre-compute deterministic positions for elements that need randomness
   const positions = useMemo(() => {
     const rng = seededRandom(seed)
@@ -134,7 +137,7 @@ function TraitOverlays({ traitVisuals, size, seed }: { traitVisuals: ResolvedTra
             background: 'radial-gradient(circle, oklch(0.85 0.12 85 / 0.25) 0%, transparent 70%)',
             scale: 1.6,
           }}
-          animate={{ opacity: [0.4, 0.7, 0.4] }}
+          animate={shouldReduceMotion ? false : { opacity: [0.4, 0.7, 0.4] }}
           transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
         />
       )}
@@ -153,7 +156,7 @@ function TraitOverlays({ traitVisuals, size, seed }: { traitVisuals: ResolvedTra
                 top: `${pos.top}%`,
                 boxShadow: '0 0 4px oklch(0.90 0.08 220 / 0.6)',
               }}
-              animate={{ opacity: [0, 1, 0], scale: [0.5, 1.2, 0.5] }}
+              animate={shouldReduceMotion ? false : { opacity: [0, 1, 0], scale: [0.5, 1.2, 0.5] }}
               transition={{ duration: pos.duration, repeat: Infinity, delay: i * 0.4 }}
             />
           ))}
@@ -163,7 +166,7 @@ function TraitOverlays({ traitVisuals, size, seed }: { traitVisuals: ResolvedTra
         <motion.div
           className="absolute inset-0 rounded-full"
           style={{ scale: 1.5 }}
-          animate={{
+          animate={shouldReduceMotion ? false : {
             background: [
               'radial-gradient(circle, oklch(0.70 0.14 160 / 0.2) 0%, transparent 70%)',
               'radial-gradient(circle, oklch(0.70 0.14 280 / 0.2) 0%, transparent 70%)',
@@ -187,7 +190,7 @@ function TraitOverlays({ traitVisuals, size, seed }: { traitVisuals: ResolvedTra
                 top: `${30 + (i % 2) * 20}%`,
                 boxShadow: '0 0 3px oklch(0.92 0.04 210 / 0.5)',
               }}
-              animate={{ opacity: [0.5, 1, 0.5], scale: [0.9, 1.1, 0.9] }}
+              animate={shouldReduceMotion ? false : { opacity: [0.5, 1, 0.5], scale: [0.9, 1.1, 0.9] }}
               transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.3 }}
             />
           ))}
@@ -205,7 +208,7 @@ function TraitOverlays({ traitVisuals, size, seed }: { traitVisuals: ResolvedTra
                 left: `${20 + i * 40}%`,
                 top: `${15 + i * 20}%`,
               }}
-              animate={{
+              animate={shouldReduceMotion ? false : {
                 x: [0, 8, -4, 6, 0],
                 y: [0, -6, -2, -8, 0],
               }}
@@ -230,7 +233,7 @@ function TraitOverlays({ traitVisuals, size, seed }: { traitVisuals: ResolvedTra
                 top: `${20 + (i % 2) * 25}%`,
                 boxShadow: '0 0 6px oklch(0.88 0.16 90 / 0.8)',
               }}
-              animate={{
+              animate={shouldReduceMotion ? false : {
                 opacity: [0, 0.9, 0],
                 x: [0, (i % 2 === 0 ? 6 : -6), 0],
                 y: [0, -8, 0],
@@ -253,7 +256,7 @@ function TraitOverlays({ traitVisuals, size, seed }: { traitVisuals: ResolvedTra
                 left: `${pos.left}%`,
                 top: `${pos.top}%`,
               }}
-              animate={{
+              animate={shouldReduceMotion ? false : {
                 y: [0, -12, -24],
                 x: [0, (i % 2 === 0 ? 8 : -8), (i % 2 === 0 ? 4 : -4)],
                 opacity: [0.7, 0.5, 0],
@@ -275,7 +278,7 @@ function TraitOverlays({ traitVisuals, size, seed }: { traitVisuals: ResolvedTra
                 left: `${20 + i * 18}%`,
                 top: `${15 + (i % 3) * 15}%`,
               }}
-              animate={{ opacity: [0, 1, 0], scale: [0.5, 1, 0.5] }}
+              animate={shouldReduceMotion ? false : { opacity: [0, 1, 0], scale: [0.5, 1, 0.5] }}
               transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.5 }}
             >
               <svg width="8" height="8" viewBox="0 0 8 8">
@@ -297,7 +300,7 @@ function TraitOverlays({ traitVisuals, size, seed }: { traitVisuals: ResolvedTra
             x: '-50%',
             borderColor: 'oklch(0.85 0.10 60 / 0.4)',
           }}
-          animate={{ opacity: [0.3, 0.6, 0.3] }}
+          animate={shouldReduceMotion ? false : { opacity: [0.3, 0.6, 0.3] }}
           transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
         />
       )}
@@ -315,7 +318,7 @@ function TraitOverlays({ traitVisuals, size, seed }: { traitVisuals: ResolvedTra
                 x: '-50%',
                 borderColor: `oklch(0.65 0.08 155 / ${0.3 - i * 0.1})`,
               }}
-              animate={{ opacity: [0.2, 0.4, 0.2] }}
+              animate={shouldReduceMotion ? false : { opacity: [0.2, 0.4, 0.2] }}
               transition={{ duration: 4, repeat: Infinity, delay: i * 1 }}
             />
           ))}
@@ -325,7 +328,8 @@ function TraitOverlays({ traitVisuals, size, seed }: { traitVisuals: ResolvedTra
   )
 }
 
-function PlantGrowthParticles({ color, tier }: { color: string; tier?: 'standard' | 'premium' | 'legendary' }) {
+function PlantGrowthParticles({ color, tier, shouldReduceMotion }: { color: string; tier?: 'standard' | 'premium' | 'legendary'; shouldReduceMotion?: boolean }) {
+  if (shouldReduceMotion) return null
   if (!tier) {
     return (
       <div className="absolute inset-0 pointer-events-none">
