@@ -20,7 +20,7 @@ export function GardenClusterPaths({
   const filterId = useId().replace(/:/g, '')
 
   const paths = useMemo(() => {
-    if (highlightedMemoryIds !== null && highlightedMemoryIds.size === 0) {
+    if (highlightedMemoryIds && highlightedMemoryIds.size === 0) {
       return []
     }
 
