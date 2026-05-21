@@ -1107,7 +1107,6 @@ function App() {
               </motion.div>
             )}
 
-            {viewMode === 'bloom' && (
             {viewMode === 'explore' && (
               <motion.div
                 key="explore"
@@ -1126,6 +1125,8 @@ function App() {
                 />
               </motion.div>
             )}
+
+            {viewMode === 'bloom' && (
               <motion.div
                 key="bloom"
                 initial={{ opacity: 0 }}
