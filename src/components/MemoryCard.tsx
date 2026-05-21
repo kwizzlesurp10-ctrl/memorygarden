@@ -346,6 +346,12 @@ export function MemoryCard({
               </AnimatePresence>
 
               {memory.reflections.length > 0 && (
+              <div className="pt-4">
+                <MemoryReactions
+                  reactions={memory.reactions}
+                  onReact={(type) => console.log("Reaction:", type)}
+                />
+              </div>
                 <>
                   <Separator />
                   <div className="space-y-4">
