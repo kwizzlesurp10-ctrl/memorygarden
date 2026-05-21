@@ -1,4 +1,4 @@
-export function getSeasonalPlantModifier(season: string, stage: string) {
+export function getSeasonalPlantModifier(season: string, _stage: string) {
   const modifiers = {
     spring: { scale: 1.05, saturation: 1.1 },
     summer: { scale: 1.0, saturation: 1.2 },
