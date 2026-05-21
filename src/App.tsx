@@ -1177,6 +1177,7 @@ function App() {
         isLoadingAI={isLoadingAI}
         allMemories={safeMemories}
         onNavigate={handleNavigateToMemory}
+        onReact={handleReaction}
       />
 
       <Suspense fallback={null}>

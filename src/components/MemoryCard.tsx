@@ -20,6 +20,7 @@ interface MemoryCardProps {
   open: boolean
   onClose: () => void
   onWater: (memoryId: string, reflection: string) => void
+  onReact?: (memoryId: string, reactionType: any) => void
   onAskAI: (memoryId: string) => void
   onShare?: (memoryId: string) => void
   onBoost?: (memoryId: string) => void
@@ -45,6 +46,7 @@ export function MemoryCard({
   isLoadingAI,
   allMemories = [],
   onNavigate,
+  onReact,
 }: MemoryCardProps) {
   const [newReflection, setNewReflection] = useState('')
   const [isAddingReflection, setIsAddingReflection] = useState(false)
@@ -129,6 +131,7 @@ export function MemoryCard({
       },
     ],
     enabled: open && !!memory && allMemories.length > 1 && !!onNavigate,
+  onReact,
   })
 
   if (!memory) return null
@@ -349,7 +352,7 @@ export function MemoryCard({
               <div className="pt-4">
                 <MemoryReactions
                   reactions={memory.reactions}
-                  onReact={(type) => console.log("Reaction:", type)}
+                  onReact={(type) => onReact?.(memory.id, type)}
                 />
               </div>
                 <>
