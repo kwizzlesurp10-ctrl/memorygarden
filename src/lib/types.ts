@@ -57,6 +57,7 @@ export interface Memory {
   visitCount: number
   lastVisited?: string
   reflections: Reflection[]
+  reactions?: Record<string, { type: string; count: number; reactedBy: string[] }>
   audioRecordings: AudioRecording[]
   shareId?: string
   shareCreatedAt?: string
