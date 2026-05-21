@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork, ChartBar, Lightning, Palette, CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { AudioPlayer } from '@/components/AudioPlayer'
+import { WaterPlantButton } from '@/components/WaterPlantButton'
 import { PlantCustomizer } from '@/components/PlantCustomizer'
 import { format } from 'date-fns'
 import type { Memory, PlantTraits } from '@/lib/types'
@@ -20,6 +21,7 @@ interface MemoryCardProps {
   open: boolean
   onClose: () => void
   onWater: (memoryId: string, reflection: string) => void
+  onReact?: (memoryId: string, reactionType: any) => void
   onAskAI: (memoryId: string) => void
   onShare?: (memoryId: string) => void
   onBoost?: (memoryId: string) => void
@@ -45,6 +47,7 @@ export function MemoryCard({
   isLoadingAI,
   allMemories = [],
   onNavigate,
+  onReact,
 }: MemoryCardProps) {
   const [newReflection, setNewReflection] = useState('')
   const [isAddingReflection, setIsAddingReflection] = useState(false)
@@ -129,6 +132,7 @@ export function MemoryCard({
       },
     ],
     enabled: open && !!memory && allMemories.length > 1 && !!onNavigate,
+  onReact,
   })
 
   if (!memory) return null
@@ -347,6 +351,18 @@ export function MemoryCard({
 
               {memory.reflections.length > 0 && (
                 <>
+                  <div className="pt-4">
+                    <MemoryReactions
+                      reactions={memory.reactions}
+                      onReact={(type) => onReact?.(memory.id, type)}
+                    />
+                  </div>
+                  <div className="pt-2">
+                    <WaterPlantButton 
+                      memoryId={memory.id} 
+                      onWater={onWater ? () => onWater(memory.id, "") : undefined}
+                    />
+                  </div>
                   <Separator />
                   <div className="space-y-4">
                     <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">

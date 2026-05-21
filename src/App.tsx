@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
 import { useKV } from '@/lib/storage'
 import { useMemoriesKV } from '@/hooks/use-memories-kv'
+import { createSeededMemories } from '@/lib/seed-memories'
 import { Toaster, toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -89,6 +90,14 @@ function App() {
 
   const [user, setUser] = useState<LocalUser | null>(localUser)
   const [memories, setMemories] = useMemoriesKV(`${localUser.id}:memories`, [])
+  // Seed beautiful example memories only on first-ever load
+  useEffect(() => {
+    if (!preferences?.hasCompletedOnboarding && memories.length === 0) {
+      const seeded = createSeededMemories()
+      setMemories(seeded)
+      setPreferences(p => ({ ...p, hasCompletedOnboarding: true }))
+    }
+  }, [preferences, memories])
   const [sharedMemories, setSharedMemories] = useKV<Record<string, SharedMemory>>('shared-memories', {})
   const [preferences, setPreferences] = useKV<UserPreferences>(`${localUser.id}:preferences`, {
     hasCompletedOnboarding: false,
@@ -98,6 +107,7 @@ function App() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('garden')
   const [isPlantModalOpen, setIsPlantModalOpen] = useState(false)
+  const [activityEvents, setActivityEvents] = useKV<ActivityEvent[]>(`${localUser.id}:activity-events`, [])
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
   const [aiReflection, setAiReflection] = useState<string>('')
   const [isLoadingAI, setIsLoadingAI] = useState(false)
@@ -1097,7 +1107,6 @@ function App() {
               </motion.div>
             )}
 
-            {viewMode === 'bloom' && (
             {viewMode === 'explore' && (
               <motion.div
                 key="explore"
@@ -1116,6 +1125,8 @@ function App() {
                 />
               </motion.div>
             )}
+
+            {viewMode === 'bloom' && (
               <motion.div
                 key="bloom"
                 initial={{ opacity: 0 }}
@@ -1176,6 +1187,7 @@ function App() {
         isLoadingAI={isLoadingAI}
         allMemories={safeMemories}
         onNavigate={handleNavigateToMemory}
+        onReact={handleReaction}
       />
 
       <Suspense fallback={null}>
