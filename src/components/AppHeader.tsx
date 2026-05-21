@@ -116,12 +116,12 @@ export function AppHeader(props: AppHeaderProps) {
             <span className="hidden md:inline">Clusters</span>
           </TabsTrigger>
           <TabsTrigger value="bloom" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Bloom wall">
+            <SquaresFour size={18} className="flex-shrink-0" />
+            <span className="hidden md:inline">Bloom wall</span>
+          </TabsTrigger>
           <TabsTrigger value="explore" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Explore Gardens">
             <Globe size={18} className="flex-shrink-0" />
             <span className="hidden md:inline">Explore</span>
-          </TabsTrigger>
-            <SquaresFour size={18} className="flex-shrink-0" />
-            <span className="hidden md:inline">Bloom wall</span>
           </TabsTrigger>
         </TabsList>
       </Tabs>
