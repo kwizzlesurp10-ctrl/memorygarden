@@ -80,7 +80,7 @@
         "@eslint/js": "^10.0.1",
         "@tailwindcss/postcss": "^4.1.8",
         "@testing-library/jest-dom": "^6.9.1",
-        "@types/node": "^25.6.2",
+        "@types/node": "^25.9.1",
         "@types/react": "^19.1.0",
         "@types/react-dom": "^19.0.4",
         "@vitejs/plugin-react-swc": "^3.7.2",
