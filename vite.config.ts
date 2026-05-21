@@ -3,7 +3,6 @@ import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "vite";
 import { fileURLToPath, URL } from "node:url";
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
@@ -11,34 +10,34 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
   },
   build: {
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
-              return 'vendor-react'
+          if (id.includes("node_modules")) {
+            if (id.includes("node_modules/react-dom") || id.includes("node_modules/react/")) {
+              return "vendor-react";
             }
-            if (id.includes('framer-motion')) {
-              return 'vendor-motion'
+            if (id.includes("framer-motion")) {
+              return "vendor-motion";
             }
-            if (id.includes('@radix-ui')) {
-              return 'vendor-radix'
+            if (id.includes("@radix-ui")) {
+              return "vendor-radix";
             }
-            if (id.includes('recharts') || id.includes('d3-')) {
-              return 'vendor-charts'
+            if (id.includes("recharts") || id.includes("d3-")) {
+              return "vendor-charts";
             }
-            if (id.includes('date-fns') || id.includes('uuid') || id.includes('zod') || id.includes('marked') || id.includes('sonner')) {
-              return 'vendor-utils'
+            if (id.includes("date-fns") || id.includes("uuid") || id.includes("zod") || id.includes("marked") || id.includes("sonner")) {
+              return "vendor-utils";
             }
-            if (id.includes('@phosphor-icons') || id.includes('lucide-react')) {
-              return 'vendor-icons'
+            if (id.includes("@phosphor-icons") || id.includes("lucide-react")) {
+              return "vendor-icons";
             }
-            if (id.includes('three')) {
-              return 'vendor-three'
+            if (id.includes("three")) {
+              return "vendor-three";
             }
           }
         },
