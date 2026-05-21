@@ -90,13 +90,14 @@ function App() {
 
   const [user, setUser] = useState<LocalUser | null>(localUser)
   const [memories, setMemories] = useMemoriesKV(`${localUser.id}:memories`, [])
-  // Seed beautiful example memories on first load
+  // Seed beautiful example memories only on first-ever load
   useEffect(() => {
-    if (memories.length === 0) {
+    if (!preferences?.hasCompletedOnboarding && memories.length === 0) {
       const seeded = createSeededMemories()
       setMemories(seeded)
+      setPreferences(p => ({ ...p, hasCompletedOnboarding: true }))
     }
-  }, [])
+  }, [preferences, memories])
   const [sharedMemories, setSharedMemories] = useKV<Record<string, SharedMemory>>('shared-memories', {})
   const [preferences, setPreferences] = useKV<UserPreferences>(`${localUser.id}:preferences`, {
     hasCompletedOnboarding: false,

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork, ChartBar, Lightning, Palette, CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { AudioPlayer } from '@/components/AudioPlayer'
+import { WaterPlantButton } from '@/components/WaterPlantButton'
 import { PlantCustomizer } from '@/components/PlantCustomizer'
 import { format } from 'date-fns'
 import type { Memory, PlantTraits } from '@/lib/types'
@@ -351,6 +352,12 @@ export function MemoryCard({
               {memory.reflections.length > 0 && (
               <div className="pt-4">
                 <MemoryReactions
+                <div className="pt-2">
+                  <WaterPlantButton 
+                    memoryId={memory.id} 
+                    onWater={onWater ? () => onWater(memory.id, "") : undefined}
+                  />
+                </div>
                   reactions={memory.reactions}
                   onReact={(type) => onReact?.(memory.id, type)}
                 />
