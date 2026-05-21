@@ -1098,6 +1098,24 @@ function App() {
             )}
 
             {viewMode === 'bloom' && (
+            {viewMode === 'explore' && (
+              <motion.div
+                key="explore"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full"
+              >
+                <ExploreView
+                  onVisitGarden={() => {
+                    toast.success("Visiting garden", { description: "Loading shared memories..." })
+                  }}
+                  onJoinGarden={() => {
+                    toast.success("Garden joined!")
+                  }}
+                />
+              </motion.div>
+            )}
               <motion.div
                 key="bloom"
                 initial={{ opacity: 0 }}
