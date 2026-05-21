@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 
 interface WaterPlantButtonProps {
   memoryId: string
-  onWater: (memoryId: string) => void
+  onWater?: (memoryId: string) => void
   visitorName?: string
 }
 
@@ -19,7 +19,7 @@ export function WaterPlantButton({ memoryId, onWater, visitorName = "A friend" }
     // Small delay for nice animation feel
     await new Promise(resolve => setTimeout(resolve, 400))
     
-    onWater(memoryId)
+    onWater?.(memoryId)
     
     toast.success(`${visitorName} watered this plant`, {
       description: "It will grow stronger from this care.",

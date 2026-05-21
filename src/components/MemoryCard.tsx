@@ -360,7 +360,7 @@ export function MemoryCard({
                   <div className="pt-2">
                     <WaterPlantButton 
                       memoryId={memory.id} 
-                      onWater={onWater ? () => onWater(memory.id, "") : undefined}
+                      onWater={() => onWater?.(memory.id, "")}
                     />
                   </div>
                   <Separator />
