@@ -8,7 +8,7 @@ import "./main.css"
 import "./styles/theme.css"
 import "./index.css"
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById('root') as HTMLElement).render(
   <ErrorBoundary FallbackComponent={ErrorFallback}>
     <App />
    </ErrorBoundary>
