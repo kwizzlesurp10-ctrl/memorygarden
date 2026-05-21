@@ -1098,6 +1098,24 @@ function App() {
             )}
 
             {viewMode === 'bloom' && (
+            {viewMode === 'explore' && (
+              <motion.div
+                key="explore"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full"
+              >
+                <ExploreView
+                  onVisitGarden={() => {
+                    toast.success("Visiting garden", { description: "Loading shared memories..." })
+                  }}
+                  onJoinGarden={() => {
+                    toast.success("Garden joined!")
+                  }}
+                />
+              </motion.div>
+            )}
               <motion.div
                 key="bloom"
                 initial={{ opacity: 0 }}
@@ -1117,21 +1135,21 @@ function App() {
             )}
           </AnimatePresence>
 
-          {safeMemories.length > 0 && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="fixed bottom-8 right-8 z-20"
+          {/* Always-available Plant Memory button (primary action) */}
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="fixed bottom-8 right-8 z-20"
+          >
+            <Button
+              size="lg"
+              onClick={() => setIsPlantModalOpen(true)}
+              className="rounded-full w-16 h-16 shadow-lg hover:shadow-xl transition-shadow"
+              aria-label="Plant a new memory"
             >
-              <Button
-                size="lg"
-                onClick={() => setIsPlantModalOpen(true)}
-                className="rounded-full w-16 h-16 shadow-lg hover:shadow-xl transition-shadow"
-              >
-                <PlantIcon size={28} weight="fill" />
-              </Button>
-            </motion.div>
-          )}
+              <PlantIcon size={28} weight="fill" />
+            </Button>
+          </motion.div>
         </main>
       </div>
 
