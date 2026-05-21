@@ -106,6 +106,7 @@ function App() {
   })
 
   const [viewMode, setViewMode] = useState<ViewMode>('garden')
+  const [visitedGarden, setVisitedGarden] = useState<{ id: string; name: string; owner: string } | null>(null)
   const [isPlantModalOpen, setIsPlantModalOpen] = useState(false)
   const [activityEvents, setActivityEvents] = useKV<ActivityEvent[]>(`${localUser.id}:activity-events`, [])
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
@@ -1116,12 +1117,8 @@ function App() {
                 className="w-full h-full"
               >
                 <ExploreView
-                  onVisitGarden={() => {
-                    toast.success("Visiting garden", { description: "Loading shared memories..." })
-                  }}
-                  onJoinGarden={() => {
-                    toast.success("Garden joined!")
-                  }}
+                  onVisitGarden={handleVisitGarden}
+                  onJoinGarden={handleJoinGarden}
                 />
               </motion.div>
             )}
