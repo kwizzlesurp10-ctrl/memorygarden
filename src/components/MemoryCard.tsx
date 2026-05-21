@@ -350,19 +350,19 @@ export function MemoryCard({
               </AnimatePresence>
 
               {memory.reflections.length > 0 && (
-              <div className="pt-4">
-                <MemoryReactions
-                <div className="pt-2">
-                  <WaterPlantButton 
-                    memoryId={memory.id} 
-                    onWater={onWater ? () => onWater(memory.id, "") : undefined}
-                  />
-                </div>
-                  reactions={memory.reactions}
-                  onReact={(type) => onReact?.(memory.id, type)}
-                />
-              </div>
                 <>
+                  <div className="pt-4">
+                    <MemoryReactions
+                      reactions={memory.reactions}
+                      onReact={(type) => onReact?.(memory.id, type)}
+                    />
+                  </div>
+                  <div className="pt-2">
+                    <WaterPlantButton 
+                      memoryId={memory.id} 
+                      onWater={onWater ? () => onWater(memory.id, "") : undefined}
+                    />
+                  </div>
                   <Separator />
                   <div className="space-y-4">
                     <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
