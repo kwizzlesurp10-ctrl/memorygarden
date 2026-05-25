@@ -1,10 +1,6 @@
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Tree, UsersThree, Plus, CaretDown } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import type { CollaborativeGarden } from '@/lib/types'
 
 interface GardenSelectorProps {

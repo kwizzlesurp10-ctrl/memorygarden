@@ -14,6 +14,7 @@ import { SearchFilterBar } from '@/components/SearchFilterBar'
 import { KeyboardShortcutsPanel } from '@/components/KeyboardShortcutsPanel'
 import { AppHeader, type ViewMode } from '@/components/AppHeader'
 import { useKeyboardShortcuts, APP_SHORTCUTS } from '@/lib/keyboard-shortcuts'
+import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits, PlantVariety } from '@/lib/types'
 
 // ── Lazy-loaded non-critical components (modals, dialogs, secondary views) ──
 const ExportGarden = lazy(() => import('@/components/ExportGarden').then(m => ({ default: m.ExportGarden })))
@@ -23,13 +24,11 @@ const SharedMemoryView = lazy(() => import('@/components/SharedMemoryView').then
 const FertilizerBoostModal = lazy(() => import('@/components/FertilizerBoostModal').then(m => ({ default: m.FertilizerBoostModal })))
 const CreateGardenDialog = lazy(() => import('@/components/CreateGardenDialog').then(m => ({ default: m.CreateGardenDialog })))
 const GardenInviteDialog = lazy(() => import('@/components/GardenInviteDialog').then(m => ({ default: m.GardenInviteDialog })))
-const GardenMembersPanel = lazy(() => import('@/components/GardenMembersPanel').then(m => ({ default: m.GardenMembersPanel })))
-const ActivityFeed = lazy(() => import('@/components/ActivityFeed').then(m => ({ default: m.ActivityFeed })))
 const PlantStyleCustomizer = lazy(() => import('@/components/PlantStyleCustomizer').then(m => ({ default: m.PlantStyleCustomizer })))
 const GardenUnlocks = lazy(() => import('@/components/GardenUnlocks').then(m => ({ default: m.GardenUnlocks })))
 const PlantCosmeticsEditor = lazy(() => import('@/components/PlantCosmeticsEditor').then(m => ({ default: m.PlantCosmeticsEditor })))
 const BloomWall = lazy(() => import('@/components/BloomWall').then(m => ({ default: m.BloomWall })))
-import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits } from '@/lib/types'
+const ExploreView = lazy(() => import('@/components/ExploreView').then(m => ({ default: m.ExploreView })))
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod } from '@/lib/garden-helpers'
 import { ensureUnlockState, generatePlantGenetics, awardForReflection, awardForRevisit, awardForClusterTending, awardForPlanting, applyAward, evaluateUnlocks, applyNewUnlocks, evaluateAchievements, deductRerollCost, canAffordReroll, UNLOCKABLE_ITEMS } from '@/lib/unlock-system'
 import { generateGeneticsSeed, computeUnlocks } from '@/lib/trait-system'
@@ -39,6 +38,7 @@ import { GardenAmbientLayer } from '@/components/GardenAmbientLayer'
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 import { EmptyGarden } from '@/components/EmptyGarden'
 import { useCloudSync, type SyncStatus } from '@/hooks/use-cloud-sync'
+import { toggleReaction, type ReactionType } from '@/lib/social'
 
 function describeSyncStatus(status: SyncStatus): string | null {
   switch (status.kind) {
@@ -88,8 +88,15 @@ function App() {
   const localUser: LocalUser = getLocalUser()
   migrateLegacyData(localUser.id)
 
-  const [user, setUser] = useState<LocalUser | null>(localUser)
+  const [user, _setUser] = useState<LocalUser | null>(localUser)
   const [memories, setMemories] = useMemoriesKV(`${localUser.id}:memories`, [])
+  const [sharedMemories, setSharedMemories] = useKV<Record<string, SharedMemory>>('shared-memories', {})
+  const [preferences, setPreferences] = useKV<UserPreferences>(`${localUser.id}:preferences`, {
+    hasCompletedOnboarding: false,
+    soundEnabled: false,
+    lastVisit: new Date().toISOString(),
+  })
+
   // Seed beautiful example memories only on first-ever load
   useEffect(() => {
     if (!preferences?.hasCompletedOnboarding && memories.length === 0) {
@@ -98,16 +105,10 @@ function App() {
       setPreferences(p => ({ ...p, hasCompletedOnboarding: true }))
     }
   }, [preferences, memories])
-  const [sharedMemories, setSharedMemories] = useKV<Record<string, SharedMemory>>('shared-memories', {})
-  const [preferences, setPreferences] = useKV<UserPreferences>(`${localUser.id}:preferences`, {
-    hasCompletedOnboarding: false,
-    soundEnabled: false,
-    lastVisit: new Date().toISOString(),
-  })
 
   const [viewMode, setViewMode] = useState<ViewMode>('garden')
   const [isPlantModalOpen, setIsPlantModalOpen] = useState(false)
-  const [activityEvents, setActivityEvents] = useKV<ActivityEvent[]>(`${localUser.id}:activity-events`, [])
+  const [_activityEvents, _setActivityEvents] = useKV<ActivityEvent[]>(`${localUser.id}:activity-events`, [])
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
   const [aiReflection, setAiReflection] = useState<string>('')
   const [isLoadingAI, setIsLoadingAI] = useState(false)
@@ -134,10 +135,10 @@ function App() {
   // Feature 2: Collaborative Gardens state
   const [collaborativeGardens, setCollaborativeGardens] = useKV<CollaborativeGarden[]>(`${localUser.id}:collaborative-gardens`, [])
   const [activeGardenId, setActiveGardenId] = useState<string | null>(null)
-  const [gardenActivities, setGardenActivities] = useKV<Record<string, ActivityEvent[]>>(`${localUser.id}:garden-activities`, {})
+  const [_gardenActivities, _setGardenActivities] = useKV<Record<string, ActivityEvent[]>>(`${localUser.id}:garden-activities`, {})
   const [isCreateGardenOpen, setIsCreateGardenOpen] = useState(false)
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
-  const [showMembersPanel, setShowMembersPanel] = useState(false)
+  const [_showMembersPanel, _setShowMembersPanel] = useState(false)
 
   // Feature 5: AI Plant Style state
   const [isStyleCustomizerOpen, setIsStyleCustomizerOpen] = useState(false)
@@ -147,6 +148,22 @@ function App() {
   const [isCosmeticsEditorOpen, setIsCosmeticsEditorOpen] = useState(false)
   const [cosmeticsEditMemory, setCosmeticsEditMemory] = useState<Memory | null>(null)
   const [isShortcutsPanelOpen, setIsShortcutsPanelOpen] = useState(false)
+
+  const fallbackPreferences = useMemo(
+    (): UserPreferences => ({
+      hasCompletedOnboarding: false,
+      soundEnabled: false,
+      lastVisit: '',
+    }),
+    []
+  )
+  const safeMemories = useMemo(() => memories || [], [memories])
+  const safePreferences = useMemo(
+    () => preferences ?? fallbackPreferences,
+    [preferences, fallbackPreferences]
+  )
+  const safeGardens = useMemo(() => collaborativeGardens || [], [collaborativeGardens])
+  const activeGarden = safeGardens.find((g) => g.id === activeGardenId) ?? null
 
   /** Process unlock state: evaluate new unlocks/achievements and notify */
   const processUnlockUpdates = useCallback((currentState: UnlockState): UnlockState => {
@@ -195,40 +212,16 @@ function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const shareId = params.get('share')
-    
+
     if (shareId && sharedMemories) {
       const sharedMem = sharedMemories[shareId]
       if (sharedMem) {
-        setSharedMemoryView(sharedMem)
+        queueMicrotask(() => {
+          setSharedMemoryView(sharedMem)
+        })
       }
     }
   }, [sharedMemories])
-
-  const handleProtocolAction = useCallback((action: ProtocolAction) => {
-    switch (action.type) {
-      case 'plant-memory':
-        if (safePreferences.hasCompletedOnboarding) {
-          setIsPlantModalOpen(true)
-          if (action.data) {
-            toast.info('Opening plant memory modal with data')
-          }
-        }
-        break
-      case 'view-memory':
-        const memory = safeMemories.find(m => m.id === action.id)
-        if (memory) {
-          handleMemoryClick(memory)
-        } else {
-          toast.error('Memory not found')
-        }
-        break
-      case 'unknown':
-        toast.info(`Protocol handler invoked: ${action.protocol}`)
-        break
-    }
-  }, [memories, preferences])
-
-  useProtocolHandler(handleProtocolAction)
 
   useEffect(() => {
     if (preferences && memories && memories.length === 0 && preferences.hasCompletedOnboarding) {
@@ -263,7 +256,7 @@ function App() {
     date: string
     location?: string
     audioRecordings: AudioRecording[]
-    plantVariety?: import('@/lib/types').PlantVariety
+    plantVariety: PlantVariety
   }) => {
     const reader = new FileReader()
     reader.readAsDataURL(data.photoFile)
@@ -447,6 +440,33 @@ function App() {
     })
   }
 
+  const handleProtocolAction = useCallback((action: ProtocolAction) => {
+    switch (action.type) {
+      case 'plant-memory':
+        if (safePreferences.hasCompletedOnboarding) {
+          setIsPlantModalOpen(true)
+          if (action.data) {
+            toast.info('Opening plant memory modal with data')
+          }
+        }
+        break
+      case 'view-memory': {
+        const found = safeMemories.find((m) => m.id === action.id)
+        if (found) {
+          handleMemoryClick(found)
+        } else {
+          toast.error('Memory not found')
+        }
+        break
+      }
+      case 'unknown':
+        toast.info(`Protocol handler invoked: ${action.protocol}`)
+        break
+    }
+  }, [handleMemoryClick, safeMemories, safePreferences])
+
+  useProtocolHandler(handleProtocolAction)
+
   const handleNavigateToMemory = (memoryId: string) => {
     const memory = safeMemories.find(m => m.id === memoryId)
     if (memory) {
@@ -526,6 +546,17 @@ function App() {
     })
   }
 
+  const handleReaction = useCallback(
+    (memoryId: string, reactionType: ReactionType) => {
+      setMemories((currentMemories) =>
+        (currentMemories || []).map((m) =>
+          m.id === memoryId ? toggleReaction(m, reactionType, localUser.id) : m
+        )
+      )
+    },
+    [localUser.id]
+  )
+
   const handleAskAI = async (memoryId: string) => {
     const memory = (memories || []).find((m) => m.id === memoryId)
     if (!memory) return
@@ -541,7 +572,7 @@ function App() {
 
       const reflection = await generateAIReflection(memory, nearbyMemories)
       setAiReflection(reflection)
-    } catch (error) {
+    } catch {
       toast.error('Failed to generate reflection. Please try again.')
     } finally {
       setIsLoadingAI(false)
@@ -747,32 +778,34 @@ function App() {
         }
 
         if (garden.members.length < garden.settings.maxMembers) {
-          setCollaborativeGardens((current) =>
-            (current || []).map(g => {
-              if (g.id === inviteGardenId) {
-                return {
-                  ...g,
-                  members: [...g.members, {
-                    userId: user.login,
-                    login: user.login,
-                    avatarUrl: user.avatarUrl,
-                    role: 'collaborator' as const,
-                    joinedAt: new Date().toISOString(),
-                  }],
+          queueMicrotask(() => {
+            setCollaborativeGardens((current) =>
+              (current || []).map(g => {
+                if (g.id === inviteGardenId) {
+                  return {
+                    ...g,
+                    members: [...g.members, {
+                      userId: user.login,
+                      login: user.login,
+                      avatarUrl: user.avatarUrl,
+                      role: 'collaborator' as const,
+                      joinedAt: new Date().toISOString(),
+                    }],
+                  }
                 }
-              }
-              return g
-            })
-          )
-          setActiveGardenId(inviteGardenId)
-          toast.success(`Joined "${garden.name}"!`)
-          window.history.replaceState({}, '', window.location.pathname)
+                return g
+              })
+            )
+            setActiveGardenId(inviteGardenId)
+            toast.success(`Joined "${garden.name}"!`)
+            window.history.replaceState({}, '', window.location.pathname)
+          })
         } else {
           toast.error('This garden is full')
         }
       }
     }
-  }, [user, collaborativeGardens])
+  }, [user, safeGardens])
 
   // Feature 5: Plant style preference handler
   const handleSavePlantStyle = (style: PlantStylePreference) => {
@@ -820,11 +853,6 @@ function App() {
     )
     toast.success('Plant appearance re-rolled!')
   }
-
-  const safeMemories = memories || []
-  const safePreferences = preferences || { hasCompletedOnboarding: false, soundEnabled: false, lastVisit: '' }
-  const safeGardens = collaborativeGardens || []
-  const safeActivities = gardenActivities || {}
 
   const syncStatus = useCloudSync({
     enabled: safePreferences.cloudSyncEnabled === true,
@@ -904,16 +932,6 @@ function App() {
   const gardenMood = useMemo<GardenMood>(
     () => computeGardenMood(activeFilterCount > 0 ? filteredMemories : safeMemories),
     [safeMemories, filteredMemories, activeFilterCount]
-  )
-
-  // Feature 2: Active collaborative garden
-  const activeGarden = useMemo(
-    () => safeGardens.find((g) => g.id === activeGardenId) || null,
-    [safeGardens, activeGardenId]
-  )
-  const activeGardenActivities = useMemo(
-    () => (activeGardenId ? safeActivities[activeGardenId] || [] : []),
-    [activeGardenId, safeActivities]
   )
 
   if (sharedMemoryView) {
@@ -1115,14 +1133,18 @@ function App() {
                 exit={{ opacity: 0 }}
                 className="w-full h-full"
               >
-                <ExploreView
-                  onVisitGarden={() => {
-                    toast.success("Visiting garden", { description: "Loading shared memories..." })
-                  }}
-                  onJoinGarden={() => {
-                    toast.success("Garden joined!")
-                  }}
-                />
+                <Suspense fallback={null}>
+                  <ExploreView
+                    onVisitGarden={(gardenId) => {
+                      toast.success('Visiting garden', {
+                        description: `Loading shared memories for ${gardenId}…`,
+                      })
+                    }}
+                    onJoinGarden={(gardenId) => {
+                      toast.success('Garden joined!', { description: gardenId })
+                    }}
+                  />
+                </Suspense>
               </motion.div>
             )}
 

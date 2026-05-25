@@ -28,6 +28,14 @@ export interface TraitUnlock {
 
 export type PlantVariety = 'flower' | 'tree' | 'succulent' | 'vine' | 'herb' | 'wildflower' | 'ancient_oak' | 'eternal_rose' | 'phoenix_vine' | 'starlight_succulent'
 
+export type MemoryReactionType = 'sprout' | 'water' | 'bloom' | 'heart' | 'sparkle'
+
+export interface MemoryReactionEntry {
+  type: MemoryReactionType
+  count: number
+  reactedBy: string[]
+}
+
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter'
 
 export interface Position {
@@ -72,6 +80,8 @@ export interface Memory {
   unlocks?: TraitUnlock[]
   genetics?: PlantGenetics
   cosmetics?: PlantCosmetics
+  /** Optional social reactions (sprout, water, bloom, etc.) */
+  reactions?: Partial<Record<MemoryReactionType, MemoryReactionEntry>>
 }
 
 export interface SharedMemory {

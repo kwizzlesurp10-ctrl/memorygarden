@@ -1,7 +1,7 @@
 import { motion, useAnimation } from 'framer-motion'
 import { useEffect, useRef, useMemo } from 'react'
 import type { Memory, PlantStage, Season, PlantVariety } from '@/lib/types'
-import { getPlantColor, getPlantSize, getSeasonalPlantModifier, getSeason, calculateGrowthMetrics, getVisualParams, getPlantStage } from '@/lib/garden-helpers'
+import { getSeason, calculateGrowthMetrics, getVisualParams, getPlantStage } from '@/lib/garden-helpers'
 import { resolveTraitVisuals, type ResolvedTraitVisuals } from '@/lib/trait-system'
 import { FlowerPlant } from './plants/FlowerPlant'
 import { TreePlant, SucculentPlant, VinePlant, HerbPlant, WildflowerPlant } from './plants/OtherPlants'
@@ -310,6 +310,10 @@ function TraitOverlays({ traitVisuals, size, seed, shouldReduceMotion }: { trait
   )
 }
 
+function particleStable01(index: number, salt: number): number {
+  return (((index * 9301 + salt * 49297 + 49297) % 233280) + 233280) % 233280 / 233280
+}
+
 function PlantGrowthParticles({ color, tier, shouldReduceMotion }: { color: string; tier?: 'standard' | 'premium' | 'legendary'; shouldReduceMotion?: boolean }) {
   if (shouldReduceMotion) return null
   if (!tier) {
@@ -321,7 +325,7 @@ function PlantGrowthParticles({ color, tier, shouldReduceMotion }: { color: stri
             className="absolute left-1/2 bottom-0 w-2 h-2 rounded-full"
             style={{ background: color }}
             initial={{ scale: 0, opacity: 1, x: '-50%', y: 0 }}
-            animate={{ scale: [0, 1.5, 0], opacity: [1, 0.8, 0], y: [-20, -60, -100], x: `calc(-50% + ${(Math.random() - 0.5) * 60}px)` }}
+            animate={{ scale: [0, 1.5, 0], opacity: [1, 0.8, 0], y: [-20, -60, -100], x: `calc(-50% + ${(particleStable01(i, 1) - 0.5) * 60}px)` }}
             transition={{ duration: 1.5, delay: i * 0.08, ease: 'easeOut' }}
           />
         ))}
@@ -333,7 +337,7 @@ function PlantGrowthParticles({ color, tier, shouldReduceMotion }: { color: stri
       <div className="absolute inset-0 pointer-events-none -inset-8">
         {Array.from({ length: 20 }).map((_, i) => {
           const angle = (i * 360) / 20
-          const distance = 40 + Math.random() * 20
+          const distance = 40 + particleStable01(i, 2) * 20
           return (
             <motion.div
               key={i}
@@ -352,7 +356,7 @@ function PlantGrowthParticles({ color, tier, shouldReduceMotion }: { color: stri
     return (
       <div className="absolute inset-0 pointer-events-none -inset-12">
         {Array.from({ length: 30 }).map((_, i) => {
-          const angle = Math.random() * 360
+          const angle = particleStable01(i, 3) * 360
           const spiralRadius = 30 + (i / 30) * 50
           return (
             <motion.div key={i} className="absolute left-1/2 top-1/2" initial={{ x: '-50%', y: '-50%' }} animate={{ x: `calc(-50% + ${Math.cos((angle + i * 40) * Math.PI / 180) * spiralRadius}px)`, y: `calc(-50% + ${Math.sin((angle + i * 40) * Math.PI / 180) * spiralRadius}px)`, scale: [0, 1.5, 0], opacity: [0, 1, 0] }} transition={{ duration: 1.5, delay: i * 0.03, ease: 'easeOut' }}>
@@ -368,7 +372,7 @@ function PlantGrowthParticles({ color, tier, shouldReduceMotion }: { color: stri
       <div className="absolute inset-0 pointer-events-none -inset-16">
         {Array.from({ length: 50 }).map((_, i) => {
           const angle = (i * 360) / 50
-          const burstDistance = 60 + Math.random() * 40
+          const burstDistance = 60 + particleStable01(i, 4) * 40
           return (
             <motion.div key={i} className="absolute left-1/2 top-1/2 w-3 h-3" initial={{ x: '-50%', y: '-50%' }} animate={{ x: `calc(-50% + ${Math.cos(angle * Math.PI / 180) * burstDistance}px)`, y: `calc(-50% + ${Math.sin(angle * Math.PI / 180) * burstDistance}px)`, scale: [0, 2, 0], opacity: [0, 1, 0] }} transition={{ duration: 1.8, delay: i * 0.02, ease: [0.34, 1.56, 0.64, 1] }}>
               <svg width="18" height="18" viewBox="0 0 18 18"><path d="M9 0 L11 7 L18 9 L11 11 L9 18 L7 11 L0 9 L7 7 Z" fill="oklch(0.78 0.20 50)" style={{ filter: 'drop-shadow(0 0 10px oklch(0.78 0.20 50 / 0.8)) drop-shadow(0 0 5px oklch(0.78 0.20 50))' }} /></svg>
@@ -384,7 +388,7 @@ function PlantGrowthParticles({ color, tier, shouldReduceMotion }: { color: stri
   return null
 }
 
-function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity, bloomOpacity, traitVisuals }: { variety: PlantVariety; stage: PlantStage; color: string; season: Season; size: number; scaleX: number; leafOpacity: number; bloomOpacity: number; traitVisuals?: ResolvedTraitVisuals }) {
+function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity: _leafOpacity, bloomOpacity: _bloomOpacity, traitVisuals }: { variety: PlantVariety; stage: PlantStage; color: string; season: Season; size: number; scaleX: number; leafOpacity: number; bloomOpacity: number; traitVisuals?: ResolvedTraitVisuals }) {
   const stemColor = season === 'autumn' ? 'oklch(0.52 0.10 145)' : season === 'winter' ? 'oklch(0.48 0.06 160)' : 'oklch(0.55 0.08 155)'
   const groundColor = season === 'winter' ? 'oklch(0.82 0.02 220)' : 'oklch(0.45 0.05 65)'
   const pattern = traitVisuals?.pattern || 'solid'
@@ -416,7 +420,7 @@ function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity, bl
         {variety === 'succulent' && <SucculentPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
         {variety === 'vine' && <VinePlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
         {variety === 'herb' && <HerbPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
-        {variety === 'wildflower' && <WildflowerPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} season={season} />}
+        {variety === 'wildflower' && <WildflowerPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
         {(variety === 'ancient_oak' || variety === 'eternal_rose' || variety === 'phoenix_vine' || variety === 'starlight_succulent') && <LegendaryPlant variety={variety} stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} season={season} />}
         {pattern === 'speckle' && <rect x="0" y="0" width="100" height="100" fill="url(#speckle-pattern)" opacity="0.6" />}
         {pattern === 'gradient' && <rect x="0" y="0" width="100" height="100" fill="url(#gradient-overlay)" />}
@@ -426,10 +430,17 @@ function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity, bl
   )
 }
 
-function SeedSVG({ color, season }: { color: string; season: Season }) { /* ... */ return <></> }
-function SproutSVG({ color, season }: { color: string; season: Season }) { /* ... */ return <></> }
-function BudSVG({ color, season }: { color: string; season: Season }) { /* ... */ return <></> }
-function BloomSVG({ color, season }: { color: string; season: Season }) { /* ... */ return <></> }
-function MatureSVG({ color, season }: { color: string; season: Season }) { /* ... */ return <></> }
-function EvergreenSVG({ color, season }: { color: string; season: Season }) { /* ... */ return <></> }
-function LegendaryPlant({ variety, stage, color, stemColor, groundColor, season }: any) { /* ... */ return null }
+function _SeedSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
+function _SproutSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
+function _BudSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
+function _BloomSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
+function _MatureSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
+function _EvergreenSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
+function LegendaryPlant(_props: {
+  variety: PlantVariety
+  stage: PlantStage
+  color: string
+  stemColor: string
+  groundColor: string
+  season: Season
+}) { /* ... */ return null }

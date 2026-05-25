@@ -7,7 +7,7 @@
  * the UI can show "Synced 2 minutes ago" or surface errors.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Memory, UserPreferences } from '@/lib/types'
 import { isSyncAvailable, pullDocument, pushDocument, mergePulledMemories } from '@/lib/cloud-sync'
 
@@ -34,13 +34,17 @@ export function useCloudSync(opts: Options): SyncStatus {
   const memoriesRef = useRef(memories)
   const pullDoneRef = useRef(false)
 
-  memoriesRef.current = memories
+  useLayoutEffect(() => {
+    memoriesRef.current = memories
+  }, [memories])
 
   // Probe availability + pull initial document on enable.
   useEffect(() => {
     if (!enabled) {
-      setStatus({ kind: 'disabled' })
-      pullDoneRef.current = false
+      queueMicrotask(() => {
+        setStatus({ kind: 'disabled' })
+        pullDoneRef.current = false
+      })
       return
     }
     let cancelled = false

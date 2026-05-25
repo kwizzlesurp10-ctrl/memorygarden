@@ -107,7 +107,6 @@ export function SucculentPlant({ stage, color, groundColor }: PlantProps) {
   const centerY = 74 - idx * 2
   const outerR = 9 + idx * 3.8
   const leafCount = [3, 4, 5, 6, 7, 8, 10, 12][idx] ?? 8
-  const phase = idx * 0.2
 
   if (idx < 1) {
     return (
@@ -227,5 +226,5 @@ export function VinePlant({ stage, color, stemColor, groundColor }: PlantProps) 
   )
 }
 
-export function HerbPlant({ stage, color, stemColor, groundColor }: PlantProps) { return <></> }
-export function WildflowerPlant({ stage, color, stemColor, groundColor }: PlantProps) { return <></> }
+export function HerbPlant(_props: PlantProps) { return <></> }
+export function WildflowerPlant(_props: PlantProps) { return <></> }
