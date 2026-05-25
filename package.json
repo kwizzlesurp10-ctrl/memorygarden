@@ -12,7 +12,8 @@
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
         "optimize": "vite optimize",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "verify:readme-content-markers": "node scripts/verify-readme-content-markers.mjs"
     },
     "dependencies": {
         "@heroicons/react": "^2.2.0",
