@@ -75,6 +75,11 @@ export function Plant({ memory, onClick, isDragging, season, nearbyMemories = []
     previousVisitCount.current = memory.visitCount
   }, [memory.visitCount, controls, shouldReduceMotion])
 
+  // Trigger entry animation on mount
+  useEffect(() => {
+    controls.start({ scale: 1, opacity: 1 })
+  }, [controls])
+
   return (
     <motion.div
       initial={{ scale: 0, opacity: 0 }}

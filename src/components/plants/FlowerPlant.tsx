@@ -106,12 +106,198 @@ export function FlowerPlant({ stage, color, stemColor, groundColor, season }: Pl
   return <Elder color={color} stemColor={stemColor} groundColor={groundColor} season={season} phase={phase} />
 }
 
-// Seed, Sprout, Seedling, Young, Bud components (kept concise with previous improvements)
-function Seed(_props: { color: string; groundColor: string }) { /* ... same as before ... */ return <></> }
-function Sprout(_props: { color: string; stemColor: string; groundColor: string; phase: number }) { /* ... */ return <></> }
-function Seedling(_props: { color: string; stemColor: string; groundColor: string; phase: number }) { /* ... */ return <></> }
-function Young(_props: { color: string; stemColor: string; groundColor: string; phase: number }) { /* ... */ return <></> }
-function Bud(_props: { color: string; stemColor: string; groundColor: string; phase: number }) { /* ... */ return <></> }
+// Seed — a small mound with a seed visible
+function Seed({ color, groundColor }: { color: string; groundColor: string }) {
+  return (
+    <>
+      {/* Ground mound */}
+      <ellipse cx="50" cy="86" rx="14" ry="5" fill={groundColor} opacity="0.7" />
+      {/* Small dirt pile */}
+      <path 
+        d="M 40 86 C 40 80 45 76 50 76 C 55 76 60 80 60 86 Z" 
+        fill={groundColor} 
+        opacity="0.85" 
+      />
+      {/* Seed peeking out */}
+      <ellipse cx="50" cy="78" rx="4" ry="3" fill={color} opacity="0.9" />
+      <ellipse cx="50" cy="77" rx="2.5" ry="1.5" fill={color} opacity="0.5" style={{ filter: 'brightness(1.2)' }} />
+    </>
+  )
+}
+
+// Sprout — first tiny green shoot emerges
+function Sprout({ color, stemColor, groundColor, phase }: { color: string; stemColor: string; groundColor: string; phase: number }) {
+  return (
+    <>
+      <ellipse cx="50" cy="86" rx="12" ry="4.5" fill={groundColor} opacity="0.65" />
+      <Sway dur={3.5} phase={phase}>
+        {/* Tiny stem */}
+        <path 
+          d="M 50 86 C 50 80 50 76 50 72" 
+          stroke={stemColor} 
+          strokeWidth="2" 
+          fill="none" 
+          strokeLinecap="round" 
+        />
+        {/* Two tiny cotyledon leaves */}
+        <path 
+          d="M 50 72 C 45 70 42 68 44 65 C 47 66 50 69 50 72 Z" 
+          fill={color} 
+          opacity="0.85" 
+        />
+        <path 
+          d="M 50 72 C 55 70 58 68 56 65 C 53 66 50 69 50 72 Z" 
+          fill={color} 
+          opacity="0.85" 
+        />
+      </Sway>
+    </>
+  )
+}
+
+// Seedling — a bit taller with small leaves forming
+function Seedling({ color, stemColor, groundColor, phase }: { color: string; stemColor: string; groundColor: string; phase: number }) {
+  return (
+    <>
+      <ellipse cx="50" cy="88" rx="14" ry="5" fill={groundColor} opacity="0.65" />
+      <Sway dur={4} phase={phase}>
+        {/* Slightly taller stem */}
+        <path 
+          d="M 50 88 C 50 78 50 68 50 58" 
+          stroke={stemColor} 
+          strokeWidth="2.2" 
+          fill="none" 
+          strokeLinecap="round" 
+        />
+        {/* Small leaves emerging */}
+        <path 
+          d="M 50 70 C 42 66 36 64 38 58 C 43 60 50 66 50 70 Z" 
+          fill={color} 
+          opacity="0.82" 
+        />
+        <line x1="50" y1="70" x2="39" y2="62" stroke={stemColor} strokeWidth="0.6" opacity="0.3" />
+        <path 
+          d="M 50 65 C 58 61 64 59 62 53 C 57 55 50 61 50 65 Z" 
+          fill={color} 
+          opacity="0.82" 
+        />
+        <line x1="50" y1="65" x2="61" y2="57" stroke={stemColor} strokeWidth="0.6" opacity="0.3" />
+        {/* Tiny top leaves */}
+        <path 
+          d="M 50 58 C 46 55 44 52 47 50 C 49 52 50 55 50 58 Z" 
+          fill={color} 
+          opacity="0.78" 
+        />
+        <path 
+          d="M 50 58 C 54 55 56 52 53 50 C 51 52 50 55 50 58 Z" 
+          fill={color} 
+          opacity="0.78" 
+        />
+      </Sway>
+    </>
+  )
+}
+
+// Young — taller plant with more developed leaves
+function Young({ color, stemColor, groundColor, phase }: { color: string; stemColor: string; groundColor: string; phase: number }) {
+  return (
+    <>
+      <ellipse cx="50" cy="90" rx="16" ry="5" fill={groundColor} opacity="0.65" />
+      <Sway dur={4.3} phase={phase}>
+        {/* Main stem getting stronger */}
+        <path 
+          d="M 50 90 C 51 75 49 55 50 40" 
+          stroke={stemColor} 
+          strokeWidth="2.5" 
+          fill="none" 
+          strokeLinecap="round" 
+        />
+        {/* Developed leaves */}
+        <path 
+          d="M 50 78 C 40 72 28 68 26 74 C 32 73 42 75 50 78 Z" 
+          fill={color} 
+          opacity="0.84" 
+        />
+        <line x1="50" y1="78" x2="28" y2="73" stroke={stemColor} strokeWidth="0.7" opacity="0.35" />
+        <path 
+          d="M 50 68 C 60 62 72 58 74 64 C 68 63 58 65 50 68 Z" 
+          fill={color} 
+          opacity="0.84" 
+        />
+        <line x1="50" y1="68" x2="72" y2="63" stroke={stemColor} strokeWidth="0.7" opacity="0.35" />
+        <path 
+          d="M 50 56 C 42 50 32 47 33 53 C 38 52 45 53 50 56 Z" 
+          fill={color} 
+          opacity="0.80" 
+        />
+        <line x1="50" y1="56" x2="35" y2="52" stroke={stemColor} strokeWidth="0.6" opacity="0.3" />
+        {/* Top growth starting */}
+        <path 
+          d="M 50 40 C 45 38 42 36 45 33 C 48 35 50 38 50 40 Z" 
+          fill={color} 
+          opacity="0.75" 
+        />
+        <path 
+          d="M 50 40 C 55 38 58 36 55 33 C 52 35 50 38 50 40 Z" 
+          fill={color} 
+          opacity="0.75" 
+        />
+      </Sway>
+    </>
+  )
+}
+
+// Bud — plant with a forming flower bud at top
+function Bud({ color, stemColor, groundColor, phase }: { color: string; stemColor: string; groundColor: string; phase: number }) {
+  return (
+    <>
+      <ellipse cx="50" cy="90" rx="17" ry="5.5" fill={groundColor} opacity="0.65" />
+      <Sway dur={4.5} phase={phase}>
+        {/* Strong stem */}
+        <path 
+          d="M 50 90 C 52 72 48 50 50 32" 
+          stroke={stemColor} 
+          strokeWidth="2.8" 
+          fill="none" 
+          strokeLinecap="round" 
+        />
+        {/* Full leaves */}
+        <path 
+          d="M 50 76 C 40 70 26 66 23 73 C 30 71 42 73 50 76 Z" 
+          fill={color} 
+          opacity="0.85" 
+        />
+        <line x1="50" y1="76" x2="26" y2="72" stroke={stemColor} strokeWidth="0.8" opacity="0.35" />
+        <path 
+          d="M 50 64 C 60 58 74 54 76 61 C 69 60 58 62 50 64 Z" 
+          fill={color} 
+          opacity="0.85" 
+        />
+        <line x1="50" y1="64" x2="74" y2="60" stroke={stemColor} strokeWidth="0.8" opacity="0.35" />
+        <path 
+          d="M 50 52 C 42 47 32 44 31 50 C 37 49 45 50 50 52 Z" 
+          fill={color} 
+          opacity="0.82" 
+        />
+        <line x1="50" y1="52" x2="33" y2="49" stroke={stemColor} strokeWidth="0.7" opacity="0.3" />
+        {/* The bud! */}
+        <ellipse cx="50" cy="30" rx="8" ry="10" fill={color} opacity="0.9" />
+        <ellipse cx="50" cy="28" rx="5" ry="7" fill={color} opacity="0.5" style={{ filter: 'brightness(1.15)' }} />
+        {/* Sepals (green parts holding the bud) */}
+        <path 
+          d="M 42 34 C 44 28 48 26 50 26 L 50 38 C 47 38 43 37 42 34 Z" 
+          fill={stemColor} 
+          opacity="0.8" 
+        />
+        <path 
+          d="M 58 34 C 56 28 52 26 50 26 L 50 38 C 53 38 57 37 58 34 Z" 
+          fill={stemColor} 
+          opacity="0.8" 
+        />
+      </Sway>
+    </>
+  )
+}
 
 // Beautiful layered Bloom with natural variation
 function Bloom({ color, stemColor, groundColor, season, phase }: any) {
