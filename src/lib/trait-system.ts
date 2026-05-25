@@ -1,7 +1,6 @@
 import type {
   Memory,
   PlantStage,
-  PlantTraits,
   TraitSlot,
   TraitUnlock,
   PaletteId,

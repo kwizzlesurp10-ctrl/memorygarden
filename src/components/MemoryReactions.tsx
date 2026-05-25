@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button'
-import { motion } from 'framer-motion'
 import { REACTION_EMOJI, REACTION_LABEL, type ReactionType } from '@/lib/social'
 
 interface MemoryReactionsProps {

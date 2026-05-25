@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import type { Memory, PlantStage, TraitSlot } from '../types'
+import { describe, it, expect } from 'vitest'
+import type { Memory, PlantStage } from '../types'
 import {
   getSlotsForStage,
   getStageForSlot,

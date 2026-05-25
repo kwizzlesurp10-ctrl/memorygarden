@@ -24,8 +24,6 @@ const SharedMemoryView = lazy(() => import('@/components/SharedMemoryView').then
 const FertilizerBoostModal = lazy(() => import('@/components/FertilizerBoostModal').then(m => ({ default: m.FertilizerBoostModal })))
 const CreateGardenDialog = lazy(() => import('@/components/CreateGardenDialog').then(m => ({ default: m.CreateGardenDialog })))
 const GardenInviteDialog = lazy(() => import('@/components/GardenInviteDialog').then(m => ({ default: m.GardenInviteDialog })))
-const GardenMembersPanel = lazy(() => import('@/components/GardenMembersPanel').then(m => ({ default: m.GardenMembersPanel })))
-const ActivityFeed = lazy(() => import('@/components/ActivityFeed').then(m => ({ default: m.ActivityFeed })))
 const PlantStyleCustomizer = lazy(() => import('@/components/PlantStyleCustomizer').then(m => ({ default: m.PlantStyleCustomizer })))
 const GardenUnlocks = lazy(() => import('@/components/GardenUnlocks').then(m => ({ default: m.GardenUnlocks })))
 const PlantCosmeticsEditor = lazy(() => import('@/components/PlantCosmeticsEditor').then(m => ({ default: m.PlantCosmeticsEditor })))
@@ -90,7 +88,7 @@ function App() {
   const localUser: LocalUser = getLocalUser()
   migrateLegacyData(localUser.id)
 
-  const [user, setUser] = useState<LocalUser | null>(localUser)
+  const [user, _setUser] = useState<LocalUser | null>(localUser)
   const [memories, setMemories] = useMemoriesKV(`${localUser.id}:memories`, [])
   const [sharedMemories, setSharedMemories] = useKV<Record<string, SharedMemory>>('shared-memories', {})
   const [preferences, setPreferences] = useKV<UserPreferences>(`${localUser.id}:preferences`, {
@@ -110,7 +108,7 @@ function App() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('garden')
   const [isPlantModalOpen, setIsPlantModalOpen] = useState(false)
-  const [activityEvents, setActivityEvents] = useKV<ActivityEvent[]>(`${localUser.id}:activity-events`, [])
+  const [_activityEvents, _setActivityEvents] = useKV<ActivityEvent[]>(`${localUser.id}:activity-events`, [])
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
   const [aiReflection, setAiReflection] = useState<string>('')
   const [isLoadingAI, setIsLoadingAI] = useState(false)
@@ -137,10 +135,10 @@ function App() {
   // Feature 2: Collaborative Gardens state
   const [collaborativeGardens, setCollaborativeGardens] = useKV<CollaborativeGarden[]>(`${localUser.id}:collaborative-gardens`, [])
   const [activeGardenId, setActiveGardenId] = useState<string | null>(null)
-  const [gardenActivities, setGardenActivities] = useKV<Record<string, ActivityEvent[]>>(`${localUser.id}:garden-activities`, {})
+  const [_gardenActivities, _setGardenActivities] = useKV<Record<string, ActivityEvent[]>>(`${localUser.id}:garden-activities`, {})
   const [isCreateGardenOpen, setIsCreateGardenOpen] = useState(false)
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
-  const [showMembersPanel, setShowMembersPanel] = useState(false)
+  const [_showMembersPanel, _setShowMembersPanel] = useState(false)
 
   // Feature 5: AI Plant Style state
   const [isStyleCustomizerOpen, setIsStyleCustomizerOpen] = useState(false)
@@ -574,7 +572,7 @@ function App() {
 
       const reflection = await generateAIReflection(memory, nearbyMemories)
       setAiReflection(reflection)
-    } catch (error) {
+    } catch {
       toast.error('Failed to generate reflection. Please try again.')
     } finally {
       setIsLoadingAI(false)

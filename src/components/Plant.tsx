@@ -1,7 +1,7 @@
 import { motion, useAnimation } from 'framer-motion'
 import { useEffect, useRef, useMemo } from 'react'
 import type { Memory, PlantStage, Season, PlantVariety } from '@/lib/types'
-import { getPlantColor, getPlantSize, getSeasonalPlantModifier, getSeason, calculateGrowthMetrics, getVisualParams, getPlantStage } from '@/lib/garden-helpers'
+import { getSeason, calculateGrowthMetrics, getVisualParams, getPlantStage } from '@/lib/garden-helpers'
 import { resolveTraitVisuals, type ResolvedTraitVisuals } from '@/lib/trait-system'
 import { FlowerPlant } from './plants/FlowerPlant'
 import { TreePlant, SucculentPlant, VinePlant, HerbPlant, WildflowerPlant } from './plants/OtherPlants'
@@ -388,7 +388,7 @@ function PlantGrowthParticles({ color, tier, shouldReduceMotion }: { color: stri
   return null
 }
 
-function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity, bloomOpacity, traitVisuals }: { variety: PlantVariety; stage: PlantStage; color: string; season: Season; size: number; scaleX: number; leafOpacity: number; bloomOpacity: number; traitVisuals?: ResolvedTraitVisuals }) {
+function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity: _leafOpacity, bloomOpacity: _bloomOpacity, traitVisuals }: { variety: PlantVariety; stage: PlantStage; color: string; season: Season; size: number; scaleX: number; leafOpacity: number; bloomOpacity: number; traitVisuals?: ResolvedTraitVisuals }) {
   const stemColor = season === 'autumn' ? 'oklch(0.52 0.10 145)' : season === 'winter' ? 'oklch(0.48 0.06 160)' : 'oklch(0.55 0.08 155)'
   const groundColor = season === 'winter' ? 'oklch(0.82 0.02 220)' : 'oklch(0.45 0.05 65)'
   const pattern = traitVisuals?.pattern || 'solid'
@@ -430,10 +430,17 @@ function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity, bl
   )
 }
 
-function SeedSVG({ color, season }: { color: string; season: Season }) { /* ... */ return <></> }
-function SproutSVG({ color, season }: { color: string; season: Season }) { /* ... */ return <></> }
-function BudSVG({ color, season }: { color: string; season: Season }) { /* ... */ return <></> }
-function BloomSVG({ color, season }: { color: string; season: Season }) { /* ... */ return <></> }
-function MatureSVG({ color, season }: { color: string; season: Season }) { /* ... */ return <></> }
-function EvergreenSVG({ color, season }: { color: string; season: Season }) { /* ... */ return <></> }
-function LegendaryPlant({ variety, stage, color, stemColor, groundColor, season }: any) { /* ... */ return null }
+function _SeedSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
+function _SproutSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
+function _BudSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
+function _BloomSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
+function _MatureSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
+function _EvergreenSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
+function LegendaryPlant(_props: {
+  variety: PlantVariety
+  stage: PlantStage
+  color: string
+  stemColor: string
+  groundColor: string
+  season: Season
+}) { /* ... */ return null }

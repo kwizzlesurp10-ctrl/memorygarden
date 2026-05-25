@@ -24,7 +24,6 @@ import {
   evaluateUnlocks,
   evaluateAchievements,
   canAffordReroll,
-  deductRerollCost,
   REROLL_COST,
   ensureUnlockState,
   createDefaultUnlockState,

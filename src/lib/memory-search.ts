@@ -10,7 +10,6 @@
  */
 
 import type { Memory, EmotionalTone, PlantStage } from './types'
-import { daysSince } from './date-utils'
 import { escapeHtml } from './sanitize'
 
 // ── Result type ──────────────────────────────────────────────────────────────
@@ -110,7 +109,7 @@ function scoreMemory(
   memory: Memory,
   tokens: string[],
   rawQuery: string,
-  now: number
+  _now: number
 ): { score: number; matchedFields: MatchedField[]; highlights: Record<string, string> } {
   let score = 0
   const matchedFields: MatchedField[] = []

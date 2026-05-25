@@ -8,7 +8,7 @@ import {
   computePositionClusters,
   gardenSummary,
 } from '../analytics'
-import type { Memory, EmotionalTone, PlantStage, PlantVariety } from '../types'
+import type { Memory } from '../types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

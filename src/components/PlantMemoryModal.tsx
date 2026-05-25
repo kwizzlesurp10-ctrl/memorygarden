@@ -151,7 +151,7 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
       setSelectedVariety(null)
       setSuggestedVariety('flower')
       setIsPlanted(true)
-    } catch (_error) {
+    } catch {
       toast.error('Failed to plant memory. Please try again.')
     } finally {
       setIsPlanting(false)

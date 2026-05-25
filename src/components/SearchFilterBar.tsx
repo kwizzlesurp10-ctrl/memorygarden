@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FilterPanel } from './FilterPanel'
-import type { EmotionalTone, PlantStage, SearchFilters } from '@/lib/types'
+import type { SearchFilters } from '@/lib/types'
 
 interface SearchFilterBarProps {
   searchQuery: string

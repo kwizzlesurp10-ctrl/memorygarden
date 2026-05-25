@@ -165,7 +165,7 @@ export function MemoryCard({
       await onWater(memory.id, newReflection.trim())
       setNewReflection('')
       toast.success('Reflection added! Your plant has grown.')
-    } catch (error) {
+    } catch {
       toast.error('Failed to add reflection')
     } finally {
       setIsAddingReflection(false)
