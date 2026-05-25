@@ -25,6 +25,7 @@ MemoryGarden reimagines how we preserve and revisit memories. Instead of flippin
 - **Fertilizer Boost**: Three tiers (Garden Boost, Premium, Legendary) accelerate growth with distinct particle effects.
 
 ### ✨ AI-Powered Insights
+
 - **Emotional tone**: Text is classified to steer plant variety, palette, and growth character.
 - **Garden AI**: Poetic reflections and prompts that connect nearby memories without overwhelming the original voice.
 - **Memory Clusters**: Thematic or temporal groupings so you can browse by mood as well as by place.

@@ -1,15 +1,18 @@
 # GEMINI.md - MemoryGarden 🌱
 
 ## Project Overview
+
 MemoryGarden is a peaceful, emotional digital garden where users plant and nurture personal memories. Memories are represented as living plants that grow and evolve based on user interaction (visits, reflections) and the passage of time.
 
 ### Core Metaphor
+
 - **Seeds/Plants**: Represent individual memories.
 - **Growth**: Plants transition through stages (seed → sprout → bud → bloom → mature → evergreen) based on visits and age.
 - **Tending**: Adding reflections ("watering") promotes growth.
 - **Seasons & Time**: The garden's appearance (colors, background) shifts based on real-world seasons and the local day/night cycle.
 
 ### Tech Stack
+
 - **Framework**: React 19 + TypeScript + Vite.
 - **Styling**: Tailwind CSS 4 + Radix UI components + OKLCH color spaces.
 - **Animations**: Framer Motion for organic, spring-based movement.
@@ -21,6 +24,7 @@ MemoryGarden is a peaceful, emotional digital garden where users plant and nurtu
 - **Icons**: Phosphor Icons and Lucide React.
 
 ## Project Structure
+
 - `src/App.tsx`: Main application logic, state management, and view routing.
 - `src/components/`:
   - `GardenCanvas.tsx`: The primary infinite canvas view.
@@ -35,12 +39,14 @@ MemoryGarden is a peaceful, emotional digital garden where users plant and nurtu
 - `src/styles/`: Global styles and theme definitions using OKLCH.
 
 ## Building and Running
+
 - **Development**: `npm run dev` (Starts Vite server)
 - **Production Build**: `npm run build` (Runs `tsc` and `vite build`)
 - **Linting**: `npm run lint` (Runs ESLint)
 - **Preview**: `npm run preview` (Previews build locally)
 
 ## Development Conventions
+
 - **Component Style**: Functional components using Tailwind CSS and Radix UI primitives.
 - **State Management**: Use `@github/spark` hooks (`useKV`) for persistent user data. Avoid external state management libraries unless necessary.
 - **Visual Harmony**: Adhere to the OKLCH color system defined in `garden-helpers.ts` and `theme.css`. Use Framer Motion for all non-static transitions.
@@ -48,6 +54,7 @@ MemoryGarden is a peaceful, emotional digital garden where users plant and nurtu
 - **Memory Storage**: Photos are stored as Data URLs (Base64) within the memory objects in the KV store.
 
 ## Important Context
+
 - **Privacy**: All data remains in the user's GitHub-associated storage via Spark.
 - **Interactions**: The "Garden" view is the primary interface; "Timeline" and "Clusters" are secondary views.
 - **Metaphor Consistency**: Every feature should feel "organic" and "peaceful." Avoid harsh UI transitions or corporate aesthetics.
