@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Plant as PlantIcon, Users, Heart, Tree } from '@phosphor-icons/react'
+import { Users, Heart, Tree } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import type { Memory } from '@/lib/types'
 

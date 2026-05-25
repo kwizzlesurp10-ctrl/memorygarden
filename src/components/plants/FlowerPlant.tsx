@@ -107,11 +107,11 @@ export function FlowerPlant({ stage, color, stemColor, groundColor, season }: Pl
 }
 
 // Seed, Sprout, Seedling, Young, Bud components (kept concise with previous improvements)
-function Seed({ color, groundColor }: { color: string; groundColor: string }) { /* ... same as before ... */ return <></> }
-function Sprout({ color, stemColor, groundColor, phase }: any) { /* ... */ return <></> }
-function Seedling({ color, stemColor, groundColor, phase }: any) { /* ... */ return <></> }
-function Young({ color, stemColor, groundColor, phase }: any) { /* ... */ return <></> }
-function Bud({ color, stemColor, groundColor, phase }: any) { /* ... */ return <></> }
+function Seed(_props: { color: string; groundColor: string }) { /* ... same as before ... */ return <></> }
+function Sprout(_props: { color: string; stemColor: string; groundColor: string; phase: number }) { /* ... */ return <></> }
+function Seedling(_props: { color: string; stemColor: string; groundColor: string; phase: number }) { /* ... */ return <></> }
+function Young(_props: { color: string; stemColor: string; groundColor: string; phase: number }) { /* ... */ return <></> }
+function Bud(_props: { color: string; stemColor: string; groundColor: string; phase: number }) { /* ... */ return <></> }
 
 // Beautiful layered Bloom with natural variation
 function Bloom({ color, stemColor, groundColor, season, phase }: any) {

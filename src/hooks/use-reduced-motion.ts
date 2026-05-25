@@ -6,5 +6,5 @@ import { useReducedMotion as framerUseReducedMotion } from 'framer-motion'
  * Follows WCAG 2.2 2.3.3 and NN/g motion sensitivity guidelines.
  */
 export function useReducedMotion(): boolean {
-  return framerUseReducedMotion()
+  return framerUseReducedMotion() ?? false
 }

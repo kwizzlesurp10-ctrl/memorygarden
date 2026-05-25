@@ -1,17 +1,8 @@
-import type { Memory } from './types'
+import type { Memory, MemoryReactionEntry, MemoryReactionType } from './types'
 
-export type ReactionType = 
-  | 'sprout' 
-  | 'water' 
-  | 'bloom' 
-  | 'heart' 
-  | 'sparkle'
+export type ReactionType = MemoryReactionType
 
-export interface Reaction {
-  type: ReactionType
-  count: number
-  reactedBy: string[] // user ids or names
-}
+export type Reaction = MemoryReactionEntry
 
 export interface SocialMemory extends Memory {
   reactions?: Partial<Record<ReactionType, Reaction>>
@@ -41,13 +32,17 @@ export function toggleReaction(
   userId: string
 ): Memory {
   const reactions = { ...(memory.reactions || {}) }
-  const current = reactions[reactionType] || { type: reactionType, count: 0, reactedBy: [] }
+  const current: MemoryReactionEntry = reactions[reactionType] || {
+    type: reactionType,
+    count: 0,
+    reactedBy: [],
+  }
 
   const hasReacted = current.reactedBy.includes(userId)
 
   if (hasReacted) {
     current.count = Math.max(0, current.count - 1)
-    current.reactedBy = current.reactedBy.filter(id => id !== userId)
+    current.reactedBy = current.reactedBy.filter((id: string) => id !== userId)
   } else {
     current.count += 1
     current.reactedBy = [...current.reactedBy, userId]

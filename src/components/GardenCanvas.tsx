@@ -40,9 +40,10 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
   }, [propSeason])
 
   useEffect(() => {
-    if (propSeason) {
+    if (!propSeason) return
+    queueMicrotask(() => {
       setSeason(propSeason)
-    }
+    })
   }, [propSeason])
 
   const canvasSize = useMemo(() => {

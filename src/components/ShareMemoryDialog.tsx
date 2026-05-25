@@ -26,7 +26,7 @@ export function ShareMemoryDialog({ open, onClose, onShare, existingShareId }: S
       await onShare(newShareId)
       setShareId(newShareId)
       toast.success('Shareable link created!')
-    } catch (error) {
+    } catch {
       toast.error('Failed to create share link')
     } finally {
       setIsGenerating(false)
@@ -42,7 +42,7 @@ export function ShareMemoryDialog({ open, onClose, onShare, existingShareId }: S
       setCopied(true)
       toast.success('Link copied to clipboard!')
       setTimeout(() => setCopied(false), 2000)
-    } catch (error) {
+    } catch {
       toast.error('Failed to copy link')
     }
   }

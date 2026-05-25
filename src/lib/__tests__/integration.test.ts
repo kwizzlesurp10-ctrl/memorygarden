@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import {
   calculateGrowthMetrics,
   getPlantStage,
@@ -24,7 +24,6 @@ import {
   computeUnlocks,
   getSlotStatus,
   resolveTraitVisuals,
-  getSlotsForStage,
 } from '../trait-system'
 import type { Memory, UnlockState, SearchFilters, PlantStage } from '../types'
 
@@ -278,13 +277,16 @@ describe('Integration: Fertilizer Boost System', () => {
     const originalStage = getPlantStage(original)
 
     const standardBoosted = applyPremiumFertilizer(original, 'standard')
-    const standardStage = getPlantStage(standardBoosted)
+    const _standardStage = getPlantStage(standardBoosted)
 
     const premiumBoosted = applyPremiumFertilizer(standardBoosted, 'premium')
-    const premiumStage = getPlantStage(premiumBoosted)
+    const _premiumStage = getPlantStage(premiumBoosted)
 
     const legendaryBoosted = applyPremiumFertilizer(premiumBoosted, 'legendary')
     const legendaryStage = getPlantStage(legendaryBoosted)
+
+    expect(_standardStage).toBeDefined()
+    expect(_premiumStage).toBeDefined()
 
     expect(standardBoosted.visitCount).toBeGreaterThan(original.visitCount)
     expect(premiumBoosted.visitCount).toBeGreaterThan(standardBoosted.visitCount)
@@ -350,7 +352,7 @@ describe('Integration: Plant Variety System', () => {
       return { variety, metrics: calculateGrowthMetrics(memory, []) }
     })
 
-    for (const { variety, metrics: m } of metrics) {
+    for (const { variety: _variety, metrics: m } of metrics) {
       expect(m.height).toBeGreaterThan(0)
       expect(m.width).toBeGreaterThan(0)
       expect(m.rarityScore).toBeGreaterThanOrEqual(0)
@@ -365,8 +367,8 @@ describe('Integration: Plant Variety System', () => {
 describe('Integration: Genetics and Visual System', () => {
   it('simulates deterministic appearance from genetics seed', () => {
     const seed = 'test-seed-123'
-    const memory1 = makeMemory({ geneticsSeed: seed })
-    const memory2 = makeMemory({ geneticsSeed: seed })
+    void makeMemory({ geneticsSeed: seed })
+    void makeMemory({ geneticsSeed: seed })
 
     const gen1 = generatePlantGenetics(seed)
     const gen2 = generatePlantGenetics(seed)

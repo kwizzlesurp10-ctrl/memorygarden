@@ -1,9 +1,25 @@
 import { motion } from 'framer-motion'
-import { Heart, Users, Drop } from '@phosphor-icons/react'
+import { Heart, Lightning, SignOut, Tree, Users } from '@phosphor-icons/react'
 import type { ActivityEvent } from '@/lib/types'
 
 interface ActivityFeedProps {
   events: ActivityEvent[]
+}
+
+function ActivityIcon({ type }: { type: ActivityEvent['type'] }) {
+  const common = { weight: 'fill' as const, size: 20 }
+  switch (type) {
+    case 'plant':
+      return <Tree {...common} />
+    case 'reflect':
+      return <Heart {...common} />
+    case 'boost':
+      return <Lightning {...common} />
+    case 'join':
+      return <Users {...common} />
+    case 'leave':
+      return <SignOut {...common} />
+  }
 }
 
 export function ActivityFeed({ events }: ActivityFeedProps) {
@@ -30,14 +46,13 @@ export function ActivityFeed({ events }: ActivityFeedProps) {
           className="flex gap-4 p-4 bg-card border rounded-2xl"
         >
           <div className="mt-1 text-primary">
-            {event.type === 'tended' && <Drop weight="fill" size={20} />}
-            {event.type === 'reflected' && <Heart weight="fill" size={20} />}
-            {event.type === 'joined' && <Users weight="fill" size={20} />}
+            <ActivityIcon type={event.type} />
           </div>
           <div className="flex-1 text-sm">
-            <span className="font-medium">{event.actor}</span> {event.message}
+            <span className="font-medium">{event.userLogin}</span>{' '}
+            <span className="text-muted-foreground">{event.description}</span>
             <div className="text-xs text-muted-foreground mt-1">
-              {new Date(event.timestamp).toLocaleDateString()}
+              {new Date(event.createdAt).toLocaleDateString()}
             </div>
           </div>
         </motion.div>

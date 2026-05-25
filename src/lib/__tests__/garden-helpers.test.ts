@@ -19,7 +19,7 @@ import {
   getShareUrl,
   applyPremiumFertilizer,
 } from '../garden-helpers'
-import type { Memory, EmotionalTone, PlantStage, SearchFilters } from '../types'
+import type { Memory, EmotionalTone, PlantStage } from '../types'
 
 function makeMemory(overrides: Partial<Memory> = {}): Memory {
   return {

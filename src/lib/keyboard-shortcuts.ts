@@ -44,14 +44,6 @@ export interface RegisteredShortcut extends ShortcutDescriptor {
 const _registry = new Map<string, RegisteredShortcut>()
 let _listenerAttached = false
 
-function buildKey(descriptor: ShortcutDescriptor): string {
-  const mods = (descriptor.modifiers ?? [])
-    .map(m => (m === 'ctrlOrMeta' ? 'ctrlOrMeta' : m))
-    .sort()
-    .join('+')
-  return mods ? `${mods}+${descriptor.key.toLowerCase()}` : descriptor.key.toLowerCase()
-}
-
 function isInputFocused(): boolean {
   const el = document.activeElement
   if (!el) return false

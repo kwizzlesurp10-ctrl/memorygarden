@@ -9,7 +9,7 @@
  * `Memory.audioRecordings[].dataUrl` shapes they always have.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Memory, AudioRecording } from '@/lib/types'
 import { getBlob, putBlob, isBlobRef, deleteBlob } from '@/lib/blob-store'
 import { readRaw, writeRaw } from '@/lib/storage'
@@ -98,7 +98,9 @@ export function useMemoriesKV(
   const [state, setState] = useState<Memory[]>(initial)
   const [hydrated, setHydrated] = useState(false)
   const stateRef = useRef<Memory[]>(initial)
-  stateRef.current = state
+  useLayoutEffect(() => {
+    stateRef.current = state
+  }, [state])
 
   // On mount: materialize blob refs from IDB into the in-memory copy.
   useEffect(() => {

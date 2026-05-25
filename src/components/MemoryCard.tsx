@@ -8,9 +8,11 @@ import { Separator } from '@/components/ui/separator'
 import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork, ChartBar, Lightning, Palette, CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { AudioPlayer } from '@/components/AudioPlayer'
 import { WaterPlantButton } from '@/components/WaterPlantButton'
+import { MemoryReactions } from '@/components/MemoryReactions'
 import { PlantCustomizer } from '@/components/PlantCustomizer'
 import { format } from 'date-fns'
 import type { Memory, PlantTraits } from '@/lib/types'
+import type { ReactionType } from '@/lib/social'
 import { toast } from 'sonner'
 import { calculateGrowthMetrics } from '@/lib/garden-helpers'
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts'
@@ -21,7 +23,7 @@ interface MemoryCardProps {
   open: boolean
   onClose: () => void
   onWater: (memoryId: string, reflection: string) => void
-  onReact?: (memoryId: string, reactionType: any) => void
+  onReact?: (memoryId: string, reactionType: ReactionType) => void
   onAskAI: (memoryId: string) => void
   onShare?: (memoryId: string) => void
   onBoost?: (memoryId: string) => void
@@ -132,7 +134,6 @@ export function MemoryCard({
       },
     ],
     enabled: open && !!memory && allMemories.length > 1 && !!onNavigate,
-  onReact,
   })
 
   if (!memory) return null
@@ -164,7 +165,7 @@ export function MemoryCard({
       await onWater(memory.id, newReflection.trim())
       setNewReflection('')
       toast.success('Reflection added! Your plant has grown.')
-    } catch (error) {
+    } catch {
       toast.error('Failed to add reflection')
     } finally {
       setIsAddingReflection(false)
@@ -358,10 +359,9 @@ export function MemoryCard({
                     />
                   </div>
                   <div className="pt-2">
-                    <WaterPlantButton 
-                      memoryId={memory.id} 
-                      onWater={onWater ? () => onWater(memory.id, "") : undefined}
-                    />
+                    {onWater ? (
+                      <WaterPlantButton memoryId={memory.id} onWater={(id) => onWater(id, '')} />
+                    ) : null}
                   </div>
                   <Separator />
                   <div className="space-y-4">
