@@ -413,7 +413,11 @@ export function ExploreView({ onVisitGarden, onJoinGarden, userId, userName }: E
                           <Button 
                             variant="outline" 
                             className="flex-1 group/btn"
-                            onClick={() => onVisitGarden(garden.id)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              console.log("[v0] Visit button clicked for garden:", garden.id)
+                              onVisitGarden(garden.id)
+                            }}
                           >
                             <Eye size={16} className="mr-2" />
                             Visit

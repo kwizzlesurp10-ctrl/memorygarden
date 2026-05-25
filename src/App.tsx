@@ -1153,6 +1153,7 @@ function App() {
                       userId={localUser.id}
                       userName={localUser.name || 'Anonymous Gardener'}
                       onVisitGarden={(gardenId) => {
+                        console.log("[v0] onVisitGarden called with:", gardenId)
                         setVisitingGardenId(gardenId)
                       }}
                       onJoinGarden={(gardenId) => {
