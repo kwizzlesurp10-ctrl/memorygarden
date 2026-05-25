@@ -398,8 +398,12 @@ export function computePositionClusters(
     const cx = Math.floor(m.position.x / cellSize)
     const cy = Math.floor(m.position.y / cellSize)
     const key = `${cx},${cy}`
-    if (!cells.has(key)) cells.set(key, [])
-    cells.get(key)!.push(m)
+    let bucket = cells.get(key)
+    if (!bucket) {
+      bucket = []
+      cells.set(key, bucket)
+    }
+    bucket.push(m)
   }
 
   const clusters: PositionCluster[] = []

@@ -532,7 +532,8 @@ export function validateUserPreferences(input: unknown): ValidationResult<Partia
  */
 export function sanitizeText(text: string): string {
   return text
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // strip control chars
+    // eslint-disable-next-line no-control-regex -- intentional strip of disallowed control chars (tabs/newlines kept separately)
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     .replace(/\n{3,}/g, '\n\n')                          // collapse excessive newlines
     .trim()
 }

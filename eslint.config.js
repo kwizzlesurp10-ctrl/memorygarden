@@ -53,5 +53,11 @@ export default tseslint.config(
       '@typescript-eslint/consistent-type-imports': 'off',
       'no-console': 'off',
     },
-  }
+  },
+  {
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 )

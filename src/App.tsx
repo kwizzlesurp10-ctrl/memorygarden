@@ -104,7 +104,7 @@ function App() {
       setMemories(seeded)
       setPreferences(p => ({ ...p, hasCompletedOnboarding: true }))
     }
-  }, [preferences, memories])
+  }, [preferences, memories, setMemories, setPreferences])
 
   const [viewMode, setViewMode] = useState<ViewMode>('garden')
   const [isPlantModalOpen, setIsPlantModalOpen] = useState(false)
@@ -227,7 +227,7 @@ function App() {
     if (preferences && memories && memories.length === 0 && preferences.hasCompletedOnboarding) {
       setTimeout(() => setIsPlantModalOpen(true), 1000)
     }
-  }, [preferences, memories])
+  }, [preferences, memories, setIsPlantModalOpen])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -333,7 +333,7 @@ function App() {
     })
   }
 
-  const handleMemoryClick = (memory: Memory) => {
+  const handleMemoryClick = useCallback((memory: Memory) => {
     const nearbyMemories = (memories || []).filter(
       (m) =>
         m.id !== memory.id &&
@@ -438,7 +438,7 @@ function App() {
 
       return updated
     })
-  }
+  }, [memories, setMemories, setSelectedMemory, setAiReflection, updateUnlockState])
 
   const handleProtocolAction = useCallback((action: ProtocolAction) => {
     switch (action.type) {
@@ -554,7 +554,7 @@ function App() {
         )
       )
     },
-    [localUser.id]
+    [localUser.id, setMemories]
   )
 
   const handleAskAI = async (memoryId: string) => {
@@ -805,7 +805,7 @@ function App() {
         }
       }
     }
-  }, [user, safeGardens])
+  }, [user, safeGardens, setCollaborativeGardens])
 
   // Feature 5: Plant style preference handler
   const handleSavePlantStyle = (style: PlantStylePreference) => {

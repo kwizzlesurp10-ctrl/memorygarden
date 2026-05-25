@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import type { Memory, Season } from '@/lib/types'
+import type { GardenMood, Memory, Season } from '@/lib/types'
 import { Plant } from './Plant'
 import { WeatherEffects } from './WeatherEffects'
 import { GardenClusterPaths } from './GardenClusterPaths'
@@ -18,7 +18,7 @@ interface GardenCanvasProps {
   growingMemories?: Set<string>
   memoryBoostTiers?: Map<string, 'standard' | 'premium' | 'legendary'>
   highlightedMemoryIds?: Set<string> | null
-  mood?: import('@/lib/types').GardenMood | null
+  mood?: GardenMood | null
 }
 
 export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: propSeason, growingMemories = new Set(), memoryBoostTiers = new Map(), highlightedMemoryIds = null, mood = null }: GardenCanvasProps) {

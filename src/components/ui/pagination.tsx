@@ -1,10 +1,11 @@
-import { ComponentProps } from "react"
+import type { ComponentProps } from "react"
+import type { VariantProps } from "class-variance-authority"
 import ChevronLeftIcon from "lucide-react/dist/esm/icons/chevron-left"
 import ChevronRightIcon from "lucide-react/dist/esm/icons/chevron-right"
 import MoreHorizontalIcon from "lucide-react/dist/esm/icons/more-horizontal"
 
 import { cn } from "@/lib/utils"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 
 function Pagination({ className, ...props }: ComponentProps<"nav">) {
   return (
@@ -37,7 +38,7 @@ function PaginationItem({ ...props }: ComponentProps<"li">) {
 
 type PaginationLinkProps = {
   isActive?: boolean
-} & Pick<ComponentProps<typeof Button>, "size"> &
+} & Pick<VariantProps<typeof buttonVariants>, "size"> &
   ComponentProps<"a">
 
 function PaginationLink({

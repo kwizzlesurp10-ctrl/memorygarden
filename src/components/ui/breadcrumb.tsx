@@ -1,4 +1,4 @@
-import { ComponentProps } from "react"
+import type { ComponentProps } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right"
 import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal"

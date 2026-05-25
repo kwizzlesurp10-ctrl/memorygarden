@@ -271,8 +271,12 @@ export function groupByMonth<T>(
 
   for (const item of items) {
     const label = formatMonthYear(getDate(item), locale)
-    if (!groups.has(label)) groups.set(label, [])
-    groups.get(label)!.push(item)
+    let bucket = groups.get(label)
+    if (!bucket) {
+      bucket = []
+      groups.set(label, bucket)
+    }
+    bucket.push(item)
   }
 
   // Return in reverse chronological order (most-recent month first)
@@ -296,8 +300,12 @@ export function groupByYear<T>(
 
   for (const item of items) {
     const year = new Date(getDate(item)).getFullYear()
-    if (!groups.has(year)) groups.set(year, [])
-    groups.get(year)!.push(item)
+    let bucket = groups.get(year)
+    if (!bucket) {
+      bucket = []
+      groups.set(year, bucket)
+    }
+    bucket.push(item)
   }
 
   return [...groups.entries()]

@@ -111,7 +111,7 @@ describe('Integration: Complete Memory Lifecycle', () => {
   })
 
   it('simulates complete currency earning lifecycle', () => {
-    let state = createDefaultUnlockState()
+    const state = createDefaultUnlockState()
     expect(state.wallet.dew).toBe(0)
 
     const plantAward = awardForPlanting()
@@ -228,7 +228,7 @@ describe('Integration: Unlock Progression System', () => {
   })
 
   it('simulates earning achievements through gameplay', () => {
-    let state = createDefaultUnlockState()
+    const state = createDefaultUnlockState()
     expect(state.achievements).toHaveLength(0)
     expect(state.wallet.starlight).toBe(0)
 

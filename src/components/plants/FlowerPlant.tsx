@@ -9,6 +9,10 @@ interface PlantProps {
   season: Season
 }
 
+type FlowerBloomProps = Pick<PlantProps, 'color' | 'stemColor' | 'groundColor' | 'season'> & {
+  phase: number
+}
+
 // Inject reusable SVG symbols for performance (veins, stamen)
 if (typeof window !== 'undefined' && !document.getElementById('botanical-symbols')) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
@@ -114,7 +118,7 @@ function Young(_props: { color: string; stemColor: string; groundColor: string; 
 function Bud(_props: { color: string; stemColor: string; groundColor: string; phase: number }) { /* ... */ return <></> }
 
 // Beautiful layered Bloom with natural variation
-function Bloom({ color, stemColor, groundColor, season, phase }: any) {
+function Bloom({ color, stemColor, groundColor, season, phase }: FlowerBloomProps) {
   const centerColor = season === 'spring' ? 'oklch(0.90 0.18 82)' : season === 'summer' ? 'oklch(0.87 0.16 88)' : 'oklch(0.84 0.14 85)'
   const petalAngles = [150, 210, 90, 270, 30, 330, 0, 180] // natural 8-petal variation
   
@@ -142,7 +146,7 @@ function Bloom({ color, stemColor, groundColor, season, phase }: any) {
   )
 }
 
-function Mature({ color, stemColor, groundColor, season, phase }: any) {
+function Mature({ color, stemColor, groundColor, season, phase }: FlowerBloomProps) {
   const centerColor = season === 'spring' ? 'oklch(0.90 0.18 82)' : season === 'summer' ? 'oklch(0.87 0.16 88)' : 'oklch(0.83 0.14 85)'
   const petalAngles = [135, 180, 225, 270, 315, 0, 45, 90, 150, 210] // 10 petals
   
@@ -177,7 +181,7 @@ function Mature({ color, stemColor, groundColor, season, phase }: any) {
   )
 }
 
-function Elder({ color, stemColor, groundColor, season, phase }: any) {
+function Elder({ color, stemColor, groundColor, season, phase }: FlowerBloomProps) {
   const centerColor = season === 'spring' ? 'oklch(0.90 0.18 82)' : 'oklch(0.84 0.14 85)'
   const mainPetals = [135, 180, 225, 270, 315, 0, 45, 90, 150, 210]
   

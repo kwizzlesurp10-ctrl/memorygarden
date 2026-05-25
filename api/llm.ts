@@ -82,7 +82,10 @@ export default async function handler(req: Request): Promise<Response> {
     const data = (await upstream.json()) as { content?: Array<{ type: string; text?: string }> }
     const text = (data.content ?? [])
       .filter((b) => b.type === 'text' && typeof b.text === 'string')
-      .map((b) => b.text!.trim())
+      .map((b) => {
+        const fragment = b.text
+        return typeof fragment === 'string' ? fragment.trim() : ''
+      })
       .join('\n')
       .trim()
 
