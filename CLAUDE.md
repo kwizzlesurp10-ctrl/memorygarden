@@ -12,6 +12,8 @@ npm run lint         # ESLint across the project
 npm run test         # Vitest single run
 npm run test:watch   # Vitest watch mode
 npm run test:coverage # Vitest with coverage (v8)
+npm run test:vercel  # Production build + Vercel routing/Edge sanity checks
+npm run verify:vercel # Vercel checks only (expects dist/ from a prior build)
 npm run preview      # Serve dist/ locally after build
 npm run kill         # Free port 5000 via fuser (script helper)
 ```

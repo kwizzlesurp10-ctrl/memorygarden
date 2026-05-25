@@ -11,6 +11,8 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
+        "test:vercel": "npm run build && npm run verify:vercel",
+        "verify:vercel": "node scripts/verify-vercel-compat.mjs",
         "optimize": "vite optimize",
         "preview": "vite preview"
     },

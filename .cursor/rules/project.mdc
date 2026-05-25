@@ -12,6 +12,7 @@ npm run dev       # Start Vite dev server (port 5173)
 npm run build     # Type-check + Vite build
 npm run lint      # ESLint
 npm run test      # Vitest run
+npm run test:vercel # Build + Vercel deploy compatibility checks
 npm run preview   # Preview production build
 npm run kill      # Kill process on port 5000
 ```
