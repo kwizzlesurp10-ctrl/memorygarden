@@ -33,6 +33,7 @@ Copy the block below into your Cursor automation prompt on first run. Paths matc
 ## Checklist
 
 - **README markers**: `rg '\[content-to-enhance id=' README.md` must list exactly **eight** lines, in this order: `introduction`, `memory-garden-concept`, `core-features`, `how-it-works`, `usage`, `configuration`, `roadmap`, `faq`.
+- **Closing tags**: `rg '\[/content-to-enhance\]' README.md` must list exactly **eight** lines (one per open block).
 - Every `id="..."` in **README.md** matches **Initial section order** spelling and appears exactly once.
 - Reorder the numbered list if your automation priority changes; keep IDs and file sections in sync.
 - **PRD.md** and **CLAUDE.md** still carry optional `[content-to-enhance]` blocks for manual or extended runs; add them to Target files only when you want those paths processed.
