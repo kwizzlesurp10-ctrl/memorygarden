@@ -29,7 +29,9 @@ export function SearchFilterBar({
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
-    setLocalQuery(searchQuery)
+    queueMicrotask(() => {
+      setLocalQuery(searchQuery)
+    })
   }, [searchQuery])
 
   const handleQueryChange = (value: string) => {

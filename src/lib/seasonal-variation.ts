@@ -1,6 +1,6 @@
 import type { Season } from './types'
 
-export function getSeasonalPlantModifier(season: Season, stage: string) {
+export function getSeasonalPlantModifier(season: Season, _stage: string) {
   const modifiers: Record<Season, { scale: number; saturation: number }> = {
     spring: { scale: 1.05, saturation: 1.1 },
     summer: { scale: 1.0, saturation: 1.2 },

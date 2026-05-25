@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { Memory, Season } from '@/lib/types'
+import type { Memory } from '@/lib/types'
 
 interface AIPlantRendererProps {
   memory: Memory
@@ -13,7 +13,9 @@ export function AIPlantRenderer({ memory, svgFallback, size }: AIPlantRendererPr
   const aiImage = memory.generatedPlantImages?.[memory.plantStage]
 
   useEffect(() => {
-    setImageLoaded(false)
+    queueMicrotask(() => {
+      setImageLoaded(false)
+    })
   }, [memory.plantStage])
 
   if (!aiImage) {

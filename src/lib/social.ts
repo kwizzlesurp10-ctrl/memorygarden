@@ -2,7 +2,7 @@ import type { Memory, MemoryReactionEntry, MemoryReactionType } from './types'
 
 export type ReactionType = MemoryReactionType
 
-export interface Reaction extends MemoryReactionEntry {}
+export type Reaction = MemoryReactionEntry
 
 export interface SocialMemory extends Memory {
   reactions?: Partial<Record<ReactionType, Reaction>>

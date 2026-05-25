@@ -1,5 +1,9 @@
 import { motion } from 'framer-motion'
 
+function stable01(index: number, salt: number): number {
+  return (((index * 9301 + salt * 49297 + 49297) % 233280) + 233280) % 233280 / 233280
+}
+
 interface FertilizerParticlesProps {
   tier: 'standard' | 'premium' | 'legendary'
   color: string
@@ -11,8 +15,8 @@ export function FertilizerParticles({ tier, color, glowColor }: FertilizerPartic
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {Array.from({ length: 25 }).map((_, i) => {
-          const startX = Math.random() * 100
-          const drift = (Math.random() - 0.5) * 30
+          const startX = stable01(i, 1) * 100
+          const drift = (stable01(i, 2) - 0.5) * 30
           
           return (
             <motion.div
@@ -37,7 +41,7 @@ export function FertilizerParticles({ tier, color, glowColor }: FertilizerPartic
                 scale: [0, 1, 1, 0.5],
               }}
               transition={{
-                duration: 2 + Math.random() * 1,
+                duration: 2 + stable01(i, 3),
                 delay: i * 0.08,
                 ease: 'easeIn',
                 times: [0, 0.1, 0.8, 1],
@@ -48,7 +52,7 @@ export function FertilizerParticles({ tier, color, glowColor }: FertilizerPartic
         
         {Array.from({ length: 8 }).map((_, i) => {
           const angle = (i * 360) / 8
-          const distance = 100 + Math.random() * 50
+          const distance = 100 + stable01(i, 4) * 50
           
           return (
             <motion.div
@@ -85,10 +89,10 @@ export function FertilizerParticles({ tier, color, glowColor }: FertilizerPartic
     return (
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {Array.from({ length: 40 }).map((_, i) => {
-          const angle = Math.random() * 360
-          const startDistance = 20 + Math.random() * 40
-          const endDistance = 150 + Math.random() * 100
-          const spiralSpeed = Math.random() * 720 + 360
+          const angle = stable01(i, 5) * 360
+          const startDistance = 20 + stable01(i, 6) * 40
+          const endDistance = 150 + stable01(i, 7) * 100
+          const spiralSpeed = stable01(i, 8) * 720 + 360
           
           return (
             <motion.div
@@ -132,8 +136,8 @@ export function FertilizerParticles({ tier, color, glowColor }: FertilizerPartic
         })}
         
         {Array.from({ length: 15 }).map((_, i) => {
-          const startX = Math.random() * 100
-          const startY = Math.random() * 100
+          const startX = stable01(i, 9) * 100
+          const startY = stable01(i, 10) * 100
           
           return (
             <motion.div
@@ -201,8 +205,8 @@ export function FertilizerParticles({ tier, color, glowColor }: FertilizerPartic
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {Array.from({ length: 60 }).map((_, i) => {
           const angle = (i * 360) / 60
-          const burstRadius = 200 + Math.random() * 150
-          const secondaryAngle = angle + (Math.random() - 0.5) * 60
+          const burstRadius = 200 + stable01(i, 11) * 150
+          const secondaryAngle = angle + (stable01(i, 12) - 0.5) * 60
           
           return (
             <motion.div
@@ -249,8 +253,8 @@ export function FertilizerParticles({ tier, color, glowColor }: FertilizerPartic
         })}
         
         {Array.from({ length: 30 }).map((_, i) => {
-          const startAngle = Math.random() * 360
-          const radius = 80 + Math.random() * 100
+          const startAngle = stable01(i, 13) * 360
+          const radius = 80 + stable01(i, 14) * 100
           
           return (
             <motion.div
@@ -314,9 +318,9 @@ export function FertilizerParticles({ tier, color, glowColor }: FertilizerPartic
         ))}
         
         {Array.from({ length: 20 }).map((_, i) => {
-          const startX = Math.random() * 100
-          const startY = Math.random() * 100
-          const floatDistance = 50 + Math.random() * 100
+          const startX = stable01(i, 15) * 100
+          const startY = stable01(i, 16) * 100
+          const floatDistance = 50 + stable01(i, 17) * 100
           
           return (
             <motion.div

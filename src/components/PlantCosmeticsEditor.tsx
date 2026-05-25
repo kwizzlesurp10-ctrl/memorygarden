@@ -39,9 +39,11 @@ export function PlantCosmeticsEditor({
 
   // Sync state when the memory prop changes
   useEffect(() => {
-    setSelectedPalette(memory?.cosmetics?.paletteId)
-    setSelectedAdornment(memory?.cosmetics?.adornmentId)
-    setSelectedPattern(memory?.cosmetics?.patternId)
+    queueMicrotask(() => {
+      setSelectedPalette(memory?.cosmetics?.paletteId)
+      setSelectedAdornment(memory?.cosmetics?.adornmentId)
+      setSelectedPattern(memory?.cosmetics?.patternId)
+    })
   }, [memory?.id, memory?.cosmetics?.paletteId, memory?.cosmetics?.adornmentId, memory?.cosmetics?.patternId])
 
   if (!memory) return null

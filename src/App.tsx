@@ -14,7 +14,7 @@ import { SearchFilterBar } from '@/components/SearchFilterBar'
 import { KeyboardShortcutsPanel } from '@/components/KeyboardShortcutsPanel'
 import { AppHeader, type ViewMode } from '@/components/AppHeader'
 import { useKeyboardShortcuts, APP_SHORTCUTS } from '@/lib/keyboard-shortcuts'
-import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits } from '@/lib/types'
+import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits, PlantVariety } from '@/lib/types'
 
 // ── Lazy-loaded non-critical components (modals, dialogs, secondary views) ──
 const ExportGarden = lazy(() => import('@/components/ExportGarden').then(m => ({ default: m.ExportGarden })))
@@ -151,6 +151,22 @@ function App() {
   const [cosmeticsEditMemory, setCosmeticsEditMemory] = useState<Memory | null>(null)
   const [isShortcutsPanelOpen, setIsShortcutsPanelOpen] = useState(false)
 
+  const fallbackPreferences = useMemo(
+    (): UserPreferences => ({
+      hasCompletedOnboarding: false,
+      soundEnabled: false,
+      lastVisit: '',
+    }),
+    []
+  )
+  const safeMemories = useMemo(() => memories || [], [memories])
+  const safePreferences = useMemo(
+    () => preferences ?? fallbackPreferences,
+    [preferences, fallbackPreferences]
+  )
+  const safeGardens = useMemo(() => collaborativeGardens || [], [collaborativeGardens])
+  const activeGarden = safeGardens.find((g) => g.id === activeGardenId) ?? null
+
   /** Process unlock state: evaluate new unlocks/achievements and notify */
   const processUnlockUpdates = useCallback((currentState: UnlockState): UnlockState => {
     let state = currentState
@@ -198,40 +214,16 @@ function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const shareId = params.get('share')
-    
+
     if (shareId && sharedMemories) {
       const sharedMem = sharedMemories[shareId]
       if (sharedMem) {
-        setSharedMemoryView(sharedMem)
+        queueMicrotask(() => {
+          setSharedMemoryView(sharedMem)
+        })
       }
     }
   }, [sharedMemories])
-
-  const handleProtocolAction = useCallback((action: ProtocolAction) => {
-    switch (action.type) {
-      case 'plant-memory':
-        if (safePreferences.hasCompletedOnboarding) {
-          setIsPlantModalOpen(true)
-          if (action.data) {
-            toast.info('Opening plant memory modal with data')
-          }
-        }
-        break
-      case 'view-memory':
-        const memory = safeMemories.find(m => m.id === action.id)
-        if (memory) {
-          handleMemoryClick(memory)
-        } else {
-          toast.error('Memory not found')
-        }
-        break
-      case 'unknown':
-        toast.info(`Protocol handler invoked: ${action.protocol}`)
-        break
-    }
-  }, [memories, preferences])
-
-  useProtocolHandler(handleProtocolAction)
 
   useEffect(() => {
     if (preferences && memories && memories.length === 0 && preferences.hasCompletedOnboarding) {
@@ -266,7 +258,7 @@ function App() {
     date: string
     location?: string
     audioRecordings: AudioRecording[]
-    plantVariety: import('@/lib/types').PlantVariety
+    plantVariety: PlantVariety
   }) => {
     const reader = new FileReader()
     reader.readAsDataURL(data.photoFile)
@@ -449,6 +441,33 @@ function App() {
       return updated
     })
   }
+
+  const handleProtocolAction = useCallback((action: ProtocolAction) => {
+    switch (action.type) {
+      case 'plant-memory':
+        if (safePreferences.hasCompletedOnboarding) {
+          setIsPlantModalOpen(true)
+          if (action.data) {
+            toast.info('Opening plant memory modal with data')
+          }
+        }
+        break
+      case 'view-memory': {
+        const found = safeMemories.find((m) => m.id === action.id)
+        if (found) {
+          handleMemoryClick(found)
+        } else {
+          toast.error('Memory not found')
+        }
+        break
+      }
+      case 'unknown':
+        toast.info(`Protocol handler invoked: ${action.protocol}`)
+        break
+    }
+  }, [handleMemoryClick, safeMemories, safePreferences])
+
+  useProtocolHandler(handleProtocolAction)
 
   const handleNavigateToMemory = (memoryId: string) => {
     const memory = safeMemories.find(m => m.id === memoryId)
@@ -761,32 +780,34 @@ function App() {
         }
 
         if (garden.members.length < garden.settings.maxMembers) {
-          setCollaborativeGardens((current) =>
-            (current || []).map(g => {
-              if (g.id === inviteGardenId) {
-                return {
-                  ...g,
-                  members: [...g.members, {
-                    userId: user.login,
-                    login: user.login,
-                    avatarUrl: user.avatarUrl,
-                    role: 'collaborator' as const,
-                    joinedAt: new Date().toISOString(),
-                  }],
+          queueMicrotask(() => {
+            setCollaborativeGardens((current) =>
+              (current || []).map(g => {
+                if (g.id === inviteGardenId) {
+                  return {
+                    ...g,
+                    members: [...g.members, {
+                      userId: user.login,
+                      login: user.login,
+                      avatarUrl: user.avatarUrl,
+                      role: 'collaborator' as const,
+                      joinedAt: new Date().toISOString(),
+                    }],
+                  }
                 }
-              }
-              return g
-            })
-          )
-          setActiveGardenId(inviteGardenId)
-          toast.success(`Joined "${garden.name}"!`)
-          window.history.replaceState({}, '', window.location.pathname)
+                return g
+              })
+            )
+            setActiveGardenId(inviteGardenId)
+            toast.success(`Joined "${garden.name}"!`)
+            window.history.replaceState({}, '', window.location.pathname)
+          })
         } else {
           toast.error('This garden is full')
         }
       }
     }
-  }, [user, collaborativeGardens])
+  }, [user, safeGardens])
 
   // Feature 5: Plant style preference handler
   const handleSavePlantStyle = (style: PlantStylePreference) => {
@@ -834,11 +855,6 @@ function App() {
     )
     toast.success('Plant appearance re-rolled!')
   }
-
-  const safeMemories = memories || []
-  const safePreferences = preferences || { hasCompletedOnboarding: false, soundEnabled: false, lastVisit: '' }
-  const safeGardens = collaborativeGardens || []
-  const safeActivities = gardenActivities || {}
 
   const syncStatus = useCloudSync({
     enabled: safePreferences.cloudSyncEnabled === true,
@@ -918,16 +934,6 @@ function App() {
   const gardenMood = useMemo<GardenMood>(
     () => computeGardenMood(activeFilterCount > 0 ? filteredMemories : safeMemories),
     [safeMemories, filteredMemories, activeFilterCount]
-  )
-
-  // Feature 2: Active collaborative garden
-  const activeGarden = useMemo(
-    () => safeGardens.find((g) => g.id === activeGardenId) || null,
-    [safeGardens, activeGardenId]
-  )
-  const activeGardenActivities = useMemo(
-    () => (activeGardenId ? safeActivities[activeGardenId] || [] : []),
-    [activeGardenId, safeActivities]
   )
 
   if (sharedMemoryView) {

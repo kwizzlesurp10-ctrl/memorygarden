@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
-import type { ReactionType } from '@/lib/social'
-import { REACTION_EMOJI, REACTION_LABEL } from '@/lib/social'
+import { REACTION_EMOJI, REACTION_LABEL, type ReactionType } from '@/lib/social'
 
 interface MemoryReactionsProps {
   reactions?: Partial<Record<ReactionType, { count: number; reactedBy: string[] }>>
