@@ -179,8 +179,7 @@ export function useKeyboardShortcuts({
         unregisterShortcut(id)
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, ...shortcuts.map(s => s.handler)])
+  }, [enabled, shortcuts])
 }
 
 // ── Pre-defined shortcut descriptors ──────────────────────────────────────────
