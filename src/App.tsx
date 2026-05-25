@@ -29,6 +29,7 @@ const GardenUnlocks = lazy(() => import('@/components/GardenUnlocks').then(m => 
 const PlantCosmeticsEditor = lazy(() => import('@/components/PlantCosmeticsEditor').then(m => ({ default: m.PlantCosmeticsEditor })))
 const BloomWall = lazy(() => import('@/components/BloomWall').then(m => ({ default: m.BloomWall })))
 const ExploreView = lazy(() => import('@/components/ExploreView').then(m => ({ default: m.ExploreView })))
+const CommunityGardenView = lazy(() => import('@/components/CommunityGardenView').then(m => ({ default: m.CommunityGardenView })))
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod } from '@/lib/garden-helpers'
 import { ensureUnlockState, generatePlantGenetics, awardForReflection, awardForRevisit, awardForClusterTending, awardForPlanting, applyAward, evaluateUnlocks, applyNewUnlocks, evaluateAchievements, deductRerollCost, canAffordReroll, UNLOCKABLE_ITEMS } from '@/lib/unlock-system'
 import { generateGeneticsSeed, computeUnlocks } from '@/lib/trait-system'
@@ -107,6 +108,7 @@ function App() {
   }, [preferences, memories])
 
   const [viewMode, setViewMode] = useState<ViewMode>('garden')
+  const [visitingGardenId, setVisitingGardenId] = useState<string | null>(null)
   const [isPlantModalOpen, setIsPlantModalOpen] = useState(false)
   const [_activityEvents, _setActivityEvents] = useKV<ActivityEvent[]>(`${localUser.id}:activity-events`, [])
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
@@ -1134,16 +1136,33 @@ function App() {
                 className="w-full h-full"
               >
                 <Suspense fallback={null}>
-                  <ExploreView
-                    onVisitGarden={(gardenId) => {
-                      toast.success('Visiting garden', {
-                        description: `Loading shared memories for ${gardenId}…`,
-                      })
-                    }}
-                    onJoinGarden={(gardenId) => {
-                      toast.success('Garden joined!', { description: gardenId })
-                    }}
-                  />
+                  {visitingGardenId ? (
+                    <CommunityGardenView
+                      gardenId={visitingGardenId}
+                      userId={localUser.id}
+                      userName={localUser.name || 'Anonymous Gardener'}
+                      onBack={() => setVisitingGardenId(null)}
+                      onPlantMemory={(gardenId) => {
+                        toast.info('Plant memory feature coming soon!', {
+                          description: `You'll be able to contribute to ${gardenId}`,
+                        })
+                      }}
+                    />
+                  ) : (
+                    <ExploreView
+                      userId={localUser.id}
+                      userName={localUser.name || 'Anonymous Gardener'}
+                      onVisitGarden={(gardenId) => {
+                        setVisitingGardenId(gardenId)
+                      }}
+                      onJoinGarden={(gardenId) => {
+                        toast.success('Welcome to the garden!', { 
+                          description: 'You can now water plants and add reflections',
+                        })
+                        setVisitingGardenId(gardenId)
+                      }}
+                    />
+                  )}
                 </Suspense>
               </motion.div>
             )}
