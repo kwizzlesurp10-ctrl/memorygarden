@@ -27,7 +27,7 @@ interface PlantMemoryModalProps {
     date: string
     location?: string
     audioRecordings: AudioRecording[]
-    plantVariety?: PlantVariety
+    plantVariety: PlantVariety
   }) => void
 }
 
@@ -132,13 +132,14 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
 
     setIsPlanting(true)
     try {
+      const finalVariety: PlantVariety = selectedVariety ?? suggestedVariety ?? 'flower'
       await onPlant({
         photoFile,
         text: text.trim(),
         date: date.toISOString(),
         location: location.trim() || undefined,
         audioRecordings,
-        plantVariety: selectedVariety ?? undefined,
+        plantVariety: finalVariety,
       })
 
       setPhotoFile(null)
@@ -329,7 +330,6 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
                         selected={date}
                         onSelect={(d) => d && setDate(d)}
                         disabled={(date) => date > new Date()}
-                        initialFocus
                       />
                     </PopoverContent>
                   </Popover>

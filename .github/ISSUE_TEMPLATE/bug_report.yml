@@ -1,0 +1,73 @@
+name: Bug report
+about: Create a report to help us improve MemoryGarden (optimized for Copilot / Claude / Gemini agents)
+description: Use this template for bugs. The AI agent will use this to reproduce, localize, and propose fixes via draft PR.
+title: '[BUG] '
+labels: ['bug', 'needs-triage']
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! This template is designed so the **GitHub Copilot Coding Agent** (or Claude/Gemini via CLAUDE.md/GEMINI.md) can autonomously investigate and open a draft PR.
+        
+        **Quick agent trigger**: Label `bug` + assign to `@copilot` (if Copilot Coding Agent enabled) or comment `/copilot fix this`.
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+      placeholder: "When I do X, Y happens instead of Z"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Steps to reproduce the behavior. Include screenshots, console logs, or network traces if relevant. Agent will attempt to replicate in CI.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        - Browser / OS / Device
+        - App version or commit SHA
+        - Spark / Vercel / local dev?
+        - Any recent changes or feature flags?
+    validations:
+      required: false
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context / Suggested files or modules
+      description: Any other context, or hints for the agent (e.g., "likely in src/components/GardenCanvas.tsx or growth logic in src/lib/plant.ts"). The agent reads CLAUDE.md, PRD.md, and test reports.
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Agent readiness checklist (for submitter)
+      options:
+        - label: I have searched existing issues and discussions
+        - label: I am willing to test the agent's draft PR
+        - label: This bug blocks core garden experience (high priority)

@@ -62,10 +62,10 @@ MemoryGarden is a client-heavy React app tuned for smooth, organic motion and lo
 - **Framer Motion** — Springs and transitions that feel alive.
 - **Radix UI** — Accessible primitives (dialogs, tabs, etc.).
 - **Persistence** — `useKV` from `@/lib/storage` scopes data per local user in **localStorage**; large photo payloads use **IndexedDB** so you stay under typical string quotas.
-- **AI** — `GET`/`POST` to **`/api/llm`** (Vercel Edge): prompts go to **Anthropic** with `ANTHROPIC_API_KEY` on the server. The browser never sees the key. If the route is missing or returns `503`, the app falls back gracefully (including optional **GitHub Spark** `window.spark` where present).
+- **AI** — `POST` to **`/api/llm`** (Vercel Edge): prompts go to **Anthropic** with `ANTHROPIC_API_KEY` on the server. The browser never sees the key. If the route is missing or returns `503`, the app falls back gracefully (including optional **GitHub Spark** `window.spark` where present).
 
 ### Sub-projects
-- **Volatility Sentinel** (`/volatility-sentinel`) — Standalone Python agent example (CoinGecko) illustrating how external tools can sit beside the web app.
+- **Volatility Sentinel** (`volatility-sentinel/` in the repo) — Standalone Python agent example (CoinGecko) you run separately from the Vite app; CI exercises it from its own directory.
 [/content-to-enhance]
 
 ## Getting Started
@@ -98,6 +98,17 @@ Opens the Vite dev server (default port **5173** unless configured otherwise).
 npm run build
 ```
 Output is written to **`dist/`** for static hosting.
+
+### Quality checks
+```bash
+npm run lint
+```
+
+### Preview the production bundle
+```bash
+npm run preview
+```
+Serves **`dist/`** locally (Vite preview server).
 
 ## Testing
 

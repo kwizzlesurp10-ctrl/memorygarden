@@ -5,6 +5,7 @@ import { Plant } from './Plant'
 import { WeatherEffects } from './WeatherEffects'
 import { GardenClusterPaths } from './GardenClusterPaths'
 import { getDayPeriod, getSeason, getSeasonalSky, getPlantSize } from '@/lib/garden-helpers'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 
 const MIN_CANVAS_SIZE = 2000
 const CANVAS_PADDING = 200
@@ -26,6 +27,7 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
   const [draggingMemory, setDraggingMemory] = useState<string | null>(null)
   const [dayPeriod, setDayPeriod] = useState(getDayPeriod())
   const [season, setSeason] = useState<Season>(propSeason || getSeason())
+  const shouldReduceMotion = useReducedMotion()
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -141,8 +143,8 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
         background: backgroundGradient,
       }}
     >
-      <ParallaxBackground dayPeriod={dayPeriod} season={season} />
-      <SeasonalEffects season={season} dayPeriod={dayPeriod} />
+      <ParallaxBackground dayPeriod={dayPeriod} season={season} shouldReduceMotion={shouldReduceMotion} />
+      <SeasonalEffects season={season} dayPeriod={dayPeriod} shouldReduceMotion={shouldReduceMotion} />
       {mood && <WeatherEffects mood={mood} season={season} />}
       
       <div
@@ -218,7 +220,7 @@ export function GardenCanvas({ memories, onMemoryClick, onMemoryMove, season: pr
   )
 }
 
-function ParallaxBackground({ dayPeriod, season }: { dayPeriod: 'dawn' | 'day' | 'dusk' | 'night'; season: Season }) {
+function ParallaxBackground({ dayPeriod, season, shouldReduceMotion }: { dayPeriod: 'dawn' | 'day' | 'dusk' | 'night'; season: Season; shouldReduceMotion: boolean }) {
   const isNight = dayPeriod === 'night' || dayPeriod === 'dusk'
   
   const getLeafColor = () => {
@@ -238,7 +240,7 @@ function ParallaxBackground({ dayPeriod, season }: { dayPeriod: 'dawn' | 'day' |
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       <motion.div
         className="absolute inset-0"
-        animate={{
+        animate={shouldReduceMotion ? false : {
           backgroundPosition: ['0% 0%', '100% 100%'],
         }}
         transition={{
@@ -253,7 +255,7 @@ function ParallaxBackground({ dayPeriod, season }: { dayPeriod: 'dawn' | 'day' |
         }}
       />
       
-      {[...Array(12)].map((_, i) => (
+      {!shouldReduceMotion && [...Array(12)].map((_, i) => (
         <motion.div
           key={i}
           className="absolute"
@@ -285,7 +287,7 @@ function ParallaxBackground({ dayPeriod, season }: { dayPeriod: 'dawn' | 'day' |
         </motion.div>
       ))}
       
-      {isNight && [...Array(20)].map((_, i) => (
+      {isNight && !shouldReduceMotion && [...Array(20)].map((_, i) => (
         <motion.div
           key={`star-${i}`}
           className="absolute w-1 h-1 bg-white rounded-full"
@@ -308,23 +310,24 @@ function ParallaxBackground({ dayPeriod, season }: { dayPeriod: 'dawn' | 'day' |
   )
 }
 
-function SeasonalEffects({ season, dayPeriod }: { season: Season; dayPeriod: 'dawn' | 'day' | 'dusk' | 'night' }) {
+function SeasonalEffects({ season, dayPeriod, shouldReduceMotion }: { season: Season; dayPeriod: 'dawn' | 'day' | 'dusk' | 'night'; shouldReduceMotion: boolean }) {
   if (season === 'spring') {
-    return <FallingPetals />
+    return <FallingPetals shouldReduceMotion={shouldReduceMotion} />
   }
   if (season === 'summer') {
-    return <FloatingFireflies dayPeriod={dayPeriod} />
+    return <FloatingFireflies dayPeriod={dayPeriod} shouldReduceMotion={shouldReduceMotion} />
   }
   if (season === 'autumn') {
-    return <FallingLeaves />
+    return <FallingLeaves shouldReduceMotion={shouldReduceMotion} />
   }
   if (season === 'winter') {
-    return <FallingSnow />
+    return <FallingSnow shouldReduceMotion={shouldReduceMotion} />
   }
   return null
 }
 
-function FallingPetals() {
+function FallingPetals({ shouldReduceMotion }: { shouldReduceMotion: boolean }) {
+  if (shouldReduceMotion) return null
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {[...Array(15)].map((_, i) => (
@@ -354,11 +357,9 @@ function FallingPetals() {
   )
 }
 
-function FloatingFireflies({ dayPeriod }: { dayPeriod: 'dawn' | 'day' | 'dusk' | 'night' }) {
+function FloatingFireflies({ dayPeriod, shouldReduceMotion }: { dayPeriod: 'dawn' | 'day' | 'dusk' | 'night'; shouldReduceMotion: boolean }) {
   const isVisible = dayPeriod === 'dusk' || dayPeriod === 'night'
-  
-  if (!isVisible) return null
-  
+  if (!isVisible || shouldReduceMotion) return null
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {[...Array(10)].map((_, i) => (
@@ -389,7 +390,8 @@ function FloatingFireflies({ dayPeriod }: { dayPeriod: 'dawn' | 'day' | 'dusk' |
   )
 }
 
-function FallingLeaves() {
+function FallingLeaves({ shouldReduceMotion }: { shouldReduceMotion: boolean }) {
+  if (shouldReduceMotion) return null
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {[...Array(20)].map((_, i) => {
@@ -434,7 +436,8 @@ function FallingLeaves() {
   )
 }
 
-function FallingSnow() {
+function FallingSnow({ shouldReduceMotion }: { shouldReduceMotion: boolean }) {
+  if (shouldReduceMotion) return null
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {[...Array(30)].map((_, i) => (

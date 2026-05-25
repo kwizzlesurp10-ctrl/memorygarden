@@ -23,6 +23,7 @@ import {
   Keyboard,
   SpeakerHigh,
   CloudArrowUp,
+  Globe,
 } from '@phosphor-icons/react'
 import { SeasonIndicator } from '@/components/SeasonIndicator'
 import { WeatherIndicator } from '@/components/WeatherIndicator'
@@ -30,7 +31,7 @@ import { GardenSelector } from '@/components/GardenSelector'
 import type { CollaborativeGarden, GardenMood, Season } from '@/lib/types'
 import type { LocalUser } from '@/lib/local-user'
 
-export type ViewMode = 'garden' | 'timeline' | 'clusters' | 'bloom'
+export type ViewMode = 'garden' | 'timeline' | 'clusters' | 'bloom' | 'explore'
 
 export interface AppHeaderProps {
   user: LocalUser
@@ -117,6 +118,10 @@ export function AppHeader(props: AppHeaderProps) {
           <TabsTrigger value="bloom" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Bloom wall">
             <SquaresFour size={18} className="flex-shrink-0" />
             <span className="hidden md:inline">Bloom wall</span>
+          </TabsTrigger>
+          <TabsTrigger value="explore" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Explore Gardens">
+            <Globe size={18} className="flex-shrink-0" />
+            <span className="hidden md:inline">Explore</span>
           </TabsTrigger>
         </TabsList>
       </Tabs>

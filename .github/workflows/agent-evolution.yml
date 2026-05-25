@@ -1,0 +1,92 @@
+name: Agent Evolution Sentinel
+
+on:
+  schedule:
+    # Weekly on Monday at 09:00 UTC — proactive evolution scan
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Evolution mode'
+        required: true
+        default: 'full-scan'
+        type: choice
+        options:
+          - full-scan
+          - bug-triage-support
+          - roadmap-alignment
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  evolution-scan:
+    name: Evolution Sentinel Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run quality baseline (lint + test + coverage summary)
+        run: |
+          npm run lint || true
+          npm test || true
+          npm run test:coverage || true
+          echo "## Evolution Sentinel Report - $(date -u +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Bundle & perf snapshot
+        run: |
+          npm run build || true
+          echo "Bundle and test artifacts ready for agent review." >> $GITHUB_STEP_SUMMARY
+
+      - name: Generate Evolution Proposal (if scheduled or manual)
+        if: github.event_name == 'schedule' || github.event.inputs.mode == 'full-scan' || github.event.inputs.mode == 'roadmap-alignment'
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## 🤖 Evolution Sentinel Findings
+
+          **Recommended next actions for Copilot / Claude Agent** (per AGENT_WORKFLOW.md):
+          1. Review latest coverage gaps and EDGE_CASE reports.
+          2. Cross-reference PRD.md roadmap items.
+          3. Propose 1-2 focused evolution PRs (refactor, test hardening, or calm UX micro-improvements).
+          4. Use evolution_request.yml template for tracking.
+
+          **Trigger the agent**:
+          - Create issue from evolution_request.yml
+          - Assign to @copilot or comment with clear goal + "follow AGENT_WORKFLOW.md"
+          - Or open in Cursor with CLAUDE.md loaded.
+
+          **This week's focus areas** (auto-suggested):
+          - Canvas performance / virtualization for large gardens
+          - Deeper seasonal / time-of-day atmosphere polish
+          - LLM fallback robustness + Spark parity tests
+          - Accessibility audit on modals and canvas controls
+          EOF
+
+      - name: Bug Triage Support (manual dispatch)
+        if: github.event.inputs.mode == 'bug-triage-support'
+        run: |
+          echo "Bug triage mode activated. Use AGENT_WORKFLOW.md + bug_report.yml for Copilot-driven fixes." >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload sentinel artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evolution-sentinel-report
+          path: |
+            coverage/
+            dist/
+          retention-days: 14

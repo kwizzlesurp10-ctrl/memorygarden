@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
 import { useKV } from '@/lib/storage'
 import { useMemoriesKV } from '@/hooks/use-memories-kv'
+import { createSeededMemories } from '@/lib/seed-memories'
 import { Toaster, toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import { SearchFilterBar } from '@/components/SearchFilterBar'
 import { KeyboardShortcutsPanel } from '@/components/KeyboardShortcutsPanel'
 import { AppHeader, type ViewMode } from '@/components/AppHeader'
 import { useKeyboardShortcuts, APP_SHORTCUTS } from '@/lib/keyboard-shortcuts'
+import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits } from '@/lib/types'
 
 // ── Lazy-loaded non-critical components (modals, dialogs, secondary views) ──
 const ExportGarden = lazy(() => import('@/components/ExportGarden').then(m => ({ default: m.ExportGarden })))
@@ -28,7 +30,7 @@ const PlantStyleCustomizer = lazy(() => import('@/components/PlantStyleCustomize
 const GardenUnlocks = lazy(() => import('@/components/GardenUnlocks').then(m => ({ default: m.GardenUnlocks })))
 const PlantCosmeticsEditor = lazy(() => import('@/components/PlantCosmeticsEditor').then(m => ({ default: m.PlantCosmeticsEditor })))
 const BloomWall = lazy(() => import('@/components/BloomWall').then(m => ({ default: m.BloomWall })))
-import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits } from '@/lib/types'
+const ExploreView = lazy(() => import('@/components/ExploreView').then(m => ({ default: m.ExploreView })))
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod } from '@/lib/garden-helpers'
 import { ensureUnlockState, generatePlantGenetics, awardForReflection, awardForRevisit, awardForClusterTending, awardForPlanting, applyAward, evaluateUnlocks, applyNewUnlocks, evaluateAchievements, deductRerollCost, canAffordReroll, UNLOCKABLE_ITEMS } from '@/lib/unlock-system'
 import { generateGeneticsSeed, computeUnlocks } from '@/lib/trait-system'
@@ -38,6 +40,7 @@ import { GardenAmbientLayer } from '@/components/GardenAmbientLayer'
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 import { EmptyGarden } from '@/components/EmptyGarden'
 import { useCloudSync, type SyncStatus } from '@/hooks/use-cloud-sync'
+import { toggleReaction, type ReactionType } from '@/lib/social'
 
 function describeSyncStatus(status: SyncStatus): string | null {
   switch (status.kind) {
@@ -96,8 +99,18 @@ function App() {
     lastVisit: new Date().toISOString(),
   })
 
+  // Seed beautiful example memories only on first-ever load
+  useEffect(() => {
+    if (!preferences?.hasCompletedOnboarding && memories.length === 0) {
+      const seeded = createSeededMemories()
+      setMemories(seeded)
+      setPreferences(p => ({ ...p, hasCompletedOnboarding: true }))
+    }
+  }, [preferences, memories])
+
   const [viewMode, setViewMode] = useState<ViewMode>('garden')
   const [isPlantModalOpen, setIsPlantModalOpen] = useState(false)
+  const [activityEvents, setActivityEvents] = useKV<ActivityEvent[]>(`${localUser.id}:activity-events`, [])
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
   const [aiReflection, setAiReflection] = useState<string>('')
   const [isLoadingAI, setIsLoadingAI] = useState(false)
@@ -253,7 +266,7 @@ function App() {
     date: string
     location?: string
     audioRecordings: AudioRecording[]
-    plantVariety?: import('@/lib/types').PlantVariety
+    plantVariety: import('@/lib/types').PlantVariety
   }) => {
     const reader = new FileReader()
     reader.readAsDataURL(data.photoFile)
@@ -515,6 +528,17 @@ function App() {
       }
     })
   }
+
+  const handleReaction = useCallback(
+    (memoryId: string, reactionType: ReactionType) => {
+      setMemories((currentMemories) =>
+        (currentMemories || []).map((m) =>
+          m.id === memoryId ? toggleReaction(m, reactionType, localUser.id) : m
+        )
+      )
+    },
+    [localUser.id]
+  )
 
   const handleAskAI = async (memoryId: string) => {
     const memory = (memories || []).find((m) => m.id === memoryId)
@@ -1097,6 +1121,29 @@ function App() {
               </motion.div>
             )}
 
+            {viewMode === 'explore' && (
+              <motion.div
+                key="explore"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full"
+              >
+                <Suspense fallback={null}>
+                  <ExploreView
+                    onVisitGarden={(gardenId) => {
+                      toast.success('Visiting garden', {
+                        description: `Loading shared memories for ${gardenId}…`,
+                      })
+                    }}
+                    onJoinGarden={(gardenId) => {
+                      toast.success('Garden joined!', { description: gardenId })
+                    }}
+                  />
+                </Suspense>
+              </motion.div>
+            )}
+
             {viewMode === 'bloom' && (
               <motion.div
                 key="bloom"
@@ -1117,21 +1164,21 @@ function App() {
             )}
           </AnimatePresence>
 
-          {safeMemories.length > 0 && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="fixed bottom-8 right-8 z-20"
+          {/* Always-available Plant Memory button (primary action) */}
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="fixed bottom-8 right-8 z-20"
+          >
+            <Button
+              size="lg"
+              onClick={() => setIsPlantModalOpen(true)}
+              className="rounded-full w-16 h-16 shadow-lg hover:shadow-xl transition-shadow"
+              aria-label="Plant a new memory"
             >
-              <Button
-                size="lg"
-                onClick={() => setIsPlantModalOpen(true)}
-                className="rounded-full w-16 h-16 shadow-lg hover:shadow-xl transition-shadow"
-              >
-                <PlantIcon size={28} weight="fill" />
-              </Button>
-            </motion.div>
-          )}
+              <PlantIcon size={28} weight="fill" />
+            </Button>
+          </motion.div>
         </main>
       </div>
 
@@ -1158,6 +1205,7 @@ function App() {
         isLoadingAI={isLoadingAI}
         allMemories={safeMemories}
         onNavigate={handleNavigateToMemory}
+        onReact={handleReaction}
       />
 
       <Suspense fallback={null}>

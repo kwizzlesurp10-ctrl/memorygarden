@@ -1,69 +1,62 @@
 import { motion } from 'framer-motion'
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
-import { Plant, Drop, Lightning, UserPlus, SignOut } from '@phosphor-icons/react'
-import { format } from 'date-fns'
+import { Heart, Lightning, SignOut, Tree, Users } from '@phosphor-icons/react'
 import type { ActivityEvent } from '@/lib/types'
 
 interface ActivityFeedProps {
   events: ActivityEvent[]
 }
 
-const eventIcons = {
-  plant: Plant,
-  reflect: Drop,
-  boost: Lightning,
-  join: UserPlus,
-  leave: SignOut,
-}
-
-const eventColors = {
-  plant: 'text-green-500',
-  reflect: 'text-blue-500',
-  boost: 'text-yellow-500',
-  join: 'text-primary',
-  leave: 'text-muted-foreground',
+function ActivityIcon({ type }: { type: ActivityEvent['type'] }) {
+  const common = { weight: 'fill' as const, size: 20 }
+  switch (type) {
+    case 'plant':
+      return <Tree {...common} />
+    case 'reflect':
+      return <Heart {...common} />
+    case 'boost':
+      return <Lightning {...common} />
+    case 'join':
+      return <Users {...common} />
+    case 'leave':
+      return <SignOut {...common} />
+  }
 }
 
 export function ActivityFeed({ events }: ActivityFeedProps) {
   if (events.length === 0) {
     return (
-      <div className="p-4 text-center">
-        <p className="text-sm text-muted-foreground">No activity yet</p>
+      <div className="p-8 text-center text-muted-foreground">
+        No activity yet. Start tending gardens to see social moments appear here.
       </div>
     )
   }
 
   return (
-    <div className="p-4 space-y-3">
-      <h3 className="text-sm font-semibold">Recent Activity</h3>
-      <div className="space-y-2 max-h-[300px] overflow-y-auto">
-        {events.slice(0, 20).map((event, index) => {
-          const Icon = eventIcons[event.type] || Plant
-          const colorClass = eventColors[event.type] || 'text-muted-foreground'
+    <div className="max-w-2xl mx-auto p-6 space-y-4">
+      <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+        <Users /> Garden Activity
+      </h3>
 
-          return (
-            <motion.div
-              key={event.id}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="flex items-start gap-2 py-1"
-            >
-              <Icon size={16} weight="duotone" className={`mt-0.5 flex-shrink-0 ${colorClass}`} />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs">
-                  <span className="font-medium">{event.userLogin}</span>{' '}
-                  {event.description}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {format(new Date(event.createdAt), 'MMM d, h:mm a')}
-                </p>
-              </div>
-            </motion.div>
-          )
-        })}
-      </div>
+      {events.map((event, index) => (
+        <motion.div
+          key={event.id}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.03 }}
+          className="flex gap-4 p-4 bg-card border rounded-2xl"
+        >
+          <div className="mt-1 text-primary">
+            <ActivityIcon type={event.type} />
+          </div>
+          <div className="flex-1 text-sm">
+            <span className="font-medium">{event.userLogin}</span>{' '}
+            <span className="text-muted-foreground">{event.description}</span>
+            <div className="text-xs text-muted-foreground mt-1">
+              {new Date(event.createdAt).toLocaleDateString()}
+            </div>
+          </div>
+        </motion.div>
+      ))}
     </div>
   )
 }
