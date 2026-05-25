@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 /**
  * Vercel Edge function — cloud sync for MemoryGarden.
  *

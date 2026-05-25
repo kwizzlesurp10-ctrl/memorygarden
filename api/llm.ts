@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 /**
  * Vercel Edge Function — proxies LLM completions to Anthropic.
  *
