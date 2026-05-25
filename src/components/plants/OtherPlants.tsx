@@ -226,5 +226,180 @@ export function VinePlant({ stage, color, stemColor, groundColor }: PlantProps) 
   )
 }
 
-export function HerbPlant(_props: PlantProps) { return <></> }
-export function WildflowerPlant(_props: PlantProps) { return <></> }
+// Herb plant — bushy, aromatic plant with small clustered leaves
+export function HerbPlant({ stage, color, stemColor, groundColor }: PlantProps) {
+  const idx = si(stage)
+  const phase = idx * 0.3
+  const stemH = 12 + idx * 6
+  const leafSize = 6 + idx * 1.5
+  const leafCount = Math.min(2 + idx * 2, 12)
+
+  if (idx < 1) {
+    // Seed stage
+    return (
+      <>
+        <ellipse cx="50" cy="86" rx="10" ry="3.5" fill={groundColor} opacity="0.6" />
+        <path d="M 42 86 C 42 81 46 78 50 78 C 54 78 58 81 58 86 Z" fill={groundColor} opacity="0.8" />
+        <ellipse cx="50" cy="79" rx="3" ry="2.5" fill={color} opacity="0.85" />
+      </>
+    )
+  }
+
+  return (
+    <>
+      <ellipse cx="50" cy="88" rx={12 + idx * 2} ry="4.5" fill={groundColor} opacity="0.62" />
+      <Sway dur={3.8} phase={phase}>
+        {/* Multiple stems for bushy appearance */}
+        <path d={`M 50 88 C 50 ${88 - stemH * 0.5} 50 ${88 - stemH * 0.8} 50 ${88 - stemH}`} stroke={stemColor} strokeWidth="1.8" fill="none" strokeLinecap="round" />
+        {idx >= 2 && (
+          <>
+            <path d={`M 47 88 C 45 ${88 - stemH * 0.4} 43 ${88 - stemH * 0.7} 42 ${88 - stemH * 0.85}`} stroke={stemColor} strokeWidth="1.4" fill="none" strokeLinecap="round" />
+            <path d={`M 53 88 C 55 ${88 - stemH * 0.4} 57 ${88 - stemH * 0.7} 58 ${88 - stemH * 0.85}`} stroke={stemColor} strokeWidth="1.4" fill="none" strokeLinecap="round" />
+          </>
+        )}
+        {/* Small rounded herb leaves */}
+        {Array.from({ length: leafCount }, (_, i) => {
+          const t = (i + 1) / (leafCount + 1)
+          const ly = 88 - stemH * t
+          const side = i % 2 === 0 ? -1 : 1
+          const lx = 50 + side * (4 + idx * 0.5)
+          return (
+            <g key={i}>
+              <ellipse 
+                cx={lx + side * leafSize * 0.5} 
+                cy={ly - 2} 
+                rx={leafSize * 0.7} 
+                ry={leafSize * 0.5} 
+                fill={color} 
+                opacity={0.78 + (i % 3) * 0.05}
+                transform={`rotate(${side * 20} ${lx + side * leafSize * 0.5} ${ly - 2})`}
+              />
+            </g>
+          )
+        })}
+        {/* Top cluster of small leaves */}
+        {idx >= 3 && (
+          <g transform={`translate(50, ${88 - stemH})`}>
+            {[0, 45, 90, 135, 180, 225, 270, 315].slice(0, Math.min(4 + idx, 8)).map((angle, i) => (
+              <ellipse
+                key={i}
+                cx={Math.cos(angle * Math.PI / 180) * (leafSize * 0.8)}
+                cy={Math.sin(angle * Math.PI / 180) * (leafSize * 0.6) - leafSize * 0.3}
+                rx={leafSize * 0.6}
+                ry={leafSize * 0.4}
+                fill={color}
+                opacity={0.8 + (i % 2) * 0.08}
+              />
+            ))}
+          </g>
+        )}
+        {/* Small flowers at maturity */}
+        {idx >= 6 && (
+          <g transform={`translate(50, ${88 - stemH - 4})`}>
+            {[0, 72, 144, 216, 288].map((angle, i) => (
+              <circle
+                key={i}
+                cx={Math.cos(angle * Math.PI / 180) * 6}
+                cy={Math.sin(angle * Math.PI / 180) * 4 - 2}
+                r="2"
+                fill="oklch(0.90 0.12 300)"
+                opacity="0.85"
+              />
+            ))}
+          </g>
+        )}
+      </Sway>
+    </>
+  )
+}
+
+// Wildflower — delicate stems with small colorful flowers
+export function WildflowerPlant({ stage, color, stemColor, groundColor }: PlantProps) {
+  const idx = si(stage)
+  const phase = idx * 0.25
+  const stemH = 14 + idx * 7
+  const flowerCount = Math.min(1 + Math.floor(idx / 2), 5)
+
+  if (idx < 1) {
+    // Seed stage
+    return (
+      <>
+        <ellipse cx="50" cy="86" rx="10" ry="3.5" fill={groundColor} opacity="0.6" />
+        <path d="M 43 86 C 43 82 46 79 50 79 C 54 79 57 82 57 86 Z" fill={groundColor} opacity="0.8" />
+        <ellipse cx="50" cy="80" rx="3.5" ry="2.5" fill={color} opacity="0.85" />
+      </>
+    )
+  }
+
+  // Generate stable random positions for flowers
+  const flowerPositions = Array.from({ length: flowerCount }, (_, i) => ({
+    x: 50 + (i % 2 === 0 ? -1 : 1) * (8 + i * 4),
+    h: stemH * (0.7 + i * 0.08),
+    size: 5 + idx * 0.5 - i * 0.3,
+  }))
+
+  return (
+    <>
+      <ellipse cx="50" cy="88" rx={10 + idx * 1.5} ry="4" fill={groundColor} opacity="0.62" />
+      <Sway dur={3.2} phase={phase}>
+        {/* Multiple thin stems */}
+        {flowerPositions.map((pos, i) => (
+          <path
+            key={`stem-${i}`}
+            d={`M 50 88 C ${50 + (pos.x - 50) * 0.3} ${88 - pos.h * 0.3} ${pos.x - (pos.x - 50) * 0.2} ${88 - pos.h * 0.7} ${pos.x} ${88 - pos.h}`}
+            stroke={stemColor}
+            strokeWidth={1.5 - i * 0.15}
+            fill="none"
+            strokeLinecap="round"
+          />
+        ))}
+        {/* Small grass-like leaves at base */}
+        {idx >= 2 && (
+          <>
+            <path d="M 50 88 C 45 80 40 72 38 65" stroke={color} strokeWidth="1.2" fill="none" strokeLinecap="round" opacity="0.7" />
+            <path d="M 50 88 C 55 80 60 72 62 65" stroke={color} strokeWidth="1.2" fill="none" strokeLinecap="round" opacity="0.7" />
+          </>
+        )}
+        {/* Flowers at different stages */}
+        {flowerPositions.map((pos, i) => {
+          if (idx < 3 + i) {
+            // Just a bud
+            return (
+              <ellipse
+                key={`flower-${i}`}
+                cx={pos.x}
+                cy={88 - pos.h}
+                rx={pos.size * 0.5}
+                ry={pos.size * 0.7}
+                fill={color}
+                opacity="0.85"
+              />
+            )
+          }
+          // Full wildflower
+          const petalCount = 5 + (i % 2)
+          return (
+            <g key={`flower-${i}`} transform={`translate(${pos.x}, ${88 - pos.h})`}>
+              {Array.from({ length: petalCount }, (_, j) => {
+                const angle = (j * 360) / petalCount - 90
+                return (
+                  <ellipse
+                    key={j}
+                    cx={Math.cos(angle * Math.PI / 180) * pos.size * 0.7}
+                    cy={Math.sin(angle * Math.PI / 180) * pos.size * 0.7}
+                    rx={pos.size * 0.5}
+                    ry={pos.size * 0.35}
+                    fill={color}
+                    opacity={0.85}
+                    transform={`rotate(${angle} ${Math.cos(angle * Math.PI / 180) * pos.size * 0.7} ${Math.sin(angle * Math.PI / 180) * pos.size * 0.7})`}
+                  />
+                )
+              })}
+              <circle cx="0" cy="0" r={pos.size * 0.35} fill="oklch(0.88 0.16 85)" opacity="0.95" />
+            </g>
+          )
+        })}
+      </Sway>
+    </>
+  )
+}
