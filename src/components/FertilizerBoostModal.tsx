@@ -94,7 +94,7 @@ export function FertilizerBoostModal({ open, onClose, memory, onApplyBoost }: Fe
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden border-2 border-primary/20">
+      <DialogContent className="max-w-2xl p-0 overflow-hidden border-2 border-primary/20 max-h-[90vh] flex flex-col">
         <AnimatePresence mode="wait">
           {showSuccess ? (
             <motion.div
@@ -135,9 +135,9 @@ export function FertilizerBoostModal({ open, onClose, memory, onApplyBoost }: Fe
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="relative"
+              className="relative flex flex-col overflow-hidden"
             >
-              <div className="relative p-8 pb-6 bg-gradient-to-br from-primary/5 via-background to-accent/5">
+              <div className="relative p-6 sm:p-8 pb-4 sm:pb-6 bg-gradient-to-br from-primary/5 via-background to-accent/5 flex-shrink-0">
                 <motion.div
                   className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-30"
                   style={{ background: selectedOption?.color || 'oklch(0.65 0.12 160)' }}
@@ -225,7 +225,7 @@ export function FertilizerBoostModal({ open, onClose, memory, onApplyBoost }: Fe
                 </div>
               </div>
 
-              <div className="p-8 pt-4">
+              <div className="p-6 sm:p-8 pt-4 flex-1 overflow-y-auto">
                 <div className="grid gap-4 mb-6">
                   {boostOptions.map((option, index) => {
                     const isSelected = selectedBoost === option.level
