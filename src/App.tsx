@@ -1212,7 +1212,7 @@ function App() {
                     <CommunityGardenView
                       gardenId={visitingGardenId}
                       userId={localUser.id}
-                      userName={localUser.name || 'Anonymous Gardener'}
+                      userName={localUser.login || 'Anonymous Gardener'}
                       onBack={() => setVisitingGardenId(null)}
                       onPlantMemory={(gardenId) => {
                         toast.info('Plant memory feature coming soon!', {
@@ -1223,7 +1223,7 @@ function App() {
                   ) : (
                     <ExploreView
                       userId={localUser.id}
-                      userName={localUser.name || 'Anonymous Gardener'}
+                      userName={localUser.login || 'Anonymous Gardener'}
                       onVisitGarden={(gardenId) => {
                         console.log("[v0] onVisitGarden called with:", gardenId)
                         setVisitingGardenId(gardenId)
