@@ -24,7 +24,9 @@ import {
   SpeakerHigh,
   CloudArrowUp,
   Globe,
+  ChatCircleDots,
 } from '@phosphor-icons/react'
+import { Badge } from '@/components/ui/badge'
 import { SeasonIndicator } from '@/components/SeasonIndicator'
 import { WeatherIndicator } from '@/components/WeatherIndicator'
 import { GardenSelector } from '@/components/GardenSelector'
@@ -55,6 +57,9 @@ export interface AppHeaderProps {
   onInviteToGarden: () => void
   onOpenShortcuts: () => void
   onOpenProtocolTest: () => void
+  onToggleActivityPanel?: () => void
+  isActivityPanelOpen?: boolean
+  activityCount?: number
 }
 
 export function AppHeader(props: AppHeaderProps) {
@@ -80,6 +85,9 @@ export function AppHeader(props: AppHeaderProps) {
     onInviteToGarden,
     onOpenShortcuts,
     onOpenProtocolTest,
+    onToggleActivityPanel,
+    isActivityPanelOpen,
+    activityCount = 0,
   } = props
 
   return (
@@ -127,6 +135,27 @@ export function AppHeader(props: AppHeaderProps) {
       </Tabs>
 
       <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+        {activeGarden && onToggleActivityPanel && (
+          <Button
+            variant={isActivityPanelOpen ? 'secondary' : 'ghost'}
+            size="icon"
+            className="relative h-9 w-9"
+            aria-label="Toggle garden activity panel"
+            aria-pressed={isActivityPanelOpen}
+            onClick={onToggleActivityPanel}
+            title="Garden activity & members"
+          >
+            <ChatCircleDots size={20} weight={isActivityPanelOpen ? 'fill' : 'regular'} />
+            {activityCount > 0 && !isActivityPanelOpen && (
+              <Badge
+                variant="default"
+                className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] leading-none flex items-center justify-center rounded-full"
+              >
+                {activityCount > 99 ? '99+' : activityCount}
+              </Badge>
+            )}
+          </Button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Open menu">

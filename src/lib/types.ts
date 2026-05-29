@@ -82,6 +82,12 @@ export interface Memory {
   cosmetics?: PlantCosmetics
   /** Optional social reactions (sprout, water, bloom, etc.) */
   reactions?: Partial<Record<MemoryReactionType, MemoryReactionEntry>>
+  /** Original planter. Optional for backward compat with memories created before Phase 2.1. */
+  plantedBy?: {
+    id: string
+    login: string
+    avatarUrl: string
+  }
 }
 
 export interface SharedMemory {
@@ -107,6 +113,12 @@ export interface Reflection {
   createdAt: string
   audioUrl?: string
   tone?: EmotionalTone
+  /** User who added this reflection. Optional for backward compat with reflections written before Phase 2.1. */
+  contributorId?: string
+  contributorLogin?: string
+  contributorAvatarUrl?: string
+  /** True when the reflection was added by someone other than the memory's original planter — a "tend" rather than a self-reflection. */
+  isTend?: boolean
 }
 
 export interface GrowthMetrics {
