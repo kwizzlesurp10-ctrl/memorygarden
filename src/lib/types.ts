@@ -88,6 +88,10 @@ export interface Memory {
     login: string
     avatarUrl: string
   }
+  /** IDs of parent memories if this was created via Cross-Pollination */
+  parentMemories?: string[]
+  /** True if this memory is a hybrid created via Cross-Pollination */
+  isHybrid?: boolean
 }
 
 export interface SharedMemory {
