@@ -465,6 +465,8 @@ export function getPlantSize(memoryOrStage: Memory | PlantStage, metrics?: Growt
   return { width: 50, height: 50 }
 }
 
+export type PlantCondition = 'neglected' | 'eternal' | 'normal'
+
 export interface VisualParams {
   color: string
   size: number
@@ -474,11 +476,12 @@ export interface VisualParams {
   scaleX: number
   leafOpacity: number
   bloomOpacity: number
+  condition: PlantCondition
 }
 
 export function getVisualParams(memory: Memory, metrics: GrowthMetrics): VisualParams {
   const season = getSeason()
-  const color = getSeasonalPlantModifier(season, memory.emotionalTone)
+  let color = getSeasonalPlantModifier(season, memory.emotionalTone)
   
   let specialClass: 'rare' | 'legendary' | undefined
   let glow = 0
@@ -506,6 +509,18 @@ export function getVisualParams(memory: Memory, metrics: GrowthMetrics): VisualP
   const progress = stageProgress[stage] || 0.5
   const baseSize = Math.max(metrics.width, metrics.height)
   
+  const daysSincePlanted = Math.floor((Date.now() - new Date(memory.plantedAt).getTime()) / 86400000)
+  const daysSinceInteraction = Math.floor((Date.now() - metrics.lastInteractionAt) / 86400000)
+  
+  let condition: PlantCondition = 'normal'
+  if (metrics.vitality >= 90 && daysSincePlanted > 30) {
+    condition = 'eternal'
+    glow = Math.max(glow, 2.5)
+  } else if (metrics.vitality < 40 && daysSinceInteraction > 10) {
+    condition = 'neglected'
+    color = `color-mix(in oklch, ${color} 60%, #4a4a4a)`
+  }
+
   return {
     color,
     size: baseSize,
@@ -515,6 +530,7 @@ export function getVisualParams(memory: Memory, metrics: GrowthMetrics): VisualP
     scaleX: 0.9 + (metrics.vitality / 100) * 0.2,
     leafOpacity: Math.min(1, progress * 1.2),
     bloomOpacity: Math.max(0, (progress - 0.5) * 2),
+    condition,
   }
 }
 
