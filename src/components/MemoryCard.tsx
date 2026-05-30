@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork, ChartBar, Lightning, Palette, CaretLeft, CaretRight, HandHeart } from '@phosphor-icons/react'
+import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork, ChartBar, Lightning, Palette, CaretLeft, CaretRight, HandHeart, Link } from '@phosphor-icons/react'
 import { AudioPlayer } from '@/components/AudioPlayer'
 import { WaterPlantButton } from '@/components/WaterPlantButton'
 import { MemoryReactions } from '@/components/MemoryReactions'
@@ -30,6 +30,7 @@ interface MemoryCardProps {
   onBoost?: (memoryId: string) => void
   onUpdateTraits?: (memoryId: string, traits: PlantTraits) => void
   onCustomize?: () => void
+  onCrossPollinate?: (memoryId: string) => void
   aiReflection?: string
   isLoadingAI?: boolean
   allMemories?: Memory[]
@@ -48,6 +49,7 @@ export function MemoryCard({
   onBoost,
   onUpdateTraits,
   onCustomize,
+  onCrossPollinate,
   aiReflection,
   isLoadingAI,
   allMemories = [],
@@ -573,6 +575,23 @@ export function MemoryCard({
                     >
                       <Palette size={18} weight="duotone" className="mr-2 text-primary" />
                       Customize Plant
+                    </Button>
+                  </motion.div>
+                )}
+
+                {onCrossPollinate && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    <Button
+                      onClick={() => onCrossPollinate(memory.id)}
+                      variant="outline"
+                      className="w-full border border-border hover:border-accent/50 hover:bg-accent/5 transition-all"
+                    >
+                      <Link size={18} weight="duotone" className="mr-2 text-accent" />
+                      Cross-Pollinate (Link Memories)
                     </Button>
                   </motion.div>
                 )}

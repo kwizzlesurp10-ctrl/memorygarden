@@ -34,7 +34,7 @@ const GardenMembersPanel = lazy(() => import('@/components/GardenMembersPanel').
 const ActivityFeed = lazy(() => import('@/components/ActivityFeed').then(m => ({ default: m.ActivityFeed })))
 const ContributorLeaderboard = lazy(() => import('@/components/ContributorLeaderboard').then(m => ({ default: m.ContributorLeaderboard })))
 import { countUnreadActivity, deriveActivityFromMemories } from '@/lib/activity-helpers'
-import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod } from '@/lib/garden-helpers'
+import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod, generateHybridTraits } from '@/lib/garden-helpers'
 import { ensureUnlockState, generatePlantGenetics, awardForReflection, awardForRevisit, awardForClusterTending, awardForPlanting, applyAward, evaluateUnlocks, applyNewUnlocks, evaluateAchievements, deductRerollCost, canAffordReroll, UNLOCKABLE_ITEMS } from '@/lib/unlock-system'
 import { generateGeneticsSeed, computeUnlocks } from '@/lib/trait-system'
 import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
@@ -128,6 +128,10 @@ function App() {
   const [memoryToBoost, setMemoryToBoost] = useState<Memory | null>(null)
   const [growingMemories, setGrowingMemories] = useState<Set<string>>(new Set())
   const [memoryBoostTiers, setMemoryBoostTiers] = useState<Map<string, 'standard' | 'premium' | 'legendary'>>(new Map())
+  
+  // Cross-pollination state
+  const [pollinationParent, setPollinationParent] = useState<Memory | null>(null)
+  const [hybridParents, setHybridParents] = useState<[Memory, Memory] | null>(null)
 
   // Feature 1: Search/Filter state
   const [searchQuery, setSearchQuery] = useState('')
@@ -329,6 +333,23 @@ function App() {
           const emotionalTone = await classifyEmotionalTone(data.text)
           const plantVariety = data.plantVariety ?? selectPlantVariety(emotionalTone, data.text)
           
+          let finalTraits: PlantTraits = {}
+          let finalVariety = data.plantVariety ?? selectPlantVariety(emotionalTone, data.text)
+          let finalGeneticsSeed = generateGeneticsSeed()
+          let isHybrid = false
+          let parentMemories: string[] | undefined = undefined
+
+          if (hybridParents) {
+             const hybridData = generateHybridTraits(hybridParents[0], hybridParents[1])
+             finalTraits = hybridData.traits
+             finalGeneticsSeed = hybridData.geneticsSeed
+             // Let the hybrid logic override the variety
+             finalVariety = hybridData.variety
+             isHybrid = true
+             parentMemories = [hybridParents[0].id, hybridParents[1].id]
+             setHybridParents(null)
+          }
+
           const newMemory: Memory = {
             id: `memory-${Date.now()}`,
             photoUrl,
@@ -341,18 +362,20 @@ function App() {
               y: 400 + Math.random() * 800,
             },
             emotionalTone,
-            plantVariety,
+            plantVariety: finalVariety,
             plantStage: 'seed',
             visitCount: 0,
             reflections: [],
             audioRecordings: data.audioRecordings,
-            geneticsSeed: generateGeneticsSeed(),
-            traits: {},
+            geneticsSeed: finalGeneticsSeed,
+            traits: finalTraits,
             unlocks: [],
             genetics: generatePlantGenetics(`${Date.now()}-${Math.random().toString(36).substring(2)}`),
             plantedBy: user
               ? { id: user.id, login: user.login, avatarUrl: user.avatarUrl }
               : undefined,
+            isHybrid,
+            parentMemories,
           }
 
           setMemories((currentMemories) => [...(currentMemories || []), newMemory])
@@ -397,6 +420,19 @@ function App() {
   }
 
   const handleMemoryClick = (memory: Memory) => {
+    if (pollinationParent) {
+      if (pollinationParent.id === memory.id) {
+        toast.error('Cannot cross-pollinate a memory with itself.')
+        setPollinationParent(null)
+        return
+      }
+      setHybridParents([pollinationParent, memory])
+      setPollinationParent(null)
+      setIsPlantModalOpen(true)
+      toast.success('Parents linked! Now plant your hybrid seed.')
+      return
+    }
+
     const nearbyMemories = (memories || []).filter(
       (m) =>
         m.id !== memory.id &&
@@ -771,6 +807,15 @@ function App() {
     toast.success(`${boostNames[boostLevel]} applied! Your memory is flourishing.`)
   }
 
+  const handleCrossPollinateInit = (memoryId: string) => {
+    const parent1 = safeMemories.find(m => m.id === memoryId)
+    if (parent1) {
+      setPollinationParent(parent1)
+      setSelectedMemory(null)
+      toast.info('Select a second memory in your garden to cross-pollinate with!')
+    }
+  }
+
   const handleUpdateTraits = (memoryId: string, traits: PlantTraits) => {
     let updatedForSelection: Memory | null = null
     setMemories((currentMemories) =>
@@ -1105,7 +1150,24 @@ function App() {
           availableLocations={availableLocations}
         />
 
-        <main className="flex-1 relative overflow-hidden">
+        <main className="flex-1 relative outline-none" tabIndex={-1}>
+          <GardenAmbientLayer mood={gardenMood} weather={currentWeather} />
+          
+          <AnimatePresence>
+            {pollinationParent && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="absolute top-20 left-1/2 -translate-x-1/2 z-30 px-6 py-3 bg-accent/90 text-accent-foreground rounded-full shadow-lg backdrop-blur-sm border border-accent flex items-center gap-3 cursor-pointer"
+                onClick={() => setPollinationParent(null)}
+              >
+                <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                <span className="font-medium text-sm">Select a memory to cross-pollinate with (click to cancel)</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <AnimatePresence mode="wait">
             {viewMode === 'garden' && (
               <motion.div
@@ -1297,6 +1359,7 @@ function App() {
         onBoost={handleOpenBoost}
         onUpdateTraits={handleUpdateTraits}
         onCustomize={selectedMemory ? () => handleOpenCosmeticsEditor(selectedMemory) : undefined}
+        onCrossPollinate={handleCrossPollinateInit}
         aiReflection={aiReflection}
         isLoadingAI={isLoadingAI}
         allMemories={safeMemories}
