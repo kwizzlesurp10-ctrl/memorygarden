@@ -26,6 +26,17 @@ if (typeof window !== 'undefined' && !document.getElementById('botanical-symbols
         <path d="M12 8 Q8 14 6 22" stroke="#1a1a1a" stroke-width="0.22" fill="none" opacity="0.15"/>
         <path d="M12 8 Q16 14 18 22" stroke="#1a1a1a" stroke-width="0.22" fill="none" opacity="0.15"/>
       </symbol>
+      <symbol id="moss-drape" viewBox="0 0 10 20">
+        <path d="M 5 0 Q 3 5 5 10 T 5 20" stroke="oklch(0.55 0.12 140)" stroke-width="0.8" fill="none" opacity="0.75"/>
+        <path d="M 5 2 Q 7 6 6 12 T 4 18" stroke="oklch(0.60 0.10 135)" stroke-width="0.6" fill="none" opacity="0.6"/>
+      </symbol>
+      <symbol id="succulent-thorn" viewBox="0 0 4 4">
+        <path d="M 2 4 L 1.5 0 L 2.5 0 Z" fill="oklch(0.9 0.05 10)" opacity="0.8"/>
+      </symbol>
+      <filter id="plant-bloom-filter">
+        <feGaussianBlur stdDeviation="0.8" result="blur"/>
+        <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+      </filter>
     </defs>
   `
   document.body.appendChild(svg)
@@ -94,6 +105,16 @@ export function TreePlant({ stage, color, stemColor, groundColor }: PlantProps) 
         {idx >= 5 && <ellipse cx={50 - canopyRx * 0.5} cy={trunkTopY - canopyRy * 0.28} rx={canopyRx * 0.72} ry={canopyRy * 0.70} fill={color} opacity="0.76" />}
         {idx >= 5 && <ellipse cx={50 + canopyRx * 0.5} cy={trunkTopY - canopyRy * 0.28} rx={canopyRx * 0.72} ry={canopyRy * 0.70} fill={color} opacity="0.74" />}
         <ellipse cx="50" cy={trunkTopY - canopyRy * 0.18} rx={canopyRx} ry={canopyRy * 0.92} fill={color} opacity="0.86" />
+        
+        {/* Moss Drapes on branches for elder trees */}
+        {idx >= 6 && (
+          <g>
+            <use href="#moss-drape" x={45 - canopyRx * 0.3} y={trunkTopY} width="10" height="20" />
+            <use href="#moss-drape" x={55 + canopyRx * 0.3} y={trunkTopY - 2} width="8" height="16" />
+            <use href="#moss-drape" x="48" y={trunkTopY + 5} width="6" height="12" />
+          </g>
+        )}
+        
         {idx >= 3 && <ellipse cx="50" cy={trunkTopY - canopyRy * 0.7} rx={canopyRx * 0.65} ry={canopyRy * 0.58} fill={color} opacity="0.70" />}
         {idx >= 5 && <ellipse cx={50 - canopyRx * 0.25} cy={trunkTopY - canopyRy * 0.55} rx={canopyRx * 0.35} ry={canopyRy * 0.30} fill={color} opacity="0.40" style={{ filter: 'brightness(1.20)' }} />}
       </Sway>
@@ -135,8 +156,16 @@ export function SucculentPlant({ stage, color, groundColor }: PlantProps) {
           d={`M ${bx.toFixed(1)} ${by.toFixed(1)} Q ${mx.toFixed(1)} ${my.toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)} Q ${mx2.toFixed(1)} ${my2.toFixed(1)} ${bx.toFixed(1)} ${by.toFixed(1)} Z`}
           fill={color}
           opacity={opacity}
+          filter={idx >= 5 ? "url(#plant-bloom-filter)" : undefined}
+        />
+        <path
+          d={`M ${bx.toFixed(1)} ${by.toFixed(1)} Q ${mx.toFixed(1)} ${my.toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)} Q ${mx2.toFixed(1)} ${my2.toFixed(1)} ${bx.toFixed(1)} ${by.toFixed(1)} Z`}
+          fill={color}
+          opacity={opacity * 0.4}
+          style={{ filter: 'brightness(0.85) contrast(1.15)' }}
         />
         {idx >= 4 && <use href="#leaf-vein" x={bx - 2} y={by - 5} width="8" height="12" />}
+        {idx >= 5 && <use href="#succulent-thorn" x={tx - 2} y={ty - 2} width="4" height="4" transform={`rotate(${angle * 180 / Math.PI + 90} ${tx} ${ty})`} />}
       </g>
     )
   }
@@ -202,6 +231,10 @@ export function VinePlant({ stage, color, stemColor, groundColor }: PlantProps) 
             <g key={i}>
               <path d={`M ${lx} ${vy} C ${lx + side * ll * 0.35} ${vy - ll * 0.22} ${tipX - side * ll * 0.22} ${tipY + ll * 0.22} ${tipX} ${tipY} C ${tipX - side * ll * 0.22} ${tipY + ll * 0.45} ${lx + side * ll * 0.1} ${vy + ll * 0.18} ${lx} ${vy} Z`} fill={color} opacity={0.80 + (i % 3) * 0.04} />
               <use href="#leaf-vein" x={lx - 3} y={vy - 6} width="8" height="10" />
+              {/* Curly Tendrils for realistic vining */}
+              {idx >= 4 && i % 2 === 1 && (
+                <path d={`M ${lx} ${vy} C ${lx + side * 6} ${vy - 3} ${lx + side * 9} ${vy + 3} ${lx + side * 6} ${vy + 6} C ${lx + side * 3} ${vy + 9} ${lx + side * 1.5} ${vy + 6} ${lx + side * 3} ${vy + 3}`} stroke={stemColor} strokeWidth="0.8" fill="none" opacity="0.5" />
+              )}
             </g>
           )
         })}
