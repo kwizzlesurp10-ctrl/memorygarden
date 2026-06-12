@@ -4,7 +4,7 @@ import type { Memory, PlantStage, Season, PlantVariety } from '@/lib/types'
 import { getSeason, calculateGrowthMetrics, getVisualParams, getPlantStage } from '@/lib/garden-helpers'
 import { resolveTraitVisuals, type ResolvedTraitVisuals } from '@/lib/trait-system'
 import { FlowerPlant } from './plants/FlowerPlant'
-import { TreePlant, SucculentPlant, VinePlant, HerbPlant, WildflowerPlant } from './plants/OtherPlants'
+import { TreePlant, SucculentPlant, VinePlant, HerbPlant, WildflowerPlant, LegendaryPlant } from './plants/OtherPlants'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 
 /** Simple seeded PRNG for deterministic visual positions based on memory id */
@@ -459,17 +459,4 @@ function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity: _l
   )
 }
 
-function _SeedSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
-function _SproutSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
-function _BudSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
-function _BloomSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
-function _MatureSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
-function _EvergreenSVG(_props: { color: string; season: Season }) { /* ... */ return <></> }
-function LegendaryPlant(_props: {
-  variety: PlantVariety
-  stage: PlantStage
-  color: string
-  stemColor: string
-  groundColor: string
-  season: Season
-}) { /* ... */ return null }
+
