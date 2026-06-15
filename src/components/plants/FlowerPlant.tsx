@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { PlantStage, Season } from '@/lib/types'
+import { motion } from 'framer-motion'
 
 interface PlantProps {
   stage: PlantStage
@@ -335,7 +336,16 @@ function Bloom({ color, stemColor, groundColor, season, phase }: any) {
     <>
       <ellipse cx="50" cy="90" rx="18" ry="5.5" fill={groundColor} opacity="0.65" />
       <Sway dur={4.6} phase={phase}>
-        <path d="M 50 90 C 53 73 47 54 50 26" stroke={stemColor} strokeWidth="3" fill="none" strokeLinecap="round" />
+        <motion.path 
+          d="M 50 90 C 53 73 47 54 50 26" 
+          stroke={stemColor} 
+          strokeWidth="3" 
+          fill="none" 
+          strokeLinecap="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 1.2, ease: [0.23, 1.0, 0.32, 1] }}
+        />
         <path d="M 50 74 C 40 67 24 63 20 72 C 27 69 40 71 50 74 Z" fill={color} opacity="0.86" />
         <line x1="50" y1="74" x2="24" y2="71" stroke={stemColor} strokeWidth="0.9" opacity="0.38" />
         <path d="M 50 60 C 60 53 76 50 79 58 C 71 56 59 58 50 60 Z" fill={color} opacity="0.83" />
