@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { PlantStage, Season } from '@/lib/types'
+import { motion } from 'framer-motion'
 
 interface PlantProps {
   stage: PlantStage
@@ -30,6 +31,22 @@ if (typeof window !== 'undefined' && !document.getElementById('botanical-symbols
         <ellipse cx="8.5" cy="2" rx="0.9" ry="1.4" fill="oklch(0.96 0.12 85)" opacity="0.85"/>
         <ellipse cx="6" cy="6.2" rx="0.9" ry="1.4" fill="oklch(0.96 0.12 85)" opacity="0.85"/>
       </symbol>
+      <symbol id="dew-drop" viewBox="0 0 4 4">
+        <circle cx="2" cy="2" r="1.5" fill="white" opacity="0.35" />
+        <circle cx="1.2" cy="1.2" r="0.6" fill="white" opacity="0.8" />
+        <path d="M 1.2 3 Q 2.5 3.2 3 2.5" stroke="white" stroke-width="0.3" fill="none" opacity="0.6"/>
+      </symbol>
+      <symbol id="pollen-dust" viewBox="0 0 10 10">
+        <circle cx="2" cy="3" r="0.5" fill="oklch(0.85 0.18 90)" opacity="0.8" />
+        <circle cx="8" cy="4" r="0.4" fill="oklch(0.85 0.18 90)" opacity="0.7" />
+        <circle cx="5" cy="7" r="0.6" fill="oklch(0.95 0.15 90)" opacity="0.9" />
+        <circle cx="3" cy="8" r="0.3" fill="oklch(0.85 0.18 90)" opacity="0.6" />
+        <circle cx="7" cy="1" r="0.5" fill="oklch(0.90 0.18 90)" opacity="0.8" />
+      </symbol>
+      <filter id="flower-glow">
+        <feGaussianBlur stdDeviation="2" result="blur"/>
+        <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+      </filter>
     </defs>
   `
   document.body.appendChild(svg)
@@ -90,6 +107,17 @@ function LayeredPetal({
       
       {/* Fine veins using reusable symbol */}
       <use href="#vein-primary" x="-10" y="-28" width="20" height="30" />
+      
+      {/* Realistic Additives: Dew drops and pollen dusting based on angle & layer */}
+      {layer === 0 && angle % 3 === 0 && (
+        <use href="#dew-drop" x="-4" y="-18" width="4" height="4" />
+      )}
+      {layer === 1 && angle % 2 === 0 && (
+        <use href="#dew-drop" x="2" y="-14" width="4" height="4" />
+      )}
+      {layer === 2 && (
+        <use href="#pollen-dust" x="-5" y="-8" width="10" height="10" />
+      )}
     </g>
   )
 }
@@ -308,7 +336,16 @@ function Bloom({ color, stemColor, groundColor, season, phase }: any) {
     <>
       <ellipse cx="50" cy="90" rx="18" ry="5.5" fill={groundColor} opacity="0.65" />
       <Sway dur={4.6} phase={phase}>
-        <path d="M 50 90 C 53 73 47 54 50 26" stroke={stemColor} strokeWidth="3" fill="none" strokeLinecap="round" />
+        <motion.path 
+          d="M 50 90 C 53 73 47 54 50 26" 
+          stroke={stemColor} 
+          strokeWidth="3" 
+          fill="none" 
+          strokeLinecap="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 1.2, ease: [0.23, 1.0, 0.32, 1] }}
+        />
         <path d="M 50 74 C 40 67 24 63 20 72 C 27 69 40 71 50 74 Z" fill={color} opacity="0.86" />
         <line x1="50" y1="74" x2="24" y2="71" stroke={stemColor} strokeWidth="0.9" opacity="0.38" />
         <path d="M 50 60 C 60 53 76 50 79 58 C 71 56 59 58 50 60 Z" fill={color} opacity="0.83" />
@@ -390,13 +427,28 @@ function Elder({ color, stemColor, groundColor, season, phase }: any) {
           {[0, 60, 120, 180, 240, 300].map((angle, i) => (
             <LayeredPetal key={i} angle={angle} scale={0.65} opacity={i < 3 ? 0.68 : 0.90} color={color} layer={1} />
           ))}
-          <circle cx="0" cy="0" r="5.2" fill={centerColor} opacity="0.96" />
+          <circle cx="0" cy="0" r="5.2" fill={centerColor} opacity="0.96" filter="url(#flower-glow)" />
+          <use href="#pollen-dust" x="-5" y="-5" width="10" height="10" />
         </g>
         <g transform="translate(72, 30)">
           {[0, 60, 120, 180, 240, 300].map((angle, i) => (
             <LayeredPetal key={i} angle={angle} scale={0.62} opacity={i < 3 ? 0.68 : 0.90} color={color} layer={1} />
           ))}
-          <circle cx="0" cy="0" r="5" fill={centerColor} opacity="0.96" />
+          <circle cx="0" cy="0" r="5" fill={centerColor} opacity="0.96" filter="url(#flower-glow)" />
+          <use href="#pollen-dust" x="-5" y="-5" width="10" height="10" />
+        </g>
+        
+        {/* Floating Elder Pollen / Sparkles */}
+        <g filter="url(#flower-glow)">
+          <circle cx="35" cy="15" r="1.2" fill="oklch(0.95 0.12 85)" opacity="0.6">
+            <animate attributeName="cy" values="15; 10; 15" dur="3s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="65" cy="12" r="0.8" fill="oklch(0.95 0.12 85)" opacity="0.5">
+            <animate attributeName="cy" values="12; 8; 12" dur="4s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="50" cy="5" r="1.5" fill="oklch(0.95 0.12 85)" opacity="0.7">
+            <animate attributeName="cy" values="5; -2; 5" dur="3.5s" repeatCount="indefinite" />
+          </circle>
         </g>
       </Sway>
     </>

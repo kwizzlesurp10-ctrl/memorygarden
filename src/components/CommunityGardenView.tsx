@@ -367,6 +367,8 @@ export function CommunityGardenView({
   }, [gardenId])
 
   useEffect(() => {
+    // Loads synchronous mock garden data when the selected garden changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: load on gardenId change
     fetchGarden()
   }, [fetchGarden])
 

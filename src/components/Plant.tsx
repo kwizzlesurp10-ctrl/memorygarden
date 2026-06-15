@@ -109,6 +109,7 @@ export function Plant({ memory, onClick, isDragging, season, nearbyMemories = []
         leafOpacity={visual.leafOpacity}
         bloomOpacity={visual.bloomOpacity}
         traitVisuals={traitVisuals}
+        condition={visual.condition}
       />
       
       <TraitOverlays traitVisuals={traitVisuals} size={visual.size} seed={memory.geneticsSeed || memory.id} shouldReduceMotion={shouldReduceMotion} />
@@ -393,7 +394,7 @@ function PlantGrowthParticles({ color, tier, shouldReduceMotion }: { color: stri
   return null
 }
 
-function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity: _leafOpacity, bloomOpacity: _bloomOpacity, traitVisuals }: { variety: PlantVariety; stage: PlantStage; color: string; season: Season; size: number; scaleX: number; leafOpacity: number; bloomOpacity: number; traitVisuals?: ResolvedTraitVisuals }) {
+function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity: _leafOpacity, bloomOpacity: _bloomOpacity, traitVisuals, condition = 'normal' }: { variety: PlantVariety; stage: PlantStage; color: string; season: Season; size: number; scaleX: number; leafOpacity: number; bloomOpacity: number; traitVisuals?: ResolvedTraitVisuals; condition?: 'neglected' | 'eternal' | 'normal' }) {
   const stemColor = season === 'autumn' ? 'oklch(0.52 0.10 145)' : season === 'winter' ? 'oklch(0.48 0.06 160)' : 'oklch(0.55 0.08 155)'
   const groundColor = season === 'winter' ? 'oklch(0.82 0.02 220)' : 'oklch(0.45 0.05 65)'
   const pattern = traitVisuals?.pattern || 'solid'
@@ -401,6 +402,19 @@ function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity: _l
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
+        <filter id="global-crystal">
+          <feColorMatrix type="matrix" values="
+            1.1 0 0 0 0.05
+            0 1.2 0 0 0.05
+            0 0 1.5 0 0.1
+            0 0 0 0.85 0
+          "/>
+          <feComponentTransfer>
+            <feFuncR type="linear" slope="1.1"/>
+            <feFuncG type="linear" slope="1.1"/>
+            <feFuncB type="linear" slope="1.2"/>
+          </feComponentTransfer>
+        </filter>
         {pattern === 'speckle' && (
           <pattern id="speckle-pattern" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
             <circle cx="2" cy="3" r="1" fill="oklch(0.95 0.04 90 / 0.4)" />
@@ -419,7 +433,7 @@ function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity: _l
           </pattern>
         )}
       </defs>
-      <g transform={`scale(${scaleX}, 1)`} transform-origin="50 50">
+      <g transform={`scale(${scaleX}, 1)`} transform-origin="50 50" filter={condition === 'eternal' ? 'url(#global-crystal)' : undefined}>
         {variety === 'flower' && <FlowerPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} season={season} />}
         {variety === 'tree' && <TreePlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
         {variety === 'succulent' && <SucculentPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
@@ -427,6 +441,16 @@ function PlantSVG({ variety, stage, color, season, size, scaleX, leafOpacity: _l
         {variety === 'herb' && <HerbPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
         {variety === 'wildflower' && <WildflowerPlant stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} />}
         {(variety === 'ancient_oak' || variety === 'eternal_rose' || variety === 'phoenix_vine' || variety === 'starlight_succulent') && <LegendaryPlant variety={variety} stage={stage} color={color} stemColor={stemColor} groundColor={groundColor} season={season} />}
+        
+        {condition === 'neglected' && stage !== 'seed' && (
+           <g className="brambles">
+             <path d="M 40 90 Q 25 70 50 55 T 65 30" stroke="#3d2c1d" strokeWidth="1.8" fill="none" opacity="0.85" strokeDasharray="5 2" />
+             {stage !== 'sprout' && <path d="M 60 90 Q 75 65 45 45 T 30 20" stroke="#3d2c1d" strokeWidth="1.5" fill="none" opacity="0.75" strokeDasharray="4 3" />}
+             {/* Thorns on the brambles */}
+             <path d="M 33 80 L 30 78 M 43 65 L 45 61 M 55 45 L 59 43 M 67 80 L 70 82 M 52 55 L 50 52" stroke="#2a1f14" strokeWidth="1" fill="none" />
+           </g>
+        )}
+
         {pattern === 'speckle' && <rect x="0" y="0" width="100" height="100" fill="url(#speckle-pattern)" opacity="0.6" />}
         {pattern === 'gradient' && <rect x="0" y="0" width="100" height="100" fill="url(#gradient-overlay)" />}
         {pattern === 'stripe' && <rect x="0" y="0" width="100" height="100" fill="url(#stripe-pattern)" opacity="0.5" />}

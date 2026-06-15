@@ -188,3 +188,34 @@ jobs:
             fi
           done
           echo "✅ All chunks within size budget"
+
+  lockfile:
+    name: Lockfile Validation (pnpm)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Verify pnpm-lock.yaml is up to date
+        run: pnpm install --frozen-lockfile
+
+      - name: Fail if lockfile would change
+        run: |
+          if [ -n "$(git status --porcelain pnpm-lock.yaml)" ]; then
+            echo "::error::pnpm-lock.yaml is out of date with package.json"
+            echo "Run 'pnpm install' locally and commit the updated lockfile."
+            exit 1
+          fi
+          echo "✅ pnpm-lock.yaml is in sync"
