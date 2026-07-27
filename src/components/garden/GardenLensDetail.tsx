@@ -17,9 +17,9 @@ interface GardenLensDetailProps {
   onClose: () => void
 }
 
-export function GardenLensDetail({ memory, palette, rimStrength, motion, onClose }: GardenLensDetailProps) {
+export function GardenLensDetail({ memory, palette, rimStrength, motion: motionEnabled, onClose }: GardenLensDetailProps) {
   const reducedMotion = useReducedMotion()
-  const parallaxOn = motion && !reducedMotion
+  const parallaxOn = motionEnabled && !reducedMotion
   const plantRef = useRef<SVGGElement>(null)
   const backRef = useRef<SVGGElement>(null)
   const foreRef = useRef<SVGGElement>(null)
@@ -79,7 +79,7 @@ export function GardenLensDetail({ memory, palette, rimStrength, motion, onClose
             </g>
             <g ref={plantRef} transform="translate(400 300) scale(2.2)">
               {isHybrid && memory.hybridGenome ? (
-                <HybridPlantSvg genome={memory.hybridGenome} palette={palette} rimStrength={rimStrength} motion={motion} stage={plantStageToIndex(memory.plantStage)} x={0} y={0} scale={1} />
+                <HybridPlantSvg genome={memory.hybridGenome} palette={palette} rimStrength={rimStrength} motion={motionEnabled} stage={plantStageToIndex(memory.plantStage)} x={0} y={0} scale={1} />
               ) : (
                 <SeededPlantSvg
                   variety={variety}
@@ -87,7 +87,7 @@ export function GardenLensDetail({ memory, palette, rimStrength, motion, onClose
                   geneticsSeed={memory.geneticsSeed || memory.id}
                   palette={palette}
                   rimStrength={rimStrength}
-                  motion={motion}
+                  motion={motionEnabled}
                 />
               )}
             </g>
@@ -98,7 +98,7 @@ export function GardenLensDetail({ memory, palette, rimStrength, motion, onClose
 
           <div ref={panelRef} className="px-6 py-5 space-y-4 text-[#f0e7da] font-serif border-t border-white/8">
             {isHybrid && memory.hybridGenome && (
-              <HybridGrowthStrip genome={memory.hybridGenome} palette={palette} rimStrength={rimStrength} motion={motion} />
+              <HybridGrowthStrip genome={memory.hybridGenome} palette={palette} rimStrength={rimStrength} motion={motionEnabled} />
             )}
             {!isHybrid && (
               <div className="flex gap-2 overflow-x-auto pb-2">

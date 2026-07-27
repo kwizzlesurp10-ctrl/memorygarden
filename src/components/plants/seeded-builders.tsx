@@ -1,7 +1,8 @@
-import { createElement as e, type ReactNode } from 'react'
+import { createElement as e, type ReactNode, type CSSProperties } from 'react'
 import type { HybridBaseVariety } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { cx3 } from '@/lib/garden/bezier'
+import type { SeededPlantContext, SeededVariety } from './types'
 
 export type HybridPlantPalette = Pick<ScenePalette, 'sil' | 'silSoft' | 'rim' | 'glow' | 'accent'>
 
@@ -397,10 +398,6 @@ const BUILDERS: Record<HybridBaseVariety, (s: number, r: () => number, C: Hybrid
   mushroom: buildMushroom,
   lotus: buildLotus,
 }
-
-import type { CSSProperties } from 'react'
-import type { SeededPlantContext } from './types'
-import type { SeededVariety } from './types'
 
 export function getSwayStyle(seedN: number, motion: boolean, big = false): CSSProperties | undefined {
   if (!motion) return undefined

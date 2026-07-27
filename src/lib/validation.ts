@@ -82,6 +82,7 @@ const VALID_PLANT_STAGES: ReadonlySet<PlantStage> = new Set([
 
 const VALID_PLANT_VARIETIES: ReadonlySet<PlantVariety> = new Set([
   'flower', 'tree', 'succulent', 'vine', 'herb', 'wildflower',
+  'fern', 'mushroom', 'lotus',
   'ancient_oak', 'eternal_rose', 'phoenix_vine', 'starlight_succulent',
 ])
 
