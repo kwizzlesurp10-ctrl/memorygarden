@@ -5,6 +5,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
+        "start": "vite",
         "kill": "fuser -k 5000/tcp",
         "build": "vite build",
         "lint": "eslint .",
@@ -12,7 +13,9 @@
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
         "optimize": "vite optimize",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "tailwind:build": "tailwindcss -i ./src/styles/tailwind.css -o ./dist/tailwind.css --minify",
+        "tailwind:watch": "tailwindcss -i ./src/styles/tailwind.css -o ./dist/tailwind.css --watch"
     },
     "dependencies": {
         "@heroicons/react": "^2.2.0",
@@ -80,7 +83,8 @@
     "devDependencies": {
         "@tailwindcss/vite": "^4.2.2",
         "tailwindcss": "^4.2.2",
-        "vite": "^8.0.7"
+        "vite": "^8.0.7",
+        "@vitejs/plugin-react-swc": "^3.1.0"
     },
     "workspaces": {
         "packages": [
