@@ -7,7 +7,7 @@
       "config": { "distDir": "dist" }
     }
   ],
-  "installCommand": "npm ci",
+  "installCommand": "NPM_CONFIG_PRODUCTION=false npm ci",
   "buildCommand": "npm run build",
   "outputDirectory": "dist"
 }
