@@ -3,9 +3,6 @@
     "private": true,
     "version": "0.0.0",
     "type": "module",
-    "engines": {
-        "node": "18.x"
-    },
     "scripts": {
         "dev": "vite",
         "start": "vite",
@@ -84,10 +81,24 @@
         "zod": "^4.4.3"
     },
     "devDependencies": {
-        "@tailwindcss/vite": "^4.2.2",
-        "tailwindcss": "^4.2.2",
-        "vite": "^8.0.7",
-        "@vitejs/plugin-react-swc": "^3.1.0"
+        "@eslint/js": "^10.0.1",
+        "@tailwindcss/postcss": "^4.1.8",
+        "@testing-library/jest-dom": "^6.9.1",
+        "@types/node": "^25.9.1",
+        "@types/react": "^19.2.15",
+        "@types/react-dom": "^19.0.4",
+        "@vitejs/plugin-react-swc": "^4.3.1",
+        "@vitest/coverage-v8": "^4.1.7",
+        "eslint": "^10.4.0",
+        "eslint-plugin-react-hooks": "^7.1.1",
+        "eslint-plugin-react-refresh": "^0.5.2",
+        "globals": "^17.5.0",
+        "jsdom": "^29.0.1",
+        "tailwindcss": "^4.1.11",
+        "typescript": "~6.0.3",
+        "typescript-eslint": "^8.59.4",
+        "vite": "^8.0.16",
+        "vitest": "^4.1.5"
     },
     "workspaces": {
         "packages": [
