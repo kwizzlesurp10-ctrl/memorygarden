@@ -159,6 +159,873 @@ function App() {
     setActivityLastSeen(new Date().toISOString())
   }, [setActivityLastSeen])
 
+  // Feature 5: AI Plant Style state
+  const [isStyleCustomizerOpen, setIsStyleCustomizerOpen] = useState(false)
+
+  // Constraint / Unlock system state
+  const [isUnlocksOpen, setIsUnlocksOpen] = useState(false)
+  const [isCosmeticsEditorOpen, setIsCosmeticsEditorOpen] = useState(false)
+  const [cosmeticsEditMemory, setCosmeticsEditMemory] = useState<Memory | null>(null)
+  const [isShortcutsPanelOpen, setIsShortcutsPanelOpen] = useState(false)
+
+  const fallbackPreferences = useMemo(
+    (): UserPreferences => ({
+      hasCompletedOnboarding: false,
+      soundEnabled: false,
+      lastVisit: '',
+    }),
+    []
+  )
+  const safeMemories = useMemo(() => memories || [], [memories])
+  const safePreferences = useMemo(
+    () => preferences ?? fallbackPreferences,
+    [preferences, fallbackPreferences]
+  )
+  const safeGardens = useMemo(() => collaborativeGardens || [], [collaborativeGardens])
+  const activeGarden = safeGardens.find((g) => g.id === activeGardenId) ?? null
+  // Activity is derived from synced memories rather than scoped per garden, since
+  // memories carry no gardenId. This is the shared, cross-gardener source of truth.
+  const activeGardenActivities = useMemo(
+    () => deriveActivityFromMemories(safeMemories),
+    [safeMemories]
+  )
+  const unreadActivityCount = useMemo(
+    () => countUnreadActivity(activeGardenActivities, activityLastSeen ?? undefined, user?.id),
+    [activeGardenActivities, activityLastSeen, user?.id]
+  )
+
+  // Keep the stream marked seen while the panel is open, so the badge stays
+  // cleared as new activity arrives.
+  useEffect(() => {
+    if (showActivityPanel) markActivitySeen()
+  }, [showActivityPanel, activeGardenActivities.length, markActivitySeen])
+
+  // Notify the planter when another gardener tends a memory they planted. Because
+  // this derives from synced memories, it fires once the contributor's reflection
+  // has propagated. A baseline timestamp on first observation avoids toasting the
+  // whole backlog.
+  useEffect(() => {
+    if (!user) return
+    const fresh = activeGardenActivities.filter((e) => {
+      if (e.type !== 'reflect' || e.userId === user.id || !e.memoryId) return false
+      const memory = safeMemories.find((m) => m.id === e.memoryId)
+      return memory?.plantedBy?.id === user.id
+    })
+    if (fresh.length === 0) return
+
+    if (!lastNotifiedAt) {
+      setLastNotifiedAt(new Date().toISOString())
+      return
+    }
+
+    const toNotify = fresh
+      .filter((e) => e.createdAt > lastNotifiedAt)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    if (toNotify.length === 0) return
+
+    for (const e of toNotify) {
+      toast(`${e.userLogin} tended your memory 🌱`)
+    }
+    setLastNotifiedAt(toNotify[toNotify.length - 1].createdAt)
+  }, [activeGardenActivities, safeMemories, user, lastNotifiedAt, setLastNotifiedAt])
+
+  /** Process unlock state: evaluate new unlocks/achievements and notify */
+  const processUnlockUpdates = useCallback((currentState: UnlockState): UnlockState => {
+    let state = currentState
+
+    // Evaluate cosmetic unlocks
+    const newUnlocks = evaluateUnlocks(state)
+    const hasNewUnlocks = newUnlocks.newPalettes.length > 0 || newUnlocks.newPatterns.length > 0 || newUnlocks.newAdornments.length > 0
+    if (hasNewUnlocks) {
+      state = applyNewUnlocks(state, newUnlocks)
+      const allNew = [...newUnlocks.newPalettes, ...newUnlocks.newPatterns, ...newUnlocks.newAdornments]
+      for (const id of allNew) {
+        const item = UNLOCKABLE_ITEMS.find(i => i.id === id)
+        const displayName = item?.name || id
+        toast.success(`🌿 Unlocked: ${displayName}`, { description: 'Check your Garden Collection!' })
+      }
+    }
+
+    // Evaluate achievements
+    const { newAchievements, starlightEarned } = evaluateAchievements(state)
+    if (newAchievements.length > 0) {
+      state = {
+        ...state,
+        achievements: [...state.achievements, ...newAchievements],
+        wallet: { ...state.wallet, starlight: state.wallet.starlight + starlightEarned },
+      }
+      for (const ach of newAchievements) {
+        toast.success(`🏆 Achievement: ${ach.name}`, { description: ach.description })
+      }
+    }
+
+    return state
+  }, [])
+
+  /** Update the unlock state in preferences with counter changes and process unlocks */
+  const updateUnlockState = useCallback((updater: (state: UnlockState) => UnlockState) => {
+    setPreferences((current) => {
+      const base = current || { hasCompletedOnboarding: false, soundEnabled: false, lastVisit: '' }
+      const currentUnlock = ensureUnlockState(base.unlockState)
+      const updated = updater(currentUnlock)
+      const processed = processUnlockUpdates(updated)
+      return { ...base, unlockState: processed }
+    })
+  }, [setPreferences, processUnlockUpdates])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const shareId = params.get('share')
+
+    if (shareId && sharedMemories) {
+      const sharedMem = sharedMemories[shareId]
+      if (sharedMem) {
+        queueMicrotask(() => {
+          setSharedMemoryView(sharedMem)
+        })
+      }
+    }
+  }, [sharedMemories])
+
+  useEffect(() => {
+    if (preferences && memories && memories.length === 0 && preferences.hasCompletedOnboarding) {
+      setTimeout(() => setIsPlantModalOpen(true), 1000)
+    }
+  }, [preferences, memories])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSeason(getSeason())
+    }, 3600000)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    const id = window.setInterval(() => setDayPeriod(getDayPeriod()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  const handleCompleteOnboarding = () => {
+    setPreferences((current) => ({
+      soundEnabled: current?.soundEnabled || false,
+      lastVisit: current?.lastVisit || new Date().toISOString(),
+      hasCompletedOnboarding: true,
+    }))
+    setIsPlantModalOpen(true)
+  }
+
+  const handlePlantMemory = async (data: {
+    photoFile: File
+    text: string
+    date: string
+    location?: string
+    audioRecordings: AudioRecording[]
+    plantVariety: PlantVariety
+  }) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(data.photoFile)
+    
+    return new Promise<void>((resolve, reject) => {
+      reader.onload = async () => {
+        try {
+          const photoUrl = reader.result as string
+          
+          const emotionalTone = await classifyEmotionalTone(data.text)
+          const plantVariety = data.plantVariety ?? selectPlantVariety(emotionalTone, data.text)
+          
+          let finalTraits: PlantTraits = {}
+          let finalVariety = data.plantVariety ?? selectPlantVariety(emotionalTone, data.text)
+          let finalGeneticsSeed = generateGeneticsSeed()
+          let isHybrid = false
+          let parentMemories: string[] | undefined = undefined
+
+          if (hybridParents) {
+             const hybridData = generateHybridTraits(hybridParents[0], hybridParents[1])
+             finalTraits = hybridData.traits
+             finalGeneticsSeed = hybridData.geneticsSeed
+             // Let the hybrid logic override the variety
+             finalVariety = hybridData.variety
+             isHybrid = true
+             parentMemories = [hybridParents[0].id, hybridParents[1].id]
+             setHybridParents(null)
+          }
+
+          const newMemory: Memory = {
+            id: `memory-${Date.now()}`,
+            photoUrl,
+            text: data.text,
+            date: data.date,
+            location: data.location,
+            plantedAt: new Date().toISOString(),
+            position: {
+              x: 400 + Math.random() * 800,
+              y: 400 + Math.random() * 800,
+            },
+            emotionalTone,
+            plantVariety: finalVariety,
+            plantStage: 'seed',
+            visitCount: 0,
+            reflections: [],
+            audioRecordings: data.audioRecordings,
+            geneticsSeed: finalGeneticsSeed,
+            traits: finalTraits,
+            unlocks: [],
+            genetics: generatePlantGenetics(`${Date.now()}-${Math.random().toString(36).substring(2)}`),
+            plantedBy: user
+              ? { id: user.id, login: user.login, avatarUrl: user.avatarUrl }
+              : undefined,
+            isHybrid,
+            parentMemories,
+          }
+
+          setMemories((currentMemories) => [...(currentMemories || []), newMemory])
+
+          // Award currency and update counters for planting
+          const currentSeason = getSeason()
+          const seasonKey = `${currentSeason}-${new Date().getFullYear()}`
+          updateUnlockState((state) => {
+            const award = awardForPlanting()
+            return {
+              ...state,
+              wallet: applyAward(state.wallet, award),
+              counters: {
+                ...state.counters,
+                totalMemoriesPlanted: state.counters.totalMemoriesPlanted + 1,
+                seasonalPlantings: {
+                  ...state.counters.seasonalPlantings,
+                  [seasonKey]: (state.counters.seasonalPlantings[seasonKey] || 0) + 1,
+                },
+              },
+            }
+          })
+
+          // Trigger sprouting particle animation on the canvas when seed first appears
+          setGrowingMemories((prev) => new Set(prev).add(newMemory.id))
+          setTimeout(() => {
+            setGrowingMemories((prev) => {
+              const next = new Set(prev)
+              next.delete(newMemory.id)
+              return next
+            })
+          }, 3000) // matches PLANTING_CELEBRATION_MS in PlantMemoryModal
+
+          resolve()
+        } catch (error) {
+          reject(error)
+        }
+      }
+      
+      reader.onerror = () => reject(new Error('Failed to read file'))
+    })
+  }
+
+  const handleMemoryClick = (memory: Memory) => {
+    if (pollinationParent) {
+      if (pollinationParent.id === memory.id) {
+        toast.error('Cannot cross-pollinate a memory with itself.')
+        setPollinationParent(null)
+        return
+      }
+      setHybridParents([pollinationParent, memory])
+      setPollinationParent(null)
+      setIsPlantModalOpen(true)
+      toast.success('Parents linked! Now plant your hybrid seed.')
+      return
+    }
+
+    const nearbyMemories = (memories || []).filter(
+      (m) =>
+        m.id !== memory.id &&
+        Math.abs(m.position.x - memory.position.x) < 300 &&
+        Math.abs(m.position.y - memory.position.y) < 300
+    )
+    
+    setMemories((currentMemories) =>
+      (currentMemories || []).map((m) => {
+        if (m.id === memory.id) {
+          const updatedMemory = {
+            ...m,
+            visitCount: m.visitCount + 1,
+            lastVisited: new Date().toISOString(),
+          }
+          const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
+          const updatedWithStage = {
+            ...updatedMemory,
+            growthMetrics,
+            plantStage: getPlantStage(updatedMemory),
+          }
+          return {
+            ...updatedWithStage,
+            unlocks: computeUnlocks(updatedWithStage),
+          }
+        }
+        return m
+      })
+    )
+    
+    const updatedMemory = (memories || []).find((m) => m.id === memory.id)
+    setSelectedMemory(updatedMemory || memory)
+    setAiReflection('')
+
+    // Track visit counters and award currencies
+    updateUnlockState((state) => {
+      let updated = { ...state, counters: { ...state.counters, totalVisits: state.counters.totalVisits + 1 } }
+
+      // Night visit tracking
+      const period = getDayPeriod()
+      if (period === 'night') {
+        const today = new Date().toISOString().slice(0, 10)
+        if (!updated.counters.nightVisitDates.includes(today)) {
+          updated = {
+            ...updated,
+            counters: {
+              ...updated.counters,
+              nightVisitDates: [...updated.counters.nightVisitDates, today],
+              nightVisitDays: updated.counters.nightVisitDays + 1,
+            },
+          }
+        }
+      }
+
+      // Sunlight for revisiting old memories
+      const revisitAward = awardForRevisit(memory)
+      if (revisitAward) {
+        updated = { ...updated, wallet: applyAward(updated.wallet, revisitAward) }
+        const daysSincePlanted = Math.floor(
+          (Date.now() - new Date(memory.plantedAt).getTime()) / 86400000
+        )
+        if (daysSincePlanted >= 60) {
+          updated = {
+            ...updated,
+            counters: {
+              ...updated.counters,
+              uniqueOldMemoriesRevisited: updated.counters.uniqueOldMemoriesRevisited + 1,
+            },
+          }
+        }
+      }
+
+      // Pollen for cluster interactions
+      const clusterAward = awardForClusterTending(nearbyMemories.length)
+      if (clusterAward) {
+        updated = {
+          ...updated,
+          wallet: applyAward(updated.wallet, clusterAward),
+          counters: { ...updated.counters, clustersTended: updated.counters.clustersTended + 1 },
+        }
+      }
+
+      // Track mature/elder milestones
+      const currentStage = getPlantStage(memory)
+      if (currentStage === 'mature' || currentStage === 'elder') {
+        let reachedMature = 0
+        let reachedElder = 0
+        for (const m of (memories || [])) {
+          const s = getPlantStage(m)
+          if (s === 'mature' || s === 'elder') reachedMature++
+          if (s === 'elder') reachedElder++
+        }
+        updated = {
+          ...updated,
+          counters: {
+            ...updated.counters,
+            memoriesReachedMature: reachedMature,
+            memoriesReachedElder: reachedElder,
+          },
+        }
+      }
+
+      return updated
+    })
+  }
+
+  const handleProtocolAction = useCallback((action: ProtocolAction) => {
+    switch (action.type) {
+      case 'plant-memory':
+        if (safePreferences.hasCompletedOnboarding) {
+          setIsPlantModalOpen(true)
+          if (action.data) {
+            toast.info('Opening plant memory modal with data')
+          }
+        }
+        break
+      case 'view-memory': {
+        const found = safeMemories.find((m) => m.id === action.id)
+        if (found) {
+          handleMemoryClick(found)
+        } else {
+          toast.error('Memory not found')
+        }
+        break
+      }
+      case 'unknown':
+        toast.info(`Protocol handler invoked: ${action.protocol}`)
+        break
+    }
+  }, [handleMemoryClick, safeMemories, safePreferences])
+
+  useProtocolHandler(handleProtocolAction)
+
+  const handleNavigateToMemory = (memoryId: string) => {
+    const memory = safeMemories.find(m => m.id === memoryId)
+    if (memory) {
+      handleMemoryClick(memory)
+    }
+  }
+
+  const handleMemoryMove = (memoryId: string, newPosition: { x: number; y: number }) => {
+    setMemories((currentMemories) =>
+      (currentMemories || []).map((m) =>
+        m.id === memoryId ? { ...m, position: newPosition } : m
+      )
+    )
+  }
+
+  const handleWater = async (memoryId: string, reflectionText: string) => {
+    const tendedMemory = (memories || []).find((m) => m.id === memoryId)
+    const planter = tendedMemory?.plantedBy
+    const isTend = !!(planter && user && planter.id !== user.id)
+
+    setMemories((currentMemories) =>
+      (currentMemories || []).map((m) => {
+        if (m.id === memoryId) {
+          const updatedMemory = {
+            ...m,
+            reflections: [
+              ...m.reflections,
+              {
+                id: `reflection-${Date.now()}`,
+                text: reflectionText,
+                createdAt: new Date().toISOString(),
+                tone: m.emotionalTone,
+                contributorId: user?.id,
+                contributorLogin: user?.login,
+                contributorAvatarUrl: user?.avatarUrl,
+                isTend,
+              },
+            ],
+          }
+          const nearbyMemories = (currentMemories || []).filter(
+            (nm) =>
+              nm.id !== memoryId &&
+              Math.abs(nm.position.x - m.position.x) < 300 &&
+              Math.abs(nm.position.y - m.position.y) < 300
+          )
+          const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
+          const updatedWithStage = {
+            ...updatedMemory,
+            growthMetrics,
+            plantStage: getPlantStage(updatedMemory),
+          }
+          return {
+            ...updatedWithStage,
+            unlocks: computeUnlocks(updatedWithStage),
+          }
+        }
+        return m
+      })
+    )
+    
+    const updatedMemory = (memories || []).find((m) => m.id === memoryId)
+    if (updatedMemory) {
+      setSelectedMemory(updatedMemory)
+    }
+
+    // Award dew for reflection and track counter
+    updateUnlockState((state) => {
+      const award = awardForReflection()
+      const newReflectionCount = (memories || []).reduce((sum, m) => sum + m.reflections.length, 0) + 1
+      const memory = (memories || []).find(m => m.id === memoryId)
+      const waterCount = memory ? memory.reflections.length + 1 : 1
+      const memoriesWatered3 = [...state.counters.memoriesWatered3]
+      if (waterCount >= 3 && !memoriesWatered3.includes(memoryId)) {
+        memoriesWatered3.push(memoryId)
+      }
+      return {
+        ...state,
+        wallet: applyAward(state.wallet, award),
+        counters: {
+          ...state.counters,
+          totalReflections: newReflectionCount,
+          memoriesWatered3,
+        },
+      }
+    })
+  }
+
+  const handleReaction = useCallback(
+    (memoryId: string, reactionType: ReactionType) => {
+      setMemories((currentMemories) =>
+        (currentMemories || []).map((m) =>
+          m.id === memoryId ? toggleReaction(m, reactionType, localUser.id) : m
+        )
+      )
+    },
+    [localUser.id]
+  )
+
+  const handleAskAI = async (memoryId: string) => {
+    const memory = (memories || []).find((m) => m.id === memoryId)
+    if (!memory) return
+
+    setIsLoadingAI(true)
+    try {
+      const nearbyMemories = (memories || []).filter(
+        (m) =>
+          m.id !== memoryId &&
+          Math.abs(m.position.x - memory.position.x) < 300 &&
+          Math.abs(m.position.y - memory.position.y) < 300
+      ).slice(0, 3)
+
+      const reflection = await generateAIReflection(memory, nearbyMemories)
+      setAiReflection(reflection)
+    } catch {
+      toast.error('Failed to generate reflection. Please try again.')
+    } finally {
+      setIsLoadingAI(false)
+    }
+  }
+
+  const handleShareMemory = (memoryId: string) => {
+    setMemoryToShare(memoryId)
+    setIsShareModalOpen(true)
+  }
+
+  const handleCreateShare = async (shareId: string) => {
+    if (!memoryToShare || !user) return
+
+    const memory = safeMemories.find(m => m.id === memoryToShare)
+    if (!memory) return
+
+    const sharedMemory: SharedMemory = {
+      id: shareId,
+      memoryId: memory.id,
+      shareId,
+      photoUrl: memory.photoUrl,
+      text: memory.text,
+      date: memory.date,
+      location: memory.location,
+      plantedAt: memory.plantedAt,
+      emotionalTone: memory.emotionalTone,
+      plantStage: memory.plantStage,
+      plantVariety: memory.plantVariety,
+      audioRecordings: memory.audioRecordings,
+      sharedBy: user.login,
+      sharedAt: new Date().toISOString(),
+    }
+
+    setSharedMemories((current) => ({
+      ...current,
+      [shareId]: sharedMemory,
+    }))
+
+    setMemories((currentMemories) =>
+      (currentMemories || []).map((m) => {
+        if (m.id === memoryToShare) {
+          const updatedMemory = {
+            ...m,
+            shareId,
+            shareCreatedAt: new Date().toISOString(),
+            shareCount: (m.shareCount || 0) + 1,
+          }
+          const nearbyMemories = (currentMemories || []).filter(
+            (nm) =>
+              nm.id !== memoryToShare &&
+              Math.abs(nm.position.x - m.position.x) < 300 &&
+              Math.abs(nm.position.y - m.position.y) < 300
+          )
+          const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
+          return {
+            ...updatedMemory,
+            growthMetrics,
+          }
+        }
+        return m
+      })
+    )
+  }
+
+  const handleOpenBoost = (memoryId: string) => {
+    const memory = safeMemories.find(m => m.id === memoryId)
+    if (memory) {
+      setMemoryToBoost(memory)
+      setIsBoostModalOpen(true)
+    }
+  }
+
+  const handleApplyBoost = (boostLevel: 'standard' | 'premium' | 'legendary') => {
+    if (!memoryToBoost) return
+
+    const boostedMemory = applyPremiumFertilizer(memoryToBoost, boostLevel)
+    
+    setGrowingMemories((prev) => new Set(prev).add(memoryToBoost.id))
+    setMemoryBoostTiers((prev) => new Map(prev).set(memoryToBoost.id, boostLevel))
+    
+    setTimeout(() => {
+      setGrowingMemories((prev) => {
+        const next = new Set(prev)
+        next.delete(memoryToBoost.id)
+        return next
+      })
+      setMemoryBoostTiers((prev) => {
+        const next = new Map(prev)
+        next.delete(memoryToBoost.id)
+        return next
+      })
+    }, 2000)
+    
+    setMemories((currentMemories) =>
+      (currentMemories || []).map((m) => {
+        if (m.id === memoryToBoost.id) {
+          const updatedMemory = {
+            ...m,
+            visitCount: boostedMemory.visitCount,
+          }
+          const nearbyMemories = (currentMemories || []).filter(
+            (nm) =>
+              nm.id !== memoryToBoost.id &&
+              Math.abs(nm.position.x - m.position.x) < 300 &&
+              Math.abs(nm.position.y - m.position.y) < 300
+          )
+          const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
+          return {
+            ...updatedMemory,
+            growthMetrics,
+            plantStage: getPlantStage(updatedMemory),
+          }
+        }
+        return m
+      })
+    )
+
+    const boostNames = {
+      standard: 'Garden Boost',
+      premium: 'Premium Fertilizer',
+      legendary: 'Legendary Elixir',
+    }
+
+    toast.success(`${boostNames[boostLevel]} applied! Your memory is flourishing.`)
+  }
+
+  const handleCrossPollinateInit = (memoryId: string) => {
+    const parent1 = safeMemories.find(m => m.id === memoryId)
+    if (parent1) {
+      setPollinationParent(parent1)
+      setSelectedMemory(null)
+      toast.info('Select a second memory in your garden to cross-pollinate with!')
+    }
+  }
+
+  const handleUpdateTraits = (memoryId: string, traits: PlantTraits) => {
+    let updatedForSelection: Memory | null = null
+    setMemories((currentMemories) =>
+      (currentMemories || []).map((m) => {
+        if (m.id === memoryId) {
+          const updated = { ...m, traits }
+          updatedForSelection = updated
+          return updated
+        }
+        return m
+      })
+    )
+    if (updatedForSelection) {
+      setSelectedMemory(updatedForSelection)
+    }
+    toast.success('Plant appearance updated!')
+  }
+
+  // Feature 2: Collaborative garden handlers
+  const handleCreateGarden = (data: { name: string; description: string; settings: GardenSettings }) => {
+    if (!user) return
+    const gardenId = generateGardenId()
+    const inviteToken = generateInviteToken()
+    const newGarden: CollaborativeGarden = {
+      id: gardenId,
+      name: data.name,
+      description: data.description,
+      ownerId: user.login,
+      ownerLogin: user.login,
+      members: [{
+        userId: user.login,
+        login: user.login,
+        avatarUrl: user.avatarUrl,
+        role: 'owner',
+        joinedAt: new Date().toISOString(),
+      }],
+      createdAt: new Date().toISOString(),
+      settings: data.settings,
+      inviteToken,
+    }
+    setCollaborativeGardens((current) => [...(current || []), newGarden])
+    setActiveGardenId(gardenId)
+    toast.success(`Garden "${data.name}" created!`)
+  }
+
+  const handleSelectGarden = (gardenId: string | null) => {
+    setActiveGardenId(gardenId)
+  }
+
+  const handleInviteToGarden = () => {
+    if (activeGarden) {
+      setIsInviteDialogOpen(true)
+    }
+  }
+
+  const getInviteUrl = () => {
+    if (!activeGarden?.inviteToken) return ''
+    return `${window.location.origin}?invite=${activeGarden.id}&token=${activeGarden.inviteToken}`
+  }
+
+  // Handle invite link in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const inviteGardenId = params.get('invite')
+    const inviteToken = params.get('token')
+    if (inviteGardenId && inviteToken && user) {
+      const garden = safeGardens.find(g => g.id === inviteGardenId && g.inviteToken === inviteToken)
+      if (garden && !garden.members.some(m => m.login === user.login)) {
+        // Validate invite token has not expired (tokens valid for 7 days based on garden creation time)
+        const gardenCreatedAt = new Date(garden.createdAt).getTime()
+        const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
+        if (Date.now() - gardenCreatedAt > sevenDaysMs && garden.inviteToken === inviteToken) {
+          toast.error('This invite link has expired. Ask the garden owner for a new one.')
+          window.history.replaceState({}, '', window.location.pathname)
+          return
+        }
+
+        if (garden.members.length < garden.settings.maxMembers) {
+          queueMicrotask(() => {
+            setCollaborativeGardens((current) =>
+              (current || []).map(g => {
+                if (g.id === inviteGardenId) {
+                  return {
+                    ...g,
+                    members: [...g.members, {
+                      userId: user.login,
+                      login: user.login,
+                      avatarUrl: user.avatarUrl,
+                      role: 'collaborator' as const,
+                      joinedAt: new Date().toISOString(),
+                    }],
+                  }
+                }
+                return g
+              })
+            )
+            setActiveGardenId(inviteGardenId)
+            toast.success(`Joined "${garden.name}"!`)
+            window.history.replaceState({}, '', window.location.pathname)
+          })
+        } else {
+          toast.error('This garden is full')
+        }
+      }
+    }
+  }, [user, safeGardens])
+
+  // Feature 5: Plant style preference handler
+  const handleSavePlantStyle = (style: PlantStylePreference) => {
+    setPreferences((current) => ({
+      ...(current || { hasCompletedOnboarding: false, soundEnabled: false, lastVisit: '' }),
+      plantStylePreference: style,
+    }))
+    toast.success('Plant art style saved!')
+  }
+
+  // Constraint system: per-memory cosmetic handlers
+  const handleOpenCosmeticsEditor = (memory: Memory) => {
+    setCosmeticsEditMemory(memory)
+    setIsCosmeticsEditorOpen(true)
+  }
+
+  const handleSaveCosmetics = (memoryId: string, cosmetics: PlantCosmetics) => {
+    setMemories((currentMemories) =>
+      (currentMemories || []).map((m) =>
+        m.id === memoryId ? { ...m, cosmetics } : m
+      )
+    )
+    toast.success('Plant cosmetics applied!')
+  }
+
+  const handleRerollGenetics = (memoryId: string) => {
+    const unlockState = ensureUnlockState(safePreferences.unlockState)
+    if (!canAffordReroll(unlockState.wallet)) {
+      toast.error('Not enough dew to re-roll!')
+      return
+    }
+
+    // Deduct cost
+    updateUnlockState((state) => ({
+      ...state,
+      wallet: deductRerollCost(state.wallet),
+    }))
+
+    // Generate new genetics
+    const newGenetics = generatePlantGenetics(`${Date.now()}-${Math.random().toString(36).substring(2)}`)
+    setMemories((currentMemories) =>
+      (currentMemories || []).map((m) =>
+        m.id === memoryId ? { ...m, genetics: newGenetics } : m
+      )
+    )
+    toast.success('Plant appearance re-rolled!')
+  }
+
+  const syncStatus = useCloudSync({
+    enabled: safePreferences.cloudSyncEnabled === true,
+    userId: localUser.id,
+    memories: safeMemories,
+    preferences: safePreferences,
+    onPulled: (mergedMemories, mergedPreferences) => {
+      setMemories(mergedMemories)
+      setPreferences(mergedPreferences)
+    },
+  })
+
+  useKeyboardShortcuts({
+    shortcuts: [
+      {
+        id: 'plant-memory',
+        descriptor: APP_SHORTCUTS.PLANT_MEMORY,
+        handler: () => {
+          if (safePreferences.hasCompletedOnboarding) {
+            setIsPlantModalOpen(true)
+          }
+        },
+      },
+      {
+        id: 'view-garden',
+        descriptor: APP_SHORTCUTS.VIEW_GARDEN,
+        handler: () => setViewMode('garden'),
+      },
+      {
+        id: 'view-timeline',
+        descriptor: APP_SHORTCUTS.VIEW_TIMELINE,
+        handler: () => setViewMode('timeline'),
+      },
+      {
+        id: 'view-clusters',
+        descriptor: APP_SHORTCUTS.VIEW_CLUSTERS,
+        handler: () => setViewMode('clusters'),
+      },
+      {
+        id: 'view-bloom-wall',
+        descriptor: APP_SHORTCUTS.VIEW_BLOOM_WALL,
+        handler: () => setViewMode('bloom'),
+      },
+      {
+        id: 'export',
+        descriptor: APP_SHORTCUTS.EXPORT,
+        handler: () => setIsExportModalOpen(true),
+      },
+      {
+        id: 'shortcuts-help',
+        descriptor: { key: '?', description: 'Show keyboard shortcuts', category: 'Help' },
+        handler: () => setIsShortcutsPanelOpen(true),
+      },
+    ],
+    enabled: safePreferences.hasCompletedOnboarding,
+  })
+
   // Feature 1: Filtered memories computation
   const filteredMemories = useMemo(
     () => filterMemories(safeMemories, searchQuery, filters),
@@ -269,6 +1136,7 @@ function App() {
           onOpenShortcuts={() => setIsShortcutsPanelOpen(true)}
           onOpenProtocolTest={() => window.open('/protocol-test.html', '_blank')}
           onToggleActivityPanel={() => setShowActivityPanel((v) => !v)}
+          isActivityPanelOpen={showActivityPanel}
           activityCount={unreadActivityCount}
         />
 
@@ -283,7 +1151,6 @@ function App() {
         />
 
         <main className="flex-1 relative outline-none" tabIndex={-1}>
-          
           <AnimatePresence>
             {pollinationParent && (
               <motion.div
@@ -608,7 +1475,7 @@ function App() {
         {/* Keyboard Shortcuts Panel */}
         <KeyboardShortcutsPanel
           open={isShortcutsPanelOpen}
-          onClose={() => setIsShortcutsPanelOpen(true)}
+          onClose={() => setIsShortcutsPanelOpen(false)}
         />
       </Suspense>
     </>
