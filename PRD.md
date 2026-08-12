@@ -4,6 +4,7 @@
 A private, emotional digital garden where people plant and nurture personal memories through visual plant metaphors that grow and evolve over time, offering a calm alternative to traditional photo albums.
 
 **Experience Qualities**:
+
 1. **Peaceful** - Every interaction is slow, deliberate, and calming, creating a sanctuary from the chaos of everyday digital life
 2. **Organic** - Plant growth, animations, and transitions feel natural and alive, mirroring real garden rhythms
 3. **Intimate** - The space feels deeply personal and private, encouraging honest emotional reflection
@@ -17,6 +18,7 @@ This app requires sophisticated state management for memory data, AI integration
 ## Essential Features
 
 ### 1. Onboarding Flow
+
 - **Functionality**: Four-step guided welcome tour introducing garden concept, planting mechanics, growth system, and tending behaviors
 - **Purpose**: Set emotional tone and ensure users understand the metaphor before creating their first memory
 - **Trigger**: First-time user opens the app before completing onboarding (local profile established; no external login required for core flows)

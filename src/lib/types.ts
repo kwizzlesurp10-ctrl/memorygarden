@@ -28,6 +28,14 @@ export interface TraitUnlock {
 
 export type PlantVariety = 'flower' | 'tree' | 'succulent' | 'vine' | 'herb' | 'wildflower' | 'ancient_oak' | 'eternal_rose' | 'phoenix_vine' | 'starlight_succulent'
 
+export type MemoryReactionType = 'sprout' | 'water' | 'bloom' | 'heart' | 'sparkle'
+
+export interface MemoryReactionEntry {
+  type: MemoryReactionType
+  count: number
+  reactedBy: string[]
+}
+
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter'
 
 export interface Position {
@@ -72,6 +80,18 @@ export interface Memory {
   unlocks?: TraitUnlock[]
   genetics?: PlantGenetics
   cosmetics?: PlantCosmetics
+  /** Optional social reactions (sprout, water, bloom, etc.) */
+  reactions?: Partial<Record<MemoryReactionType, MemoryReactionEntry>>
+  /** Original planter. Optional for backward compat with memories created before Phase 2.1. */
+  plantedBy?: {
+    id: string
+    login: string
+    avatarUrl: string
+  }
+  /** IDs of parent memories if this was created via Cross-Pollination */
+  parentMemories?: string[]
+  /** True if this memory is a hybrid created via Cross-Pollination */
+  isHybrid?: boolean
 }
 
 export interface SharedMemory {
@@ -97,6 +117,12 @@ export interface Reflection {
   createdAt: string
   audioUrl?: string
   tone?: EmotionalTone
+  /** User who added this reflection. Optional for backward compat with reflections written before Phase 2.1. */
+  contributorId?: string
+  contributorLogin?: string
+  contributorAvatarUrl?: string
+  /** True when the reflection was added by someone other than the memory's original planter — a "tend" rather than a self-reflection. */
+  isTend?: boolean
 }
 
 export interface GrowthMetrics {

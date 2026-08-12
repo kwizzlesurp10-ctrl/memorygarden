@@ -3,8 +3,12 @@
     "private": true,
     "version": "0.0.0",
     "type": "module",
+    "engines": {
+        "node": "18.x"
+    },
     "scripts": {
         "dev": "vite",
+        "start": "vite",
         "kill": "fuser -k 5000/tcp",
         "build": "vite build",
         "lint": "eslint .",
@@ -12,11 +16,14 @@
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
         "optimize": "vite optimize",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "tailwind:build": "tailwindcss -i ./src/styles/tailwind.css -o ./dist/tailwind.css --minify",
+        "tailwind:watch": "tailwindcss -i ./src/styles/tailwind.css -o ./dist/tailwind.css --watch"
     },
     "dependencies": {
         "@heroicons/react": "^2.2.0",
-        "@hookform/resolvers": "^5.2.2",
+        "@hookform/resolvers": "^5.4.0",
+        "@neondatabase/serverless": "^1.1.0",
         "@octokit/core": "^7.0.6",
         "@phosphor-icons/react": "^2.1.7",
         "@radix-ui/colors": "^3.0.0",
@@ -58,7 +65,7 @@
         "framer-motion": "^12.38.0",
         "input-otp": "^1.4.2",
         "lucide-react": "^1.14.0",
-        "marked": "^18.0.2",
+        "marked": "^18.0.4",
         "next-themes": "^0.4.6",
         "octokit": "^5.0.5",
         "react": "^19.2.5",
@@ -77,24 +84,10 @@
         "zod": "^4.4.3"
     },
     "devDependencies": {
-        "@eslint/js": "^10.0.1",
-        "@tailwindcss/postcss": "^4.1.8",
-        "@testing-library/jest-dom": "^6.9.1",
-        "@types/node": "^25.6.2",
-        "@types/react": "^19.2.15",
-        "@types/react-dom": "^19.0.4",
-        "@vitejs/plugin-react-swc": "^4.3.1",
-        "@vitest/coverage-v8": "^4.1.7",
-        "eslint": "^10.4.0",
-        "eslint-plugin-react-hooks": "^7.1.1",
-        "eslint-plugin-react-refresh": "^0.5.2",
-        "globals": "^17.5.0",
-        "jsdom": "^29.0.1",
-        "tailwindcss": "^4.1.11",
-        "typescript": "~6.0.3",
-        "typescript-eslint": "^8.59.4",
-        "vite": "^8.0.10",
-        "vitest": "^4.1.5"
+        "@tailwindcss/vite": "^4.2.2",
+        "tailwindcss": "^4.2.2",
+        "vite": "^8.0.7",
+        "@vitejs/plugin-react-swc": "^3.1.0"
     },
     "workspaces": {
         "packages": [

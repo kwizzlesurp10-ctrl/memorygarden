@@ -91,7 +91,6 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
     const rows = 3
     const cardWidth = 400
     const cardHeight = 300
-    const padding = 40
     const gap = 20
 
     const totalWidth = cols * cardWidth + (cols - 1) * gap
@@ -148,7 +147,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
           img.onerror = () => reject(new Error('Failed to load image'))
           img.src = memory.photoUrl
         })
-      } catch (error) {
+      } catch {
         console.error('Failed to load image for memory:', memory.id)
       }
 
@@ -390,7 +389,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
             img.onerror = () => reject(new Error('Failed to load image'))
             img.src = memory.photoUrl
           })
-        } catch (error) {
+        } catch {
           console.error('Failed to load image for memory:', memory.id)
         }
 

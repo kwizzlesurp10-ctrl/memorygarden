@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Palette, Sparkle, ArrowsClockwise, Drop } from '@phosphor-icons/react'
 import type { Memory, PaletteId, AdornmentId, PatternId, PlantCosmetics, UnlockState } from '@/lib/types'
-import { PALETTE_COLORS, getRarityInfo, UNLOCKABLE_ITEMS, REROLL_COST, canAffordReroll, ensureUnlockState } from '@/lib/unlock-system'
+import { PALETTE_COLORS, UNLOCKABLE_ITEMS, REROLL_COST, canAffordReroll, ensureUnlockState } from '@/lib/unlock-system'
 
 interface PlantCosmeticsEditorProps {
   open: boolean
@@ -39,9 +39,11 @@ export function PlantCosmeticsEditor({
 
   // Sync state when the memory prop changes
   useEffect(() => {
-    setSelectedPalette(memory?.cosmetics?.paletteId)
-    setSelectedAdornment(memory?.cosmetics?.adornmentId)
-    setSelectedPattern(memory?.cosmetics?.patternId)
+    queueMicrotask(() => {
+      setSelectedPalette(memory?.cosmetics?.paletteId)
+      setSelectedAdornment(memory?.cosmetics?.adornmentId)
+      setSelectedPattern(memory?.cosmetics?.patternId)
+    })
   }, [memory?.id, memory?.cosmetics?.paletteId, memory?.cosmetics?.adornmentId, memory?.cosmetics?.patternId])
 
   if (!memory) return null
@@ -191,7 +193,6 @@ export function PlantCosmeticsEditor({
               {adornmentItems.map((item) => {
                 const isAvailable = state.unlockedAdornments.includes(item.id as AdornmentId)
                 const isSelected = selectedAdornment === item.id
-                const rarity = getRarityInfo(item.rarity)
                 return (
                   <motion.button
                     key={item.id}

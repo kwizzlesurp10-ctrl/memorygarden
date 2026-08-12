@@ -1,4 +1,4 @@
-import type { Memory, EmotionalTone, PlantStage, PlantVariety, GrowthMetrics, GardenMood, WeatherType, SearchFilters, Season, ArtStyle } from './types'
+import type { Memory, EmotionalTone, PlantStage, PlantVariety, GrowthMetrics, GardenMood, WeatherType, SearchFilters, Season, ArtStyle, PlantTraits } from './types'
 import { getLLMProvider } from './llm-client'
 import { withRetry } from './retry'
 
@@ -465,6 +465,8 @@ export function getPlantSize(memoryOrStage: Memory | PlantStage, metrics?: Growt
   return { width: 50, height: 50 }
 }
 
+export type PlantCondition = 'neglected' | 'eternal' | 'normal'
+
 export interface VisualParams {
   color: string
   size: number
@@ -474,11 +476,12 @@ export interface VisualParams {
   scaleX: number
   leafOpacity: number
   bloomOpacity: number
+  condition: PlantCondition
 }
 
 export function getVisualParams(memory: Memory, metrics: GrowthMetrics): VisualParams {
   const season = getSeason()
-  const color = getSeasonalPlantModifier(season, memory.emotionalTone)
+  let color = getSeasonalPlantModifier(season, memory.emotionalTone)
   
   let specialClass: 'rare' | 'legendary' | undefined
   let glow = 0
@@ -489,6 +492,11 @@ export function getVisualParams(memory: Memory, metrics: GrowthMetrics): VisualP
   } else if (metrics.rarityScore >= 50) {
     specialClass = 'rare'
     glow = 0.8
+  }
+  
+  if (memory.isHybrid) {
+    // Hybrids get a subtle baseline glow and slightly distinct visual weight
+    glow = Math.max(glow, 1.2)
   }
   
   const stage = getPlantStage(memory)
@@ -506,6 +514,18 @@ export function getVisualParams(memory: Memory, metrics: GrowthMetrics): VisualP
   const progress = stageProgress[stage] || 0.5
   const baseSize = Math.max(metrics.width, metrics.height)
   
+  const daysSincePlanted = Math.floor((Date.now() - new Date(memory.plantedAt).getTime()) / 86400000)
+  const daysSinceInteraction = Math.floor((Date.now() - metrics.lastInteractionAt) / 86400000)
+  
+  let condition: PlantCondition = 'normal'
+  if (metrics.vitality >= 90 && daysSincePlanted > 30) {
+    condition = 'eternal'
+    glow = Math.max(glow, 2.5)
+  } else if (metrics.vitality < 40 && daysSinceInteraction > 10) {
+    condition = 'neglected'
+    color = `color-mix(in oklch, ${color} 60%, #4a4a4a)`
+  }
+
   return {
     color,
     size: baseSize,
@@ -515,9 +535,50 @@ export function getVisualParams(memory: Memory, metrics: GrowthMetrics): VisualP
     scaleX: 0.9 + (metrics.vitality / 100) * 0.2,
     leafOpacity: Math.min(1, progress * 1.2),
     bloomOpacity: Math.max(0, (progress - 0.5) * 2),
+    condition,
   }
 }
 
 export function getShareUrl(shareId: string): string {
   return `${window.location.origin}${window.location.pathname}?share=${shareId}`
+}
+
+export function generateHybridTraits(parent1: Memory, parent2: Memory): { traits: PlantTraits, geneticsSeed: string, variety: PlantVariety } {
+  const combinedTraits: PlantTraits = {}
+  
+  // Combine cosmetic traits with a 50/50 chance for each slot
+  const rng = Math.random
+  
+  if (parent1.traits?.pattern || parent2.traits?.pattern) {
+    combinedTraits.pattern = rng() > 0.5 ? (parent1.traits?.pattern || parent2.traits?.pattern) : (parent2.traits?.pattern || parent1.traits?.pattern)
+  }
+  if (parent1.traits?.adornment || parent2.traits?.adornment) {
+    combinedTraits.adornment = rng() > 0.5 ? (parent1.traits?.adornment || parent2.traits?.adornment) : (parent2.traits?.adornment || parent1.traits?.adornment)
+  }
+  if (parent1.traits?.accent || parent2.traits?.accent) {
+    combinedTraits.accent = rng() > 0.5 ? (parent1.traits?.accent || parent2.traits?.accent) : (parent2.traits?.accent || parent1.traits?.accent)
+  }
+  if (parent1.traits?.aura || parent2.traits?.aura) {
+    combinedTraits.aura = rng() > 0.5 ? (parent1.traits?.aura || parent2.traits?.aura) : (parent2.traits?.aura || parent1.traits?.aura)
+  }
+  if (parent1.traits?.paletteId || parent2.traits?.paletteId) {
+    combinedTraits.paletteId = rng() > 0.5 ? (parent1.traits?.paletteId || parent2.traits?.paletteId) : (parent2.traits?.paletteId || parent1.traits?.paletteId)
+  }
+
+  // Generate a spliced genetics seed
+  const p1Seed = parent1.geneticsSeed || parent1.id
+  const p2Seed = parent2.geneticsSeed || parent2.id
+  const split1 = Math.floor(p1Seed.length / 2)
+  const split2 = Math.floor(p2Seed.length / 2)
+  const geneticsSeed = `${p1Seed.substring(0, split1)}${p2Seed.substring(split2)}`
+
+  // Inherit variety from one of the parents, or rare mutation
+  let variety = rng() > 0.5 ? parent1.plantVariety : parent2.plantVariety
+  if (rng() > 0.95) {
+    // 5% chance for a rare mutation when crossing
+    const rareVarieties: PlantVariety[] = ['starlight_succulent', 'phoenix_vine', 'eternal_rose']
+    variety = rareVarieties[Math.floor(rng() * rareVarieties.length)]
+  }
+
+  return { traits: combinedTraits, geneticsSeed, variety }
 }

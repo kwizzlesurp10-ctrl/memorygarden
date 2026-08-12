@@ -2,7 +2,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { UserPlus, Crown, Eye, Users } from '@phosphor-icons/react'
-import type { CollaborativeGarden, GardenMember } from '@/lib/types'
+import type { CollaborativeGarden } from '@/lib/types'
 
 interface GardenMembersPanelProps {
   garden: CollaborativeGarden

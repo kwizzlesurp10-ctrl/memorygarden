@@ -1,57 +1,37 @@
-# ── Build stage ──────────────────────────────────────────────────────────────
+# MemoryGarden — production static SPA (Vite build + nginx)
+# Build:  docker build -t memorygarden .
+# Run:    docker compose up --build
+
 FROM node:22-alpine AS build
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts --legacy-peer-deps
+ENV NODE_ENV=production
 
-COPY . .
+COPY package.json package-lock.json .npmrc ./
+RUN npm ci --ignore-scripts
+
+COPY index.html vite.config.ts tsconfig.json tailwind.config.js ./
+COPY public ./public
+COPY src ./src
+
 RUN npm run build
 
-# ── Production stage ─────────────────────────────────────────────────────────
 FROM nginx:1.27-alpine AS production
 
-# Security: run as non-root
-RUN addgroup -S app && adduser -S app -G app
+RUN addgroup -S app && adduser -S app -G app \
+    && apk add --no-cache curl \
+    && sed -i '/user  nginx;/d' /etc/nginx/nginx.conf \
+    && sed -i 's|pid /var/run/nginx.pid;|pid /tmp/nginx.pid;|' /etc/nginx/nginx.conf \
+    && chown -R app:app /var/cache/nginx /var/log/nginx /etc/nginx/conf.d /usr/share/nginx/html
 
-# Copy optimised build output
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build --chown=app:app /app/dist /usr/share/nginx/html
+COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 
-# Custom nginx configuration for SPA routing and security headers
-COPY <<'EOF' /etc/nginx/conf.d/default.conf
-server {
-    listen 8080;
-    server_name _;
-    root /usr/share/nginx/html;
-    index index.html;
-
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Permissions-Policy "camera=(), microphone=(self), geolocation=()" always;
-
-    # Cache static assets aggressively
-    location /assets/ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-
-    # SPA fallback — serve index.html for client-side routes
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Health check endpoint
-    location /healthz {
-        access_log off;
-        return 200 'ok';
-        add_header Content-Type text/plain;
-    }
-}
-EOF
+USER app
 
 EXPOSE 8080
 
-# Run nginx in foreground
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:8080/healthz || exit 1
+
 CMD ["nginx", "-g", "daemon off;"]
