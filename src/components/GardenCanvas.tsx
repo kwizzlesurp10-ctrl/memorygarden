@@ -5,6 +5,14 @@ import { GardenClusterPaths } from './GardenClusterPaths'
 import { getPlantSize } from '@/lib/garden-helpers'
 import { plantStageToIndex } from '@/lib/garden/stage'
 import { todPalette, realClockTod } from '@/lib/garden/day-night'
+import {
+  computeLoupeLayout,
+  LENS_SIZE,
+  LENS_ZOOM_DEFAULT,
+  stepLensZoom,
+  type Point,
+  type Size,
+} from '@/lib/garden/lens'
 import { GardenSceneSvg, SCENE_W, SCENE_H } from '@/components/garden/GardenSceneSvg'
 import { GardenTodControls } from '@/components/garden/GardenTodControls'
 import { GardenLensDetail } from '@/components/garden/GardenLensDetail'
@@ -22,9 +30,6 @@ import { getLocalUser } from '@/lib/local-user'
 
 const RIM_STRENGTH = 0.6
 const GARDEN_SEED = 7
-const LENS_ZOOM_MIN = 1.6
-const LENS_ZOOM_MAX = 4
-const LENS_ZOOM_DEFAULT = 2.4
 
 interface GardenCanvasProps {
   memories: Memory[]
@@ -64,7 +69,10 @@ export function GardenCanvas({
   const [playing, setPlaying] = useState(true)
   const [lensOn, setLensOn] = useState(false)
   const [lensZoom, setLensZoom] = useState(LENS_ZOOM_DEFAULT)
-  const [lensPos, setLensPos] = useState({ x: 0, y: 0 })
+  /** Cursor in CSS px relative to the unscaled scene wrap; null until first move/seed. */
+  const [lensPos, setLensPos] = useState<Point | null>(null)
+  /** Measured CSS size of the scene wrap (matches rendered SVG when wrap is tight). */
+  const [sceneSize, setSceneSize] = useState<Size>({ w: SCENE_W, h: SCENE_H })
   const [detailMemory, setDetailMemory] = useState<Memory | null>(null)
   const [shedOpen, setShedOpen] = useState(false)
   const [draggingMemory, setDraggingMemory] = useState<string | null>(null)
@@ -79,10 +87,42 @@ export function GardenCanvas({
 
   const palette = useMemo(() => todPalette(tod, season), [tod, season])
 
+  // Parallax tilt fights the loupe (and confuses pointer→scene mapping) — off while lens is active.
   useParallaxCursor(
     { sky: skyRef, far: farRef, mid: midRef, foreground: fgRef, frame: frameRef },
-    motion && !detailMemory,
+    motion && !detailMemory && !lensOn,
   )
+
+  const measureScene = useCallback((): Size => {
+    const wrap = sceneWrapRef.current
+    if (!wrap) return { w: SCENE_W, h: SCENE_H }
+    const svg = wrap.querySelector('svg')
+    const rect = (svg ?? wrap).getBoundingClientRect()
+    return {
+      w: Math.max(1, rect.width),
+      h: Math.max(1, rect.height),
+    }
+  }, [])
+
+  const seedLensAtCenter = useCallback(() => {
+    const size = measureScene()
+    setSceneSize(size)
+    setLensPos({ x: size.w / 2, y: size.h / 2 })
+  }, [measureScene])
+
+  const toggleLens = useCallback(() => {
+    setLensOn((on) => {
+      const next = !on
+      if (next) {
+        // Defer measure until after paint so wrap has layout; seed center so we never
+        // open with (0,0) which previously scaled the whole garden off-screen.
+        queueMicrotask(() => seedLensAtCenter())
+      } else {
+        setLensPos(null)
+      }
+      return next
+    })
+  }, [seedLensAtCenter])
 
   useEffect(() => {
     if (propSeason) setSeason(propSeason)
@@ -183,9 +223,21 @@ export function GardenCanvas({
 
   const onLensMove = useCallback((e: React.PointerEvent) => {
     if (!lensOn || !sceneWrapRef.current) return
+    // Measure against the unscaled wrap — never against a scaled parent (that caused
+    // runaway origins like 180000px when the whole garden was wrongly scaled).
     const rect = sceneWrapRef.current.getBoundingClientRect()
-    setLensPos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
-  }, [lensOn])
+    const size = measureScene()
+    setSceneSize(size)
+    setLensPos({
+      x: Math.min(size.w, Math.max(0, e.clientX - rect.left)),
+      y: Math.min(size.h, Math.max(0, e.clientY - rect.top)),
+    })
+  }, [lensOn, measureScene])
+
+  const loupe = useMemo(() => {
+    if (!lensOn || !lensPos) return null
+    return computeLoupeLayout(lensPos, lensZoom, sceneSize, LENS_SIZE)
+  }, [lensOn, lensPos, lensZoom, sceneSize])
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-[#0d0913]">
@@ -210,7 +262,8 @@ export function GardenCanvas({
       <button
         type="button"
         aria-label={lensOn ? 'Disable magnifying lens' : 'Enable magnifying lens'}
-        onClick={() => setLensOn((v) => !v)}
+        aria-pressed={lensOn}
+        onClick={toggleLens}
         className="absolute z-40 flex h-[54px] w-[54px] items-center justify-center rounded-full border border-[#f0e7da]/30 bg-black/40 text-[#f0e7da] backdrop-blur-sm hover:bg-black/55"
         style={{ top: 12, right: 12 }}
       >
@@ -221,27 +274,47 @@ export function GardenCanvas({
       </button>
 
       {lensOn && (
-        <div className="absolute top-16 right-3 z-40 flex items-center gap-2 rounded-lg border border-white/15 bg-black/40 px-2 py-1 text-xs text-[#f0e7da]">
-          <button type="button" onClick={() => setLensZoom((z) => Math.max(LENS_ZOOM_MIN, z - 0.2))}>−</button>
-          <span className="font-mono min-w-[36px] text-center">{lensZoom.toFixed(1)}×</span>
-          <button type="button" onClick={() => setLensZoom((z) => Math.min(LENS_ZOOM_MAX, z + 0.2))}>+</button>
+        <div
+          className="absolute top-16 right-3 z-40 flex items-center gap-2 rounded-lg border border-white/15 bg-black/40 px-2 py-1 text-xs text-[#f0e7da]"
+          role="group"
+          aria-label="Lens zoom"
+        >
+          <button
+            type="button"
+            aria-label="Decrease lens zoom"
+            onClick={() => setLensZoom((z) => stepLensZoom(z, -1))}
+          >
+            −
+          </button>
+          <span className="font-mono min-w-[36px] text-center" data-testid="lens-zoom-label">
+            {lensZoom.toFixed(1)}×
+          </span>
+          <button
+            type="button"
+            aria-label="Increase lens zoom"
+            onClick={() => setLensZoom((z) => stepLensZoom(z, 1))}
+          >
+            +
+          </button>
         </div>
       )}
 
       <div
         ref={frameRef}
         className="relative w-full h-full flex items-center justify-center"
-        style={{ perspective: motion ? '1100px' : undefined }}
+        // Perspective only when parallax is active — avoid 3D tilt while loupe tracking.
+        style={{ perspective: motion && !lensOn ? '1100px' : undefined }}
         onPointerMove={onLensMove}
       >
+        {/*
+          CRITICAL: scene wrap must stay at scale(1). Scaling the whole garden was the
+          production bug that flung content off-screen and broke pointer→origin math.
+        */}
         <div
           ref={sceneWrapRef}
           className="relative max-w-full max-h-full"
-          style={{
-            transform: lensOn ? `scale(${lensZoom})` : undefined,
-            transformOrigin: lensOn ? `${lensPos.x}px ${lensPos.y}px` : undefined,
-            transition: lensOn ? 'transform 0.15s ease-out' : undefined,
-          }}
+          data-testid="garden-scene-wrap"
+          data-lens-on={lensOn ? 'true' : 'false'}
         >
           <GardenSceneSvg
             palette={palette}
@@ -257,21 +330,25 @@ export function GardenCanvas({
             layerRefs={{ sky: skyRef, far: farRef, mid: midRef, foreground: fgRef }}
           />
 
-          {lensOn && (
+          {loupe && (
             <div
-              className="pointer-events-none absolute rounded-full border-2 border-[#f0e7da]/35 overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.45)]"
+              data-testid="garden-loupe"
+              className="pointer-events-none absolute z-20 rounded-full border-2 border-[#f0e7da]/45 overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.45)] ring-1 ring-black/30"
               style={{
-                width: 260,
-                height: 260,
-                left: lensPos.x - 130,
-                top: lensPos.y - 130,
+                width: loupe.outer.width,
+                height: loupe.outer.height,
+                left: loupe.outer.left,
+                top: loupe.outer.top,
               }}
             >
               <div
-                className="absolute inset-0"
+                data-testid="garden-loupe-inner"
+                className="absolute top-0 left-0"
                 style={{
-                  transform: `scale(${lensZoom})`,
-                  transformOrigin: `${lensPos.x}px ${lensPos.y}px`,
+                  width: loupe.innerWidth,
+                  height: loupe.innerHeight,
+                  transform: loupe.innerTransform,
+                  transformOrigin: loupe.transformOrigin,
                 }}
               >
                 <GardenSceneSvg
@@ -279,7 +356,7 @@ export function GardenCanvas({
                   sceneKey="lens"
                   gardenSeed={GARDEN_SEED}
                   rimStrength={RIM_STRENGTH}
-                  motion={motion}
+                  motion={false}
                   shedStyle={shedData.shedStyle}
                   planted={shedData.planted}
                   candles={shedData.candles}
