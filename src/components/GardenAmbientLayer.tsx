@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
 import type { Season, WeatherType } from '@/lib/types'
-import type { DayPeriod } from '@/lib/ambient-garden-params'
 import { GardenAmbientEngine, ambientParamsFromGarden } from '@/lib/ambient-garden-engine'
+import { realClockTod, todToDayPeriod } from '@/lib/garden/day-night'
 
 export interface GardenAmbientLayerProps {
   enabled: boolean
   season: Season
-  dayPeriod: DayPeriod
+  /** Continuous 0–24 clock hour; defaults to real time when omitted. */
+  todHours?: number
   weatherType: WeatherType
   memoryCount: number
 }
@@ -14,11 +15,13 @@ export interface GardenAmbientLayerProps {
 export function GardenAmbientLayer({
   enabled,
   season,
-  dayPeriod,
+  todHours,
   weatherType,
   memoryCount,
 }: GardenAmbientLayerProps) {
   const engineRef = useRef<GardenAmbientEngine | null>(null)
+  const clock = todHours ?? realClockTod()
+  const dayPeriod = todToDayPeriod(clock)
 
   useEffect(() => {
     engineRef.current = new GardenAmbientEngine()

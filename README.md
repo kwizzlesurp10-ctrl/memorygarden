@@ -103,6 +103,7 @@ Output is written to **`dist/`** for static hosting.
 ### Quality checks
 ```bash
 npm run lint
+npm test
 ```
 
 ### Preview the production bundle
