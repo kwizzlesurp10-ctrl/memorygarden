@@ -53,6 +53,9 @@ describe('production parse path for garden view (App + GardenCanvas)', () => {
     // Redesign scene path present; half-merged pinch-zoom main remnants absent
     expect(source).toContain('GardenSceneSvg')
     expect(source).not.toMatch(/getSeasonalSky|ParallaxBackground|setScale\(/)
+    // Lens must magnify via loupe helper only — never scale the whole scene wrap
+    expect(source).toContain('computeLoupeLayout')
+    expect(source).not.toMatch(/transform:\s*lensOn\s*\?\s*`scale\(/)
   })
 
   it('uses a single SectionErrorBoundary root with onPlantHybrid on GardenCanvas', async () => {
