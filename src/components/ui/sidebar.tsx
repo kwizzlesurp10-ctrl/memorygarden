@@ -606,10 +606,15 @@ function SidebarMenuSkeleton({
 }: ComponentProps<"div"> & {
   showIcon?: boolean
 }) {
-  // Random width between 50 to 90%.
+  // Deterministic width from className so render stays pure for the linter.
   const width = useMemo(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`
-  }, [])
+    let h = 0
+    const s = String(className ?? '')
+    for (let i = 0; i < s.length; i++) {
+      h = (h * 31 + s.charCodeAt(i)) >>> 0
+    }
+    return `${50 + (h % 40)}%`
+  }, [className])
 
   return (
     <div

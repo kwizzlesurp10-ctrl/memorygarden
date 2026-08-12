@@ -1,4 +1,4 @@
-import { Sun, CloudRain, Cloud, CloudSun, Drop } from '@phosphor-icons/react'
+import { Sun, CloudRain, Cloud, CloudSun } from '@phosphor-icons/react'
 import type { GardenMood } from '@/lib/types'
 
 interface WeatherIndicatorProps {

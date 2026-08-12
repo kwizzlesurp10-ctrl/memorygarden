@@ -1,0 +1,76 @@
+name: Agent Evolution Sentinel
+
+on:
+  schedule:
+    # Weekly on Monday at 09:00 UTC — proactive evolution scan
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Evolution mode'
+        required: true
+        default: 'full-scan'
+        type: choice
+        options:
+          - full-scan
+          - bug-triage-support
+          - roadmap-alignment
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  evolution-scan:
+    name: Evolution Sentinel Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run quality baseline (lint + test + coverage summary)
+        run: |
+          npm run lint || true
+          npm test || true
+          npm run test:coverage || true
+          echo "## Evolution Sentinel Report - $(date -u +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Bundle & perf snapshot
+        run: |
+          npm run build || true
+          echo "Bundle and test artifacts ready for agent review." >> $GITHUB_STEP_SUMMARY
+
+      - name: Run Micro-Forge agents (full-scan / roadmap-alignment)
+        if: github.event_name == 'schedule' || github.event.inputs.mode == 'full-scan' || github.event.inputs.mode == 'roadmap-alignment'
+        run: python -m agents.micro_forge.runner --mode full-scan >> $GITHUB_STEP_SUMMARY
+
+      - name: Run Micro-Forge agents (guardian-only / bug-triage)
+        if: github.event.inputs.mode == 'bug-triage-support'
+        run: python -m agents.micro_forge.runner --mode guardian-only >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload sentinel artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evolution-sentinel-report
+          path: |
+            coverage/
+            dist/
+          retention-days: 14

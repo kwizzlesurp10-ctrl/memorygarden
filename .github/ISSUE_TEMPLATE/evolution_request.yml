@@ -1,0 +1,60 @@
+name: Evolution / Improvement Request
+about: Propose evolutionary changes, refactors, new features, or tech debt cleanup for MemoryGarden. Optimized for agentic execution.
+description: Use for roadmap items, refactors, or proactive improvements. The agent (Copilot/Claude) will analyze, prototype, and open draft PRs.
+title: '[EVOLUTION] '
+labels: ['evolution', 'needs-agent-review']
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This template feeds the **Evolution Sentinel** and AI coding agents. Reference PRD.md, MASTER_SOCIAL_ROADMAP.md, and existing test/edge case reports. Agent will prioritize low-risk, high-impact changes aligned with calm, local-first, Vercel/Spark-friendly principles.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Evolution Goal
+      description: What should improve or evolve? (e.g., "Add seasonal particle effects to plants without breaking mobile perf" or "Refactor growth engine for better testability and 3D extensibility")
+    validations:
+      required: true
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Why now? (Business / UX / Technical value)
+      description: Link to roadmap, user feedback, metrics (bundle size, coverage gaps from TEST_COVERAGE_SUMMARY.md), or second-order effects.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Suggested scope & constraints
+      description: Files/modules likely involved, performance budgets, Spark/Vercel compatibility requirements, what must NOT change.
+    validations:
+      required: false
+  - type: textarea
+    id: success
+    attributes:
+      label: Definition of done / success metrics
+      description: How will we know it succeeded? (e.g., new tests pass, bundle < X KB, user can feel the improvement in garden calm)
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Agent Priority
+      description: How aggressively should the agent pursue this?
+      options:
+        - Low (background evolution, draft PR when ready)
+        - Medium (next sprint)
+        - High (blocks other work or high user value)
+    validations:
+      required: true
+  - type: checkboxes
+    id: agent_hints
+    attributes:
+      label: Agent hints (check all that apply)
+      options:
+        - label: Start by reading CLAUDE.md + GEMINI.md + PRD.md for voice and constraints
+        - label: Leverage existing Vitest + edge case reports; add regression tests
+        - label: Keep changes local-first / IndexedDB friendly; minimize new deps
+        - label: Produce draft PR with clear before/after and Loom-style rationale
+        - label: Consider 3D/Three.js or d3 evolution paths if relevant

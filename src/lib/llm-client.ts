@@ -1,10 +1,13 @@
 /**
  * Unified LLM client abstraction.
  *
- * Wraps the Spark SDK `window.spark.llm` behind a provider-agnostic
- * interface so callers never reference the global directly.  Swap
- * the implementation here (e.g. local model, REST API) without
- * touching UI code.
+ * The default provider in production calls our own /api/llm Edge
+ * function, which proxies to Anthropic. In environments where that
+ * route returns 503 (no API key configured), or where window/fetch
+ * is unavailable, we fall back to a static no-network provider so
+ * the app never breaks.
+ *
+ * Tests can swap the provider via setLLMProvider().
  */
 
 export interface LLMProvider {
@@ -16,7 +19,42 @@ export interface LLMProvider {
   readonly available: boolean
 }
 
-// ── Spark-backed provider ───────────────────────────────────────────────────
+function tagged(strings: TemplateStringsArray, ...values: unknown[]): string {
+  return strings.reduce((acc, str, i) => acc + str + (values[i] ?? ''), '')
+}
+
+// ── HTTP provider (Vercel Edge proxy → Anthropic) ──────────────────────────
+
+function getHttpProvider(): LLMProvider | null {
+  if (typeof window === 'undefined' || typeof fetch === 'undefined') return null
+  // Tracks whether the /api/llm route is missing or unconfigured. After a
+  // first failed request we stop hammering it for the session.
+  let disabled = false
+  return {
+    prompt: tagged,
+    available: true,
+    async complete(promptText: string, model?: string, jsonMode?: boolean): Promise<string> {
+      if (disabled) throw new Error('LLM disabled for this session')
+      const kind = model === 'gpt-4o-mini' || model === 'haiku' ? 'classify' : 'reflect'
+      const res = await fetch('/api/llm', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ prompt: promptText, kind, jsonMode }),
+      })
+      if (res.status === 503 || res.status === 404) {
+        disabled = true
+        throw new Error('LLM not configured')
+      }
+      if (!res.ok) {
+        throw new Error(`LLM request failed: ${res.status}`)
+      }
+      const data = (await res.json()) as { text?: string }
+      return (data.text ?? '').trim()
+    },
+  }
+}
+
+// ── Spark fallback (legacy) ─────────────────────────────────────────────────
 
 interface SparkSDK {
   llmPrompt: (s: TemplateStringsArray, ...v: unknown[]) => string
@@ -34,14 +72,12 @@ function getSparkProvider(): LLMProvider | null {
   }
 }
 
-// ── Fallback (keyword-based, no network) ────────────────────────────────────
+// ── Static fallback (no network) ────────────────────────────────────────────
 
 const fallbackProvider: LLMProvider = {
-  prompt(strings: TemplateStringsArray, ...values: unknown[]): string {
-    return strings.reduce((acc, str, i) => acc + str + (values[i] ?? ''), '')
-  },
+  prompt: tagged,
   async complete(): Promise<string> {
-    return 'AI reflection is not available in this environment.'
+    return ''
   },
   available: false,
 }
@@ -50,27 +86,16 @@ const fallbackProvider: LLMProvider = {
 
 let _instance: LLMProvider | null = null
 
-/**
- * Returns the current LLM provider.
- * Resolves to the Spark provider when the SDK is loaded, otherwise
- * a safe fallback that never throws.
- */
 export function getLLMProvider(): LLMProvider {
   if (_instance) return _instance
-  _instance = getSparkProvider() ?? fallbackProvider
+  _instance = getHttpProvider() ?? getSparkProvider() ?? fallbackProvider
   return _instance
 }
 
-/**
- * Override the provider (useful for testing or swapping to a local model).
- */
 export function setLLMProvider(provider: LLMProvider): void {
   _instance = provider
 }
 
-/**
- * Reset the provider so the next `getLLMProvider()` re-detects.
- */
 export function resetLLMProvider(): void {
   _instance = null
 }

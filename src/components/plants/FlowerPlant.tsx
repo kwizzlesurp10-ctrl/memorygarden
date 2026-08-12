@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { PlantStage, Season } from '@/lib/types'
+import { motion } from 'framer-motion'
 
 interface PlantProps {
   stage: PlantStage
@@ -9,14 +10,57 @@ interface PlantProps {
   season: Season
 }
 
-// Pivots the plant body from (50, 90) — the soil line — in SVG user-unit space.
-function Sway({ children, dur = 4 }: { children: ReactNode; dur?: number }) {
+// Inject reusable SVG symbols for performance (veins, stamen)
+if (typeof window !== 'undefined' && !document.getElementById('botanical-symbols')) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  svg.id = 'botanical-symbols'
+  svg.style.position = 'absolute'
+  svg.style.width = '0'
+  svg.style.height = '0'
+  svg.setAttribute('aria-hidden', 'true')
+  svg.innerHTML = `
+    <defs>
+      <symbol id="vein-primary" viewBox="0 0 20 30">
+        <path d="M10 2 Q10 10 10 28" stroke="#1a1a1a" stroke-width="0.35" fill="none" opacity="0.22"/>
+        <path d="M10 7 Q6 13 4 19" stroke="#1a1a1a" stroke-width="0.22" fill="none" opacity="0.15"/>
+        <path d="M10 7 Q14 13 16 19" stroke="#1a1a1a" stroke-width="0.22" fill="none" opacity="0.15"/>
+      </symbol>
+      <symbol id="stamen" viewBox="0 0 12 8">
+        <circle cx="6" cy="4" r="2.2" fill="oklch(0.82 0.22 55)" opacity="0.9"/>
+        <ellipse cx="3.5" cy="2" rx="0.9" ry="1.4" fill="oklch(0.96 0.12 85)" opacity="0.85"/>
+        <ellipse cx="8.5" cy="2" rx="0.9" ry="1.4" fill="oklch(0.96 0.12 85)" opacity="0.85"/>
+        <ellipse cx="6" cy="6.2" rx="0.9" ry="1.4" fill="oklch(0.96 0.12 85)" opacity="0.85"/>
+      </symbol>
+      <symbol id="dew-drop" viewBox="0 0 4 4">
+        <circle cx="2" cy="2" r="1.5" fill="white" opacity="0.35" />
+        <circle cx="1.2" cy="1.2" r="0.6" fill="white" opacity="0.8" />
+        <path d="M 1.2 3 Q 2.5 3.2 3 2.5" stroke="white" stroke-width="0.3" fill="none" opacity="0.6"/>
+      </symbol>
+      <symbol id="pollen-dust" viewBox="0 0 10 10">
+        <circle cx="2" cy="3" r="0.5" fill="oklch(0.85 0.18 90)" opacity="0.8" />
+        <circle cx="8" cy="4" r="0.4" fill="oklch(0.85 0.18 90)" opacity="0.7" />
+        <circle cx="5" cy="7" r="0.6" fill="oklch(0.95 0.15 90)" opacity="0.9" />
+        <circle cx="3" cy="8" r="0.3" fill="oklch(0.85 0.18 90)" opacity="0.6" />
+        <circle cx="7" cy="1" r="0.5" fill="oklch(0.90 0.18 90)" opacity="0.8" />
+      </symbol>
+      <filter id="flower-glow">
+        <feGaussianBlur stdDeviation="2" result="blur"/>
+        <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+      </filter>
+    </defs>
+  `
+  document.body.appendChild(svg)
+}
+
+// Gentle organic sway with per-plant phase variation
+function Sway({ children, dur = 4.3, phase = 0 }: { children: ReactNode; dur?: number; phase?: number }) {
+  const values = `${-1.75 + phase} 50 90; ${1.75 + phase} 50 90; ${-1.75 + phase} 50 90`
   return (
     <g>
       <animateTransform
         attributeName="transform"
         type="rotate"
-        values={`-1.8 50 90; 1.8 50 90; -1.8 50 90`}
+        values={values}
         dur={`${dur}s`}
         repeatCount="indefinite"
         calcMode="spline"
@@ -27,292 +71,384 @@ function Sway({ children, dur = 4 }: { children: ReactNode; dur?: number }) {
   )
 }
 
-export function FlowerPlant({ stage, color, stemColor, groundColor, season }: PlantProps) {
-  if (stage === 'seed')     return <Seed color={color} groundColor={groundColor} />
-  if (stage === 'sprout')   return <Sprout color={color} stemColor={stemColor} groundColor={groundColor} />
-  if (stage === 'seedling') return <Seedling color={color} stemColor={stemColor} groundColor={groundColor} />
-  if (stage === 'young')    return <Young color={color} stemColor={stemColor} groundColor={groundColor} />
-  if (stage === 'bud')      return <Bud color={color} stemColor={stemColor} groundColor={groundColor} />
-  if (stage === 'bloom')    return <Bloom color={color} stemColor={stemColor} groundColor={groundColor} season={season} />
-  if (stage === 'mature')   return <Mature color={color} stemColor={stemColor} groundColor={groundColor} season={season} />
-  return <Elder color={color} stemColor={stemColor} groundColor={groundColor} season={season} />
+// Enhanced LayeredPetal with fine veins + inner gradient (RHS style)
+function LayeredPetal({ 
+  angle, 
+  scale = 1, 
+  opacity = 0.92, 
+  color, 
+  layer = 0 
+}: { angle: number; scale?: number; opacity?: number; color: string; layer?: number }) {
+  const gradId = `petalGrad-${Math.round(angle)}-${layer}`
+  
+  return (
+    <g transform={`translate(50, 26) rotate(${angle}) scale(${scale})`}>
+      <defs>
+        <linearGradient id={gradId} x1="0%" y1="5%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={color} stopOpacity="0.98" />
+          <stop offset="40%" stopColor={color} stopOpacity="0.82" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.68" />
+        </linearGradient>
+      </defs>
+      
+      {/* Main petal */}
+      <path
+        d="M 0 2 Q -7.8 -5 -10 -17.5 Q -4.5 -26 0 -28 Q 4.5 -26 10 -17.5 Q 7.8 -5 0 2 Z"
+        fill={`url(#${gradId})`}
+        opacity={opacity}
+      />
+      
+      {/* Subtle inner gradient toward base/center for volume */}
+      <path
+        d="M 0 2 Q -5 -4 -6.5 -14 Q -3 -20 0 -21 Q 3 -20 6.5 -14 Q 5 -4 0 2 Z"
+        fill={color}
+        opacity={0.18 + layer * 0.05}
+      />
+      
+      {/* Fine veins using reusable symbol */}
+      <use href="#vein-primary" x="-10" y="-28" width="20" height="30" />
+      
+      {/* Realistic Additives: Dew drops and pollen dusting based on angle & layer */}
+      {layer === 0 && angle % 3 === 0 && (
+        <use href="#dew-drop" x="-4" y="-18" width="4" height="4" />
+      )}
+      {layer === 1 && angle % 2 === 0 && (
+        <use href="#dew-drop" x="2" y="-14" width="4" height="4" />
+      )}
+      {layer === 2 && (
+        <use href="#pollen-dust" x="-5" y="-8" width="10" height="10" />
+      )}
+    </g>
+  )
 }
 
+export function FlowerPlant({ stage, color, stemColor, groundColor, season }: PlantProps) {
+  const phase = (parseInt(stage) || 0) * 0.28
+  if (stage === 'seed')     return <Seed color={color} groundColor={groundColor} />
+  if (stage === 'sprout')   return <Sprout color={color} stemColor={stemColor} groundColor={groundColor} phase={phase} />
+  if (stage === 'seedling') return <Seedling color={color} stemColor={stemColor} groundColor={groundColor} phase={phase} />
+  if (stage === 'young')    return <Young color={color} stemColor={stemColor} groundColor={groundColor} phase={phase} />
+  if (stage === 'bud')      return <Bud color={color} stemColor={stemColor} groundColor={groundColor} phase={phase} />
+  if (stage === 'bloom')    return <Bloom color={color} stemColor={stemColor} groundColor={groundColor} season={season} phase={phase} />
+  if (stage === 'mature')   return <Mature color={color} stemColor={stemColor} groundColor={groundColor} season={season} phase={phase} />
+  return <Elder color={color} stemColor={stemColor} groundColor={groundColor} season={season} phase={phase} />
+}
+
+// Seed — a small mound with a seed visible
 function Seed({ color, groundColor }: { color: string; groundColor: string }) {
   return (
     <>
-      <ellipse cx="50" cy="86" rx="16" ry="5" fill={groundColor} opacity="0.7" />
-      <ellipse cx="50" cy="83" rx="9" ry="3" fill={groundColor} opacity="0.38" />
-      {/* Bean-shaped seed */}
-      <path d="M 43 79 C 42 71 50 68 58 71 C 61 74 61 82 57 84 C 52 87 42 85 43 79 Z"
-        fill={color} opacity="0.93" />
-      {/* Specular highlight */}
-      <path d="M 46 73 C 44 71 51 70 53 73"
-        stroke="white" strokeWidth="1.2" fill="none" opacity="0.28" strokeLinecap="round" />
-      {/* Longitudinal crease */}
-      <path d="M 50 69 C 50 76 50 81 50 85"
-        stroke={color} strokeWidth="0.8" fill="none" opacity="0.28" strokeLinecap="round" />
+      {/* Ground mound */}
+      <ellipse cx="50" cy="86" rx="14" ry="5" fill={groundColor} opacity="0.7" />
+      {/* Small dirt pile */}
+      <path 
+        d="M 40 86 C 40 80 45 76 50 76 C 55 76 60 80 60 86 Z" 
+        fill={groundColor} 
+        opacity="0.85" 
+      />
+      {/* Seed peeking out */}
+      <ellipse cx="50" cy="78" rx="4" ry="3" fill={color} opacity="0.9" />
+      <ellipse cx="50" cy="77" rx="2.5" ry="1.5" fill={color} opacity="0.5" style={{ filter: 'brightness(1.2)' }} />
     </>
   )
 }
 
-function Sprout({ color, stemColor, groundColor }: { color: string; stemColor: string; groundColor: string }) {
+// Sprout — first tiny green shoot emerges
+function Sprout({ color, stemColor, groundColor, phase }: { color: string; stemColor: string; groundColor: string; phase: number }) {
   return (
     <>
-      <ellipse cx="50" cy="88" rx="13" ry="4" fill={groundColor} opacity="0.6" />
-      <Sway dur={3.6}>
-        {/* Hooked hypocotyl emerging from soil */}
-        <path d="M 50 88 C 50 80 46 70 47 61 C 49 53 55 53 55 53"
-          stroke={stemColor} strokeWidth="2.5" fill="none" strokeLinecap="round" />
-        {/* Left cotyledon */}
-        <path d="M 55 53 C 50 47 43 48 44 55 C 47 58 53 57 55 53 Z"
-          fill={color} opacity="0.85" />
-        {/* Right cotyledon */}
-        <path d="M 55 53 C 60 47 67 49 66 56 C 63 58 57 57 55 53 Z"
-          fill={color} opacity="0.82" />
-        {/* Midribs */}
-        <line x1="55" y1="53" x2="44" y2="55" stroke={stemColor} strokeWidth="0.6" opacity="0.38" />
-        <line x1="55" y1="53" x2="65" y2="55" stroke={stemColor} strokeWidth="0.6" opacity="0.38" />
+      <ellipse cx="50" cy="86" rx="12" ry="4.5" fill={groundColor} opacity="0.65" />
+      <Sway dur={3.5} phase={phase}>
+        {/* Tiny stem */}
+        <path 
+          d="M 50 86 C 50 80 50 76 50 72" 
+          stroke={stemColor} 
+          strokeWidth="2" 
+          fill="none" 
+          strokeLinecap="round" 
+        />
+        {/* Two tiny cotyledon leaves */}
+        <path 
+          d="M 50 72 C 45 70 42 68 44 65 C 47 66 50 69 50 72 Z" 
+          fill={color} 
+          opacity="0.85" 
+        />
+        <path 
+          d="M 50 72 C 55 70 58 68 56 65 C 53 66 50 69 50 72 Z" 
+          fill={color} 
+          opacity="0.85" 
+        />
       </Sway>
     </>
   )
 }
 
-function Seedling({ color, stemColor, groundColor }: { color: string; stemColor: string; groundColor: string }) {
+// Seedling — a bit taller with small leaves forming
+function Seedling({ color, stemColor, groundColor, phase }: { color: string; stemColor: string; groundColor: string; phase: number }) {
   return (
     <>
-      <ellipse cx="50" cy="90" rx="14" ry="4" fill={groundColor} opacity="0.6" />
-      <Sway dur={3.9}>
-        {/* Gently curved stem */}
-        <path d="M 50 90 C 51 79 49 64 50 44"
-          stroke={stemColor} strokeWidth="2.5" fill="none" strokeLinecap="round" />
-        {/* Left leaf — pointing lower-left */}
-        <path d="M 50 72 C 45 67 33 63 30 69 C 35 68 44 70 50 72 Z"
-          fill={color} opacity="0.88" />
-        <line x1="50" y1="72" x2="31" y2="68" stroke={stemColor} strokeWidth="0.7" opacity="0.42" />
-        {/* Right leaf — pointing upper-right */}
-        <path d="M 50 60 C 55 55 67 52 70 58 C 65 57 56 59 50 60 Z"
-          fill={color} opacity="0.85" />
-        <line x1="50" y1="60" x2="69" y2="57" stroke={stemColor} strokeWidth="0.7" opacity="0.42" />
-        {/* Tiny terminal bud with sepal hints */}
-        <path d="M 47 44 C 46 38 50 35 54 38 C 52 41 50 45 47 44 Z"
-          fill={stemColor} opacity="0.65" />
-        <path d="M 53 44 C 54 38 50 35 46 38 C 48 41 50 45 53 44 Z"
-          fill={stemColor} opacity="0.60" />
-        <ellipse cx="50" cy="40" rx="4" ry="5.5" fill={color} opacity="0.80" />
+      <ellipse cx="50" cy="88" rx="14" ry="5" fill={groundColor} opacity="0.65" />
+      <Sway dur={4} phase={phase}>
+        {/* Slightly taller stem */}
+        <path 
+          d="M 50 88 C 50 78 50 68 50 58" 
+          stroke={stemColor} 
+          strokeWidth="2.2" 
+          fill="none" 
+          strokeLinecap="round" 
+        />
+        {/* Small leaves emerging */}
+        <path 
+          d="M 50 70 C 42 66 36 64 38 58 C 43 60 50 66 50 70 Z" 
+          fill={color} 
+          opacity="0.82" 
+        />
+        <line x1="50" y1="70" x2="39" y2="62" stroke={stemColor} strokeWidth="0.6" opacity="0.3" />
+        <path 
+          d="M 50 65 C 58 61 64 59 62 53 C 57 55 50 61 50 65 Z" 
+          fill={color} 
+          opacity="0.82" 
+        />
+        <line x1="50" y1="65" x2="61" y2="57" stroke={stemColor} strokeWidth="0.6" opacity="0.3" />
+        {/* Tiny top leaves */}
+        <path 
+          d="M 50 58 C 46 55 44 52 47 50 C 49 52 50 55 50 58 Z" 
+          fill={color} 
+          opacity="0.78" 
+        />
+        <path 
+          d="M 50 58 C 54 55 56 52 53 50 C 51 52 50 55 50 58 Z" 
+          fill={color} 
+          opacity="0.78" 
+        />
       </Sway>
     </>
   )
 }
 
-function Young({ color, stemColor, groundColor }: { color: string; stemColor: string; groundColor: string }) {
+// Young — taller plant with more developed leaves
+function Young({ color, stemColor, groundColor, phase }: { color: string; stemColor: string; groundColor: string; phase: number }) {
   return (
     <>
-      <ellipse cx="50" cy="90" rx="16" ry="5" fill={groundColor} opacity="0.62" />
-      <Sway dur={4.1}>
-        {/* S-curved stem */}
-        <path d="M 50 90 C 53 76 47 60 50 36"
-          stroke={stemColor} strokeWidth="3" fill="none" strokeLinecap="round" />
-        {/* Lower left leaf */}
-        <path d="M 50 80 C 43 74 29 70 25 77 C 31 75 42 77 50 80 Z"
-          fill={color} opacity="0.88" />
-        <line x1="50" y1="80" x2="26" y2="76" stroke={stemColor} strokeWidth="0.8" opacity="0.38" />
-        {/* Lower right leaf */}
-        <path d="M 50 70 C 57 64 71 61 74 68 C 68 67 58 69 50 70 Z"
-          fill={color} opacity="0.85" />
-        <line x1="50" y1="70" x2="73" y2="67" stroke={stemColor} strokeWidth="0.8" opacity="0.38" />
-        {/* Upper left leaf */}
-        <path d="M 50 57 C 45 52 36 50 34 56 C 38 55 45 55 50 57 Z"
-          fill={color} opacity="0.82" />
-        <line x1="50" y1="57" x2="35" y2="55" stroke={stemColor} strokeWidth="0.7" opacity="0.35" />
-        {/* Closed bud at tip */}
-        <path d="M 47 36 C 46 30 50 26 54 30 C 52 33 50 37 47 36 Z"
-          fill={stemColor} opacity="0.70" />
-        <path d="M 53 36 C 54 30 50 26 46 30 C 48 33 50 37 53 36 Z"
-          fill={stemColor} opacity="0.65" />
-        <ellipse cx="50" cy="30" rx="5" ry="7.5" fill={color} opacity="0.84" />
+      <ellipse cx="50" cy="90" rx="16" ry="5" fill={groundColor} opacity="0.65" />
+      <Sway dur={4.3} phase={phase}>
+        {/* Main stem getting stronger */}
+        <path 
+          d="M 50 90 C 51 75 49 55 50 40" 
+          stroke={stemColor} 
+          strokeWidth="2.5" 
+          fill="none" 
+          strokeLinecap="round" 
+        />
+        {/* Developed leaves */}
+        <path 
+          d="M 50 78 C 40 72 28 68 26 74 C 32 73 42 75 50 78 Z" 
+          fill={color} 
+          opacity="0.84" 
+        />
+        <line x1="50" y1="78" x2="28" y2="73" stroke={stemColor} strokeWidth="0.7" opacity="0.35" />
+        <path 
+          d="M 50 68 C 60 62 72 58 74 64 C 68 63 58 65 50 68 Z" 
+          fill={color} 
+          opacity="0.84" 
+        />
+        <line x1="50" y1="68" x2="72" y2="63" stroke={stemColor} strokeWidth="0.7" opacity="0.35" />
+        <path 
+          d="M 50 56 C 42 50 32 47 33 53 C 38 52 45 53 50 56 Z" 
+          fill={color} 
+          opacity="0.80" 
+        />
+        <line x1="50" y1="56" x2="35" y2="52" stroke={stemColor} strokeWidth="0.6" opacity="0.3" />
+        {/* Top growth starting */}
+        <path 
+          d="M 50 40 C 45 38 42 36 45 33 C 48 35 50 38 50 40 Z" 
+          fill={color} 
+          opacity="0.75" 
+        />
+        <path 
+          d="M 50 40 C 55 38 58 36 55 33 C 52 35 50 38 50 40 Z" 
+          fill={color} 
+          opacity="0.75" 
+        />
       </Sway>
     </>
   )
 }
 
-function Bud({ color, stemColor, groundColor }: { color: string; stemColor: string; groundColor: string }) {
+// Bud — plant with a forming flower bud at top
+function Bud({ color, stemColor, groundColor, phase }: { color: string; stemColor: string; groundColor: string; phase: number }) {
   return (
     <>
-      <ellipse cx="50" cy="90" rx="17" ry="5" fill={groundColor} opacity="0.63" />
-      <Sway dur={4.3}>
-        {/* Taller S-curve stem */}
-        <path d="M 50 90 C 54 74 46 56 50 26"
-          stroke={stemColor} strokeWidth="3" fill="none" strokeLinecap="round" />
-        {/* Left leaf */}
-        <path d="M 50 76 C 42 70 27 67 23 74 C 30 72 42 74 50 76 Z"
-          fill={color} opacity="0.88" />
-        <line x1="50" y1="76" x2="24" y2="73" stroke={stemColor} strokeWidth="0.9" opacity="0.38" />
-        {/* Right leaf */}
-        <path d="M 50 62 C 58 56 72 53 75 60 C 68 59 58 61 50 62 Z"
-          fill={color} opacity="0.85" />
-        <line x1="50" y1="62" x2="74" y2="59" stroke={stemColor} strokeWidth="0.9" opacity="0.38" />
-        {/* Sepals — four pointed green bracts */}
-        <path d="M 50 34 C 44 28 44 20 50 18 C 50 22 49 30 50 34 Z" fill={stemColor} opacity="0.82" />
-        <path d="M 50 34 C 56 28 56 20 50 18 C 50 22 51 30 50 34 Z" fill={stemColor} opacity="0.78" />
-        <path d="M 50 34 C 43 27 40 18 44 14 C 46 18 48 28 50 34 Z" fill={stemColor} opacity="0.72" />
-        <path d="M 50 34 C 57 27 60 18 56 14 C 54 18 52 28 50 34 Z" fill={stemColor} opacity="0.70" />
-        {/* Tightly furled petals — just visible edges */}
-        <path d="M 50 34 C 44 28 45 20 50 18 C 48 22 48 30 50 34 Z" fill={color} opacity="0.92" />
-        <path d="M 50 34 C 56 28 55 20 50 18 C 52 22 52 30 50 34 Z" fill={color} opacity="0.88" />
-        <ellipse cx="50" cy="24" rx="6.5" ry="9" fill={color} opacity="0.91" />
+      <ellipse cx="50" cy="90" rx="17" ry="5.5" fill={groundColor} opacity="0.65" />
+      <Sway dur={4.5} phase={phase}>
+        {/* Strong stem */}
+        <path 
+          d="M 50 90 C 52 72 48 50 50 32" 
+          stroke={stemColor} 
+          strokeWidth="2.8" 
+          fill="none" 
+          strokeLinecap="round" 
+        />
+        {/* Full leaves */}
+        <path 
+          d="M 50 76 C 40 70 26 66 23 73 C 30 71 42 73 50 76 Z" 
+          fill={color} 
+          opacity="0.85" 
+        />
+        <line x1="50" y1="76" x2="26" y2="72" stroke={stemColor} strokeWidth="0.8" opacity="0.35" />
+        <path 
+          d="M 50 64 C 60 58 74 54 76 61 C 69 60 58 62 50 64 Z" 
+          fill={color} 
+          opacity="0.85" 
+        />
+        <line x1="50" y1="64" x2="74" y2="60" stroke={stemColor} strokeWidth="0.8" opacity="0.35" />
+        <path 
+          d="M 50 52 C 42 47 32 44 31 50 C 37 49 45 50 50 52 Z" 
+          fill={color} 
+          opacity="0.82" 
+        />
+        <line x1="50" y1="52" x2="33" y2="49" stroke={stemColor} strokeWidth="0.7" opacity="0.3" />
+        {/* The bud! */}
+        <ellipse cx="50" cy="30" rx="8" ry="10" fill={color} opacity="0.9" />
+        <ellipse cx="50" cy="28" rx="5" ry="7" fill={color} opacity="0.5" style={{ filter: 'brightness(1.15)' }} />
+        {/* Sepals (green parts holding the bud) */}
+        <path 
+          d="M 42 34 C 44 28 48 26 50 26 L 50 38 C 47 38 43 37 42 34 Z" 
+          fill={stemColor} 
+          opacity="0.8" 
+        />
+        <path 
+          d="M 58 34 C 56 28 52 26 50 26 L 50 38 C 53 38 57 37 58 34 Z" 
+          fill={stemColor} 
+          opacity="0.8" 
+        />
       </Sway>
     </>
   )
 }
 
-// Render back petals first (lower z), front petal last (on top).
-const BLOOM_PETAL_ANGLES = [144, 216, 72, 288, 0]
-const MATURE_PETAL_ANGLES = [135, 180, 225, 270, 315, 0, 45, 90]
-
-function Bloom({ color, stemColor, groundColor, season }: { color: string; stemColor: string; groundColor: string; season: Season }) {
-  const centerColor = season === 'spring'
-    ? 'oklch(0.88 0.18 85)'
-    : season === 'summer'
-    ? 'oklch(0.86 0.20 80)'
-    : 'oklch(0.82 0.16 90)'
-
+// Beautiful layered Bloom with natural variation
+function Bloom({ color, stemColor, groundColor, season, phase }: any) {
+  const centerColor = season === 'spring' ? 'oklch(0.90 0.18 82)' : season === 'summer' ? 'oklch(0.87 0.16 88)' : 'oklch(0.84 0.14 85)'
+  const petalAngles = [150, 210, 90, 270, 30, 330, 0, 180] // natural 8-petal variation
+  
   return (
     <>
-      <ellipse cx="50" cy="90" rx="18" ry="5.5" fill={groundColor} opacity="0.63" />
-      <Sway dur={4.6}>
-        <path d="M 50 90 C 53 73 47 54 50 26"
-          stroke={stemColor} strokeWidth="3" fill="none" strokeLinecap="round" />
-        {/* Leaf pair */}
-        <path d="M 50 74 C 42 68 27 65 23 72 C 30 70 42 72 50 74 Z"
-          fill={color} opacity="0.85" />
+      <ellipse cx="50" cy="90" rx="18" ry="5.5" fill={groundColor} opacity="0.65" />
+      <Sway dur={4.6} phase={phase}>
+        <motion.path 
+          d="M 50 90 C 53 73 47 54 50 26" 
+          stroke={stemColor} 
+          strokeWidth="3" 
+          fill="none" 
+          strokeLinecap="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 1.2, ease: [0.23, 1.0, 0.32, 1] }}
+        />
+        <path d="M 50 74 C 40 67 24 63 20 72 C 27 69 40 71 50 74 Z" fill={color} opacity="0.86" />
         <line x1="50" y1="74" x2="24" y2="71" stroke={stemColor} strokeWidth="0.9" opacity="0.38" />
-        <path d="M 50 60 C 58 54 72 51 75 58 C 68 57 58 59 50 60 Z"
-          fill={color} opacity="0.82" />
+        <path d="M 50 60 C 60 53 76 50 79 58 C 71 56 59 58 50 60 Z" fill={color} opacity="0.83" />
         <line x1="50" y1="60" x2="74" y2="57" stroke={stemColor} strokeWidth="0.9" opacity="0.38" />
-        {/* 5 teardrop petals — back to front z-order */}
-        {BLOOM_PETAL_ANGLES.map((angle, i) => (
-          <g key={i} transform={`translate(50, 26) rotate(${angle})`}>
-            <path d="M 0 2 C -8 -4 -11 -19 0 -26 C 11 -19 8 -4 0 2 Z"
-              fill={color} opacity={i < 2 ? 0.70 : 0.93} />
-          </g>
+        
+        {petalAngles.map((angle, i) => (
+          <LayeredPetal key={i} angle={angle} scale={i % 2 === 0 ? 1.08 : 0.95} opacity={i < 4 ? 0.68 : 0.94} color={color} layer={i < 4 ? 0 : 1} />
         ))}
-        {/* Stamen disc */}
-        <circle cx="50" cy="26" r="7.5" fill={centerColor} opacity="0.97" />
-        {/* Pollen dots */}
-        <circle cx="50"   cy="21.5" r="1.8" fill="oklch(0.96 0.08 85)" opacity="0.85" />
-        <circle cx="54.5" cy="24.5" r="1.8" fill="oklch(0.96 0.08 85)" opacity="0.85" />
-        <circle cx="54"   cy="30"   r="1.8" fill="oklch(0.96 0.08 85)" opacity="0.85" />
-        <circle cx="46"   cy="30"   r="1.8" fill="oklch(0.96 0.08 85)" opacity="0.85" />
-        <circle cx="45.5" cy="24.5" r="1.8" fill="oklch(0.96 0.08 85)" opacity="0.85" />
+        {[160, 200, 80, 280].map((angle, i) => (
+          <LayeredPetal key={`inner-${i}`} angle={angle} scale={0.72} opacity={0.85} color={color} layer={2} />
+        ))}
+        
+        <circle cx="50" cy="26" r="8" fill={centerColor} opacity="0.96" />
+        <use href="#stamen" x="44" y="22" width="12" height="8" />
       </Sway>
     </>
   )
 }
 
-function Mature({ color, stemColor, groundColor, season }: { color: string; stemColor: string; groundColor: string; season: Season }) {
-  const centerColor = season === 'spring'
-    ? 'oklch(0.88 0.18 85)'
-    : season === 'summer'
-    ? 'oklch(0.86 0.20 80)'
-    : 'oklch(0.80 0.16 90)'
-
+function Mature({ color, stemColor, groundColor, season, phase }: any) {
+  const centerColor = season === 'spring' ? 'oklch(0.90 0.18 82)' : season === 'summer' ? 'oklch(0.87 0.16 88)' : 'oklch(0.83 0.14 85)'
+  const petalAngles = [135, 180, 225, 270, 315, 0, 45, 90, 150, 210] // 10 petals
+  
   return (
     <>
       <ellipse cx="50" cy="90" rx="19" ry="6" fill={groundColor} opacity="0.65" />
-      <Sway dur={5.1}>
-        <path d="M 50 90 C 54 72 46 50 50 22"
-          stroke={stemColor} strokeWidth="3.5" fill="none" strokeLinecap="round" />
-        {/* Three leaves */}
-        <path d="M 50 78 C 41 72 25 68 21 76 C 28 73 41 75 50 78 Z"
-          fill={color} opacity="0.87" />
+      <Sway dur={5.1} phase={phase}>
+        <path d="M 50 90 C 54 72 46 50 50 22" stroke={stemColor} strokeWidth="3.5" fill="none" strokeLinecap="round" />
+        {/* leaves */}
+        <path d="M 50 78 C 41 72 25 68 21 76 C 28 73 41 75 50 78 Z" fill={color} opacity="0.87" />
         <line x1="50" y1="78" x2="22" y2="74" stroke={stemColor} strokeWidth="0.9" opacity="0.38" />
-        <path d="M 50 66 C 59 60 74 57 77 64 C 70 63 59 65 50 66 Z"
-          fill={color} opacity="0.84" />
+        <path d="M 50 66 C 59 60 74 57 77 64 C 70 63 59 65 50 66 Z" fill={color} opacity="0.84" />
         <line x1="50" y1="66" x2="76" y2="63" stroke={stemColor} strokeWidth="0.9" opacity="0.38" />
-        <path d="M 50 54 C 44 49 33 46 31 53 C 36 52 44 52 50 54 Z"
-          fill={color} opacity="0.80" />
+        <path d="M 50 54 C 44 49 33 46 31 53 C 36 52 44 52 50 54 Z" fill={color} opacity="0.80" />
         <line x1="50" y1="54" x2="32" y2="52" stroke={stemColor} strokeWidth="0.8" opacity="0.35" />
-        {/* 8 teardrop petals — back to front */}
-        {MATURE_PETAL_ANGLES.map((angle, i) => (
-          <g key={i} transform={`translate(50, 22) rotate(${angle})`}>
-            <path d="M 0 2 C -9 -5 -13 -22 0 -30 C 13 -22 9 -5 0 2 Z"
-              fill={color} opacity={i < 4 ? 0.67 : 0.92} />
+        
+        {petalAngles.map((angle, i) => (
+          <LayeredPetal key={i} angle={angle} scale={i % 3 === 0 ? 1.1 : 0.96} opacity={i < 5 ? 0.67 : 0.93} color={color} layer={i < 5 ? 0 : 1} />
+        ))}
+        
+        <circle cx="50" cy="22" r="9.5" fill={centerColor} opacity="0.97" />
+        {[0, 60, 120, 180, 240, 300].map((a, i) => (
+          <g key={i} transform={`translate(50, 22) rotate(${a})`}>
+            <ellipse cx="0" cy="-7" rx="1.6" ry="2.6" fill="oklch(0.96 0.12 85)" opacity="0.88" />
           </g>
         ))}
-        <circle cx="50" cy="22" r="9" fill={centerColor} opacity="0.97" />
-        <circle cx="50"   cy="17"   r="2"   fill="oklch(0.96 0.08 85)" opacity="0.85" />
-        <circle cx="55"   cy="20"   r="2"   fill="oklch(0.96 0.08 85)" opacity="0.85" />
-        <circle cx="55"   cy="26"   r="2"   fill="oklch(0.96 0.08 85)" opacity="0.85" />
-        <circle cx="50"   cy="29"   r="2"   fill="oklch(0.96 0.08 85)" opacity="0.85" />
-        <circle cx="45"   cy="26"   r="2"   fill="oklch(0.96 0.08 85)" opacity="0.85" />
-        <circle cx="45"   cy="20"   r="2"   fill="oklch(0.96 0.08 85)" opacity="0.85" />
-        {/* Side bud on lateral peduncle */}
-        <path d="M 67 48 C 65 42 64 38 67 36"
-          stroke={stemColor} strokeWidth="1.5" fill="none" strokeLinecap="round" />
+        
+        <path d="M 67 48 C 65 42 64 38 67 36" stroke={stemColor} strokeWidth="1.5" fill="none" strokeLinecap="round" />
         <ellipse cx="67" cy="34" rx="4" ry="5.5" fill={color} opacity="0.82" />
       </Sway>
     </>
   )
 }
 
-function Elder({ color, stemColor, groundColor, season }: { color: string; stemColor: string; groundColor: string; season: Season }) {
-  const centerColor = season === 'spring'
-    ? 'oklch(0.88 0.18 85)'
-    : 'oklch(0.82 0.14 85)'
-
+function Elder({ color, stemColor, groundColor, season, phase }: any) {
+  const centerColor = season === 'spring' ? 'oklch(0.90 0.18 82)' : 'oklch(0.84 0.14 85)'
+  const mainPetals = [135, 180, 225, 270, 315, 0, 45, 90, 150, 210]
+  
   return (
     <>
       <ellipse cx="50" cy="90" rx="20" ry="6" fill={groundColor} opacity="0.68" />
-      <Sway dur={5.6}>
-        {/* Stout main stem */}
-        <path d="M 50 90 C 55 70 45 48 50 18"
-          stroke={stemColor} strokeWidth="4" fill="none" strokeLinecap="round" />
-        {/* Lateral peduncles */}
-        <path d="M 47 52 C 40 46 32 42 28 38"
-          stroke={stemColor} strokeWidth="2" fill="none" strokeLinecap="round" />
-        <path d="M 53 44 C 60 38 68 34 72 30"
-          stroke={stemColor} strokeWidth="2" fill="none" strokeLinecap="round" />
-        {/* Main leaves */}
-        <path d="M 50 80 C 40 73 23 70 19 78 C 27 75 40 77 50 80 Z"
-          fill={color} opacity="0.87" />
+      <Sway dur={5.6} phase={phase}>
+        <path d="M 50 90 C 55 70 45 48 50 18" stroke={stemColor} strokeWidth="4" fill="none" strokeLinecap="round" />
+        <path d="M 47 52 C 40 46 32 42 28 38" stroke={stemColor} strokeWidth="2" fill="none" strokeLinecap="round" />
+        <path d="M 53 44 C 60 38 68 34 72 30" stroke={stemColor} strokeWidth="2" fill="none" strokeLinecap="round" />
+        <path d="M 50 80 C 40 73 23 70 19 78 C 27 75 40 77 50 80 Z" fill={color} opacity="0.87" />
         <line x1="50" y1="80" x2="20" y2="77" stroke={stemColor} strokeWidth="1" opacity="0.38" />
-        <path d="M 50 68 C 60 62 76 59 79 66 C 72 65 60 67 50 68 Z"
-          fill={color} opacity="0.84" />
+        <path d="M 50 68 C 60 62 76 59 79 66 C 72 65 60 67 50 68 Z" fill={color} opacity="0.84" />
         <line x1="50" y1="68" x2="78" y2="65" stroke={stemColor} strokeWidth="1" opacity="0.38" />
-        {/* Primary flower — 8 petals */}
-        {MATURE_PETAL_ANGLES.map((angle, i) => (
-          <g key={i} transform={`translate(50, 18) rotate(${angle})`}>
-            <path d="M 0 2 C -10 -5 -14 -24 0 -33 C 14 -24 10 -5 0 2 Z"
-              fill={color} opacity={i < 4 ? 0.64 : 0.92} />
-          </g>
+        
+        {mainPetals.map((angle, i) => (
+          <LayeredPetal key={i} angle={angle} scale={i % 3 === 0 ? 1.12 : 0.97} opacity={i < 5 ? 0.64 : 0.92} color={color} layer={i < 5 ? 0 : 1} />
         ))}
-        <circle cx="50" cy="18" r="10" fill={centerColor} opacity="0.97" />
-        <circle cx="50"   cy="12"   r="2.2" fill="oklch(0.96 0.08 85)" opacity="0.85" />
-        <circle cx="56"   cy="15"   r="2.2" fill="oklch(0.96 0.08 85)" opacity="0.85" />
-        <circle cx="55"   cy="22"   r="2.2" fill="oklch(0.96 0.08 85)" opacity="0.85" />
-        <circle cx="50"   cy="26"   r="2.2" fill="oklch(0.96 0.08 85)" opacity="0.85" />
-        <circle cx="45"   cy="22"   r="2.2" fill="oklch(0.96 0.08 85)" opacity="0.85" />
-        <circle cx="44"   cy="15"   r="2.2" fill="oklch(0.96 0.08 85)" opacity="0.85" />
-        {/* Left secondary flower — 6 petals */}
+        
+        <circle cx="50" cy="18" r="10.5" fill={centerColor} opacity="0.97" />
+        
+        {/* Secondary blooms */}
         <g transform="translate(28, 37)">
           {[0, 60, 120, 180, 240, 300].map((angle, i) => (
-            <g key={i} transform={`rotate(${angle})`}>
-              <path d="M 0 1 C -5 -3 -7 -13 0 -17 C 7 -13 5 -3 0 1 Z"
-                fill={color} opacity={i < 3 ? 0.68 : 0.90} />
-            </g>
+            <LayeredPetal key={i} angle={angle} scale={0.65} opacity={i < 3 ? 0.68 : 0.90} color={color} layer={1} />
           ))}
-          <circle cx="0" cy="0" r="5" fill={centerColor} opacity="0.96" />
+          <circle cx="0" cy="0" r="5.2" fill={centerColor} opacity="0.96" filter="url(#flower-glow)" />
+          <use href="#pollen-dust" x="-5" y="-5" width="10" height="10" />
         </g>
-        {/* Right secondary flower — 6 petals */}
         <g transform="translate(72, 30)">
           {[0, 60, 120, 180, 240, 300].map((angle, i) => (
-            <g key={i} transform={`rotate(${angle})`}>
-              <path d="M 0 1 C -5 -3 -7 -13 0 -17 C 7 -13 5 -3 0 1 Z"
-                fill={color} opacity={i < 3 ? 0.68 : 0.90} />
-            </g>
+            <LayeredPetal key={i} angle={angle} scale={0.62} opacity={i < 3 ? 0.68 : 0.90} color={color} layer={1} />
           ))}
-          <circle cx="0" cy="0" r="5" fill={centerColor} opacity="0.96" />
+          <circle cx="0" cy="0" r="5" fill={centerColor} opacity="0.96" filter="url(#flower-glow)" />
+          <use href="#pollen-dust" x="-5" y="-5" width="10" height="10" />
+        </g>
+        
+        {/* Floating Elder Pollen / Sparkles */}
+        <g filter="url(#flower-glow)">
+          <circle cx="35" cy="15" r="1.2" fill="oklch(0.95 0.12 85)" opacity="0.6">
+            <animate attributeName="cy" values="15; 10; 15" dur="3s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="65" cy="12" r="0.8" fill="oklch(0.95 0.12 85)" opacity="0.5">
+            <animate attributeName="cy" values="12; 8; 12" dur="4s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="50" cy="5" r="1.5" fill="oklch(0.95 0.12 85)" opacity="0.7">
+            <animate attributeName="cy" values="5; -2; 5" dur="3.5s" repeatCount="indefinite" />
+          </circle>
         </g>
       </Sway>
     </>

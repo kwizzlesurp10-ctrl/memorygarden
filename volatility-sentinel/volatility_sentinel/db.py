@@ -21,7 +21,7 @@ ON price_snapshots(coin_id, captured_at);
 async def ensure_schema(db_path: Path) -> None:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     async with aiosqlite.connect(db_path) as db:
-        await db.execute(SCHEMA)
+        await db.executescript(SCHEMA)
         await db.commit()
 
 

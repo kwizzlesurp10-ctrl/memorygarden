@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { getLocalUser } from '../local-user'
 
 // Reset the module-level cache between tests by re-importing the module.
 // vi.resetModules() clears the module registry so each dynamic import

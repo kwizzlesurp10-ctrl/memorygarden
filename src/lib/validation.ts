@@ -15,7 +15,6 @@ import type {
   Reflection,
   SearchFilters,
   UserPreferences,
-  CollaborativeGarden,
   GardenSettings,
   PaletteId,
   PatternId,

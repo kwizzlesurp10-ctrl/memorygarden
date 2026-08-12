@@ -5,11 +5,15 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork, ChartBar, Lightning, Palette, CaretLeft, CaretRight } from '@phosphor-icons/react'
+import { Drop, Sparkle, MapPin, CalendarBlank, ShareNetwork, ChartBar, Lightning, Palette, CaretLeft, CaretRight, HandHeart, Link } from '@phosphor-icons/react'
 import { AudioPlayer } from '@/components/AudioPlayer'
+import { WaterPlantButton } from '@/components/WaterPlantButton'
+import { MemoryReactions } from '@/components/MemoryReactions'
 import { PlantCustomizer } from '@/components/PlantCustomizer'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { format } from 'date-fns'
 import type { Memory, PlantTraits } from '@/lib/types'
+import type { ReactionType } from '@/lib/social'
 import { toast } from 'sonner'
 import { calculateGrowthMetrics } from '@/lib/garden-helpers'
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts'
@@ -20,15 +24,19 @@ interface MemoryCardProps {
   open: boolean
   onClose: () => void
   onWater: (memoryId: string, reflection: string) => void
+  onReact?: (memoryId: string, reactionType: ReactionType) => void
   onAskAI: (memoryId: string) => void
   onShare?: (memoryId: string) => void
   onBoost?: (memoryId: string) => void
   onUpdateTraits?: (memoryId: string, traits: PlantTraits) => void
   onCustomize?: () => void
+  onCrossPollinate?: (memoryId: string) => void
   aiReflection?: string
   isLoadingAI?: boolean
   allMemories?: Memory[]
   onNavigate?: (memoryId: string) => void
+  /** Current viewer's user id — used to detect "tend" interactions where viewer ≠ planter. */
+  currentUserId?: string
 }
 
 export function MemoryCard({
@@ -41,10 +49,13 @@ export function MemoryCard({
   onBoost,
   onUpdateTraits,
   onCustomize,
+  onCrossPollinate,
   aiReflection,
   isLoadingAI,
   allMemories = [],
   onNavigate,
+  onReact,
+  currentUserId,
 }: MemoryCardProps) {
   const [newReflection, setNewReflection] = useState('')
   const [isAddingReflection, setIsAddingReflection] = useState(false)
@@ -135,6 +146,11 @@ export function MemoryCard({
 
   const metrics = calculateGrowthMetrics(memory, [])
   const isLegendary = metrics.rarityScore > 90
+  const isTendingOtherPlant =
+    !!memory.plantedBy && !!currentUserId && memory.plantedBy.id !== currentUserId
+  const waterLabel = isTendingOtherPlant && memory.plantedBy
+    ? `Tend ${memory.plantedBy.login}'s plant`
+    : 'Water & Reflect'
 
   const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const swipeThreshold = 100
@@ -160,7 +176,7 @@ export function MemoryCard({
       await onWater(memory.id, newReflection.trim())
       setNewReflection('')
       toast.success('Reflection added! Your plant has grown.')
-    } catch (error) {
+    } catch {
       toast.error('Failed to add reflection')
     } finally {
       setIsAddingReflection(false)
@@ -258,6 +274,17 @@ export function MemoryCard({
                     {currentIndex + 1} / {sortedMemories.length}
                   </Badge>
                 )}
+                {memory.plantedBy && currentUserId && memory.plantedBy.id !== currentUserId && (
+                  <Badge variant="secondary" className="bg-card/80 backdrop-blur-sm gap-1.5">
+                    <Avatar className="w-4 h-4">
+                      <AvatarImage src={memory.plantedBy.avatarUrl} alt={memory.plantedBy.login} />
+                      <AvatarFallback className="text-[9px]">
+                        {memory.plantedBy.login[0]?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    planted by {memory.plantedBy.login}
+                  </Badge>
+                )}
               </div>
               <div className="flex gap-2">
                 <Button
@@ -347,24 +374,69 @@ export function MemoryCard({
 
               {memory.reflections.length > 0 && (
                 <>
+                  <div className="pt-4">
+                    <MemoryReactions
+                      reactions={memory.reactions}
+                      onReact={(type) => onReact?.(memory.id, type)}
+                    />
+                  </div>
+                  <div className="pt-2">
+                    {onWater ? (
+                      <WaterPlantButton memoryId={memory.id} onWater={(id) => onWater(id, '')} />
+                    ) : null}
+                  </div>
                   <Separator />
                   <div className="space-y-4">
                     <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
                       Reflections
                     </h3>
-                    {memory.reflections.map((reflection) => (
-                      <motion.div
-                        key={reflection.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="pl-4 border-l-2 border-primary/30"
-                      >
-                        <p className="text-sm leading-relaxed mb-1">{reflection.text}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(reflection.createdAt), 'MMM d, yyyy')}
-                        </p>
-                      </motion.div>
-                    ))}
+                    {memory.reflections.map((reflection) => {
+                      const isOwn =
+                        !!currentUserId &&
+                        !!reflection.contributorId &&
+                        reflection.contributorId === currentUserId
+                      const displayName = reflection.contributorLogin || (isOwn ? 'You' : 'Anonymous')
+                      return (
+                        <motion.div
+                          key={reflection.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className={`pl-4 border-l-2 ${
+                            reflection.isTend ? 'border-accent/60' : 'border-primary/30'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1.5">
+                            {reflection.contributorLogin ? (
+                              <Avatar className="w-5 h-5">
+                                <AvatarImage
+                                  src={reflection.contributorAvatarUrl}
+                                  alt={reflection.contributorLogin}
+                                />
+                                <AvatarFallback className="text-[10px]">
+                                  {reflection.contributorLogin[0]?.toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                            ) : null}
+                            <span className="text-xs font-medium">
+                              {isOwn ? 'You' : displayName}
+                            </span>
+                            {reflection.isTend && (
+                              <Badge
+                                variant="secondary"
+                                className="h-4 px-1.5 text-[10px] gap-1 bg-accent/15 text-accent border-accent/30"
+                              >
+                                <HandHeart size={10} weight="fill" />
+                                tend
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm leading-relaxed mb-1">{reflection.text}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(reflection.createdAt), 'MMM d, yyyy')}
+                          </p>
+                        </motion.div>
+                      )
+                    })}
                   </div>
                 </>
               )}
@@ -426,14 +498,18 @@ export function MemoryCard({
                   />
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <Button
                     onClick={handleWater}
                     disabled={isAddingReflection || newReflection.trim().length < 3}
                     className="flex-1"
                   >
-                    <Drop size={18} weight="fill" className="mr-2" />
-                    Water & Reflect
+                    {isTendingOtherPlant ? (
+                      <HandHeart size={18} weight="fill" className="mr-2 flex-shrink-0" />
+                    ) : (
+                      <Drop size={18} weight="fill" className="mr-2 flex-shrink-0" />
+                    )}
+                    {waterLabel}
                   </Button>
                   <Button
                     onClick={() => onAskAI(memory.id)}
@@ -499,6 +575,23 @@ export function MemoryCard({
                     >
                       <Palette size={18} weight="duotone" className="mr-2 text-primary" />
                       Customize Plant
+                    </Button>
+                  </motion.div>
+                )}
+
+                {onCrossPollinate && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    <Button
+                      onClick={() => onCrossPollinate(memory.id)}
+                      variant="outline"
+                      className="w-full border border-border hover:border-accent/50 hover:bg-accent/5 transition-all"
+                    >
+                      <Link size={18} weight="duotone" className="mr-2 text-accent" />
+                      Cross-Pollinate (Link Memories)
                     </Button>
                   </motion.div>
                 )}

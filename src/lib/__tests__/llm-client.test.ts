@@ -1,23 +1,42 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { getLLMProvider, setLLMProvider, resetLLMProvider, type LLMProvider } from '../llm-client'
 
 describe('LLM Client', () => {
   beforeEach(() => {
     resetLLMProvider()
+    vi.restoreAllMocks()
   })
 
-  it('returns a fallback provider when window.spark is unavailable', () => {
+  it('returns the HTTP provider in a browser-like environment', () => {
     const provider = getLLMProvider()
-    expect(provider.available).toBe(false)
+    expect(provider.available).toBe(true)
   })
 
-  it('fallback provider returns unavailable message', async () => {
+  it('HTTP provider posts to /api/llm and returns the text', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ text: 'hello back' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
     const provider = getLLMProvider()
-    const result = await provider.complete('test prompt')
-    expect(result).toBe('AI reflection is not available in this environment.')
+    const result = await provider.complete('hi')
+    expect(result).toBe('hello back')
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/llm',
+      expect.objectContaining({ method: 'POST' }),
+    )
   })
 
-  it('fallback provider.prompt concatenates template literal', () => {
+  it('HTTP provider throws when the route returns 503 (no API key)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ error: 'AI not configured' }), { status: 503 }),
+    )
+    const provider = getLLMProvider()
+    await expect(provider.complete('hi')).rejects.toThrow(/not configured/i)
+  })
+
+  it('prompt() concatenates template literals', () => {
     const provider = getLLMProvider()
     const result = provider.prompt`Hello ${'world'}, count: ${42}`
     expect(result).toBe('Hello world, count: 42')
@@ -48,8 +67,6 @@ describe('LLM Client', () => {
     const p1 = getLLMProvider()
     resetLLMProvider()
     const p2 = getLLMProvider()
-    // Both will be fallback but they should be fresh instances
-    expect(p1.available).toBe(false)
-    expect(p2.available).toBe(false)
+    expect(p1).not.toBe(p2)
   })
 })
