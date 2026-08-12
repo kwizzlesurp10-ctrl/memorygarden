@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { PlantStage } from '@/lib/types'
+import type { PlantStage, PlantVariety, Season } from '@/lib/types'
 
 interface PlantProps {
   stage: PlantStage
@@ -435,4 +435,238 @@ export function WildflowerPlant({ stage, color, stemColor, groundColor }: PlantP
       </Sway>
     </>
   )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Legendary / Special Plants — enhanced unique visuals for rare varieties
+// These are rendered for ancient_oak, eternal_rose, phoenix_vine, starlight_succulent.
+// They build on the same stage progression (idx) and Sway patterns for consistency.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function LegendaryPlant({
+  variety,
+  stage,
+  color,
+  stemColor,
+  groundColor,
+  season,
+}: {
+  variety: PlantVariety
+  stage: PlantStage
+  color: string
+  stemColor: string
+  groundColor: string
+  season: Season
+}) {
+  const idx = si(stage)
+  const phase = idx * 0.22
+
+  const ground = <ellipse cx="50" cy="90" rx={15 + idx * 1.2} ry="5.5" fill={groundColor} opacity="0.68" />
+
+  if (variety === 'ancient_oak') {
+    // Majestic ancient oak: thick gnarled trunk, broad layered canopy, acorns, deep character
+    const trunkW = 7 + Math.min(idx, 5) * 1.1
+    const canopy = 18 + idx * 4.2
+    const hasAcorns = idx >= 4
+    return (
+      <>
+        {ground}
+        <Sway dur={6.5 + idx * 0.2} phase={phase}>
+          {/* Gnarled thick trunk */}
+          <path
+            d={`M ${50 - trunkW} 90 Q ${50 - trunkW * 0.6} ${70 - idx} ${50 - trunkW * 0.3} ${42 - idx * 1.5} Q 50 ${38 - idx} ${50 + trunkW * 0.3} ${42 - idx * 1.5} Q ${50 + trunkW * 0.6} ${70 - idx} ${50 + trunkW} 90 Z`}
+            fill={stemColor}
+            opacity="0.92"
+          />
+          {/* Inner wood grain lines */}
+          <path d={`M 47 ${85 - idx} Q 50 ${65 - idx * 2} 53 ${82 - idx}`} stroke={stemColor} strokeWidth="0.6" opacity="0.35" fill="none" />
+          {/* Main canopy layers (progressive with stage) */}
+          <ellipse cx="50" cy={42 - idx * 0.8} rx={canopy} ry={canopy * 0.82} fill={color} opacity="0.88" />
+          {idx >= 2 && <ellipse cx={42} cy={38 - idx * 0.5} rx={canopy * 0.72} ry={canopy * 0.6} fill={color} opacity="0.72" />}
+          {idx >= 3 && <ellipse cx={58} cy={36 - idx * 0.3} rx={canopy * 0.68} ry={canopy * 0.55} fill={color} opacity="0.68" />}
+          {idx >= 5 && <ellipse cx="50" cy={30 - idx * 0.6} rx={canopy * 0.55} ry={canopy * 0.48} fill={color} opacity="0.6" />}
+          {/* Moss / lichen on ancient trunk & branches */}
+          {idx >= 3 && (
+            <>
+              <path d="M 38 72 Q 41 64 37 58" stroke="oklch(0.48 0.10 145)" strokeWidth="2.5" opacity="0.6" fill="none" strokeLinecap="round" />
+              <path d="M 62 68 Q 59 60 63 55" stroke="oklch(0.48 0.10 145)" strokeWidth="2" opacity="0.55" fill="none" strokeLinecap="round" />
+            </>
+          )}
+          {/* Acorns & small details for mature+ */}
+          {hasAcorns && (
+            <g>
+              {[ -18, 12, 22 ].map((ox, i) => (
+                <g key={i} transform={`translate(${50 + ox}, ${38 - i * 1.5})`}>
+                  <ellipse cx="0" cy="0" rx="2.2" ry="3.2" fill={stemColor} opacity="0.85" />
+                  <circle cx="0" cy="-3.2" r="1.1" fill="oklch(0.82 0.14 70)" opacity="0.9" />
+                </g>
+              ))}
+            </g>
+          )}
+          {/* Lower drooping heavy branches for elder */}
+          {idx >= 6 && (
+            <>
+              <path d="M 32 55 Q 18 62 12 78" stroke={stemColor} strokeWidth="1.8" fill="none" opacity="0.75" />
+              <path d="M 68 52 Q 80 60 85 76" stroke={stemColor} strokeWidth="1.8" fill="none" opacity="0.75" />
+            </>
+          )}
+        </Sway>
+      </>
+    )
+  }
+
+  if (variety === 'eternal_rose') {
+    // Eternal rose: timeless elegant multi-layer rose with luminous center, subtle golden accents
+    const petalLayers = Math.min(3 + Math.floor(idx / 2), 6)
+    const roseSize = 9 + idx * 1.8
+    const centerGold = season === 'autumn' || season === 'winter' ? 'oklch(0.88 0.18 70)' : 'oklch(0.90 0.16 85)'
+    return (
+      <>
+        {ground}
+        <Sway dur={4.8 + idx * 0.15} phase={phase}>
+          {/* Strong elegant stem */}
+          <path d={`M 50 90 C 51 ${78 - idx} 49 ${55 - idx * 1.2} 50 ${32 - idx * 0.8}`} stroke={stemColor} strokeWidth={3 + idx * 0.15} fill="none" strokeLinecap="round" />
+          {/* Layered rose bloom (more layers & tighter at higher stages) */}
+          {Array.from({ length: petalLayers }).map((_, li) => {
+            const r = roseSize * (0.55 + li * 0.18)
+            const rot = (li % 2) * 18
+            const op = 0.65 + (li % 3) * 0.08
+            return (
+              <g key={li} transform={`translate(50, ${34 - idx * 0.5}) rotate(${rot})`}>
+                {Array.from({ length: 7 }).map((_, p) => {
+                  const a = (p * 360) / 7
+                  return (
+                    <ellipse
+                      key={p}
+                      cx={Math.cos((a * Math.PI) / 180) * r * 0.35}
+                      cy={Math.sin((a * Math.PI) / 180) * r * 0.35 - r * 0.1}
+                      rx={r * 0.38}
+                      ry={r * 0.22}
+                      fill={color}
+                      opacity={op}
+                      transform={`rotate(${a} ${Math.cos((a * Math.PI) / 180) * r * 0.35} ${Math.sin((a * Math.PI) / 180) * r * 0.35 - r * 0.1})`}
+                    />
+                  )
+                })}
+              </g>
+            )
+          })}
+          {/* Luminous eternal center */}
+          <circle cx="50" cy={34 - idx * 0.5} r={roseSize * 0.32} fill={centerGold} opacity="0.96" />
+          {/* Delicate golden halo / dew on higher stages */}
+          {idx >= 4 && (
+            <circle cx="50" cy={34 - idx * 0.5} r={roseSize * 0.48} fill="none" stroke="oklch(0.92 0.12 75)" strokeWidth="0.8" opacity="0.4" />
+          )}
+          {/* Subtle outer petals for elder */}
+          {idx >= 6 && (
+            <g transform="translate(50, 33)">
+              {[30, 90, 150, 210, 270, 330].map((a, i) => (
+                <ellipse key={i} cx={Math.cos((a * Math.PI) / 180) * 11} cy={Math.sin((a * Math.PI) / 180) * 9 - 2} rx="4.5" ry="2.2" fill={color} opacity="0.55" transform={`rotate(${a})`} />
+              ))}
+            </g>
+          )}
+        </Sway>
+      </>
+    )
+  }
+
+  if (variety === 'phoenix_vine') {
+    // Phoenix vine: fiery rebirth motif, curling tendrils, warm regenerative energy
+    const vineH = 16 + idx * 8.5
+    const flame = 'oklch(0.72 0.22 45)'
+    return (
+      <>
+        {ground}
+        <Sway dur={3.1 + idx * 0.1} phase={phase}>
+          {/* Central vine stem with slight curve variation */}
+          <path d={`M 50 90 C 53 ${90 - vineH * 0.25} 47 ${90 - vineH * 0.55} 50 ${90 - vineH}`} stroke={stemColor} strokeWidth="2.8" fill="none" strokeLinecap="round" />
+          {/* Side tendrils + regenerating leaves (more as it matures) */}
+          {Array.from({ length: Math.min(2 + Math.floor(idx / 1.5), 7) }, (_, i) => {
+            const t = (i + 1) / 7
+            const y = 90 - vineH * (0.25 + t * 0.7)
+            const side = i % 2 === 0 ? -1 : 1
+            const len = 11 + idx * 1.3
+            return (
+              <g key={i}>
+                <path d={`M 50 ${y} C ${50 + side * 5} ${y - 4} ${50 + side * len * 0.6} ${y - 8} ${50 + side * len} ${y - 5}`} stroke={color} strokeWidth="1.6" fill="none" strokeLinecap="round" opacity="0.82" />
+                {/* Flame / rebirth tips */}
+                {idx >= 3 && i % 2 === 1 && (
+                  <path d={`M ${50 + side * len} ${y - 5} Q ${50 + side * (len + 3)} ${y - 9} ${50 + side * len} ${y - 13}`} fill="none" stroke={flame} strokeWidth="1.1" opacity="0.75" />
+                )}
+              </g>
+            )
+          })}
+          {/* Bud / bloom head with phoenix glow */}
+          {idx >= 2 && (
+            <g transform={`translate(50, ${90 - vineH - 2})`}>
+              <ellipse cx="0" cy="0" rx="6.5" ry="9" fill={color} opacity="0.9" />
+              <circle cx="0" cy="-1" r="3.8" fill={flame} opacity={0.7 + idx * 0.03} />
+              {idx >= 5 && <circle cx="0" cy="-1" r="6" fill="none" stroke={flame} strokeWidth="1" opacity="0.5" />}
+            </g>
+          )}
+          {/* Regrowth sparks / embers at high stages */}
+          {idx >= 6 && (
+            <>
+              {[ -12, 9, -4 ].map((ox, i) => (
+                <circle key={i} cx={50 + ox} cy={62 - i * 3} r="1.3" fill={flame} opacity="0.7">
+                  <animate attributeName="opacity" values="0.7;0.2;0.7" dur="1.8s" repeatCount="indefinite" />
+                </circle>
+              ))}
+            </>
+          )}
+        </Sway>
+      </>
+    )
+  }
+
+  if (variety === 'starlight_succulent') {
+    // Starlight succulent: crystalline facets, inner star glow, ethereal & geometric
+    const r = 8 + idx * 3.6
+    const facets = 6 + Math.floor(idx / 2)
+    const glowColor = 'oklch(0.88 0.14 240)'
+    return (
+      <>
+        {ground}
+        {/* Crystalline base + layered leaves with facets */}
+        <g>
+          {Array.from({ length: facets }).map((_, i) => {
+            const ang = (i * 360 / facets) - 90
+            const rad = r * (0.35 + (i % 3) * 0.12)
+            const tx = 50 + Math.cos((ang * Math.PI) / 180) * rad * 0.9
+            const ty = 74 - idx * 1.8 + Math.sin((ang * Math.PI) / 180) * rad * 0.65
+            return (
+              <g key={i} transform={`rotate(${ang} ${50} ${74 - idx * 1.8})`}>
+                <path
+                  d={`M ${tx - 3} ${ty + 4} L ${50} ${ty - rad * 0.9} L ${tx + 3} ${ty + 4} Z`}
+                  fill={color}
+                  opacity={0.78 + (i % 2) * 0.06}
+                />
+                {/* Inner crystal highlight */}
+                {idx >= 3 && <path d={`M ${tx - 1.5} ${ty + 2} L ${50} ${ty - rad * 0.5} L ${tx + 1.5} ${ty + 2}`} fill="white" opacity="0.18" />}
+              </g>
+            )
+          })}
+          {/* Central glowing core */}
+          <circle cx="50" cy={74 - idx * 1.8} r={r * 0.22} fill={glowColor} opacity="0.95" />
+          {/* Radiating starlight points (legendary aura) */}
+          {idx >= 4 && Array.from({ length: 6 }).map((_, i) => {
+            const a = i * 60
+            return (
+              <g key={i} transform={`translate(50, ${74 - idx * 1.8}) rotate(${a})`}>
+                <path d="M 0 0 L 0 -12" stroke={glowColor} strokeWidth="1" opacity="0.55" />
+                <circle cx="0" cy="-13" r="1.5" fill={glowColor} opacity="0.8" />
+              </g>
+            )
+          })}
+          {/* Delicate outer halo for elder */}
+          {idx >= 7 && (
+            <circle cx="50" cy={74 - idx * 1.8} r={r * 0.95} fill="none" stroke={glowColor} strokeWidth="0.7" opacity="0.35" />
+          )}
+        </g>
+      </>
+    )
+  }
+
+  // Fallback (should not reach)
+  return null
 }
