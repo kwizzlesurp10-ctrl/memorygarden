@@ -36,6 +36,11 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install dependencies
         run: npm ci
 
@@ -52,34 +57,13 @@ jobs:
           npm run build || true
           echo "Bundle and test artifacts ready for agent review." >> $GITHUB_STEP_SUMMARY
 
-      - name: Generate Evolution Proposal (if scheduled or manual)
+      - name: Run Micro-Forge agents (full-scan / roadmap-alignment)
         if: github.event_name == 'schedule' || github.event.inputs.mode == 'full-scan' || github.event.inputs.mode == 'roadmap-alignment'
-        run: |
-          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
-          ## 🤖 Evolution Sentinel Findings
+        run: python -m agents.micro_forge.runner --mode full-scan >> $GITHUB_STEP_SUMMARY
 
-          **Recommended next actions for Copilot / Claude Agent** (per AGENT_WORKFLOW.md):
-          1. Review latest coverage gaps and EDGE_CASE reports.
-          2. Cross-reference PRD.md roadmap items.
-          3. Propose 1-2 focused evolution PRs (refactor, test hardening, or calm UX micro-improvements).
-          4. Use evolution_request.yml template for tracking.
-
-          **Trigger the agent**:
-          - Create issue from evolution_request.yml
-          - Assign to @copilot or comment with clear goal + "follow AGENT_WORKFLOW.md"
-          - Or open in Cursor with CLAUDE.md loaded.
-
-          **This week's focus areas** (auto-suggested):
-          - Canvas performance / virtualization for large gardens
-          - Deeper seasonal / time-of-day atmosphere polish
-          - LLM fallback robustness + Spark parity tests
-          - Accessibility audit on modals and canvas controls
-          EOF
-
-      - name: Bug Triage Support (manual dispatch)
+      - name: Run Micro-Forge agents (guardian-only / bug-triage)
         if: github.event.inputs.mode == 'bug-triage-support'
-        run: |
-          echo "Bug triage mode activated. Use AGENT_WORKFLOW.md + bug_report.yml for Copilot-driven fixes." >> $GITHUB_STEP_SUMMARY
+        run: python -m agents.micro_forge.runner --mode guardian-only >> $GITHUB_STEP_SUMMARY
 
       - name: Upload sentinel artifacts
         uses: actions/upload-artifact@v4

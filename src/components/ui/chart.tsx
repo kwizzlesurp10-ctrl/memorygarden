@@ -120,7 +120,7 @@ function ChartTooltipContent({
   color,
   nameKey,
   labelKey,
-}: TooltipContentProps &
+}: Partial<TooltipContentProps> &
   ComponentProps<"div"> & {
     hideLabel?: boolean
     hideIndicator?: boolean
@@ -184,11 +184,18 @@ function ChartTooltipContent({
         {payload.map((item, index) => {
           const key = `${nameKey || item.name || item.dataKey || "value"}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
-          const indicatorColor = color || item.payload.fill || item.color
+          const payloadFill =
+            item.payload &&
+            typeof item.payload === "object" &&
+            "fill" in item.payload &&
+            typeof (item.payload as { fill?: unknown }).fill === "string"
+              ? (item.payload as { fill: string }).fill
+              : undefined
+          const indicatorColor = color || payloadFill || item.color
 
           return (
             <div
-              key={`${key}-${index}`}
+              key={`${String(key)}-${index}`}
               className={cn(
                 "[&>svg]:text-muted-foreground flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5",
                 indicator === "dot" && "items-center"

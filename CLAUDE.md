@@ -20,6 +20,7 @@ Prefer **`npm install --legacy-peer-deps`** if plain `npm install` fails on peer
 [/content-to-enhance]
 
 [content-to-enhance id="claude-architecture"]
+
 ## Architecture
 
 **Persistence**: Import **`useKV`** from **`@/lib/storage`**. It resolves to **`useLocalKV`** — namespaced **localStorage** keys under the `memorygarden` prefix, scoped per **`LocalUser`** id. Direct helpers **`readRaw` / `writeRaw`** exist for non-React code. Large binary payloads belong in **IndexedDB** helpers elsewhere in the stack; do not stuff big Base64 blobs only into localStorage.
@@ -29,11 +30,13 @@ Prefer **`npm install --legacy-peer-deps`** if plain `npm install` fails on peer
 **State**: **`App.tsx`** owns top-level state, composes **`useKV`** / memory hooks, and passes callbacks down. No external global store.
 
 **Core types** (`src/lib/types.ts`):
+
 - **`Memory`** — `id`, `photoUrl`, `text`, `emotionalTone`, `plantStage`, `position`, `visitCount`, `reflections[]`, etc.
 - **`PlantStage`** — `seed → sprout → bud → bloom → mature → evergreen` via **`getPlantStage()`** and visit/age signals.
 - **`EmotionalTone`** — `happy | reflective | bittersweet | peaceful | nostalgic` (from classification).
 
 **Key UI**:
+
 - **`GardenCanvas.tsx`** — Infinite canvas; primary garden view.
 - **`PlantMemoryModal.tsx`** — Create memory (photo → Base64, text, date, optional location/audio).
 - **`MemoryCard.tsx`** — Detail, reflect, AI prompts.
@@ -44,6 +47,7 @@ Prefer **`npm install --legacy-peer-deps`** if plain `npm install` fails on peer
 [/content-to-enhance]
 
 [content-to-enhance id="claude-conventions"]
+
 ## Conventions
 
 - **Colors**: Only **OKLCH** as established in `garden-helpers.ts` and `src/styles/theme.css` — avoid introducing raw hex/RGB in new UI.

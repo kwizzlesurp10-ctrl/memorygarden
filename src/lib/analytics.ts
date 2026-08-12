@@ -95,6 +95,7 @@ export function computeGardenStats(memories: Memory[], now = Date.now()): Garden
   ])
   const varietyDistribution = zeroRecord<PlantVariety>([
     'flower', 'tree', 'succulent', 'vine', 'herb', 'wildflower',
+    'fern', 'mushroom', 'lotus',
     'ancient_oak', 'eternal_rose', 'phoenix_vine', 'starlight_succulent',
   ])
   const seasonDist = zeroRecord<Season>(['spring', 'summer', 'autumn', 'winter'])
@@ -467,6 +468,7 @@ function emptyStats(): GardenStats {
     stageDistribution: zeroRecord(['seed', 'sprout', 'seedling', 'young', 'bud', 'bloom', 'mature', 'elder']),
     varietyDistribution: zeroRecord([
       'flower', 'tree', 'succulent', 'vine', 'herb', 'wildflower',
+      'fern', 'mushroom', 'lotus',
       'ancient_oak', 'eternal_rose', 'phoenix_vine', 'starlight_succulent',
     ]),
     seasonDistribution: zeroRecord(['spring', 'summer', 'autumn', 'winter']),

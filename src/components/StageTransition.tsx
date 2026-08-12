@@ -1,6 +1,12 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import type { ReactNode } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 
-export const StageTransition = ({ stage, children }) => {
+interface StageTransitionProps {
+  stage: string
+  children: ReactNode
+}
+
+export const StageTransition = ({ stage, children }: StageTransitionProps) => {
   return (
     <AnimatePresence mode="wait">
       <motion.div

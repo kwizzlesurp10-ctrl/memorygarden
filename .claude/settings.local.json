@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m agents.micro_forge.runner --mode full-scan)",
+      "Bash(npm run *)"
+    ]
+  }
+}

@@ -26,7 +26,84 @@ export interface TraitUnlock {
   unlockedAt: string
 }
 
-export type PlantVariety = 'flower' | 'tree' | 'succulent' | 'vine' | 'herb' | 'wildflower' | 'ancient_oak' | 'eternal_rose' | 'phoenix_vine' | 'starlight_succulent'
+export type PlantVariety = 'flower' | 'tree' | 'succulent' | 'vine' | 'herb' | 'wildflower' | 'fern' | 'mushroom' | 'lotus' | 'ancient_oak' | 'eternal_rose' | 'phoenix_vine' | 'starlight_succulent'
+
+export type HybridBaseVariety = 'flower' | 'tree' | 'succulent' | 'vine' | 'herb' | 'wildflower' | 'fern' | 'mushroom' | 'lotus'
+
+export type HybridAdornment = 'motes' | 'fireflies' | 'rings' | 'halo' | 'none'
+
+export type ShedStyle = 'antique' | 'storybook' | 'glass' | 'modern'
+
+export interface MotifPath {
+  d: string
+  fill: 'sil' | 'rim' | 'glow' | 'accent' | 'none'
+  stroke: 'sil' | 'rim' | 'glow' | 'accent' | 'none'
+  sw: number
+}
+
+export interface HybridMotif {
+  label: string
+  paths: MotifPath[]
+}
+
+export interface HybridPalette {
+  sil: string
+  rim: string
+  glow: string
+  accent: string
+}
+
+export interface HybridGenome {
+  name: string
+  essence: string
+  base: HybridBaseVariety
+  graft: HybridBaseVariety
+  palette: HybridPalette
+  glowIntensity: number
+  adornment: HybridAdornment
+  seed: number
+  motif: HybridMotif
+}
+
+export interface ShedSeed {
+  id: string
+  idea: string
+  note: string
+  when: number
+  g: HybridGenome
+}
+
+export interface PlantedHybrid {
+  g: HybridGenome
+  seedId: string | null
+  x: number
+  y: number
+  sc: number
+}
+
+export interface Candle {
+  id: string
+  date: string
+  note: string
+  x: number
+  y: number
+}
+
+export interface StorageShedData {
+  v: 1
+  seeds: ShedSeed[]
+  planted: PlantedHybrid[]
+  shedStyle: ShedStyle
+  candles: Candle[]
+}
+
+export type MemoryReactionType = 'sprout' | 'water' | 'bloom' | 'heart' | 'sparkle'
+
+export interface MemoryReactionEntry {
+  type: MemoryReactionType
+  count: number
+  reactedBy: string[]
+}
 
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter'
 
@@ -72,6 +149,20 @@ export interface Memory {
   unlocks?: TraitUnlock[]
   genetics?: PlantGenetics
   cosmetics?: PlantCosmetics
+  /** Dream-a-plant hybrid genome (stored when isHybrid is true) */
+  hybridGenome?: HybridGenome
+  /** Optional social reactions (sprout, water, bloom, etc.) */
+  reactions?: Partial<Record<MemoryReactionType, MemoryReactionEntry>>
+  /** Original planter. Optional for backward compat with memories created before Phase 2.1. */
+  plantedBy?: {
+    id: string
+    login: string
+    avatarUrl: string
+  }
+  /** IDs of parent memories if this was created via Cross-Pollination */
+  parentMemories?: string[]
+  /** True if this memory is a hybrid created via Cross-Pollination */
+  isHybrid?: boolean
 }
 
 export interface SharedMemory {
@@ -97,6 +188,12 @@ export interface Reflection {
   createdAt: string
   audioUrl?: string
   tone?: EmotionalTone
+  /** User who added this reflection. Optional for backward compat with reflections written before Phase 2.1. */
+  contributorId?: string
+  contributorLogin?: string
+  contributorAvatarUrl?: string
+  /** True when the reflection was added by someone other than the memory's original planter — a "tend" rather than a self-reflection. */
+  isTend?: boolean
 }
 
 export interface GrowthMetrics {

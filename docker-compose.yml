@@ -1,17 +1,57 @@
 # MemoryGarden — Docker Compose
-# Usage: docker compose up --build
+#
+# Production SPA (nginx):
+#   docker compose up --build
+#   → http://localhost:8080  (health: /healthz)
+#
+# Local Vite dev server:
+#   docker compose --profile dev up dev
+#   → http://localhost:5173
+#
+# Micro-Forge agent report (stdout / CI-style):
+#   docker compose --profile agents run --rm micro-forge
+#
+# Note: /api/llm is a Vercel Edge route — not included in the static image.
+# Garden AI falls back gracefully when that endpoint is unavailable.
+
+name: memorygarden
 
 services:
   memorygarden:
     build:
       context: .
       dockerfile: Dockerfile
+    image: memorygarden:local
     ports:
-      - "8080:8080"
+      - "${MEMORYGARDEN_PORT:-8080}:8080"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/healthz"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  dev:
+    profiles: [dev]
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - dev_node_modules:/app/node_modules
+    ports:
+      - "${VITE_PORT:-5173}:5173"
+    environment:
+      NODE_ENV: development
+    command: sh -c "npm ci --ignore-scripts && npm run dev -- --host 0.0.0.0 --port 5173"
+
+  micro-forge:
+    profiles: [agents]
+    image: python:3.12-alpine
+    working_dir: /app
+    volumes:
+      - .:/app:ro
+    command: python -m agents.micro_forge.runner --mode ${MICRO_FORGE_MODE:-full-scan}
+
+volumes:
+  dev_node_modules:

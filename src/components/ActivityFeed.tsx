@@ -1,47 +1,160 @@
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Heart, Users, Drop } from '@phosphor-icons/react'
-import type { ActivityEvent } from '@/lib/types'
+import { Button } from '@/components/ui/button'
+import { Plant, Drop, Lightning, UserPlus, SignOut, FunnelSimple } from '@phosphor-icons/react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { format } from 'date-fns'
+import type { ActivityEvent, GardenMember } from '@/lib/types'
 
 interface ActivityFeedProps {
   events: ActivityEvent[]
+  /** Garden members, used to populate the "filter by member" control. */
+  members?: GardenMember[]
 }
 
-export function ActivityFeed({ events }: ActivityFeedProps) {
+type TypeFilter = ActivityEvent['type'] | 'all'
+
+const eventIcons = {
+  plant: Plant,
+  reflect: Drop,
+  boost: Lightning,
+  join: UserPlus,
+  leave: SignOut,
+}
+
+const eventColors = {
+  plant: 'text-green-500',
+  reflect: 'text-blue-500',
+  boost: 'text-yellow-500',
+  join: 'text-primary',
+  leave: 'text-muted-foreground',
+}
+
+const typeFilters: { value: TypeFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'plant', label: 'Plants' },
+  { value: 'reflect', label: 'Reflections' },
+  { value: 'boost', label: 'Boosts' },
+  { value: 'join', label: 'Joins' },
+]
+
+export function ActivityFeed({ events, members = [] }: ActivityFeedProps) {
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [memberFilter, setMemberFilter] = useState<string>('all')
+
+  // Only offer members who actually appear in the stream.
+  const memberOptions = useMemo(() => {
+    const activeIds = new Set(events.map((e) => e.userId))
+    const seen = new Set<string>()
+    const opts: { id: string; login: string }[] = []
+    for (const m of members) {
+      if (activeIds.has(m.userId) && !seen.has(m.userId)) {
+        seen.add(m.userId)
+        opts.push({ id: m.userId, login: m.login })
+      }
+    }
+    // Include any actors present in events but not in the member list.
+    for (const e of events) {
+      if (!seen.has(e.userId)) {
+        seen.add(e.userId)
+        opts.push({ id: e.userId, login: e.userLogin })
+      }
+    }
+    return opts
+  }, [events, members])
+
+  const filtered = useMemo(
+    () =>
+      events.filter(
+        (e) =>
+          (typeFilter === 'all' || e.type === typeFilter) &&
+          (memberFilter === 'all' || e.userId === memberFilter)
+      ),
+    [events, typeFilter, memberFilter]
+  )
+
   if (events.length === 0) {
     return (
-      <div className="p-8 text-center text-muted-foreground">
-        No activity yet. Start tending gardens to see social moments appear here.
+      <div className="p-4 text-center">
+        <p className="text-sm text-muted-foreground">No activity yet</p>
       </div>
     )
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-4">
-      <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-        <Users /> Garden Activity
-      </h3>
+    <div className="p-4 space-y-3">
+      <h3 className="text-sm font-semibold">Recent Activity</h3>
 
-      {events.map((event, index) => (
-        <motion.div
-          key={event.id}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.03 }}
-          className="flex gap-4 p-4 bg-card border rounded-2xl"
-        >
-          <div className="mt-1 text-primary">
-            {event.type === 'tended' && <Drop weight="fill" size={20} />}
-            {event.type === 'reflected' && <Heart weight="fill" size={20} />}
-            {event.type === 'joined' && <Users weight="fill" size={20} />}
-          </div>
-          <div className="flex-1 text-sm">
-            <span className="font-medium">{event.actor}</span> {event.message}
-            <div className="text-xs text-muted-foreground mt-1">
-              {new Date(event.timestamp).toLocaleDateString()}
-            </div>
-          </div>
-        </motion.div>
-      ))}
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-1">
+          {typeFilters.map((f) => (
+            <Button
+              key={f.value}
+              variant={typeFilter === f.value ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-6 px-2 text-[11px]"
+              onClick={() => setTypeFilter(f.value)}
+              aria-pressed={typeFilter === f.value}
+            >
+              {f.label}
+            </Button>
+          ))}
+        </div>
+
+        {memberOptions.length > 1 && (
+          <Select value={memberFilter} onValueChange={setMemberFilter}>
+            <SelectTrigger size="sm" className="h-7 text-xs w-full">
+              <FunnelSimple size={12} className="mr-1 flex-shrink-0" />
+              <SelectValue placeholder="All members" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All members</SelectItem>
+              {memberOptions.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.login}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-2">No activity matches these filters</p>
+      ) : (
+        <div className="space-y-2 max-h-[300px] overflow-y-auto">
+          {filtered.slice(0, 20).map((event, index) => {
+            const Icon = eventIcons[event.type] || Plant
+            const colorClass = eventColors[event.type] || 'text-muted-foreground'
+
+            return (
+              <motion.div
+                key={event.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="flex items-start gap-2 py-1"
+              >
+                <Icon size={16} weight="duotone" className={`mt-0.5 flex-shrink-0 ${colorClass}`} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs">
+                    <span className="font-medium">{event.userLogin}</span> {event.description}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(event.createdAt), 'MMM d, h:mm a')}
+                  </p>
+                </div>
+              </motion.div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

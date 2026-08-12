@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { ArrowLeft, Users, Heart } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { GardenCanvas } from './GardenCanvas'

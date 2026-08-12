@@ -2,9 +2,15 @@ node_modules
 dist
 .git
 .github
+.snapshots
+.claude
+coverage
 *.md
 *.log
 .DS_Store
 .vscode
 .idea
-coverage
+**/__pycache__
+**/*.pyc
+.env
+.env.*
