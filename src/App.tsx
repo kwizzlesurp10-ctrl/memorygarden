@@ -28,6 +28,9 @@ const PlantStyleCustomizer = lazy(() => import('@/components/PlantStyleCustomize
 const GardenUnlocks = lazy(() => import('@/components/GardenUnlocks').then(m => ({ default: m.GardenUnlocks })))
 const PlantCosmeticsEditor = lazy(() => import('@/components/PlantCosmeticsEditor').then(m => ({ default: m.PlantCosmeticsEditor })))
 const BloomWall = lazy(() => import('@/components/BloomWall').then(m => ({ default: m.BloomWall })))
+import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits, HybridGenome } from '@/lib/types'
+import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken } from '@/lib/garden-helpers'
+import { realClockTod, todToDayPeriod } from '@/lib/garden/day-night'
 const ExploreView = lazy(() => import('@/components/ExploreView').then(m => ({ default: m.ExploreView })))
 const CommunityGardenView = lazy(() => import('@/components/CommunityGardenView').then(m => ({ default: m.CommunityGardenView })))
 const GardenMembersPanel = lazy(() => import('@/components/GardenMembersPanel').then(m => ({ default: m.GardenMembersPanel })))
@@ -120,7 +123,7 @@ function App() {
   const [isLoadingAI, setIsLoadingAI] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [season, setSeason] = useState(getSeason())
-  const [dayPeriod, setDayPeriod] = useState(() => getDayPeriod())
+  const [todHours, setTodHours] = useState(() => realClockTod())
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [memoryToShare, setMemoryToShare] = useState<string | null>(null)
   const [sharedMemoryView, setSharedMemoryView] = useState<SharedMemory | null>(null)
@@ -301,7 +304,7 @@ function App() {
   }, [])
 
   useEffect(() => {
-    const id = window.setInterval(() => setDayPeriod(getDayPeriod()), 60_000)
+    const id = window.setInterval(() => setTodHours(realClockTod()), 60_000)
     return () => clearInterval(id)
   }, [])
 
@@ -358,8 +361,8 @@ function App() {
             location: data.location,
             plantedAt: new Date().toISOString(),
             position: {
-              x: 400 + Math.random() * 800,
-              y: 400 + Math.random() * 800,
+              x: 180 + Math.random() * 840,
+              y: 430 + Math.random() * 35,
             },
             emotionalTone,
             plantVariety: finalVariety,
@@ -419,6 +422,38 @@ function App() {
     })
   }
 
+  const handlePlantHybrid = useCallback((genome: HybridGenome, idea: string, position: { x: number; y: number }) => {
+    const newMemory: Memory = {
+      id: `memory-${Date.now()}`,
+      photoUrl: '',
+      text: idea || genome.essence,
+      date: new Date().toISOString().slice(0, 10),
+      plantedAt: new Date().toISOString(),
+      position,
+      emotionalTone: 'nostalgic',
+      plantVariety: genome.base,
+      plantStage: 'seed',
+      visitCount: 0,
+      reflections: [],
+      audioRecordings: [],
+      geneticsSeed: String(genome.seed),
+      isHybrid: true,
+      hybridGenome: genome,
+      traits: {},
+      unlocks: [],
+      genetics: generatePlantGenetics(String(genome.seed)),
+    }
+    setMemories((current) => [...(current || []), newMemory])
+    setGrowingMemories((prev) => new Set(prev).add(newMemory.id))
+    setTimeout(() => {
+      setGrowingMemories((prev) => {
+        const next = new Set(prev)
+        next.delete(newMemory.id)
+        return next
+      })
+    }, 1200)
+  }, [setMemories])
+
   const handleMemoryClick = (memory: Memory) => {
     if (pollinationParent) {
       if (pollinationParent.id === memory.id) {
@@ -472,7 +507,7 @@ function App() {
       let updated = { ...state, counters: { ...state.counters, totalVisits: state.counters.totalVisits + 1 } }
 
       // Night visit tracking
-      const period = getDayPeriod()
+      const period = todToDayPeriod(todHours)
       if (period === 'night') {
         const today = new Date().toISOString().slice(0, 10)
         if (!updated.counters.nightVisitDates.includes(today)) {
@@ -1078,7 +1113,7 @@ function App() {
         <GardenAmbientLayer
           enabled={safePreferences.soundEnabled}
           season={season}
-          dayPeriod={dayPeriod}
+          todHours={todHours}
           weatherType={gardenMood.weatherType}
           memoryCount={safeMemories.length}
         />
@@ -1178,6 +1213,17 @@ function App() {
                 {safeMemories.length === 0 ? (
                   <EmptyGarden onPlantFirst={() => setIsPlantModalOpen(true)} />
                 ) : (
+                  <GardenCanvas
+                    memories={safeMemories}
+                    onMemoryClick={handleMemoryClick}
+                    onMemoryMove={handleMemoryMove}
+                    season={season}
+                    growingMemories={growingMemories}
+                    memoryBoostTiers={memoryBoostTiers}
+                    highlightedMemoryIds={highlightedMemoryIds}
+                    mood={gardenMood}
+                    onPlantHybrid={handlePlantHybrid}
+                  />
                   <SectionErrorBoundary label="garden view">
                     <GardenCanvas
                       memories={safeMemories}

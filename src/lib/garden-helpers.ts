@@ -53,6 +53,9 @@ export function calculateGrowthMetrics(memory: Memory, nearbyMemories: Memory[])
     eternal_rose: { heightMult: 1.2, widthMult: 1.1, rarityBonus: 40 },
     phoenix_vine: { heightMult: 1.6, widthMult: 1.0, rarityBonus: 45 },
     starlight_succulent: { heightMult: 0.9, widthMult: 1.4, rarityBonus: 35 },
+    fern: { heightMult: 1.0, widthMult: 1.1, rarityBonus: 7 },
+    mushroom: { heightMult: 0.65, widthMult: 1.0, rarityBonus: 9 },
+    lotus: { heightMult: 0.75, widthMult: 1.2, rarityBonus: 8 },
   }[memory.plantVariety] || { heightMult: 1.0, widthMult: 1.0, rarityBonus: 0 }
   
   const vitality = Math.min(100, baseGrowth + synergy)
