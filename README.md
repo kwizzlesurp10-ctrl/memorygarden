@@ -84,9 +84,9 @@ MemoryGarden is a client-heavy React app tuned for smooth, organic motion and lo
    ```
 2. Install dependencies:
    ```bash
-   npm install
+   npm install --legacy-peer-deps
    ```
-   If peer resolution conflicts appear (common with Vite 8), use `npm install --legacy-peer-deps` as in the repo’s `.npmrc`.
+   This matches the repo’s `.npmrc` and avoids common peer-resolution issues with Vite 8.
 
 ### Development
 ```bash
@@ -103,6 +103,7 @@ Output is written to **`dist/`** for static hosting.
 ### Quality checks
 ```bash
 npm run lint
+npm test
 ```
 
 ### Preview the production bundle

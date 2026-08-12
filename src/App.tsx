@@ -1151,8 +1151,6 @@ function App() {
         />
 
         <main className="flex-1 relative outline-none" tabIndex={-1}>
-          <GardenAmbientLayer mood={gardenMood} weather={currentWeather} />
-          
           <AnimatePresence>
             {pollinationParent && (
               <motion.div
