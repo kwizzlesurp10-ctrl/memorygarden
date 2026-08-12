@@ -14,7 +14,7 @@ import { SearchFilterBar } from '@/components/SearchFilterBar'
 import { KeyboardShortcutsPanel } from '@/components/KeyboardShortcutsPanel'
 import { AppHeader, type ViewMode } from '@/components/AppHeader'
 import { useKeyboardShortcuts, APP_SHORTCUTS } from '@/lib/keyboard-shortcuts'
-import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits, PlantVariety } from '@/lib/types'
+import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits, PlantVariety, HybridGenome } from '@/lib/types'
 
 // ── Lazy-loaded non-critical components (modals, dialogs, secondary views) ──
 const ExportGarden = lazy(() => import('@/components/ExportGarden').then(m => ({ default: m.ExportGarden })))
@@ -28,9 +28,6 @@ const PlantStyleCustomizer = lazy(() => import('@/components/PlantStyleCustomize
 const GardenUnlocks = lazy(() => import('@/components/GardenUnlocks').then(m => ({ default: m.GardenUnlocks })))
 const PlantCosmeticsEditor = lazy(() => import('@/components/PlantCosmeticsEditor').then(m => ({ default: m.PlantCosmeticsEditor })))
 const BloomWall = lazy(() => import('@/components/BloomWall').then(m => ({ default: m.BloomWall })))
-import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, CollaborativeMemory, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits, HybridGenome } from '@/lib/types'
-import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken } from '@/lib/garden-helpers'
-import { realClockTod, todToDayPeriod } from '@/lib/garden/day-night'
 const ExploreView = lazy(() => import('@/components/ExploreView').then(m => ({ default: m.ExploreView })))
 const CommunityGardenView = lazy(() => import('@/components/CommunityGardenView').then(m => ({ default: m.CommunityGardenView })))
 const GardenMembersPanel = lazy(() => import('@/components/GardenMembersPanel').then(m => ({ default: m.GardenMembersPanel })))
@@ -38,6 +35,7 @@ const ActivityFeed = lazy(() => import('@/components/ActivityFeed').then(m => ({
 const ContributorLeaderboard = lazy(() => import('@/components/ContributorLeaderboard').then(m => ({ default: m.ContributorLeaderboard })))
 import { countUnreadActivity, deriveActivityFromMemories } from '@/lib/activity-helpers'
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod, generateHybridTraits } from '@/lib/garden-helpers'
+import { realClockTod, todToDayPeriod } from '@/lib/garden/day-night'
 import { ensureUnlockState, generatePlantGenetics, awardForReflection, awardForRevisit, awardForClusterTending, awardForPlanting, applyAward, evaluateUnlocks, applyNewUnlocks, evaluateAchievements, deductRerollCost, canAffordReroll, UNLOCKABLE_ITEMS } from '@/lib/unlock-system'
 import { generateGeneticsSeed, computeUnlocks } from '@/lib/trait-system'
 import { useProtocolHandler, type ProtocolAction } from '@/hooks/use-protocol-handler'
@@ -1213,17 +1211,6 @@ function App() {
                 {safeMemories.length === 0 ? (
                   <EmptyGarden onPlantFirst={() => setIsPlantModalOpen(true)} />
                 ) : (
-                  <GardenCanvas
-                    memories={safeMemories}
-                    onMemoryClick={handleMemoryClick}
-                    onMemoryMove={handleMemoryMove}
-                    season={season}
-                    growingMemories={growingMemories}
-                    memoryBoostTiers={memoryBoostTiers}
-                    highlightedMemoryIds={highlightedMemoryIds}
-                    mood={gardenMood}
-                    onPlantHybrid={handlePlantHybrid}
-                  />
                   <SectionErrorBoundary label="garden view">
                     <GardenCanvas
                       memories={safeMemories}
@@ -1234,6 +1221,7 @@ function App() {
                       memoryBoostTiers={memoryBoostTiers}
                       highlightedMemoryIds={highlightedMemoryIds}
                       mood={gardenMood}
+                      onPlantHybrid={handlePlantHybrid}
                     />
                   </SectionErrorBoundary>
                 )}
