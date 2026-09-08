@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { handleLlmRequest } from '../server/llm-handler'
+import { handleLlmRequest, isLlmConfigured } from '../server/llm-handler'
 
 describe('handleLlmRequest', () => {
   it('rejects non-POST', async () => {
@@ -46,5 +46,15 @@ describe('handleLlmRequest', () => {
     )
     const body = (await res.json()) as { text: string }
     expect(body.text).toBe('classify')
+  })
+})
+
+describe('isLlmConfigured', () => {
+  it('accepts Anthropic or Gateway credentials, not stray OIDC', () => {
+    expect(isLlmConfigured({})).toBe(false)
+    expect(isLlmConfigured({ ANTHROPIC_API_KEY: 'sk' })).toBe(true)
+    expect(isLlmConfigured({ AI_GATEWAY_API_KEY: 'gw' })).toBe(true)
+    expect(isLlmConfigured({ VERCEL_OIDC_TOKEN: 'oidc' })).toBe(false)
+    expect(isLlmConfigured({ VERCEL: '1', VERCEL_OIDC_TOKEN: 'oidc' })).toBe(true)
   })
 })

@@ -1,4 +1,4 @@
-import { parseLlmRequest, kindFromLegacyModel, type LlmKind, type LlmRequest } from '../llm-request'
+import { parseLlmRequest, kindFromLegacyModel, usesAiGateway, type LlmKind, type LlmRequest } from '../llm-request'
 
 export type LlmCompleter = (input: LlmRequest) => Promise<string>
 
@@ -15,11 +15,7 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 export function isLlmConfigured(env: Record<string, string | undefined> = process.env): boolean {
-  return Boolean(
-    env.AI_GATEWAY_API_KEY ||
-      env.ANTHROPIC_API_KEY ||
-      env.VERCEL_OIDC_TOKEN,
-  )
+  return Boolean(env.ANTHROPIC_API_KEY || usesAiGateway(env))
 }
 
 export async function handleLlmRequest(req: Request, deps: LlmHandlerDeps): Promise<Response> {

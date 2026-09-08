@@ -86,7 +86,11 @@ export function useLivePair(opts: Options): LivePairStatus {
     const applyRoom = (room: PairRoom) => {
       revisionRef.current = room.revision
       liveRef.current = true
-      const merged = mergePairMemories(memoriesRef.current, room.memories)
+      const incoming = Array.isArray(room.memories) ? room.memories : []
+      const merged =
+        incoming.length === 0 && memoriesRef.current.length > 0
+          ? memoriesRef.current
+          : mergePairMemories(memoriesRef.current, incoming)
       const prefs = (room.preferences as UserPreferences | null) ?? preferencesRef.current
       onPulledRef.current(merged, { ...prefs, livePairCode: code })
       setStatus({ kind: 'live', code, revision: room.revision, lastSyncAt: room.updatedAt })

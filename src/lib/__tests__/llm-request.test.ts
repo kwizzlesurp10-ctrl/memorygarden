@@ -3,6 +3,7 @@ import {
   gatewayModelForKind,
   kindFromLegacyModel,
   parseLlmRequest,
+  usesAiGateway,
 } from '../llm-request'
 
 describe('parseLlmRequest', () => {
@@ -44,5 +45,14 @@ describe('gatewayModelForKind', () => {
   it('uses haiku for classify and sonnet for reflect', () => {
     expect(gatewayModelForKind('classify')).toContain('haiku')
     expect(gatewayModelForKind('reflect')).toContain('sonnet')
+  })
+})
+
+describe('usesAiGateway', () => {
+  it('requires an explicit gateway key or Vercel OIDC', () => {
+    expect(usesAiGateway({})).toBe(false)
+    expect(usesAiGateway({ AI_GATEWAY_API_KEY: 'x' })).toBe(true)
+    expect(usesAiGateway({ VERCEL_OIDC_TOKEN: 'x' })).toBe(false)
+    expect(usesAiGateway({ VERCEL: '1', VERCEL_OIDC_TOKEN: 'x' })).toBe(true)
   })
 })

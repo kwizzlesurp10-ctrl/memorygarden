@@ -307,10 +307,12 @@ function App() {
   }, [sharedMemories])
 
   useEffect(() => {
-    if (preferences && memories && memories.length === 0 && preferences.hasCompletedOnboarding) {
-      setTimeout(() => setIsPlantModalOpen(true), 1000)
-    }
-  }, [preferences, memories])
+    if (!preferences?.hasCompletedOnboarding) return
+    if ((memories?.length ?? 0) > 0) return
+    if (preferences.livePairCode || isLivePairOpen) return
+    const timeout = window.setTimeout(() => setIsPlantModalOpen(true), 1000)
+    return () => window.clearTimeout(timeout)
+  }, [preferences, memories, isLivePairOpen])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -1391,11 +1393,14 @@ function App() {
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="fixed bottom-8 right-8 z-20"
+            className={`fixed bottom-8 right-8 z-20 ${isLivePairOpen ? 'pointer-events-none' : ''}`}
           >
             <Button
               size="lg"
-              onClick={() => setIsPlantModalOpen(true)}
+              onClick={() => {
+                if (isLivePairOpen) return
+                setIsPlantModalOpen(true)
+              }}
               className="rounded-full w-16 h-16 shadow-lg hover:shadow-xl transition-shadow"
               aria-label="Plant a new memory"
             >

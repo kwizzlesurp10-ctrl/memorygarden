@@ -41,6 +41,14 @@ export function gatewayModelForKind(kind: LlmKind): string {
     : 'anthropic/claude-sonnet-4.6'
 }
 
+export function anthropicModelForKind(kind: LlmKind): string {
+  return kind === 'classify' ? 'claude-haiku-4-5' : 'claude-sonnet-4-6'
+}
+
+export function usesAiGateway(env: Record<string, string | undefined> = process.env): boolean {
+  return Boolean(env.AI_GATEWAY_API_KEY || (env.VERCEL === '1' && env.VERCEL_OIDC_TOKEN))
+}
+
 export function maxTokensForKind(kind: LlmKind): number {
   return kind === 'classify' ? 32 : 256
 }

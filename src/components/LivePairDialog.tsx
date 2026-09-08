@@ -63,6 +63,7 @@ export function LivePairDialog({ open, onClose, status, onStart, onJoin, onLeave
               <Button
                 className="w-full"
                 disabled={busy}
+                onPointerDown={(e) => e.preventDefault()}
                 onClick={() => run(onStart)}
               >
                 Start a live pair
@@ -79,11 +80,12 @@ export function LivePairDialog({ open, onClose, status, onStart, onJoin, onLeave
                     autoCapitalize="characters"
                     className="font-mono tracking-widest"
                   />
-                  <Button
-                    variant="secondary"
-                    disabled={busy || joinCode.trim().length < 6}
-                    onClick={() => run(() => onJoin(joinCode))}
-                  >
+                    <Button
+                      variant="secondary"
+                      disabled={busy || joinCode.trim().length < 6}
+                      onPointerDown={(e) => e.preventDefault()}
+                      onClick={() => run(() => onJoin(joinCode))}
+                    >
                     Join
                   </Button>
                 </div>
@@ -104,11 +106,20 @@ export function LivePairDialog({ open, onClose, status, onStart, onJoin, onLeave
 
         <DialogFooter>
           {liveCode && (
-            <Button variant="ghost" onClick={onLeave} disabled={busy}>
+            <Button
+              variant="ghost"
+              onPointerDown={(e) => e.preventDefault()}
+              onClick={onLeave}
+              disabled={busy}
+            >
               Leave pair
             </Button>
           )}
-          <Button variant="secondary" onClick={onClose}>
+          <Button
+            variant="secondary"
+            onPointerDown={(e) => e.preventDefault()}
+            onClick={onClose}
+          >
             Close
           </Button>
         </DialogFooter>

@@ -19,10 +19,10 @@
         "tailwind:watch": "tailwindcss -i ./src/styles/tailwind.css -o ./dist/tailwind.css --watch"
     },
     "dependencies": {
+        "@ai-sdk/anthropic": "^3.0.116",
         "@heroicons/react": "^2.2.0",
         "@hookform/resolvers": "^5.4.0",
         "@neondatabase/serverless": "^1.1.0",
-        "ai": "^6.0.0",
         "@octokit/core": "^7.0.6",
         "@phosphor-icons/react": "^2.1.7",
         "@radix-ui/colors": "^3.0.0",
@@ -55,6 +55,7 @@
         "@tailwindcss/container-queries": "^0.1.1",
         "@tailwindcss/vite": "^4.1.11",
         "@tanstack/react-query": "^5.100.11",
+        "ai": "^6.0.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "cmdk": "^1.1.1",
