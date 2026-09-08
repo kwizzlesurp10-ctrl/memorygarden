@@ -23,10 +23,12 @@ export function RemembranceCandlesPanel({ candles, onLight, onExtinguish }: Reme
   }
 
   return (
-    <div className="rounded-xl border border-white/8 bg-black/30 p-4 text-[#f0e7da] font-serif space-y-3">
-      <div className="flex items-baseline gap-2">
-        <span className="rounded-md border border-[#ffd88a]/35 bg-[#ffd88a]/13 px-2 py-0.5 font-mono text-xs text-[#ffd88a]">6a</span>
-        <h3 className="text-lg font-semibold">Floating candles</h3>
+    <div className="rounded-xl border border-white/8 bg-black/30 p-4 text-[oklch(0.93_0.02_85)] font-serif space-y-3">
+      <div className="space-y-1">
+        <div className="flex items-baseline gap-2">
+          <span className="rounded-md border border-[oklch(0.88_0.12_85/0.35)] bg-[oklch(0.88_0.12_85/0.13)] px-2 py-0.5 font-mono text-xs text-[oklch(0.88_0.12_85)]">6a</span>
+          <h3 className="text-lg font-semibold">Floating candles</h3>
+        </div>
         <p className="text-xs italic opacity-60">a candle on the water, in memory of a life</p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -47,7 +49,7 @@ export function RemembranceCandlesPanel({ candles, onLight, onExtinguish }: Reme
         <button
           type="button"
           onClick={lightCandle}
-          className="rounded-lg border border-[#ffd88a]/40 bg-[#ffd88a]/12 px-5 text-sm tracking-wide text-[#ffd88a]"
+          className="rounded-lg border border-[oklch(0.88_0.12_85/0.4)] bg-[oklch(0.88_0.12_85/0.12)] px-5 text-sm tracking-wide text-[oklch(0.88_0.12_85)]"
         >
           Light a candle
         </button>
@@ -55,8 +57,8 @@ export function RemembranceCandlesPanel({ candles, onLight, onExtinguish }: Reme
       {candles.length > 0 && (
         <div className="flex flex-wrap gap-2 items-center">
           {[...candles].sort((a, b) => (a.date < b.date ? -1 : 1)).map((cd) => (
-            <div key={cd.id} className="flex items-center gap-2 rounded-full border border-[#ffd88a]/20 bg-white/[0.03] px-3 py-1.5">
-              <div className="h-1.5 w-1.5 rounded-full bg-[#ffd88a] shadow-[0_0_8px_2px_rgba(255,216,138,0.5)]" />
+            <div key={cd.id} className="flex items-center gap-2 rounded-full border border-[oklch(0.88_0.12_85/0.2)] bg-white/[0.03] px-3 py-1.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-[oklch(0.88_0.12_85)] shadow-[0_0_8px_2px_oklch(0.88_0.12_85/0.5)]" />
               <span className="text-sm">
                 <span className="font-mono opacity-70">{cd.date}</span>{' '}
                 <span className="italic opacity-85">{cd.note}</span>
