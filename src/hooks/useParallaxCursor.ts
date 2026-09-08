@@ -10,21 +10,26 @@ export interface ParallaxLayerRefs {
   frame: RefObject<HTMLDivElement | null>
 }
 
+function clearTransform(el: SVGGElement | HTMLDivElement | null): void {
+  if (el) el.style.transform = ''
+}
+
 export function useParallaxCursor(
   refs: ParallaxLayerRefs,
   enabled: boolean,
 ) {
+  const { sky, far, mid, foreground, frame } = refs
   const dxRef = useRef(0)
   const dyRef = useRef(0)
   const rafRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (!enabled) {
-      const layers = [refs.sky, refs.far, refs.mid, refs.foreground]
-      for (const ref of layers) {
-        if (ref.current) ref.current.style.transform = ''
-      }
-      if (refs.frame.current) refs.frame.current.style.transform = ''
+      clearTransform(sky.current)
+      clearTransform(far.current)
+      clearTransform(mid.current)
+      clearTransform(foreground.current)
+      clearTransform(frame.current)
       return
     }
 
@@ -32,14 +37,15 @@ export function useParallaxCursor(
       rafRef.current = null
       const dx = dxRef.current
       const dy = dyRef.current
-      const layerEls = [refs.sky.current, refs.far.current, refs.mid.current, refs.foreground.current]
+      const layerEls = [sky.current, far.current, mid.current, foreground.current]
       layerEls.forEach((el, i) => {
         if (!el) return
         const d = DEPTHS[i]
         el.style.transform = `translate(${dx * d}px, ${dy * d}px)`
       })
-      if (refs.frame.current) {
-        refs.frame.current.style.transform = `rotateY(${dx * 2.6}deg) rotateX(${-dy * 2}deg)`
+      const frameEl = frame.current
+      if (frameEl) {
+        frameEl.style.transform = `rotateY(${dx * 2.6}deg) rotateX(${-dy * 2}deg)`
       }
     }
 
@@ -58,5 +64,5 @@ export function useParallaxCursor(
       window.removeEventListener('pointermove', onMove)
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
     }
-  }, [enabled, refs.sky, refs.far, refs.mid, refs.foreground, refs.frame])
+  }, [enabled, sky, far, mid, foreground, frame])
 }

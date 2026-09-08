@@ -125,7 +125,8 @@ export function GardenCanvas({
   }, [seedLensAtCenter])
 
   useEffect(() => {
-    if (propSeason) setSeason(propSeason)
+    if (!propSeason) return
+    queueMicrotask(() => setSeason(propSeason))
   }, [propSeason])
 
   useEffect(() => {
