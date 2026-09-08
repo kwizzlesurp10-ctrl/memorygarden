@@ -31,9 +31,9 @@ export function DreamPlantPanel({ palette, rimStrength, motion, onPlant }: Dream
   }
 
   return (
-    <div className="rounded-xl border border-white/8 bg-black/30 p-4 text-[#f0e7da] font-serif space-y-3">
+    <div className="rounded-xl border border-white/8 bg-black/30 p-4 text-[oklch(0.93_0.02_85)] font-serif space-y-3">
       <div className="flex items-baseline gap-2">
-        <span className="rounded-md border border-[#ffb877]/35 bg-[#ffb877]/14 px-2 py-0.5 font-mono text-xs text-[#ffb877]">3a</span>
+        <span className="rounded-md border border-[oklch(0.84_0.12_62/0.35)] bg-[oklch(0.84_0.12_62/0.14)] px-2 py-0.5 font-mono text-xs text-[oklch(0.84_0.12_62)]">3a</span>
         <h3 className="text-lg font-semibold">Dream a plant</h3>
       </div>
       <div className="flex gap-2">
@@ -49,7 +49,7 @@ export function DreamPlantPanel({ palette, rimStrength, motion, onPlant }: Dream
           type="button"
           onClick={() => void handleDream()}
           disabled={dreaming}
-          className="rounded-lg border border-[#ffb877]/40 bg-[#ffb877]/12 px-5 text-sm tracking-wide text-[#ffb877] disabled:opacity-50"
+          className="rounded-lg border border-[oklch(0.84_0.12_62/0.4)] bg-[oklch(0.84_0.12_62/0.12)] px-5 text-sm tracking-wide text-[oklch(0.84_0.12_62)] disabled:opacity-50"
         >
           {dreaming ? 'Dreaming…' : 'Dream it'}
         </button>
@@ -59,7 +59,7 @@ export function DreamPlantPanel({ palette, rimStrength, motion, onPlant }: Dream
           <div className="flex flex-wrap items-baseline gap-3">
             <span className="text-xl font-semibold">{genome.name}</span>
             <span className="font-mono text-xs opacity-55">{genome.base} × {genome.graft}</span>
-            <span className="font-mono text-xs text-[#ffb877]">glyph: {genome.motif.label}</span>
+            <span className="font-mono text-xs text-[oklch(0.84_0.12_62)]">glyph: {genome.motif.label}</span>
             <span className="text-xs italic opacity-40">
               {source === 'local' ? 'offline dream — seeded from your words' : 'dreamt by AI'}
             </span>
