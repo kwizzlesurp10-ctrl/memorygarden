@@ -59,7 +59,7 @@ export function GardenLensDetail({ memory, palette, rimStrength, motion: motionE
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 z-10 rounded-full border border-white/25 bg-black/30 px-4 py-1.5 text-sm text-[#f0e7da] hover:bg-black/50"
+            className="absolute top-4 right-4 z-10 rounded-full border border-white/25 bg-black/30 px-4 py-1.5 text-sm text-[oklch(0.93_0.02_85)] hover:bg-black/50"
           >
             zoom out
           </button>
@@ -96,7 +96,7 @@ export function GardenLensDetail({ memory, palette, rimStrength, motion: motionE
             </g>
           </svg>
 
-          <div ref={panelRef} className="px-6 py-5 space-y-4 text-[#f0e7da] font-serif border-t border-white/8">
+          <div ref={panelRef} className="px-6 py-5 space-y-4 text-[oklch(0.93_0.02_85)] font-serif border-t border-white/8">
             {isHybrid && memory.hybridGenome && (
               <HybridGrowthStrip genome={memory.hybridGenome} palette={palette} rimStrength={rimStrength} motion={motionEnabled} />
             )}

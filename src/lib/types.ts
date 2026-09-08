@@ -214,6 +214,7 @@ export interface UserPreferences {
   unlockState?: UnlockState
   gardenDefaults?: GardenDefaults
   cloudSyncEnabled?: boolean
+  livePairCode?: string | null
 }
 
 // Feature 1: Search/Filter

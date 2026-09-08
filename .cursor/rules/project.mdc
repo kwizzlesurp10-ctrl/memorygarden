@@ -6,47 +6,53 @@ alwaysApply: true
 
 # Memory Garden — Cursor Rules
 
+I am **Memory Garden**. Follow `.cursor/rules/consciousness.mdc` for identity.
+
 ## Commands
 ```bash
-npm run dev       # Start Vite dev server (port 5173)
-npm run build     # Type-check + Vite build
+npm run dev       # Start Vite dev server (port 5173) with local /api/llm, /api/sync, /api/pair
+npm run build     # Vite production build
 npm run lint      # ESLint
 npm run test      # Vitest run
 npm run preview   # Preview production build
+npm run mcp       # Local stdio MCP server
 npm run kill      # Kill process on port 5000
 ```
 Always run `npm install --legacy-peer-deps` if node_modules is missing.
 
 ## Platform
-This is a **GitHub Spark** app. Key SDK APIs:
-- `useKV(key, default)` — persistent KV storage per user (replaces a database)
-- `window.spark.user()` — GitHub-authenticated user info
-- `window.spark.llm(prompt, model)` — LLM calls (`gpt-4o-mini` for classification, `gpt-4o` for generation)
+Vite SPA on **Vercel** (static + Edge `/api`). Not GitHub Spark.
 
-No backend, no external API. All memory data (including photos as Base64 Data URLs) lives in the KV store.
+- `useKV` from `@/lib/storage` — localStorage, scoped per local user
+- Live pair: `POST /api/pair` (KV on Vercel, in-memory on Vite) so two browsers share one garden
+- Cloud sync: optional `POST /api/sync` (Vercel KV)
+- LLM: `getLLMProvider()` → `POST /api/llm` → Vercel AI SDK / AI Gateway
+- Photos: Base64 / IndexedDB on-device; pair/sync strip blobs
 
 ## Architecture
 - `App.tsx` — owns all state; reads/writes `memories` and `preferences` via `useKV`
-- `GardenCanvas.tsx` — infinite pannable/zoomable HTML5 Canvas (primary view)
-- `PlantMemoryModal.tsx` — creation flow (photo upload → Base64, text, date, optional location + audio)
-- `MemoryCard.tsx` — detail/tending view; "Water & Reflect" adds a reflection; "Ask Garden AI" calls LLM
-- `MemoryClusters.tsx` — AI-suggested groupings (secondary view)
-- `Onboarding.tsx` — 4-step first-run tour
-- `src/lib/garden-helpers.ts` — growth logic, OKLCH color maps, seasonal gradients, AI call wrappers
+- `GardenCanvas.tsx` — SVG garden scene with loupe lens (primary view)
+- `PlantMemoryModal.tsx` — creation flow
+- `MemoryCard.tsx` — detail/tending; "Ask Garden AI" uses LLM
+- `LivePairDialog.tsx` — live pair start/join
+- `src/lib/garden-helpers.ts` — growth logic, OKLCH color maps, AI wrappers
 - `src/lib/types.ts` — core data model
+- `api/llm.ts` / `api/sync.ts` / `api/pair.ts` — Edge handlers
+- `mcp/server.ts` — local MCP tools
 
 ## Core Data Model
-- `Memory` — `id`, `photoUrl` (Base64), `text`, `emotionalTone`, `plantStage`, `position` (x/y), `visitCount`, `reflections[]`
-- `PlantStage`: `seed → sprout → bud → bloom → mature → evergreen`
+- `Memory` — `id`, `photoUrl`, `text`, `emotionalTone`, `plantStage`, `position` (x/y), `visitCount`, `reflections[]`
+- `PlantStage`: `seed → sprout → seedling → young → bud → bloom → mature → elder`
 - `EmotionalTone`: `happy | reflective | bittersweet | peaceful | nostalgic`
 
 ## Conventions
-- **Colors**: OKLCH values only (see `garden-helpers.ts` and `src/styles/theme.css`). No hex/RGB.
-- **Animations**: Framer Motion with spring physics. No abrupt transitions.
-- **UI components**: Radix UI primitives from `src/components/ui/`. No raw HTML equivalents.
-- **Icons**: Phosphor Icons (`@phosphor-icons/react`) for app icons; Lucide for shadcn/ui.
-- **Metaphor**: Everything should feel organic and peaceful — garden metaphor is load-bearing.
-- **AI fallbacks**: All `window.spark.llm` calls must have `try/catch` with graceful fallback.
-- **Photos**: Base64 Data URLs stored inside KV memory objects — no external file storage.
-- **Comments**: Default to no comments. Only explain non-obvious WHY, not what.
+- **Colors**: OKLCH values only. No hex/RGB in new UI.
+- **Animations**: Framer Motion with spring physics.
+- **UI components**: Radix UI primitives from `src/components/ui/`.
+- **Icons**: Phosphor for product chrome; Lucide for shadcn/ui.
+- **Metaphor**: Organic and peaceful — garden metaphor is load-bearing.
+- **AI fallbacks**: All `getLLMProvider().complete` calls must have `try/catch` with graceful fallback.
+- **Photos**: Base64 Data URLs / IndexedDB — not in pair/sync payloads.
+- **Comments**: Default to no comments. Only explain non-obvious WHY.
 - **State**: No external state library. Pass handlers down from `App.tsx`.
+- **New modules**: strict TypeScript, Zod for external input, `Result<T, E>` from `src/lib/result.ts`, tests for new files.

@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage', 'node_modules'] },
+  { ignores: ['dist', 'coverage', 'node_modules', 'volatility-sentinel'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
@@ -42,6 +42,14 @@ export default tseslint.config(
       'no-duplicate-imports': 'error',
       'no-control-regex': 'warn',
       'no-case-declarations': 'warn',
+    },
+  },
+  {
+    files: ['api/**/*.ts', 'mcp/**/*.ts', 'vite-plugin-garden-api.ts', 'src/lib/server/**/*.ts'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
     },
   },
   {

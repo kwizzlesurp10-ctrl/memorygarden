@@ -33,9 +33,10 @@ function gardenFalseBranch(source: string): string {
 async function assertTransforms(filePath: string): Promise<string> {
   const source = readFileSync(filePath, 'utf8')
   const result = await transformWithOxc(source, filePath)
-  if (result.errors?.length) {
+  const errors = (result as { errors?: unknown[] }).errors
+  if (errors && errors.length > 0) {
     throw new Error(
-      `transformWithOxc errors in ${filePath}: ${result.errors.map((e) => (typeof e === 'string' ? e : (e as { message?: string }).message ?? JSON.stringify(e))).join('; ')}`,
+      `transformWithOxc errors in ${filePath}: ${errors.map((e) => (typeof e === 'string' ? e : (e as { message?: string }).message ?? JSON.stringify(e))).join('; ')}`,
     )
   }
   expect(result.code.length).toBeGreaterThan(500)

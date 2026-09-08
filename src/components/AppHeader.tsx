@@ -25,6 +25,7 @@ import {
   CloudArrowUp,
   Globe,
   ChatCircleDots,
+  Leaf,
 } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
 import { SeasonIndicator } from '@/components/SeasonIndicator'
@@ -46,6 +47,8 @@ export interface AppHeaderProps {
   soundEnabled: boolean
   cloudSyncEnabled: boolean
   cloudSyncStatusLabel: string | null
+  livePairLabel: string | null
+  onOpenLivePair: () => void
   onSelectGarden: (id: string | null) => void
   onCreateGarden: () => void
   onViewModeChange: (mode: ViewMode) => void
@@ -74,6 +77,8 @@ export function AppHeader(props: AppHeaderProps) {
     soundEnabled,
     cloudSyncEnabled,
     cloudSyncStatusLabel,
+    livePairLabel,
+    onOpenLivePair,
     onSelectGarden,
     onCreateGarden,
     onViewModeChange,
@@ -176,6 +181,15 @@ export function AppHeader(props: AppHeaderProps) {
                 )}
               </div>
             </DropdownMenuCheckboxItem>
+            <DropdownMenuItem onClick={onOpenLivePair}>
+              <Leaf size={16} className="mr-2" />
+              <div className="flex flex-col">
+                <span>Live pair garden</span>
+                {livePairLabel && (
+                  <span className="text-xs text-muted-foreground">{livePairLabel}</span>
+                )}
+              </div>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onOpenUnlocks}>
               <Trophy size={16} className="mr-2" />

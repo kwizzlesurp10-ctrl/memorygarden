@@ -25,7 +25,7 @@ export function GardenTodControls({
   if (!devMode) return null
 
   return (
-    <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-wrap items-center gap-3 rounded-xl border border-white/8 bg-black/40 px-4 py-3 text-[#f0e7da] backdrop-blur-sm">
+    <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-wrap items-center gap-3 rounded-xl border border-white/8 bg-black/40 px-4 py-3 text-[oklch(0.93_0.02_85)] backdrop-blur-sm">
       <div className="flex gap-1 rounded-lg border border-white/15 p-1">
         {SEASONS.map((sn) => (
           <button
@@ -34,8 +34,8 @@ export function GardenTodControls({
             onClick={() => onSeasonChange(sn)}
             className="rounded-md px-3 py-1 text-xs tracking-wide capitalize"
             style={{
-              background: season === sn ? 'rgba(240, 231, 218, 0.16)' : 'transparent',
-              color: season === sn ? '#f0e7da' : 'rgba(240, 231, 218, 0.5)',
+              background: season === sn ? 'oklch(0.93 0.02 85 / 0.16)' : 'transparent',
+              color: season === sn ? 'oklch(0.93 0.02 85)' : 'oklch(0.93 0.02 85 / 0.5)',
             }}
           >
             {sn}
@@ -56,7 +56,7 @@ export function GardenTodControls({
         step={0.05}
         value={tod}
         onChange={(e) => onTodChange(parseFloat(e.target.value))}
-        className="flex-1 min-w-[120px] accent-[#ffb877]"
+        className="flex-1 min-w-[120px] accent-[oklch(0.84_0.12_62)]"
       />
       <span className="font-mono text-sm min-w-[140px] text-right">
         {getClockTime(tod)} <span className="opacity-55">· {todName(tod)}</span>

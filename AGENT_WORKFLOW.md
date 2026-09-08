@@ -5,11 +5,11 @@
 This document is the single source of truth for how AI coding agents (GitHub Copilot Coding Agent, Claude via Cursor/CLI, Gemini, or custom via mcp/iflow) must operate on this repository. It turns GitHub into a semi-autonomous maintenance and evolution system for the calm, local-first emotional memory garden.
 
 ## Core Principles (Non-Negotiable)
-- **Calm & Local-First First**: Every change must preserve the serene UX, localStorage/IndexedDB primacy, and optional Vercel KV/Spark fallback. No breaking changes to planting/tending flow without explicit evolution request.
+- **Calm & Local-First First**: Every change must preserve the serene UX, localStorage/IndexedDB primacy, optional live pair, and optional Vercel KV. No breaking changes to planting/tending flow without explicit evolution request.
 - **Evidence-Driven**: Agent must read and cite CLAUDE.md, GEMINI.md, PRD.md, TEST_COVERAGE_SUMMARY.md, EDGE_CASE_VERIFICATION.md, and current test reports before acting.
 - **Draft PRs Only**: All code changes via draft PRs. Human review required before merge. Never force-push main.
 - **Test & Verify**: Run `npm test`, `npm run test:coverage`, lint, typecheck, and bundle-size checks. Add or update tests for changed logic (especially growth, storage, LLM fallback).
-- **Spark / Vercel Compatibility**: Changes must not introduce new runtime deps that break Vite build, Edge functions, or window.spark.llm fallback.
+- **Vercel Compatibility**: Changes must not introduce new runtime deps that break the Vite build, Edge functions, or AI SDK `/api/llm` fallback.
 - **Transparency**: Every PR description must include: 1) Problem/Goal, 2) Agent reasoning trace (high-level), 3) Risks & second-order effects, 4) How to test.
 
 ## Bug Handling Workflow (Issue → Draft PR)
@@ -65,7 +65,7 @@ This document is the single source of truth for how AI coding agents (GitHub Cop
   - `GEMINI.md` — Gemini-specific adaptations.
   - `PRD.md` — Product requirements, core loops, non-negotiables.
   - `TEST_*` and `EDGE_CASE_*` reports — Known fragile areas.
-  - `package.json`, `vite.config.ts`, `vercel.json`, `spark.meta.json` — Dependency and deploy reality.
+  - `package.json`, `vite.config.ts`, `vercel.json` — Dependency and deploy reality.
 
 - **Runtime Verification**: `npm run lint && npm run test && npm run build` (or equivalent in agent env).
 
