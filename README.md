@@ -1,80 +1,115 @@
 # MemoryGarden 🌱
 
 [content-to-enhance id="introduction"]
-MemoryGarden is a calm, emotional space for the moments that matter: plant each memory like a seed, return to tend it, and watch it grow into something alive on the canvas—never rushed, never noisy, always yours.
+MemoryGarden is a calm, local-first garden for the moments that matter: plant a memory, return to tend it, and watch it grow through eight stages from **seed** to **elder** on an infinite canvas. A stable **`LocalUser`** identity is created in your browser via **`getLocalUser()`**—no account signup—so your garden stays yours from the first visit. Memories load through **`useMemoriesKV`**, which keeps structured fields in scoped **localStorage** and heavy photo blobs in **IndexedDB**, so large gardens stay within typical browser quotas.
 [/content-to-enhance]
 
 ## What is MemoryGarden?
 
 [content-to-enhance id="memory-garden-concept"]
-MemoryGarden reimagines how we preserve and revisit memories. Instead of flipping through static albums, your moments live as plants in a garden that responds to you:
+MemoryGarden reimagines how we preserve and revisit memories. Instead of flipping through static albums, your moments live as plants that respond to care, time, and reflection:
 
-- **Grow over time** — Plants advance through stages as you visit and reflect; neglect and care both leave traces you can feel.
-- **Reflect emotions** — AI-assisted tone hints shape variety and color so the garden mirrors how each memory feels.
-- **Encourage reflection** — Add notes when you revisit; invite gentle, poetic insights when you ask the Garden AI.
-- **Create connections** — Spatial proximity and clustering help you notice themes across seasons of your life.
-- **Adapt to seasons** — Light, mood, and atmosphere follow real time and season so the garden stays tied to the world outside the screen.
+- **Eight growth stages** — `seed → sprout → seedling → young → bud → bloom → mature → elder`, driven by visits, reflections, and optional fertilizer boosts.
+- **Five emotional tones** — `happy`, `reflective`, `bittersweet`, `peaceful`, and `nostalgic`; classification steers variety, palette, and garden weather.
+- **Six weather moods** — From **sunny** and **golden-haze** to **mist** and **rain**, the canvas atmosphere follows the dominant tone of nearby plants.
+- **Four currencies** — Earn **dew**, **sunlight**, **pollen**, and **starlight** by planting, reflecting, revisiting, and clustering; spend starlight on trait rerolls and unlocks.
+- **Cross-pollinate** — Link two memories to blend genetics and hybrid traits on the canvas.
+- **Dream-a-Plant** — Describe an idea; the dream-engine (when AI is available) returns a hybrid genome you can plant from the garden HUD.
+- **Storage Shed** — Every dreamt seed is kept automatically so you can revisit and plant hybrids later.
+- **Progression** — **18** unlockable palettes, patterns, and adornments plus **7** achievements that award bonus starlight as you tend over weeks and seasons.
 [/content-to-enhance]
 
 ## Features
 
 [content-to-enhance id="core-features"]
 ### 🌿 Plant & Tend Memories
-- **Planting**: Upload a photo, write about the moment, and watch your memory sprout on the canvas.
-- **Tending**: Open memories often to see them bloom and mature; reflections deepen the story each time you return.
-- **Fertilizer Boost**: Three tiers (Garden Boost, Premium, Legendary) accelerate growth with distinct particle effects.
+- **Planting** — Photo (Base64 in IndexedDB), text, date, optional location/audio; new sprouts appear on the pannable canvas.
+- **Tending** — Revisits and reflections advance growth; **Water & Reflect** deepens the story on each return.
+- **Fertilizer** — Three tiers (**Garden Boost**, **Premium Fertilizer**, **Legendary**) with distinct particle effects via `applyPremiumFertilizer`.
+- **Cosmetics** — Per-plant palette, pattern, and adornment slots (unlock-gated) plus **trait** slots (`palette` / `pattern` / `adornment`) from the trait catalog.
 
 ### ✨ AI-Powered Insights
+- **Emotional tone** — `getLLMProvider()` → **`POST /api/llm`** with `kind: 'classify'` (Haiku) for fast labeling; falls back to peaceful defaults when AI is off.
+- **Garden AI** — Reflective prompts with `kind: 'reflect'` (Sonnet); never sends photo bytes.
+- **Dream-a-Plant** — JSON-mode hybrid generation when the LLM route is configured.
+- **Memory Clusters** — Thematic and temporal groupings for browsing by mood as well as place.
 
-- **Emotional tone**: Text is classified to steer plant variety, palette, and growth character.
-- **Garden AI**: Poetic reflections and prompts that connect nearby memories without overwhelming the original voice.
-- **Memory Clusters**: Thematic or temporal groupings so you can browse by mood as well as by place.
+### 🎨 Five primary views
 
-### 🎨 Beautiful Views
-- **Garden**: Infinite pan-and-zoom canvas with animated plants and layered backgrounds.
-- **Timeline**: Chronological path through every planted moment.
-- **Clusters**: Grouped cards for thematic exploration.
-- **Bloom Wall**: A gallery spotlight for memories that have reached full bloom.
+| View | What you get |
+|------|----------------|
+| **Garden** | Infinite canvas, animated plants, day/night and seasonal backdrops |
+| **Timeline** | Chronological path through every planted moment |
+| **Clusters** | Grouped cards and paths for thematic exploration |
+| **Explore** | Discover community gardens (Neon-backed when `DATABASE_URL` is set; graceful empty state when not) |
+| **Bloom Wall** | Masonry gallery; elder and bloom stages claim larger tiles |
 
 ### 👥 Collaboration & Sharing
-- **Collaborative gardens**: Shared spaces to grow memories together when that mode is enabled.
-- **Private sharing**: Share specific memories with link-based access you control.
+- **Collaborative gardens** — Local multi-garden selector plus **Community Gardens** via **`/api/gardens`** (join, plant, water, reflect) when Postgres is configured.
+- **Private sharing** — Link-based memory sharing you control from the memory card.
+- **Export** — Full-garden export (including quality options) from settings.
 
 ### 🌓 Living Atmosphere
-- **Day / night**: Background and lighting follow local time.
-- **Seasonal mood**: Subtle shifts for the current season and overall garden “weather.”
-- **Ambient sound**: Optional audio that tracks time of day and season.
+- **Day / night** — Canvas palette follows local time of day.
+- **Seasonal mood** — Subtle shifts for the current season.
+- **Ambient garden engine** — Optional generative audio tied to season and weather type.
 
 ### ⌨️ Power user affordances
-- **Keyboard shortcuts**: Fast navigation and actions (`?` opens the cheat sheet).
-- **Protocol handlers**: Deep links such as `web+memorygarden://` when installed as a PWA.
-- **PWA**: Install for an app-like shell and optional protocol registration.
+- **Keyboard shortcuts** — `?` opens the cheat sheet; **cmdk** command palette components are wired for quick navigation (expand with **Ctrl+K** / **⌘K** as the UI matures).
+- **Protocol handlers** — `web+memorygarden://`, `web+plantmemory://`, and `web+viewmemory://` in **`public/manifest.json`** when installed as a PWA.
+- **PWA** — Installable shell with share-target and protocol registration; **no service worker yet** (offline cache remains on the roadmap).
 [/content-to-enhance]
 
 ## Technical Architecture
 
 [content-to-enhance id="how-it-works"]
-MemoryGarden is a client-heavy React app tuned for smooth, organic motion and local-first data.
+MemoryGarden is a client-heavy **React 19** SPA with organic motion, local-first persistence, and optional Vercel Edge backends.
 
-### Frontend stack
-- **React 19 + TypeScript** — UI and state.
-- **Vite** — Dev server and production bundle.
-- **Tailwind CSS** — Layout and responsive styling.
-- **Framer Motion** — Springs and transitions that feel alive.
-- **Radix UI** — Accessible primitives (dialogs, tabs, etc.).
-- **Persistence** — `useKV` from `@/lib/storage` scopes data per local user in **localStorage**; large photo payloads use **IndexedDB** so you stay under typical string quotas.
-- **AI** — `POST` to **`/api/llm`** (Vercel Edge): prompts go to **Anthropic** with `ANTHROPIC_API_KEY` on the server. The browser never sees the key. If the route is missing or returns `503`, the app falls back gracefully (including optional **GitHub Spark** `window.spark` where present).
+### Stack (pinned in `package.json`)
 
-### Sub-projects
-- **Volatility Sentinel** (`volatility-sentinel/` in the repo) — Standalone Python agent example (CoinGecko) you run separately from the Vite app; CI exercises it from its own directory.
+| Layer | Choice |
+|-------|--------|
+| UI | React **19.2** + TypeScript **~6** |
+| Bundler | Vite **8** + `@vitejs/plugin-react-swc` |
+| Styling | Tailwind CSS **4** + OKLCH theme tokens |
+| Motion | Framer Motion **12** |
+| Primitives | Radix UI (shadcn-style components under `src/components/ui/`) |
+| Validation | Zod **4** on external-shaped payloads |
+| Tests | Vitest **4** — **578** tests across **22** files |
+
+### Persistence & identity
+- **`getLocalUser()`** — Stable per-browser user id and display name (`src/lib/local-user.ts`).
+- **`useMemoriesKV`** — Memories array in KV; photos resolved through IndexedDB helpers in `src/hooks/use-memories-kv.ts`.
+- **`useKV`** — Preferences, unlock state, collaborative garden metadata, all namespaced by `LocalUser.id`.
+
+### LLM resolution (`src/lib/llm-client.ts`)
+1. HTTP **`fetch('/api/llm')`** → Anthropic via Edge (`api/llm.ts`).
+2. Optional **`window.spark.llm`** when the GitHub Spark SDK is present.
+3. Static no-network fallback so the UI never hard-crashes.
+
+**Models on the server:** `claude-haiku-4-5-20251001` (classify), `claude-sonnet-4-6` (reflect / JSON dreams).
+
+### Vercel Edge routes
+
+| Route | Purpose | Required env |
+|-------|---------|----------------|
+| **`/api/llm`** | Classification, reflections, dream JSON | `ANTHROPIC_API_KEY` |
+| **`/api/sync`** | Per-user metadata blob (LWW, **1 MB** cap, **413** if over) | `KV_REST_API_URL`, `KV_REST_API_TOKEN` |
+| **`/api/gardens`** | Community gardens CRUD + social tending | `DATABASE_URL` (Neon) |
+
+Static Docker/nginx images serve only the SPA — Edge routes are **not** bundled; AI and sync fall back cleanly on self-hosted builds.
+
+### Sub-projects & agents
+- **`volatility-sentinel/`** — Standalone Python CoinGecko agent; CI runs **pytest** from that directory.
+- **`agents/micro_forge/`** — Python multi-agent scanner (`docker compose --profile agents run --rm micro-forge`).
 [/content-to-enhance]
 
 ## Getting Started
 
 [content-to-enhance id="usage"]
 ### Prerequisites
-- **Node.js** (current LTS recommended)
-- **npm** (ships with Node)
+- **Node.js 20+** (CI uses 20; Docker build uses 22)
+- **npm** (lockfile: `package-lock.json`; CI also verifies **`pnpm-lock.yaml`** stays in sync)
 
 ### Installation
 1. Clone the repository:
@@ -86,88 +121,110 @@ MemoryGarden is a client-heavy React app tuned for smooth, organic motion and lo
    ```bash
    npm install --legacy-peer-deps
    ```
-   This matches the repo’s `.npmrc` and avoids common peer-resolution issues with Vite 8.
+   Matches `.npmrc` (`legacy-peer-deps=true`) for Vite 8 peer ranges.
 
 ### Development
 ```bash
 npm run dev
 ```
-Opens the Vite dev server (default port **5173** unless configured otherwise).
+Vite dev server — default **http://localhost:5173**.
 
 ### Production build
 ```bash
 npm run build
 ```
-Output is written to **`dist/`** for static hosting.
+Output → **`dist/`** for static hosting (Vercel, nginx, etc.).
 
 ### Quality checks
 ```bash
-npm run lint
-npm test
+npm run lint      # ESLint
+npm test          # Vitest single run (578 tests)
+npm run test:watch
+npm run test:coverage
+npx tsc --noEmit  # CI typecheck
 ```
 
-### Preview the production bundle
+### Preview production bundle
 ```bash
 npm run preview
 ```
-Serves **`dist/`** locally (Vite preview server).
 
-## Testing
+### Docker
+| Command | Result |
+|---------|--------|
+| `docker compose up --build` | nginx SPA on **http://localhost:8080** (`/healthz`) |
+| `docker compose --profile dev up dev` | Vite on **5173** with mounted source |
+| `docker compose --profile agents run --rm micro-forge` | Micro-Forge agent report |
 
-Vitest drives automated checks for garden logic, storage edge cases, LLM client wiring, and more.
-
-### Commands
-- **One-off run**: `npm test`
-- **Watch**: `npm run test:watch`
-- **Coverage**: `npm run test:coverage`
-
-Typical areas covered include growth and stage logic, unlock/currency paths, trait helpers, local user migration, and HTTP LLM behavior.
+### CI (`.github/workflows/ci.yml`)
+Jobs on every push/PR to **`main`**: **typecheck**, **lint**, **unit tests + coverage**, **build**, **npm audit** (high+), **volatility-sentinel pytest**, **bundle size** (fail if any JS chunk **> 400 KB**), **pnpm lockfile** frozen check.
 [/content-to-enhance]
 
 ## Deployment
 
 [content-to-enhance id="configuration"]
-The production story on **Vercel** is a static SPA plus two Edge routes:
+### Vercel (recommended)
+Static SPA from **`npm run build`** plus Edge functions in **`api/`**.
 
-1. **`/api/llm`** — Proxies classification and reflection prompts to Anthropic. Set **`ANTHROPIC_API_KEY`** in the project. Without it, AI features degrade cleanly while the garden keeps working.
-2. **`/api/sync`** — Optional metadata sync to **Vercel KV / Upstash** using **`KV_REST_API_URL`** and **`KV_REST_API_TOKEN`**. Photos and audio stay on-device (IndexedDB); only structured fields participate when sync is on.
+| Variable | Route / behavior |
+|----------|------------------|
+| **`ANTHROPIC_API_KEY`** | `/api/llm` — without it, returns **503** and the client disables AI for the session |
+| **`KV_REST_API_URL`** + **`KV_REST_API_TOKEN`** | `/api/sync` — metadata only; photos stay in IndexedDB per device |
+| **`DATABASE_URL`** | `/api/gardens` — community gardens; **503** when unset |
 
-Pushes to **`main`** trigger `npm install` and `npm run build`. **`legacy-peer-deps`** in `.npmrc` keeps Vite 8 and `@vitejs/plugin-react-swc` compatible.
+**Sync semantics:** Last-write-wins per `mg:user:<id>`; POST body must stay under **1,000,000** characters or the API returns **413**. The header **Sync to cloud** control reflects real status and backs off on **503**.
 
-The header **Sync to cloud** control reflects real status and backs off when the API returns **`503`** (no KV), so users are never misled about what is actually syncing.
+### Local identity & reset
+- **`getLocalUser()`** persists under the `memorygarden` localStorage prefix; clearing site data or using in-app reset creates a fresh garden id.
+- **Export** from settings produces a portable archive before you reset or migrate browsers.
+
+### Self-hosted Docker
+Production image: Node build → **nginx** on port **8080** with **`/healthz`**. No Edge secrets in the image — configure a reverse proxy to Vercel functions or run garden-only without cloud AI/sync/community.
 
 ## Privacy & Data
 
-- **Local-first**: Memories and media default to the browser (localStorage-scoped keys + IndexedDB for blobs). Nothing leaves the device except what you explicitly sync or share.
-- **AI payloads**: Classification uses truncated memory text; reflections may include short snippets from nearby memories—never photos or account profiles in those paths.
-- **Export**: Full-garden export from settings when you want a portable archive.
+- **Local-first** — Memories and media default to the browser (scoped KV + IndexedDB). Nothing leaves the device except optional sync metadata, community actions you take, or explicit shares.
+- **AI payloads** — Truncated text (prompt max **4000** chars on `/api/llm`); reflections may include short neighbor context — never image bytes or OAuth tokens.
+- **Export** — Full-garden export when you want an offline backup.
 [/content-to-enhance]
 
 ## Roadmap
 
 [content-to-enhance id="roadmap"]
-Directions worth prioritizing as MemoryGarden matures:
+Near-term directions aligned with the current codebase:
 
-- **Collaboration** — Richer shared-garden invitations, presence, and conflict-safe merges for joint tending.
-- **Export & print** — Higher-fidelity PDF and poster layouts from the Bloom Wall and timeline.
-- **Accessibility & i18n** — Audit across canvas, modals, and keyboard flows; extract copy for translation.
-- **Performance at scale** — Continue canvas virtualization and asset prioritization for very large gardens (500+ plants).
+- **Community gardens UX** — Richer invitations, presence, and conflict-safe merges when Neon is enabled.
+- **Offline PWA** — Service worker + cache strategy (manifest and share-target already ship; SW does not).
+- **Command palette** — Promote existing **cmdk** wiring to a global **Ctrl+K** / **⌘K** launcher for views, plant, and settings.
+- **Export & print** — Higher-fidelity PDF / poster flows from Bloom Wall and timeline.
+- **Accessibility & i18n** — Canvas, modals, and keyboard paths; extract copy for translation.
+- **Performance at scale** — Continue virtualization and asset prioritization for **500+** plants.
+- **On-device AI imagery** — Optional local or edge image helpers without uploading user photos to third parties.
 [/content-to-enhance]
 
 ## FAQ
 
 [content-to-enhance id="faq"]
 **Where does my data live?**  
-By default on your device: scoped localStorage for structured data and IndexedDB for heavy blobs. Cloud sync of metadata is optional and only active when KV credentials are configured.
+By default on your device: **`getLocalUser()`** scopes **localStorage** keys; **`useMemoriesKV`** stores photo blobs in **IndexedDB**. Optional **`/api/sync`** uploads a JSON metadata document (not images) when KV env vars are set.
 
 **Are photos sent to the AI?**  
-No. AI calls operate on text (and brief neighboring context for reflections), not image bytes.
+No. `/api/llm` accepts text prompts only. Dream-a-Plant and tone classification never include `photoUrl` bytes.
 
-**Which LLM runs in production?**  
-Deployed apps use **`/api/llm`** → Anthropic (see `api/llm.ts`). Spark environments may still expose `window.spark.llm` as a fallback path in client code.
+**What are dew, sunlight, pollen, and starlight?**  
+In-app currencies from `unlock-system.ts` — earned by tending and spent on cosmetics rerolls and progression. Achievements grant bonus **starlight**.
 
-**How do I contribute or report an issue?**  
-Use GitHub issues and pull requests on this repository.
+**Which models run in production?**  
+`claude-haiku-4-5-20251001` for classification, `claude-sonnet-4-6` for reflections and JSON dream output (`api/llm.ts`). Spark dev environments may still use `window.spark.llm` as a fallback.
+
+**Why does sync or community show unavailable?**  
+**503** means the Edge route is missing env configuration (KV or `DATABASE_URL`). The app continues in local-only mode; sync posts larger than **1 MB** return **413**.
+
+**How do I reset or move gardens?**  
+Export from settings, then clear site data or use the in-app reset flow to mint a new **LocalUser** id.
+
+**How do I contribute?**  
+GitHub issues and pull requests on this repository. CI expects **578** Vitest tests, ESLint, `tsc --noEmit`, and the bundle size budget to pass.
 [/content-to-enhance]
 
 ---
