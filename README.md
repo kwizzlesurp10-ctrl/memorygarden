@@ -31,7 +31,8 @@ MemoryGarden reimagines how we preserve and revisit memories. Instead of flippin
 - **Memory Clusters**: Thematic or temporal groupings so you can browse by mood as well as by place.
 
 ### 🎨 Beautiful Views
-- **Garden**: Infinite pan-and-zoom canvas with animated plants and layered backgrounds.
+- **Garden**: Illustrated pan-and-zoom canvas with animated plants and layered backgrounds.
+- **Walk**: First-person open world — enter the garden gate and walk among your memories.
 - **Timeline**: Chronological path through every planted moment.
 - **Clusters**: Grouped cards for thematic exploration.
 - **Bloom Wall**: A gallery spotlight for memories that have reached full bloom.

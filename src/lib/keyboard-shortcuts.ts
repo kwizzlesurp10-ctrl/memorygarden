@@ -213,6 +213,11 @@ export const APP_SHORTCUTS = {
     description: 'Switch to garden view',
     category: 'Navigation',
   },
+  VIEW_WALK: {
+    key: '5',
+    description: 'Walk through the garden',
+    category: 'Navigation',
+  },
   VIEW_TIMELINE: {
     key: '2',
     description: 'Switch to timeline view',

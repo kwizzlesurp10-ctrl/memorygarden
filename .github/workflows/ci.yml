@@ -178,12 +178,18 @@ jobs:
           find dist/assets -name '*.js' -exec sh -c 'size=$(wc -c < "$1"); echo "| $(basename "$1") | $((size / 1024)) |"' _ {} \; | sort -t'|' -k3 -rn >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
-          # Fail if any single JS chunk exceeds 400KB
+          # Fail if a non-three JS chunk exceeds 400KB. vendor-three is the
+          # first-person walkthrough renderer (three.js) and is budgeted at 600KB.
           max_size=409600
+          three_max=614400
           for f in dist/assets/*.js; do
             size=$(wc -c < "$f")
-            if [ "$size" -gt "$max_size" ]; then
-              echo "::error::Bundle $(basename "$f") is ${size} bytes (limit: ${max_size})"
+            limit=$max_size
+            case "$(basename "$f")" in
+              vendor-three-*) limit=$three_max ;;
+            esac
+            if [ "$size" -gt "$limit" ]; then
+              echo "::error::Bundle $(basename "$f") is ${size} bytes (limit: ${limit})"
               exit 1
             fi
           done

@@ -33,6 +33,7 @@ const CommunityGardenView = lazy(() => import('@/components/CommunityGardenView'
 const GardenMembersPanel = lazy(() => import('@/components/GardenMembersPanel').then(m => ({ default: m.GardenMembersPanel })))
 const ActivityFeed = lazy(() => import('@/components/ActivityFeed').then(m => ({ default: m.ActivityFeed })))
 const ContributorLeaderboard = lazy(() => import('@/components/ContributorLeaderboard').then(m => ({ default: m.ContributorLeaderboard })))
+const OpenWorldGarden = lazy(() => import('@/components/open-world/OpenWorldGarden').then(m => ({ default: m.OpenWorldGarden })))
 import { countUnreadActivity, deriveActivityFromMemories } from '@/lib/activity-helpers'
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod, generateHybridTraits } from '@/lib/garden-helpers'
 import { realClockTod, todToDayPeriod } from '@/lib/garden/day-night'
@@ -898,6 +899,9 @@ function App() {
     setActiveGardenId(gardenId)
   }
 
+  const handleEnterWalk = () => setViewMode('walk')
+  const handleExitWalk = () => setViewMode('garden')
+
   const handleInviteToGarden = () => {
     if (activeGarden) {
       setIsInviteDialogOpen(true)
@@ -1029,6 +1033,11 @@ function App() {
         id: 'view-garden',
         descriptor: APP_SHORTCUTS.VIEW_GARDEN,
         handler: () => setViewMode('garden'),
+      },
+      {
+        id: 'view-walk',
+        descriptor: APP_SHORTCUTS.VIEW_WALK,
+        handler: () => setViewMode('walk'),
       },
       {
         id: 'view-timeline',
@@ -1222,7 +1231,40 @@ function App() {
                       highlightedMemoryIds={highlightedMemoryIds}
                       mood={gardenMood}
                       onPlantHybrid={handlePlantHybrid}
+                      onEnterWalk={handleEnterWalk}
                     />
+                  </SectionErrorBoundary>
+                )}
+              </motion.div>
+            )}
+
+            {viewMode === 'walk' && (
+              <motion.div
+                key="walk"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full"
+              >
+                {safeMemories.length === 0 ? (
+                  <EmptyGarden onPlantFirst={() => setIsPlantModalOpen(true)} />
+                ) : (
+                  <SectionErrorBoundary label="open-world walk">
+                    <Suspense fallback={
+                      <div className="w-full h-full bg-[#0d0913] flex items-center justify-center text-[#f0e7da]/80 text-sm">
+                        Opening the garden path…
+                      </div>
+                    }>
+                      <OpenWorldGarden
+                        memories={safeMemories}
+                        season={season}
+                        highlightedMemoryIds={highlightedMemoryIds}
+                        growingMemories={growingMemories}
+                        paused={selectedMemory !== null}
+                        onMemoryClick={handleMemoryClick}
+                        onExit={handleExitWalk}
+                      />
+                    </Suspense>
                   </SectionErrorBoundary>
                 )}
               </motion.div>
@@ -1354,21 +1396,22 @@ function App() {
             )}
           </AnimatePresence>
 
-          {/* Always-available Plant Memory button (primary action) */}
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="fixed bottom-8 right-8 z-20"
-          >
-            <Button
-              size="lg"
-              onClick={() => setIsPlantModalOpen(true)}
-              className="rounded-full w-16 h-16 shadow-lg hover:shadow-xl transition-shadow"
-              aria-label="Plant a new memory"
+          {viewMode !== 'walk' ? (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="fixed bottom-8 right-8 z-20"
             >
-              <PlantIcon size={28} weight="fill" />
-            </Button>
-          </motion.div>
+              <Button
+                size="lg"
+                onClick={() => setIsPlantModalOpen(true)}
+                className="rounded-full w-16 h-16 shadow-lg hover:shadow-xl transition-shadow"
+                aria-label="Plant a new memory"
+              >
+                <PlantIcon size={28} weight="fill" />
+              </Button>
+            </motion.div>
+          ) : null}
         </main>
       </div>
 

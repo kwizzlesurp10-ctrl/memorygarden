@@ -41,6 +41,7 @@ interface GardenCanvasProps {
   highlightedMemoryIds?: Set<string> | null
   mood?: import('@/lib/types').GardenMood | null
   onPlantHybrid?: (genome: import('@/lib/types').HybridGenome, idea: string, position: { x: number; y: number }) => void
+  onEnterWalk?: () => void
 }
 
 function clampScenePosition(x: number, y: number): { x: number; y: number } {
@@ -59,6 +60,7 @@ export function GardenCanvas({
   highlightedMemoryIds = null,
   mood = null,
   onPlantHybrid,
+  onEnterWalk,
 }: GardenCanvasProps) {
   const reducedMotion = useReducedMotion()
   const motion = !reducedMotion
@@ -258,6 +260,23 @@ export function GardenCanvas({
           />
         </div>
       </div>
+
+      {onEnterWalk && (
+        <button
+          type="button"
+          aria-label="Walk through the garden"
+          onClick={onEnterWalk}
+          className="absolute z-40 flex h-[54px] w-[54px] items-center justify-center rounded-full border border-[#f0e7da]/30 bg-black/40 text-[#f0e7da] backdrop-blur-sm hover:bg-black/55"
+          style={{ top: 12, right: 74 }}
+          data-testid="enter-walk-button"
+        >
+          <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+            <circle cx="12" cy="4.2" r="1.6" />
+            <path d="M9.5 21 L11 13 L8.5 11 L10 8 L14.5 10.5 L17 8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M11 13 L14 21" strokeLinecap="round" />
+          </svg>
+        </button>
+      )}
 
       <button
         type="button"

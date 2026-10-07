@@ -25,6 +25,7 @@ import {
   CloudArrowUp,
   Globe,
   ChatCircleDots,
+  PersonSimpleWalk,
 } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
 import { SeasonIndicator } from '@/components/SeasonIndicator'
@@ -33,7 +34,7 @@ import { GardenSelector } from '@/components/GardenSelector'
 import type { CollaborativeGarden, GardenMood, Season } from '@/lib/types'
 import type { LocalUser } from '@/lib/local-user'
 
-export type ViewMode = 'garden' | 'timeline' | 'clusters' | 'bloom' | 'explore'
+export type ViewMode = 'garden' | 'walk' | 'timeline' | 'clusters' | 'bloom' | 'explore'
 
 export interface AppHeaderProps {
   user: LocalUser
@@ -114,6 +115,10 @@ export function AppHeader(props: AppHeaderProps) {
           <TabsTrigger value="garden" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Garden View">
             <Tree size={18} className="flex-shrink-0" />
             <span className="hidden md:inline">Garden</span>
+          </TabsTrigger>
+          <TabsTrigger value="walk" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Walk the garden">
+            <PersonSimpleWalk size={18} className="flex-shrink-0" />
+            <span className="hidden md:inline">Walk</span>
           </TabsTrigger>
           <TabsTrigger value="timeline" className="flex items-center gap-0 md:gap-2 px-2 md:px-3" title="Timeline View">
             <List size={18} className="flex-shrink-0" />
