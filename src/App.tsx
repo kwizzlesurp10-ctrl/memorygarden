@@ -36,6 +36,8 @@ import { GardenAmbientLayer } from '@/components/GardenAmbientLayer'
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 import { EmptyGarden } from '@/components/EmptyGarden'
 import { useCloudSync, type SyncStatus } from '@/hooks/use-cloud-sync'
+import { enterLivePair, startLivePair, useLivePair, type LivePairStatus } from '@/hooks/use-live-pair'
+import { LivePairDialog } from '@/components/LivePairDialog'
 import { toggleReaction, type ReactionType } from '@/lib/social'
 
 function describeSyncStatus(status: SyncStatus): string | null {
@@ -52,6 +54,21 @@ function describeSyncStatus(status: SyncStatus): string | null {
         : 'Connected'
     case 'error':
       return `Error: ${status.message}`
+  }
+}
+
+function describePairStatus(status: LivePairStatus): string | null {
+  switch (status.kind) {
+    case 'idle':
+      return null
+    case 'unavailable':
+      return 'Pairing not configured'
+    case 'connecting':
+      return 'Connecting…'
+    case 'live':
+      return `Live ${status.code}`
+    case 'error':
+      return status.message
   }
 }
 
@@ -112,6 +129,7 @@ function App() {
   const [aiReflection, setAiReflection] = useState<string>('')
   const [isLoadingAI, setIsLoadingAI] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [isLivePairOpen, setIsLivePairOpen] = useState(false)
   const [season, setSeason] = useState(getSeason())
   const [todHours, setTodHours] = useState(() => realClockTod())
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
@@ -281,10 +299,12 @@ function App() {
   }, [sharedMemories])
 
   useEffect(() => {
-    if (preferences && memories && memories.length === 0 && preferences.hasCompletedOnboarding) {
-      setTimeout(() => setIsPlantModalOpen(true), 1000)
-    }
-  }, [preferences, memories])
+    if (!preferences?.hasCompletedOnboarding) return
+    if ((memories?.length ?? 0) > 0) return
+    if (preferences.livePairCode || isLivePairOpen) return
+    const timeout = window.setTimeout(() => setIsPlantModalOpen(true), 1000)
+    return () => window.clearTimeout(timeout)
+  }, [preferences, memories, isLivePairOpen])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -995,8 +1015,21 @@ function App() {
     toast.success('Plant appearance re-rolled!')
   }
 
+  const livePairCode = safePreferences.livePairCode ?? null
+
   const syncStatus = useCloudSync({
-    enabled: safePreferences.cloudSyncEnabled === true,
+    enabled: safePreferences.cloudSyncEnabled === true && !livePairCode,
+    userId: localUser.id,
+    memories: safeMemories,
+    preferences: safePreferences,
+    onPulled: (mergedMemories, mergedPreferences) => {
+      setMemories(mergedMemories)
+      setPreferences(mergedPreferences)
+    },
+  })
+
+  const pairStatus = useLivePair({
+    code: livePairCode,
     userId: localUser.id,
     memories: safeMemories,
     preferences: safePreferences,
@@ -1126,6 +1159,8 @@ function App() {
           soundEnabled={safePreferences.soundEnabled}
           cloudSyncEnabled={safePreferences.cloudSyncEnabled === true}
           cloudSyncStatusLabel={describeSyncStatus(syncStatus)}
+          livePairLabel={describePairStatus(pairStatus)}
+          onOpenLivePair={() => setIsLivePairOpen(true)}
           onSelectGarden={handleSelectGarden}
           onCreateGarden={() => setIsCreateGardenOpen(true)}
           onViewModeChange={setViewMode}
@@ -1350,11 +1385,14 @@ function App() {
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="fixed bottom-8 right-8 z-20"
+            className={`fixed bottom-8 right-8 z-20 ${isLivePairOpen ? 'pointer-events-none' : ''}`}
           >
             <Button
               size="lg"
-              onClick={() => setIsPlantModalOpen(true)}
+              onClick={() => {
+                if (isLivePairOpen) return
+                setIsPlantModalOpen(true)
+              }}
               className="rounded-full w-16 h-16 shadow-lg hover:shadow-xl transition-shadow"
               aria-label="Plant a new memory"
             >
@@ -1502,6 +1540,46 @@ function App() {
         <KeyboardShortcutsPanel
           open={isShortcutsPanelOpen}
           onClose={() => setIsShortcutsPanelOpen(false)}
+        />
+
+        <LivePairDialog
+          open={isLivePairOpen}
+          onClose={() => setIsLivePairOpen(false)}
+          status={pairStatus}
+          onStart={async () => {
+            const created = await startLivePair(localUser.id, safeMemories, safePreferences)
+            if (!created.ok) throw new Error(created.error)
+            setPreferences((current) => ({
+              ...(current ?? {
+                hasCompletedOnboarding: false,
+                soundEnabled: false,
+                lastVisit: new Date().toISOString(),
+              }),
+              livePairCode: created.value.code,
+            }))
+          }}
+          onJoin={async (code) => {
+            const joined = await enterLivePair(localUser.id, code)
+            if (!joined.ok) throw new Error(joined.error)
+            setPreferences((current) => ({
+              ...(current ?? {
+                hasCompletedOnboarding: false,
+                soundEnabled: false,
+                lastVisit: new Date().toISOString(),
+              }),
+              livePairCode: joined.value.code,
+            }))
+          }}
+          onLeave={() => {
+            setPreferences((current) => ({
+              ...(current ?? {
+                hasCompletedOnboarding: false,
+                soundEnabled: false,
+                lastVisit: new Date().toISOString(),
+              }),
+              livePairCode: null,
+            }))
+          }}
         />
       </Suspense>
     </>

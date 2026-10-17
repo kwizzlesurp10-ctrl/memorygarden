@@ -125,7 +125,8 @@ export function GardenCanvas({
   }, [seedLensAtCenter])
 
   useEffect(() => {
-    if (propSeason) setSeason(propSeason)
+    if (!propSeason) return
+    queueMicrotask(() => setSeason(propSeason))
   }, [propSeason])
 
   useEffect(() => {
@@ -264,7 +265,7 @@ export function GardenCanvas({
         aria-label={lensOn ? 'Disable magnifying lens' : 'Enable magnifying lens'}
         aria-pressed={lensOn}
         onClick={toggleLens}
-        className="absolute z-40 flex h-[54px] w-[54px] items-center justify-center rounded-full border border-[#f0e7da]/30 bg-black/40 text-[#f0e7da] backdrop-blur-sm hover:bg-black/55"
+        className="absolute z-40 flex h-[54px] w-[54px] items-center justify-center rounded-full border border-[oklch(0.93_0.02_85/0.3)] bg-black/40 text-[oklch(0.93_0.02_85)] backdrop-blur-sm hover:bg-black/55"
         style={{ top: 12, right: 12 }}
       >
         <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
@@ -275,7 +276,7 @@ export function GardenCanvas({
 
       {lensOn && (
         <div
-          className="absolute top-16 right-3 z-40 flex items-center gap-2 rounded-lg border border-white/15 bg-black/40 px-2 py-1 text-xs text-[#f0e7da]"
+          className="absolute top-16 right-3 z-40 flex items-center gap-2 rounded-lg border border-white/15 bg-black/40 px-2 py-1 text-xs text-[oklch(0.93_0.02_85)]"
           role="group"
           aria-label="Lens zoom"
         >
@@ -333,7 +334,7 @@ export function GardenCanvas({
           {loupe && (
             <div
               data-testid="garden-loupe"
-              className="pointer-events-none absolute z-20 rounded-full border-2 border-[#f0e7da]/45 overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.45)] ring-1 ring-black/30"
+              className="pointer-events-none absolute z-20 rounded-full border-2 border-[oklch(0.93_0.02_85/0.45)] overflow-hidden shadow-lg shadow-black/45 ring-1 ring-black/30"
               style={{
                 width: loupe.outer.width,
                 height: loupe.outer.height,

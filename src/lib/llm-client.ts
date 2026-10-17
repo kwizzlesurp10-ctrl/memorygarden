@@ -1,21 +1,15 @@
 /**
- * Unified LLM client abstraction.
+ * Unified LLM client.
  *
- * The default provider in production calls our own /api/llm Edge
- * function, which proxies to Anthropic. In environments where that
- * route returns 503 (no API key configured), or where window/fetch
- * is unavailable, we fall back to a static no-network provider so
- * the app never breaks.
- *
- * Tests can swap the provider via setLLMProvider().
+ * Production and Vite both POST to /api/llm. That route is served by the
+ * Vercel AI SDK (AI Gateway) on Vercel, and by the same handler via the
+ * Vite garden API plugin locally. If the route returns 503, we stop
+ * retrying for the rest of the session and callers use their fallbacks.
  */
 
 export interface LLMProvider {
-  /** Build a prompt string from a template literal. */
   prompt(strings: TemplateStringsArray, ...values: unknown[]): string
-  /** Send a prompt to the model and return the completion text. */
   complete(prompt: string, model?: string, jsonMode?: boolean): Promise<string>
-  /** Whether the provider is available in the current environment. */
   readonly available: boolean
 }
 
@@ -23,12 +17,8 @@ function tagged(strings: TemplateStringsArray, ...values: unknown[]): string {
   return strings.reduce((acc, str, i) => acc + str + (values[i] ?? ''), '')
 }
 
-// ── HTTP provider (Vercel Edge proxy → Anthropic) ──────────────────────────
-
 function getHttpProvider(): LLMProvider | null {
   if (typeof window === 'undefined' || typeof fetch === 'undefined') return null
-  // Tracks whether the /api/llm route is missing or unconfigured. After a
-  // first failed request we stop hammering it for the session.
   let disabled = false
   return {
     prompt: tagged,
@@ -54,26 +44,6 @@ function getHttpProvider(): LLMProvider | null {
   }
 }
 
-// ── Spark fallback (legacy) ─────────────────────────────────────────────────
-
-interface SparkSDK {
-  llmPrompt: (s: TemplateStringsArray, ...v: unknown[]) => string
-  llm: (p: string, m?: string, j?: boolean) => Promise<string>
-}
-
-function getSparkProvider(): LLMProvider | null {
-  if (typeof window === 'undefined') return null
-  const spark = (window as unknown as Record<string, unknown>).spark as SparkSDK | undefined
-  if (!spark) return null
-  return {
-    prompt: (strings, ...values) => spark.llmPrompt(strings, ...values),
-    complete: (p, m, j) => spark.llm(p, m, j),
-    available: true,
-  }
-}
-
-// ── Static fallback (no network) ────────────────────────────────────────────
-
 const fallbackProvider: LLMProvider = {
   prompt: tagged,
   async complete(): Promise<string> {
@@ -82,13 +52,11 @@ const fallbackProvider: LLMProvider = {
   available: false,
 }
 
-// ── Singleton ───────────────────────────────────────────────────────────────
-
 let _instance: LLMProvider | null = null
 
 export function getLLMProvider(): LLMProvider {
   if (_instance) return _instance
-  _instance = getHttpProvider() ?? getSparkProvider() ?? fallbackProvider
+  _instance = getHttpProvider() ?? fallbackProvider
   return _instance
 }
 

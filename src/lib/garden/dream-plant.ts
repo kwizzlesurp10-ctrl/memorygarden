@@ -20,22 +20,14 @@ export interface DreamPlantResult {
 
 export async function dreamPlant(idea: string): Promise<DreamPlantResult> {
   const trimmed = idea.trim()
-  let genome: HybridGenome | null = null
-  let source: 'ai' | 'local' = 'ai'
-
   try {
     const llm = getLLMProvider()
     if (!llm.available) throw new Error('llm unavailable')
     const raw = await llm.complete(`${DREAM_SYSTEM}\n\n${dreamUserPrompt(trimmed)}`, undefined, true)
-    genome = parseGenome(raw)
+    const parsed = parseGenome(raw)
+    if (parsed) return { genome: parsed, source: 'ai' }
   } catch {
-    genome = null
+    // local fallback below
   }
-
-  if (!genome) {
-    genome = localGenome(trimmed)
-    source = 'local'
-  }
-
-  return { genome, source }
+  return { genome: localGenome(trimmed), source: 'local' }
 }

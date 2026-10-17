@@ -58,15 +58,15 @@ MemoryGarden is a client-heavy React app tuned for smooth, organic motion and lo
 
 ### Frontend stack
 - **React 19 + TypeScript** — UI and state.
-- **Vite** — Dev server and production bundle.
+- **Vite** — Dev server (with local `/api` plugin) and production bundle.
 - **Tailwind CSS** — Layout and responsive styling.
 - **Framer Motion** — Springs and transitions that feel alive.
 - **Radix UI** — Accessible primitives (dialogs, tabs, etc.).
-- **Persistence** — `useKV` from `@/lib/storage` scopes data per local user in **localStorage**; large photo payloads use **IndexedDB** so you stay under typical string quotas.
-- **AI** — `POST` to **`/api/llm`** (Vercel Edge): prompts go to **Anthropic** with `ANTHROPIC_API_KEY` on the server. The browser never sees the key. If the route is missing or returns `503`, the app falls back gracefully (including optional **GitHub Spark** `window.spark` where present).
+- **Persistence** — `useKV` from `@/lib/storage` scopes data per local user in **localStorage**; large photo payloads use **IndexedDB**. **Live pair** (`/api/pair`) lets two browsers share one garden. Optional **`/api/sync`** stores metadata in Vercel KV.
+- **AI** — `POST` to **`/api/llm`**: Vercel AI SDK routed through **AI Gateway**. The browser never sees provider keys. If the route returns `503`, garden AI degrades cleanly.
 
-### Sub-projects
-- **Volatility Sentinel** (`volatility-sentinel/` in the repo) — Standalone Python agent example (CoinGecko) you run separately from the Vite app; CI exercises it from its own directory.
+### Out of product scope
+- **Volatility Sentinel** (`volatility-sentinel/`) — historical CoinGecko sample. Not part of Memory Garden; not run in CI.
 [/content-to-enhance]
 
 ## Getting Started
@@ -127,14 +127,17 @@ Typical areas covered include growth and stage logic, unlock/currency paths, tra
 ## Deployment
 
 [content-to-enhance id="configuration"]
-The production story on **Vercel** is a static SPA plus two Edge routes:
+The production story on **Vercel** is a static SPA plus Edge routes. Catch-all SPA rewrites **exclude** `/api/*`.
 
-1. **`/api/llm`** — Proxies classification and reflection prompts to Anthropic. Set **`ANTHROPIC_API_KEY`** in the project. Without it, AI features degrade cleanly while the garden keeps working.
-2. **`/api/sync`** — Optional metadata sync to **Vercel KV / Upstash** using **`KV_REST_API_URL`** and **`KV_REST_API_TOKEN`**. Photos and audio stay on-device (IndexedDB); only structured fields participate when sync is on.
+1. **`/api/llm`** — Vercel AI SDK / AI Gateway. Set **`AI_GATEWAY_API_KEY`** (or rely on Vercel OIDC) or **`ANTHROPIC_API_KEY`**. Without credentials, AI features degrade while the garden keeps working.
+2. **`/api/pair`** — Live pair rooms (same KV). Two browsers share structured garden data. Photos stay on-device.
+3. **`/api/sync`** — Optional per-user metadata sync using **`KV_REST_API_URL`** and **`KV_REST_API_TOKEN`**.
+
+Local `npm run dev` serves the same `/api/llm`, `/api/sync`, and `/api/pair` handlers (in-memory KV when Upstash env vars are absent) so pairing works across two tabs.
 
 Pushes to **`main`** trigger `npm install` and `npm run build`. **`legacy-peer-deps`** in `.npmrc` keeps Vite 8 and `@vitejs/plugin-react-swc` compatible.
 
-The header **Sync to cloud** control reflects real status and backs off when the API returns **`503`** (no KV), so users are never misled about what is actually syncing.
+**Live pair garden** (header menu) creates a 6-character code. The other gardener joins that code. Cloud sync pauses while a pair session is active so the two writers do not fight.
 
 ## Privacy & Data
 
@@ -158,13 +161,16 @@ Directions worth prioritizing as MemoryGarden matures:
 
 [content-to-enhance id="faq"]
 **Where does my data live?**  
-By default on your device: scoped localStorage for structured data and IndexedDB for heavy blobs. Cloud sync of metadata is optional and only active when KV credentials are configured.
+By default on your device: scoped localStorage for structured data and IndexedDB for heavy blobs. Live pair and cloud sync of metadata are optional.
 
 **Are photos sent to the AI?**  
 No. AI calls operate on text (and brief neighboring context for reflections), not image bytes.
 
 **Which LLM runs in production?**  
-Deployed apps use **`/api/llm`** → Anthropic (see `api/llm.ts`). Spark environments may still expose `window.spark.llm` as a fallback path in client code.
+Deployed apps use **`/api/llm`** → Vercel AI SDK / AI Gateway (see `api/llm.ts`).
+
+**How do two people share one garden live?**  
+Header menu → **Live pair garden**. Start a pair, share the code, join from the other browser.
 
 **How do I contribute or report an issue?**  
 Use GitHub issues and pull requests on this repository.

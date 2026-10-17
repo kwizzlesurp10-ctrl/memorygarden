@@ -1,5 +1,7 @@
 # Volatility Sentinel
 
+> **Out of product scope.** This CoinGecko sidecar is **not** part of Memory Garden. It is retained only as a historical sample and is no longer run in CI. Do not import it from the Vite app.
+
 Minimal **production-shaped** agent that polls [CoinGecko](https://www.coingecko.com/en/api/documentation) for spot prices, persists samples in **SQLite**, estimates **intra-window volatility** as the high–low swing relative to the midpoint over a configurable lookback, and **alerts** via logs and an optional **Discord** webhook. A **FastAPI** service exposes **health** and **status** endpoints.
 
 ## Agent Design Canvas (mapping)

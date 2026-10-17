@@ -11,8 +11,8 @@
 # Micro-Forge agent report (stdout / CI-style):
 #   docker compose --profile agents run --rm micro-forge
 #
-# Note: /api/llm is a Vercel Edge route — not included in the static image.
-# Garden AI falls back gracefully when that endpoint is unavailable.
+# Local Vite (`dev` profile) also serves /api/llm, /api/sync, and /api/pair.
+# Production nginx image is static-only; Vercel Edge hosts those routes.
 
 name: memorygarden
 

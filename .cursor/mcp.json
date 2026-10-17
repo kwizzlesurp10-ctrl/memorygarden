@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "memory-garden": {
+      "command": "npx",
+      "args": ["tsx", "mcp/server.ts"],
+      "env": {
+        "MEMORYGARDEN_API_BASE": "http://localhost:5173"
+      }
+    }
+  }
+}

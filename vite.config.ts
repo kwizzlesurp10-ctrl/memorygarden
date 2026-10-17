@@ -2,12 +2,14 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "vite";
 import { fileURLToPath, URL } from "node:url";
+import { gardenApiPlugin } from "./vite-plugin-garden-api";
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    gardenApiPlugin(),
   ],
   resolve: {
     alias: {

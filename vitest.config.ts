@@ -10,7 +10,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       include: ['src/lib/**/*.ts'],
-      exclude: ['src/lib/__tests__/**', 'src/test/**'],
+      exclude: ['src/lib/__tests__/**', 'src/test/**', 'src/lib/server/ai-complete.ts'],
     },
   },
   resolve: {
