@@ -9,6 +9,7 @@ export interface TerrainHandle {
   water: THREE.Mesh
   sky: THREE.Mesh
   fogColor: THREE.Color
+  tick?: (time: number, dt: number) => void
   dispose: () => void
   recolor: (palette: ScenePalette) => void
 }
@@ -110,58 +111,358 @@ export function buildTerrain(
     return obj
   }
 
+  const isNight = (palette.starAlpha ?? 0) > 0.45
+
+  // ── Ground Plane ────────────────────────────────────────────────────────
   const grassTex = track(grassTexture(palette))
-  const groundMat = track(new THREE.MeshStandardMaterial({
-    map: grassTex,
-    color: palette.hills[1] ?? '#2c163c',
-    roughness: 0.95,
-  }))
-  const ground = new THREE.Mesh(track(new THREE.PlaneGeometry(world.bounds.maxX - world.bounds.minX + 8, world.bounds.maxZ - world.bounds.minZ + 8)), groundMat)
+  const groundMat = track(
+    new THREE.MeshStandardMaterial({
+      map: grassTex,
+      color: palette.hills[1] ?? '#2c163c',
+      roughness: 0.95,
+    }),
+  )
+  const ground = new THREE.Mesh(
+    track(new THREE.PlaneGeometry(world.bounds.maxX - world.bounds.minX + 16, world.bounds.maxZ - world.bounds.minZ + 16)),
+    groundMat,
+  )
   ground.rotation.x = -Math.PI / 2
   ground.receiveShadow = true
   root.add(ground)
 
-  const pathMat = track(new THREE.MeshStandardMaterial({
-    color: palette.bank,
-    roughness: 1,
-  }))
+  // ── Gentle Flowerbed Soil Berms ─────────────────────────────────────────
+  const soilBermMat = track(new THREE.MeshStandardMaterial({ color: palette.hills[0] ?? '#3a1f33', roughness: 0.98 }))
+  const bermGeo = track(new THREE.SphereGeometry(1, 10, 8))
+  const bermPositions = [
+    { x: -14, z: -10, sx: 8.5, sz: 6.5 },
+    { x: 12, z: -16, sx: 9.0, sz: 7.0 },
+    { x: -18, z: 12, sx: 7.5, sz: 8.0 },
+    { x: 16, z: 8, sx: 8.0, sz: 7.5 },
+    { x: 0, z: -22, sx: 10.0, sz: 6.0 },
+  ]
+  for (const berm of bermPositions) {
+    const mesh = new THREE.Mesh(bermGeo, soilBermMat)
+    mesh.scale.set(berm.sx, 0.4, berm.sz)
+    mesh.position.set(berm.x, -0.15, berm.z)
+    mesh.receiveShadow = true
+    root.add(mesh)
+  }
+
+  // ── Pathway Ribbon & Flagstone Stepping Stones ──────────────────────────
+  const pathMat = track(new THREE.MeshStandardMaterial({ color: palette.bank, roughness: 1 }))
+  const steppingStoneMat = track(
+    new THREE.MeshStandardMaterial({ color: palette.bank, roughness: 0.85, metalness: 0.05 }),
+  )
+  const stoneGeo = track(new THREE.CylinderGeometry(0.38, 0.44, 0.04, 8))
+
   for (const path of world.paths) {
     if (path.points.length < 2) continue
     const ribbon = new THREE.Mesh(track(pathRibbon(path.points, path.width)), pathMat)
     ribbon.receiveShadow = true
     root.add(ribbon)
+
+    // Flagstones along the walkway path
+    for (let i = 0; i < path.points.length; i += 2) {
+      const pt = path.points[i]
+      const stone = new THREE.Mesh(stoneGeo, steppingStoneMat)
+      const s = 0.85 + ((i * 17) % 5) * 0.1
+      stone.scale.set(s, 1, s * 0.9)
+      stone.position.set(pt.x + ((i % 3) - 1) * 0.15, 0.045, pt.z + (((i + 1) % 3) - 1) * 0.15)
+      stone.rotation.y = (i * 0.7) % Math.PI
+      stone.receiveShadow = true
+      root.add(stone)
+    }
   }
 
-  const waterMat = track(new THREE.MeshStandardMaterial({
-    color: palette.waterTint[1] ?? '#1a0f2b',
-    roughness: 0.18,
-    metalness: 0.12,
-    transparent: true,
-    opacity: 0.88,
-    emissive: palette.ripple,
-    emissiveIntensity: 0.08,
-  }))
-  const water = new THREE.Mesh(track(new THREE.CircleGeometry(world.pond.radius, 32)), waterMat)
+  // ── Pond & Bank ────────────────────────────────────────────────────────
+  const waterMat = track(
+    new THREE.MeshStandardMaterial({
+      color: palette.waterTint[1] ?? '#1a0f2b',
+      roughness: 0.12,
+      metalness: 0.25,
+      transparent: true,
+      opacity: 0.9,
+      emissive: palette.ripple,
+      emissiveIntensity: 0.12,
+    }),
+  )
+  const water = new THREE.Mesh(track(new THREE.CircleGeometry(world.pond.radius, 36)), waterMat)
   water.rotation.x = -Math.PI / 2
   water.position.set(world.pond.x, 0.05, world.pond.z)
   root.add(water)
 
   const bank = new THREE.Mesh(
-    track(new THREE.RingGeometry(world.pond.radius * 0.98, world.pond.radius + 0.55, 32)),
+    track(new THREE.RingGeometry(world.pond.radius * 0.98, world.pond.radius + 0.65, 36)),
     track(new THREE.MeshStandardMaterial({ color: palette.bank, roughness: 1 })),
   )
   bank.rotation.x = -Math.PI / 2
   bank.position.set(world.pond.x, 0.04, world.pond.z)
+  bank.receiveShadow = true
   root.add(bank)
 
-  const wood = track(new THREE.MeshStandardMaterial({ color: '#5c3a28', roughness: 0.85 }))
+  // ── Floating Remembrance Candle Boats on Pond ───────────────────────────
+  const candleFlameMat = track(
+    new THREE.MeshStandardMaterial({
+      color: '#ffcf8f',
+      emissive: palette.glow ?? '#ffd700',
+      emissiveIntensity: 1.25,
+      roughness: 0.2,
+    }),
+  )
+  const candleWaxMat = track(new THREE.MeshStandardMaterial({ color: '#f5ead0', roughness: 0.5 }))
+  const boatDishMat = track(new THREE.MeshStandardMaterial({ color: palette.sil, roughness: 0.8 }))
+  const rippleRingMat = track(
+    new THREE.MeshBasicMaterial({ color: palette.ripple, transparent: true, opacity: 0.45, side: THREE.DoubleSide }),
+  )
+
+  const boatDishGeo = track(new THREE.ConeGeometry(0.24, 0.09, 4))
+  const candleWaxGeo = track(new THREE.CylinderGeometry(0.045, 0.045, 0.12, 8))
+  const flameGeo = track(new THREE.ConeGeometry(0.025, 0.065, 6))
+  const rippleGeo = track(new THREE.RingGeometry(0.25, 0.38, 16))
+
+  interface CandleBoat {
+    group: THREE.Group
+    baseY: number
+    phase: number
+  }
+  const candleBoats: CandleBoat[] = []
+
+  const candleOffsets = [
+    { r: world.pond.radius * 0.45, a: 0.5 },
+    { r: world.pond.radius * 0.65, a: 2.1 },
+    { r: world.pond.radius * 0.35, a: 3.7 },
+    { r: world.pond.radius * 0.72, a: 4.9 },
+  ]
+
+  candleOffsets.forEach((cOff, idx) => {
+    const bGroup = new THREE.Group()
+    const dish = new THREE.Mesh(boatDishGeo, boatDishMat)
+    dish.rotation.x = Math.PI
+    dish.position.y = 0.045
+    dish.castShadow = true
+    bGroup.add(dish)
+
+    const wax = new THREE.Mesh(candleWaxGeo, candleWaxMat)
+    wax.position.y = 0.1
+    bGroup.add(wax)
+
+    const flame = new THREE.Mesh(flameGeo, candleFlameMat)
+    flame.position.y = 0.19
+    bGroup.add(flame)
+
+    const ripple = new THREE.Mesh(rippleGeo, rippleRingMat)
+    ripple.rotation.x = -Math.PI / 2
+    ripple.position.y = 0.005
+    bGroup.add(ripple)
+
+    const bx = world.pond.x + Math.cos(cOff.a) * cOff.r
+    const bz = world.pond.z + Math.sin(cOff.a) * cOff.r
+    bGroup.position.set(bx, 0.05, bz)
+    root.add(bGroup)
+    candleBoats.push({ group: bGroup, baseY: 0.05, phase: idx * 1.4 })
+  })
+
+  // ── Floating Water Lily Pads ────────────────────────────────────────────
+  const lilyPadMat = track(new THREE.MeshStandardMaterial({ color: palette.silSoft, roughness: 0.7 }))
+  const lilyPadGeo = track(new THREE.CircleGeometry(0.36, 16))
+  const lilyOffsets = [
+    { r: world.pond.radius * 0.82, a: 1.1 },
+    { r: world.pond.radius * 0.55, a: 2.8 },
+    { r: world.pond.radius * 0.78, a: 4.2 },
+    { r: world.pond.radius * 0.42, a: 5.6 },
+  ]
+  lilyOffsets.forEach((lOff) => {
+    const pad = new THREE.Mesh(lilyPadGeo, lilyPadMat)
+    pad.rotation.x = -Math.PI / 2
+    pad.position.set(
+      world.pond.x + Math.cos(lOff.a) * lOff.r,
+      0.052,
+      world.pond.z + Math.sin(lOff.a) * lOff.r,
+    )
+    pad.receiveShadow = true
+    root.add(pad)
+  })
+
+  // ── Mossy River Boulders & Garden Rocks ──────────────────────────────────
+  const rockMat = track(new THREE.MeshStandardMaterial({ color: palette.bank, roughness: 0.9 }))
+  const rockGeo = track(new THREE.DodecahedronGeometry(1, 1))
+  const rockPositions = [
+    { x: world.pond.x + world.pond.radius * 0.95, z: world.pond.z - 0.5, s: 0.65 },
+    { x: world.pond.x - world.pond.radius * 0.85, z: world.pond.z + 1.2, s: 0.8 },
+    { x: world.pond.x + 0.4, z: world.pond.z + world.pond.radius * 0.98, s: 0.55 },
+    { x: -16, z: -14, s: 1.1 },
+    { x: 18, z: -12, s: 0.9 },
+    { x: -12, z: 18, s: 0.75 },
+    { x: 14, z: 16, s: 0.85 },
+  ]
+  for (const rp of rockPositions) {
+    const rMesh = new THREE.Mesh(rockGeo, rockMat)
+    rMesh.scale.set(rp.s * 1.2, rp.s * 0.7, rp.s * 0.9)
+    rMesh.position.set(rp.x, rp.s * 0.35, rp.z)
+    rMesh.rotation.set(rp.s * 1.5, rp.s * 2.3, rp.s)
+    rMesh.castShadow = true
+    rMesh.receiveShadow = true
+    root.add(rMesh)
+  }
+
+  // ── Wooden Garden Pergola / Trellis Arch near Gate ──────────────────────
+  const wood = track(new THREE.MeshStandardMaterial({ color: '#543825', roughness: 0.82 }))
+  const ivyLeafMat = track(new THREE.MeshStandardMaterial({ color: palette.silSoft, roughness: 0.7 }))
+  const archGroup = new THREE.Group()
+  const archW = 3.6
+  const archH = 2.85
+  const archD = 1.2
+  const postThickness = 0.18
+
+  // 4 Arch Columns
+  const archPostGeo = track(new THREE.BoxGeometry(postThickness, archH, postThickness))
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      const aPost = new THREE.Mesh(archPostGeo, wood)
+      aPost.position.set((sx * archW) / 2, archH / 2, (sz * archD) / 2)
+      aPost.castShadow = true
+      archGroup.add(aPost)
+
+      // Creeping ivy foliage along arch posts
+      for (let iv = 0; iv < 4; iv++) {
+        const ivyCluster = new THREE.Mesh(track(new THREE.SphereGeometry(0.18, 6, 6)), ivyLeafMat)
+        ivyCluster.position.set(
+          (sx * archW) / 2 + sx * 0.08,
+          0.6 + iv * 0.65,
+          (sz * archD) / 2 + sz * 0.08,
+        )
+        ivyCluster.scale.set(1.2, 0.8, 1)
+        archGroup.add(ivyCluster)
+      }
+    }
+  }
+
+  // Overhead Beams & Rafters
+  const beamGeo = track(new THREE.BoxGeometry(postThickness, 0.16, archD + 0.5))
+  for (const sx of [-1, 1]) {
+    const beam = new THREE.Mesh(beamGeo, wood)
+    beam.position.set((sx * archW) / 2, archH, 0)
+    beam.castShadow = true
+    archGroup.add(beam)
+  }
+
+  const rafterGeo = track(new THREE.BoxGeometry(archW + 0.6, 0.12, 0.14))
+  for (let r = -2; r <= 2; r++) {
+    const rafter = new THREE.Mesh(rafterGeo, wood)
+    rafter.position.set(0, archH + 0.12, (r * archD) / 4)
+    rafter.castShadow = true
+    archGroup.add(rafter)
+  }
+
+  archGroup.position.set(0, 0, world.gate.z - 2.8)
+  root.add(archGroup)
+
+  // ── Crafted Wooden Garden Bench ─────────────────────────────────────────
+  const benchGroup = new THREE.Group()
+  const benchLegGeo = track(new THREE.BoxGeometry(0.1, 0.45, 0.5))
+  for (const bx of [-0.75, 0.75]) {
+    const bLeg = new THREE.Mesh(benchLegGeo, wood)
+    bLeg.position.set(bx, 0.225, 0)
+    bLeg.castShadow = true
+    benchGroup.add(bLeg)
+  }
+  const seatSlatGeo = track(new THREE.BoxGeometry(1.8, 0.04, 0.12))
+  for (let s = -1; s <= 1; s++) {
+    const slat = new THREE.Mesh(seatSlatGeo, wood)
+    slat.position.set(0, 0.45, s * 0.16)
+    slat.castShadow = true
+    benchGroup.add(slat)
+  }
+  const backSlatGeo = track(new THREE.BoxGeometry(1.8, 0.12, 0.04))
+  for (let bs = 1; bs <= 2; bs++) {
+    const backSlat = new THREE.Mesh(backSlatGeo, wood)
+    backSlat.position.set(0, 0.55 + bs * 0.16, -0.22)
+    backSlat.castShadow = true
+    benchGroup.add(backSlat)
+  }
+  // Position bench looking toward the pond
+  benchGroup.position.set(world.pond.x + world.pond.radius + 1.8, 0, world.pond.z - 0.8)
+  benchGroup.rotation.y = -Math.PI * 0.65
+  root.add(benchGroup)
+
+  // ── Classical Stone Birdbath ────────────────────────────────────────────
+  const birdbathGroup = new THREE.Group()
+  const bbBase = new THREE.Mesh(track(new THREE.CylinderGeometry(0.32, 0.38, 0.12, 12)), rockMat)
+  bbBase.position.y = 0.06
+  birdbathGroup.add(bbBase)
+
+  const bbCol = new THREE.Mesh(track(new THREE.CylinderGeometry(0.11, 0.15, 0.72, 12)), rockMat)
+  bbCol.position.y = 0.46
+  bbCol.castShadow = true
+  birdbathGroup.add(bbCol)
+
+  const bbBasin = new THREE.Mesh(track(new THREE.CylinderGeometry(0.55, 0.22, 0.18, 16)), rockMat)
+  bbBasin.position.y = 0.88
+  bbBasin.castShadow = true
+  birdbathGroup.add(bbBasin)
+
+  const bbWater = new THREE.Mesh(track(new THREE.CircleGeometry(0.48, 16)), waterMat)
+  bbWater.rotation.x = -Math.PI / 2
+  bbWater.position.y = 0.95
+  birdbathGroup.add(bbWater)
+
+  birdbathGroup.position.set(-8.5, 0, -4.5)
+  root.add(birdbathGroup)
+
+  // ── Warm Garden Path Lanterns on Wooden Posts ───────────────────────────
+  const lanternGlassMat = track(
+    new THREE.MeshStandardMaterial({
+      color: palette.glow,
+      emissive: palette.glow,
+      emissiveIntensity: isNight ? 1.4 : 0.4,
+      roughness: 0.3,
+    }),
+  )
+  const lanternPostGeo = track(new THREE.CylinderGeometry(0.06, 0.08, 1.8, 8))
+  const lanternCapGeo = track(new THREE.ConeGeometry(0.18, 0.14, 4))
+  const lanternCoreGeo = track(new THREE.CylinderGeometry(0.1, 0.1, 0.22, 8))
+
+  const lanternCoords = [
+    { x: -3.5, z: -6.0 },
+    { x: 3.8, z: -12.5 },
+    { x: -5.0, z: 8.5 },
+    { x: 4.5, z: 12.0 },
+  ]
+
+  lanternCoords.forEach((lc) => {
+    const lGroup = new THREE.Group()
+    const lPost = new THREE.Mesh(lanternPostGeo, wood)
+    lPost.position.y = 0.9
+    lPost.castShadow = true
+    lGroup.add(lPost)
+
+    const arm = new THREE.Mesh(track(new THREE.BoxGeometry(0.35, 0.05, 0.05)), wood)
+    arm.position.set(0.15, 1.75, 0)
+    lGroup.add(arm)
+
+    const glass = new THREE.Mesh(lanternCoreGeo, lanternGlassMat)
+    glass.position.set(0.28, 1.58, 0)
+    lGroup.add(glass)
+
+    const cap = new THREE.Mesh(lanternCapGeo, wood)
+    cap.position.set(0.28, 1.72, 0)
+    lGroup.add(cap)
+
+    lGroup.position.set(lc.x, 0, lc.z)
+    root.add(lGroup)
+  })
+
+  // ── Garden Shed ────────────────────────────────────────────────────────
   const roof = track(new THREE.MeshStandardMaterial({ color: palette.sil, roughness: 0.7 }))
   const shed = new THREE.Group()
   const body = new THREE.Mesh(track(new THREE.BoxGeometry(world.shed.width, 2.4, world.shed.depth)), wood)
   body.position.y = 1.2
   body.castShadow = true
   shed.add(body)
-  const roofMesh = new THREE.Mesh(track(new THREE.ConeGeometry(Math.max(world.shed.width, world.shed.depth) * 0.72, 1.1, 4)), roof)
+  const roofMesh = new THREE.Mesh(
+    track(new THREE.ConeGeometry(Math.max(world.shed.width, world.shed.depth) * 0.72, 1.1, 4)),
+    roof,
+  )
   roofMesh.position.y = 2.85
   roofMesh.rotation.y = Math.PI / 4
   shed.add(roofMesh)
@@ -169,6 +470,7 @@ export function buildTerrain(
   shed.rotation.y = world.shed.yaw
   root.add(shed)
 
+  // ── Perimeter Fence & Gate ──────────────────────────────────────────────
   const hedgeMat = track(new THREE.MeshStandardMaterial({ color: palette.hills[2] ?? palette.sil, roughness: 0.9 }))
   const postGeo = track(new THREE.BoxGeometry(0.28, 1.35, 0.28))
   const railGeo = track(new THREE.BoxGeometry(1, 0.12, 0.1))
@@ -186,11 +488,7 @@ export function buildTerrain(
       root.add(post)
       if (i < posts) {
         const rail = new THREE.Mesh(railGeo, wood)
-        rail.position.set(
-          x + (bx - ax) / posts / 2,
-          0.85,
-          z + (bz - az) / posts / 2,
-        )
+        rail.position.set(x + (bx - ax) / posts / 2, 0.85, z + (bz - az) / posts / 2)
         rail.scale.x = dist / posts
         rail.lookAt(bx, 0.85, bz)
         root.add(rail)
@@ -212,24 +510,28 @@ export function buildTerrain(
   lintel.position.set(0, 2.15, world.gate.z)
   root.add(lintel)
 
+  // ── Distant Hills ───────────────────────────────────────────────────────
   const hillMat = track(new THREE.MeshStandardMaterial({ color: palette.hills[2] ?? palette.sil, roughness: 1 }))
   const hillGeo = track(new THREE.SphereGeometry(1, 10, 8))
   const hills = [
-    { x: -28, z: -36, s: 14 },
-    { x: 8, z: -40, s: 18 },
-    { x: 32, z: -34, s: 12 },
+    { x: -32, z: -44, s: 18 },
+    { x: 8, z: -48, s: 22 },
+    { x: 36, z: -40, s: 16 },
+    { x: -40, z: 12, s: 15 },
+    { x: 42, z: 18, s: 17 },
   ]
   for (const h of hills) {
     const mesh = new THREE.Mesh(hillGeo, hillMat)
-    mesh.scale.set(h.s, h.s * 0.38, h.s * 0.8)
+    mesh.scale.set(h.s, h.s * 0.42, h.s * 0.85)
     mesh.position.set(h.x, -1.2, h.z)
     root.add(mesh)
   }
 
+  // ── Grass Tufts ─────────────────────────────────────────────────────────
   if (!reducedMotion) {
     const tuftGeo = track(new THREE.ConeGeometry(0.07, 0.28, 5))
     const tuftMat = track(new THREE.MeshStandardMaterial({ color: palette.hills[0] ?? '#4e2749', roughness: 1 }))
-    const count = 420
+    const count = 480
     const tufts = new THREE.InstancedMesh(tuftGeo, tuftMat, count)
     const rng = gardenRng(7)
     const dummy = new THREE.Object3D()
@@ -250,10 +552,66 @@ export function buildTerrain(
     root.add(tufts)
   }
 
+  // ── Celestial Sphere & Stylized Floating Clouds ──────────────────────────
   const skyTex = track(skyTexture(palette))
   const skyMat = track(new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, depthWrite: false }))
   const sky = new THREE.Mesh(track(new THREE.SphereGeometry(180, 16, 12)), skyMat)
   root.add(sky)
+
+  // Celestial Body (Sun or Moon)
+  const celestialMat = track(
+    new THREE.MeshBasicMaterial({
+      color: isNight ? '#e2ecf8' : (palette.sun?.disk ?? '#ffe7a0'),
+    }),
+  )
+  const celestialMesh = new THREE.Mesh(track(new THREE.SphereGeometry(isNight ? 3.8 : 4.6, 16, 16)), celestialMat)
+  if (isNight) {
+    celestialMesh.position.set(-18, 52, -75)
+  } else {
+    celestialMesh.position.set(24, 60, -78)
+  }
+  root.add(celestialMesh)
+
+  // Floating Low-Poly Clouds
+  const clouds: { group: THREE.Group; speed: number; startX: number }[] = []
+  const cloudMat = track(
+    new THREE.MeshStandardMaterial({
+      color: isNight ? '#3a2d52' : '#f8f4f9',
+      roughness: 0.9,
+      transparent: true,
+      opacity: isNight ? 0.45 : 0.75,
+    }),
+  )
+  const cloudSphereGeo = track(new THREE.SphereGeometry(1, 8, 8))
+
+  const cloudConfigs = [
+    { x: -50, y: 55, z: -60, s: 6, speed: 0.4 },
+    { x: 10, y: 62, z: -70, s: 7.5, speed: 0.35 },
+    { x: 55, y: 58, z: -55, s: 6.5, speed: 0.45 },
+    { x: -25, y: 65, z: -45, s: 8, speed: 0.3 },
+    { x: 35, y: 52, z: -65, s: 7, speed: 0.38 },
+  ]
+
+  cloudConfigs.forEach((cfg) => {
+    const cGroup = new THREE.Group()
+    // Multi-puff cumulus shape
+    const puffs = [
+      { x: 0, y: 0, z: 0, s: 1.0 },
+      { x: -0.7, y: -0.15, z: 0.1, s: 0.75 },
+      { x: 0.7, y: -0.12, z: -0.1, s: 0.8 },
+      { x: -1.3, y: -0.3, z: 0, s: 0.55 },
+      { x: 1.25, y: -0.28, z: 0, s: 0.6 },
+    ]
+    puffs.forEach((p) => {
+      const puff = new THREE.Mesh(cloudSphereGeo, cloudMat)
+      puff.scale.set(p.s * cfg.s * 1.4, p.s * cfg.s * 0.75, p.s * cfg.s * 1.1)
+      puff.position.set(p.x * cfg.s, p.y * cfg.s, p.z * cfg.s)
+      cGroup.add(puff)
+    })
+    cGroup.position.set(cfg.x, cfg.y, cfg.z)
+    root.add(cGroup)
+    clouds.push({ group: cGroup, speed: cfg.speed, startX: cfg.x })
+  })
 
   const fogColor = hexColor(palette.sky[2] ?? palette.bank)
 
@@ -263,15 +621,47 @@ export function buildTerrain(
     water,
     sky,
     fogColor,
+    tick: (time: number, dt: number) => {
+      if (reducedMotion) return
+
+      // Floating candle boats bobbing & drifting on the water
+      candleBoats.forEach((boat) => {
+        const bob = Math.sin(time * 0.0022 + boat.phase) * 0.012
+        boat.group.position.y = boat.baseY + bob
+        boat.group.rotation.z = Math.sin(time * 0.0018 + boat.phase) * 0.035
+        boat.group.rotation.x = Math.cos(time * 0.0015 + boat.phase) * 0.025
+      })
+
+      // Clouds gently drifting across the garden sky
+      clouds.forEach((c) => {
+        c.group.position.x += dt * c.speed
+        if (c.group.position.x > 95) {
+          c.group.position.x = -95
+        }
+      })
+    },
     dispose: () => {
       disposables.forEach((d) => d.dispose())
     },
     recolor: (next) => {
+      const nextNight = (next.starAlpha ?? 0) > 0.45
       groundMat.color.set(next.hills[1] ?? '#2c163c')
       waterMat.color.set(next.waterTint[1] ?? '#1a0f2b')
       waterMat.emissive.set(next.ripple)
       hedgeMat.color.set(next.hills[2] ?? next.sil)
       hillMat.color.set(next.hills[2] ?? next.sil)
+      soilBermMat.color.set(next.hills[0] ?? '#3a1f33')
+      steppingStoneMat.color.set(next.bank)
+      rockMat.color.set(next.bank)
+      ivyLeafMat.color.set(next.silSoft)
+      lilyPadMat.color.set(next.silSoft)
+      candleFlameMat.emissive.set(next.glow ?? '#ffd700')
+      lanternGlassMat.color.set(next.glow)
+      lanternGlassMat.emissive.set(next.glow)
+      lanternGlassMat.emissiveIntensity = nextNight ? 1.4 : 0.4
+      celestialMat.color.set(nextNight ? '#e2ecf8' : (next.sun?.disk ?? '#ffe7a0'))
+      cloudMat.color.set(nextNight ? '#3a2d52' : '#f8f4f9')
+      cloudMat.opacity = nextNight ? 0.45 : 0.75
       fogColor.set(next.sky[2] ?? next.bank)
       const newSky = skyTexture(next)
       skyMat.map?.dispose()

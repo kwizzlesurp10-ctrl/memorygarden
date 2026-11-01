@@ -248,6 +248,8 @@ export class OpenWorldEngine {
       this.pitchAcc = 0
       this.applyCamera()
       this.pulseGrowing(time)
+      this.swayPlants(time)
+      this.terrain?.tick?.(time, dt)
       this.driftFireflies(dt)
       const near = findNearestPlant(this.player.x, this.player.z, this.world.plants)
       if (near?.id !== this.nearby?.id) {
@@ -341,6 +343,18 @@ export class OpenWorldEngine {
     }
   }
 
+  private swayPlants(time: number): void {
+    if (this.reducedMotion) return
+    const t = time * 0.0016
+    for (const group of this.plantGroups.values()) {
+      const phase = group.position.x * 0.4 + group.position.z * 0.3
+      const swayZ = Math.sin(t * 1.6 + phase) * 0.035
+      const swayX = Math.cos(t * 1.2 + phase * 0.8) * 0.025
+      group.rotation.z = swayZ
+      group.rotation.x = swayX
+    }
+  }
+
   private applyLighting(): void {
     const p = this.palette
     this.hemi.color.set(p.sky[1] ?? '#88aacc')
@@ -361,24 +375,31 @@ export class OpenWorldEngine {
     } else {
       this.sun.position.set(12, 28, -10)
     }
-    if (this.fireflies) this.fireflies.visible = night && !this.reducedMotion
+    if (this.fireflies) {
+      this.fireflies.visible = !this.reducedMotion
+      if (this.fireflies.material instanceof THREE.PointsMaterial) {
+        this.fireflies.material.color.set(night ? p.fire : (p.glow ?? '#ffdf9e'))
+        this.fireflies.material.opacity = night ? 0.85 : 0.45
+      }
+    }
   }
 
   private spawnFireflies(): void {
-    const count = 48
+    const count = 72
     const positions = new Float32Array(count * 3)
     for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() * 2 - 1) * 28
-      positions[i * 3 + 1] = 0.4 + Math.random() * 2.2
-      positions[i * 3 + 2] = (Math.random() * 2 - 1) * 28
+      positions[i * 3] = (Math.random() * 2 - 1) * 32
+      positions[i * 3 + 1] = 0.35 + Math.random() * 2.6
+      positions[i * 3 + 2] = (Math.random() * 2 - 1) * 32
     }
     const geo = new THREE.BufferGeometry()
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    const isNight = (this.palette.starAlpha ?? 0) > 0.45
     const mat = new THREE.PointsMaterial({
-      color: this.palette.fire,
-      size: 0.12,
+      color: isNight ? this.palette.fire : (this.palette.glow ?? '#ffdf9e'),
+      size: 0.11,
       transparent: true,
-      opacity: 0.85,
+      opacity: isNight ? 0.85 : 0.45,
       depthWrite: false,
     })
     this.fireflies = new THREE.Points(geo, mat)
