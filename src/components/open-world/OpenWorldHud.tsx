@@ -19,6 +19,10 @@ interface OpenWorldHudProps {
   moistureLevel?: number
   healthStatus?: PlantHealthStatus
   onStick: (stick: { x: number; y: number } | null) => void
+  streak?: { currentStreak: number; streakShields: number }
+  dewCurrency?: number
+  canHarvestDew?: boolean
+  onHarvestDew?: () => void
 }
 
 export function OpenWorldHud({
@@ -36,6 +40,10 @@ export function OpenWorldHud({
   moistureLevel,
   healthStatus,
   onStick,
+  streak,
+  dewCurrency,
+  canHarvestDew = false,
+  onHarvestDew,
 }: OpenWorldHudProps) {
   return (
     <div className="pointer-events-none absolute inset-0 z-10 text-[#f0e7da]">
@@ -43,16 +51,36 @@ export function OpenWorldHud({
         <button
           type="button"
           onClick={onExit}
-          className="flex items-center gap-2 rounded-full border border-[#f0e7da]/25 bg-black/45 px-3 py-2 text-sm backdrop-blur-sm hover:bg-black/60"
+          className="flex items-center gap-2 rounded-full border border-[#f0e7da]/25 bg-black/45 px-3 py-2 text-sm backdrop-blur-sm hover:bg-black/60 transition-colors"
           aria-label="Leave the garden path"
         >
           <ArrowLeft size={16} />
           Leave path
         </button>
+
+        {streak ? (
+          <div className="flex items-center gap-2 rounded-full border border-[#f0e7da]/20 bg-black/45 px-3 py-2 text-xs backdrop-blur-sm shadow-sm">
+            <span className="flex items-center gap-1 font-semibold text-amber-300" title="Daily Mindful Stewardship Streak">
+              🔥 {streak.currentStreak}d
+            </span>
+            <span className="text-[#f0e7da]/30">·</span>
+            <span className="flex items-center gap-1 text-cyan-300 font-medium" title="Dewdrops of Grace (Missed Day Protection)">
+              💧 ×{streak.streakShields}
+            </span>
+            {dewCurrency !== undefined ? (
+              <>
+                <span className="text-[#f0e7da]/30">·</span>
+                <span className="flex items-center gap-1 text-emerald-300 font-medium" title="Spendable Dew Currency">
+                  ✨ {dewCurrency} Dew
+                </span>
+              </>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div className="pointer-events-auto absolute right-3 top-3">
-        <OpenWorldMinimap world={world} player={player} />
+        <OpenWorldMinimap world={world} player={player} hasMorningDew={canHarvestDew} />
       </div>
 
       {webglFailed ? (
@@ -81,6 +109,25 @@ export function OpenWorldHud({
           <p className="text-sm font-medium">Click to look around</p>
           <p className="mt-1 text-xs text-[#f0e7da]/70">WASD walk · Shift run · Q water · E remember · Esc release look</p>
         </button>
+      ) : null}
+
+      {canHarvestDew && !nearby && !webglFailed ? (
+        <div className="pointer-events-auto absolute bottom-28 left-1/2 w-[min(92vw,400px)] -translate-x-1/2 overflow-hidden rounded-2xl border border-emerald-400/40 bg-black/65 p-4 text-center shadow-2xl backdrop-blur-md">
+          <div className="flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-300">
+            <span>✨</span>
+            <span>Dawn Morning Dew Gathered</span>
+          </div>
+          <p className="mt-1 text-sm text-[#f0e7da]/90">
+            Shimmering morning mist drifts over the pond waters.
+          </p>
+          <button
+            type="button"
+            onClick={onHarvestDew}
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-400 hover:bg-emerald-300 px-4 py-1.5 text-xs font-semibold text-slate-950 transition-colors shadow-md"
+          >
+            {coarse ? 'Harvest Morning Dew (+3 Dew)' : 'E · Harvest Morning Dew (+3 Dew)'}
+          </button>
+        </div>
       ) : null}
 
       {nearby && !webglFailed ? (

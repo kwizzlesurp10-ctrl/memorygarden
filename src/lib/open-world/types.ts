@@ -1,4 +1,4 @@
-import type { EmotionalTone, PlantStage, PlantVariety } from '@/lib/types'
+import type { EmotionalTone, PlantHealthStatus, PlantStage, PlantVariety } from '@/lib/types'
 
 export interface Vec2 {
   x: number
@@ -24,6 +24,11 @@ export interface WorldPlant {
   title: string
   photoUrl: string
   isHybrid: boolean
+  moistureLevel?: number
+  healthStatus?: PlantHealthStatus
+  wiltingFactor?: number
+  needsWater?: boolean
+  isEternal?: boolean
 }
 
 export interface WorldPath {

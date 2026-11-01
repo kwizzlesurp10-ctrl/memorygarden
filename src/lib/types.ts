@@ -206,6 +206,68 @@ export interface GrowthMetrics {
   lastInteractionAt: number
 }
 
+// ──── Retention & Gentle Tending Systems ────────────────────
+export type PlantHealthStatus = 'thriving' | 'healthy' | 'thirsty' | 'wilting' | 'dormant'
+
+export interface PlantMoisture {
+  level: number
+  lastWateredAt: string
+  depletionRatePerHour: number
+  nurtureScore: number
+  uniqueVisitDays: number
+}
+
+export type WaterSource =
+  | 'direct_water_3d'
+  | 'reflection_modal'
+  | 'social_visitor'
+  | 'morning_dew_ritual'
+  | 'rain_weather'
+
+export interface WateringRecord {
+  id: string
+  wateredAt: string
+  wateredBy: {
+    id: string
+    login: string
+    avatarUrl?: string
+    isOwner: boolean
+  }
+  source: WaterSource
+  moistureAdded: number
+  vitalityGained: number
+  note?: string
+}
+
+export interface WateringHistory {
+  totalCount: number
+  recentLogs: WateringRecord[]
+}
+
+/** User-level streak tracking with Dewdrops of Grace protective shields */
+export interface GardenStreak {
+  currentStreak: number
+  longestStreak: number
+  lastTendedDate: string
+  streakShields: number
+  maxStreakShields: 3
+  lastShieldConsumedDate?: string
+  tendedToday: boolean
+}
+
+export interface PlantCareHistory {
+  totalTends: number
+  lastTendedAt: string
+  thrivingDaysCount: number
+}
+
+export interface DynamicVitalityMetrics extends GrowthMetrics {
+  moistureLevel: number
+  healthStatus: PlantHealthStatus
+  wiltingFactor: number
+  isEternal: boolean
+}
+
 export interface UserPreferences {
   hasCompletedOnboarding: boolean
   soundEnabled: boolean

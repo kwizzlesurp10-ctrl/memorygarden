@@ -16,6 +16,7 @@ export interface EngineHooks {
   onPlayer: (player: PlayerState, locked: boolean) => void
   onInteract: (plant: WorldPlant) => void
   onWater?: (plant: WorldPlant) => void
+  onPondInteract?: () => void
 }
 
 interface WaterArc {
@@ -282,9 +283,17 @@ export class OpenWorldEngine {
         this.nearby = near
         this.hooks.onProximity(near)
       }
-      if (motion.interact && this.interactArmed && near) {
-        this.interactArmed = false
-        this.hooks.onInteract(near)
+      if (motion.interact && this.interactArmed) {
+        if (near) {
+          this.interactArmed = false
+          this.hooks.onInteract(near)
+        } else if (
+          this.hooks.onPondInteract &&
+          Math.hypot(this.player.x - this.world.pond.x, this.player.z - this.world.pond.z) <= 4.2
+        ) {
+          this.interactArmed = false
+          this.hooks.onPondInteract()
+        }
       }
       if (time - this.playerNotifyAt > 80) {
         this.playerNotifyAt = time

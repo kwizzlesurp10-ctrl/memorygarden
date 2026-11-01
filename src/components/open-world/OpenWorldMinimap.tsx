@@ -8,9 +8,10 @@ const SIZE = 116
 interface OpenWorldMinimapProps {
   world: GardenWorld
   player: PlayerState
+  hasMorningDew?: boolean
 }
 
-export function OpenWorldMinimap({ world, player }: OpenWorldMinimapProps) {
+export function OpenWorldMinimap({ world, player, hasMorningDew = false }: OpenWorldMinimapProps) {
   const ref = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -29,8 +30,34 @@ export function OpenWorldMinimap({ world, player }: OpenWorldMinimapProps) {
     ctx.arc(pond.x, pond.y, pondR, 0, Math.PI * 2)
     ctx.stroke()
 
+    // Shimmering cyan radar ring around pond during morning dew harvest window
+    if (hasMorningDew) {
+      ctx.save()
+      ctx.strokeStyle = 'rgba(110, 231, 183, 0.75)'
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.arc(pond.x, pond.y, pondR + 2.5, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.restore()
+    }
+
     for (const plant of world.plants) {
       const p = worldToMinimap(plant.x, plant.z, world.bounds, SIZE)
+
+      // Thirst indicator radar halo around plants needing water
+      if (plant.needsWater || (plant.moistureLevel !== undefined && plant.moistureLevel < 30.0)) {
+        ctx.save()
+        ctx.strokeStyle =
+          plant.healthStatus === 'dormant' || (plant.moistureLevel !== undefined && plant.moistureLevel <= 0)
+            ? 'rgba(244, 63, 94, 0.85)'
+            : 'rgba(56, 189, 248, 0.85)'
+        ctx.lineWidth = 1.2
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, 4.4, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.restore()
+      }
+
       ctx.fillStyle = TONE_DOT[plant.tone] ?? '#f0e7da'
       ctx.beginPath()
       ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2)
@@ -49,7 +76,7 @@ export function OpenWorldMinimap({ world, player }: OpenWorldMinimapProps) {
     ctx.closePath()
     ctx.fill()
     ctx.restore()
-  }, [world, player])
+  }, [world, player, hasMorningDew])
 
   return (
     <canvas

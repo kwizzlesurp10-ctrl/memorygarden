@@ -1,5 +1,10 @@
-import type { EmotionalTone, Memory, PlantStage, PlantVariety } from '@/lib/types'
+import type { EmotionalTone, Memory, PlantStage, PlantVariety, Season } from '@/lib/types'
 import { hashString } from '@/lib/garden/prng'
+import {
+  computeCurrentMoisture,
+  computeWiltingFactor,
+  getHealthStatus,
+} from '@/lib/tending-logic'
 import {
   PATH_WIDTH,
   PLAYER_RADIUS,
@@ -147,7 +152,7 @@ function buildPaths(): GardenWorld['paths'] {
  * Stable walkable layout: emotional-tone beds + canvas X + id scatter.
  * Same memory set always yields the same world coordinates.
  */
-export function layoutGardenWorld(memories: Memory[]): GardenWorld {
+export function layoutGardenWorld(memories: Memory[], season: Season = 'spring'): GardenWorld {
   const half = WORLD_HALF
   const pond = { x: 0, z: -5.5, radius: 5.4 }
   const shed = { x: -30, z: 20, width: 4.2, depth: 3.2, yaw: 0.2 }
@@ -174,6 +179,15 @@ export function layoutGardenWorld(memories: Memory[]): GardenWorld {
     )
     x = shedClear.x
     z = shedClear.z
+
+    const initM = memory.growthMetrics?.vitality ?? 80.0
+    const lastW = memory.growthMetrics?.lastInteractionAt
+    const moistureLevel = computeCurrentMoisture(initM, lastW, memory.plantVariety, season)
+    const healthStatus = getHealthStatus(moistureLevel)
+    const wiltingFactor = computeWiltingFactor(moistureLevel)
+    const needsWater = moistureLevel < 30.0
+    const isEternal = memory.plantVariety === 'eternal_rose' || (memory.visitCount || 0) >= 100
+
     return {
       id: memory.id,
       x,
@@ -186,6 +200,11 @@ export function layoutGardenWorld(memories: Memory[]): GardenWorld {
       title: titleFrom(memory.text),
       photoUrl: memory.photoUrl,
       isHybrid: Boolean(memory.isHybrid),
+      moistureLevel,
+      healthStatus,
+      wiltingFactor,
+      needsWater,
+      isEternal,
     }
   })
 

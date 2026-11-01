@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import type { Memory, Season } from '@/lib/types'
 import { todPalette, realClockTod } from '@/lib/garden/day-night'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
@@ -12,6 +13,21 @@ import {
   waterPlant,
   type WateringResult,
 } from '@/lib/tending-logic'
+import {
+  canHarvestMorningDew,
+  evaluateStreakTransition,
+  isNearPond,
+  loadDewCurrency,
+  loadGardenStreak,
+  loadLastDewHarvestDate,
+  recordTendingAction,
+  saveDewCurrency,
+  saveGardenStreak,
+  saveLastDewHarvestDate,
+  type GardenStreak,
+} from '@/lib/gentle-streaks'
+import { toLocalISODate } from '@/lib/date-utils'
+import { playDewHarvestSfx } from '@/lib/water-sound'
 import { OpenWorldEngine } from './engine'
 import { OpenWorldHud } from './OpenWorldHud'
 
@@ -44,7 +60,7 @@ export function OpenWorldGarden({
   const memoriesRef = useRef(memories)
   const onWaterMemoryRef = useRef(onWaterMemory)
 
-  const [world, setWorld] = useState(() => layoutGardenWorld(memories))
+  const [world, setWorld] = useState(() => layoutGardenWorld(memories, season))
   const [player, setPlayer] = useState(() => createPlayer(world))
   const [nearby, setNearby] = useState<WorldPlant | null>(null)
   const [locked, setLocked] = useState(false)
@@ -52,6 +68,23 @@ export function OpenWorldGarden({
   const [coarse, setCoarse] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches,
   )
+
+  // Gentle Streaks & Dew Currency
+  const [streak, setStreak] = useState<GardenStreak>(() => loadGardenStreak())
+  const [dew, setDew] = useState<number>(() => loadDewCurrency())
+  const [lastDewHarvestDate, setLastDewHarvestDate] = useState<string>(() => loadLastDewHarvestDate())
+
+  // Evaluate streak transitions on mount (compassionate shield protection)
+  useEffect(() => {
+    const res = evaluateStreakTransition(streak)
+    if (res.shieldConsumed) {
+      toast.info('A Dewdrop of Grace protected your unbroken streak while you were away!')
+    }
+    if (res.isNewDay) {
+      setStreak(res.streak)
+      saveGardenStreak(res.streak)
+    }
+  }, [])
 
   const onProximity = useCallback((plant: WorldPlant | null) => {
     setNearby(plant)
@@ -82,6 +115,18 @@ export function OpenWorldGarden({
     if (result.success) {
       engineRef.current.waterPlantAnimation(plant)
       onWaterMemoryRef.current?.(mem.id, result)
+
+      // Advance daily gentle streak & award +2 Dew Currency
+      setStreak((prev) => {
+        const streakRes = recordTendingAction(prev)
+        saveGardenStreak(streakRes.streak)
+        return streakRes.streak
+      })
+      setDew((prev) => {
+        const nextDew = prev + 2
+        saveDewCurrency(nextDew)
+        return nextDew
+      })
     }
   }, [season])
 
@@ -91,9 +136,45 @@ export function OpenWorldGarden({
     onWaterMemoryRef.current = onWaterMemory
   }, [onWaterPlant, onWaterMemory])
 
+  const handleHarvestDew = useCallback(() => {
+    playDewHarvestSfx()
+    const todayStr = toLocalISODate(new Date())
+    setLastDewHarvestDate(todayStr)
+    saveLastDewHarvestDate(todayStr)
+
+    setDew((prev) => {
+      const nextDew = prev + 3
+      saveDewCurrency(nextDew)
+      return nextDew
+    })
+
+    setStreak((prev) => {
+      const streakRes = recordTendingAction(prev)
+      saveGardenStreak(streakRes.streak)
+      return streakRes.streak
+    })
+
+    toast.success('Morning Dew collected! +3 Dew Currency gathered.')
+  }, [])
+
+  const handleHarvestDewRef = useRef(handleHarvestDew)
+  useEffect(() => {
+    handleHarvestDewRef.current = handleHarvestDew
+  }, [handleHarvestDew])
+
   useEffect(() => {
     memoriesRef.current = memories
   }, [memories])
+
+  const lastDewHarvestDateRef = useRef(lastDewHarvestDate)
+  useEffect(() => {
+    lastDewHarvestDateRef.current = lastDewHarvestDate
+  }, [lastDewHarvestDate])
+
+  const playerRef = useRef(player)
+  useEffect(() => {
+    playerRef.current = player
+  }, [player])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -106,6 +187,12 @@ export function OpenWorldGarden({
         onPlayer,
         onInteract: onInteractPlant,
         onWater: (plant) => onWaterPlantRef.current(plant),
+        onPondInteract: () => {
+          const p = playerRef.current
+          if (isNearPond(p.x, p.z) && canHarvestMorningDew(lastDewHarvestDateRef.current)) {
+            handleHarvestDewRef.current()
+          }
+        },
       },
     })
     engineRef.current = engine
@@ -166,6 +253,8 @@ export function OpenWorldGarden({
   const canWater = targetMemory ? canQuickWater(currentMoisture) : false
   const healthStatus = targetMemory ? getHealthStatus(currentMoisture) : undefined
 
+  const canHarvestDew = isNearPond(player.x, player.z) && canHarvestMorningDew(lastDewHarvestDate)
+
   return (
     <div
       className="relative h-full w-full overflow-hidden bg-[#0d0913]"
@@ -212,6 +301,10 @@ export function OpenWorldGarden({
         moistureLevel={targetMemory ? currentMoisture : undefined}
         healthStatus={healthStatus}
         onStick={(stick) => engineRef.current?.setStick(stick)}
+        streak={streak}
+        dewCurrency={dew}
+        canHarvestDew={canHarvestDew}
+        onHarvestDew={handleHarvestDew}
       />
     </div>
   )

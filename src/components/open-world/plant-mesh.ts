@@ -44,6 +44,12 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
   g.userData.memoryId = plant.id
   const rng = gardenRng((plant.id.charCodeAt(0) * 997 + plant.id.length * 13) >>> 0)
 
+  const wiltingFactor = plant.wiltingFactor ?? 0
+  const healthStatus = plant.healthStatus ?? 'healthy'
+  const isThirstyOrWilting = healthStatus === 'thirsty' || healthStatus === 'wilting' || healthStatus === 'dormant'
+  const isThriving = healthStatus === 'thriving'
+  const isEternal = Boolean(plant.isEternal)
+
   const stemMat = mat(recipe.stem, { roughness: 0.85 })
   const leafMat = mat(recipe.foliage, {
     emissive: recipe.emissive,
@@ -60,7 +66,27 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
     emissiveIntensity: 0.25,
     roughness: 0.5,
   })
-  const soilMat = mat('#231812', { roughness: 0.98 })
+
+  // Dynamic 3-Tier Visual Vitality Adjustments
+  if (wiltingFactor > 0) {
+    leafMat.color.lerp(new THREE.Color('#7a6e58'), wiltingFactor * 0.4)
+    leafMat.roughness = THREE.MathUtils.lerp(0.65, 0.92, wiltingFactor)
+    bloomMat.roughness = THREE.MathUtils.lerp(0.42, 0.92, wiltingFactor)
+    bloomMat.emissiveIntensity *= Math.max(0, 1 - wiltingFactor)
+  } else if (isThriving) {
+    bloomMat.emissiveIntensity = Math.max(0.28, recipe.emissiveIntensity * 1.4)
+  }
+
+  let soilColor = '#231812'
+  let soilRoughness = 0.85
+  if (isThirstyOrWilting) {
+    soilColor = '#4e4136'
+    soilRoughness = 0.98
+  } else if (isThriving) {
+    soilColor = '#120b07'
+    soilRoughness = 0.30
+  }
+  const soilMat = mat(soilColor, { roughness: soilRoughness })
   const stoneMat = mat('#635b6b', { roughness: 0.88 })
 
   const isEarlyStage = plant.stage === 'seed' || plant.stage === 'sprout' || plant.stage === 'seedling'
@@ -86,19 +112,62 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
     }
   }
 
-  // Aura Ring for mature/elder or hybrid plants
-  if (isAdvanced) {
-    const auraMat = mat(recipe.bloom, {
-      emissive: recipe.emissive,
-      emissiveIntensity: 0.45,
+  // Aura Ring for mature/elder, hybrid, or eternal plants
+  if (isAdvanced || isEternal) {
+    const auraColor = isEternal ? '#fbbf24' : recipe.bloom
+    const auraEmissive = isEternal ? '#f59e0b' : recipe.emissive
+    const auraMat = mat(auraColor, {
+      emissive: auraEmissive,
+      emissiveIntensity: isEternal ? 0.65 : 0.45,
       transparent: true,
-      opacity: 0.45,
+      opacity: isEternal ? 0.6 : 0.45,
     })
     const aura = new THREE.Mesh(geo.ring, auraMat)
     aura.rotation.x = -Math.PI / 2
-    aura.scale.setScalar(Math.max(0.4, recipe.canopyRadius * 1.35))
+    aura.scale.setScalar(Math.max(0.4, recipe.canopyRadius * (isEternal ? 1.5 : 1.35)))
     aura.position.y = 0.015
     g.add(aura)
+  }
+
+  // Thriving Tier: Sparkling floating dewdrop motes
+  if (isThriving) {
+    const moteCount = 10
+    const motePositions = new Float32Array(moteCount * 3)
+    for (let i = 0; i < moteCount; i++) {
+      const ang = (i / moteCount) * Math.PI * 2 + rng() * 0.5
+      const r = 0.22 + rng() * 0.28
+      motePositions[i * 3] = Math.cos(ang) * r
+      motePositions[i * 3 + 1] = recipe.stemHeight + 0.12 + (rng() - 0.5) * 0.25
+      motePositions[i * 3 + 2] = Math.sin(ang) * r
+    }
+    const moteGeo = new THREE.BufferGeometry()
+    moteGeo.setAttribute('position', new THREE.BufferAttribute(motePositions, 3))
+    const moteMat = new THREE.PointsMaterial({
+      color: '#6ee7b7',
+      size: 0.05,
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false,
+    })
+    const motes = new THREE.Points(moteGeo, moteMat)
+    g.add(motes)
+  }
+
+  // Dormant Tier: Translucent protective mist ring at plant base
+  if (healthStatus === 'dormant') {
+    g.scale.set(0.85, 0.75, 0.85)
+    const mistMat = mat('#e2e8f0', {
+      transparent: true,
+      opacity: 0.35,
+      roughness: 0.95,
+      emissive: '#cbd5e1',
+      emissiveIntensity: 0.15,
+    })
+    const mistRing = new THREE.Mesh(geo.ring, mistMat)
+    mistRing.rotation.x = -Math.PI / 2
+    mistRing.scale.setScalar(Math.max(0.35, recipe.canopyRadius * 0.95))
+    mistRing.position.y = 0.04
+    g.add(mistRing)
   }
 
   // Early botanical stages: Seed & Sprout
@@ -163,6 +232,10 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
   stem.scale.set(recipe.stemRadius, recipe.stemHeight, recipe.stemRadius)
   stem.position.y = recipe.stemHeight / 2
   stem.rotation.z = (rng() - 0.5) * 0.08
+  if (wiltingFactor > 0) {
+    stem.rotation.z += (rng() > 0.5 ? 1 : -1) * (0.12 + wiltingFactor * 0.32)
+    stem.rotation.x += 0.10 + wiltingFactor * 0.24
+  }
   g.add(stem)
 
   const canopyY = recipe.stemHeight
@@ -577,10 +650,13 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
 
 export function disposePlantGroup(group: THREE.Group): void {
   group.traverse((obj: THREE.Object3D) => {
-    if (obj instanceof THREE.Mesh) {
+    if (obj instanceof THREE.Mesh || obj instanceof THREE.Points) {
+      if (obj.geometry && !obj.userData.isSharedStatic) {
+        obj.geometry.dispose()
+      }
       const material = obj.material
       if (Array.isArray(material)) material.forEach((m) => m.dispose())
-      else material.dispose()
+      else material?.dispose()
     }
   })
 }
