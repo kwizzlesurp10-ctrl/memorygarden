@@ -9,11 +9,23 @@ import { plantRecipe } from '@/lib/open-world/plant-visual'
 import type { GardenWorld, PlayerState, WorldPlant } from '@/lib/open-world/types'
 import { createPlantGroup, disposePlantGroup } from './plant-mesh'
 import { buildTerrain, type TerrainHandle } from './terrain'
+import { playWaterSfx } from '@/lib/water-sound'
 
 export interface EngineHooks {
   onProximity: (plant: WorldPlant | null) => void
   onPlayer: (player: PlayerState, locked: boolean) => void
   onInteract: (plant: WorldPlant) => void
+  onWater?: (plant: WorldPlant) => void
+}
+
+interface WaterArc {
+  points: THREE.Points
+  positions: Float32Array
+  startT: number
+  duration: number
+  from: THREE.Vector3
+  to: THREE.Vector3
+  plantId: string
 }
 
 export class OpenWorldEngine {
@@ -44,6 +56,8 @@ export class OpenWorldEngine {
   private growing = new Set<string>()
   private nearby: WorldPlant | null = null
   private interactArmed = true
+  private waterArmed = true
+  private wateringArcs: WaterArc[] = []
   private playerNotifyAt = 0
   private readonly canvas: HTMLCanvasElement
   private readonly hooks: EngineHooks
@@ -112,13 +126,18 @@ export class OpenWorldEngine {
     this.onKeyDown = (e) => {
       if (this.paused || isTypingTarget(e.target)) return
       this.keys.add(e.code)
-      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyE'].includes(e.code)) {
+      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyE', 'KeyQ'].includes(e.code)) {
         e.preventDefault()
+      }
+      if (e.code === 'KeyQ' && this.waterArmed && this.nearby) {
+        this.waterArmed = false
+        this.hooks.onWater?.(this.nearby)
       }
     }
     this.onKeyUp = (e) => {
       this.keys.delete(e.code)
       if (e.code === 'KeyE' || e.code === 'Enter') this.interactArmed = true
+      if (e.code === 'KeyQ') this.waterArmed = true
     }
     this.onMouseMove = (e) => {
       if (document.pointerLockElement !== this.canvas) return
@@ -215,6 +234,12 @@ export class OpenWorldEngine {
     this.exitLock()
     this.clearPlants()
     this.terrain?.dispose()
+    for (const arc of this.wateringArcs) {
+      this.scene.remove(arc.points)
+      arc.points.geometry.dispose()
+      if (arc.points.material instanceof THREE.Material) arc.points.material.dispose()
+    }
+    this.wateringArcs = []
     this.fireflies?.geometry.dispose()
     if (this.fireflies?.material instanceof THREE.Material) this.fireflies.material.dispose()
     this.renderer?.dispose()
@@ -250,6 +275,7 @@ export class OpenWorldEngine {
       this.pulseGrowing(time)
       this.swayPlants(time)
       this.terrain?.tick?.(time, dt)
+      this.updateWateringArcs(time)
       this.driftFireflies(dt)
       const near = findNearestPlant(this.player.x, this.player.z, this.world.plants)
       if (near?.id !== this.nearby?.id) {
@@ -338,8 +364,92 @@ export class OpenWorldEngine {
   private pulseGrowing(time: number): void {
     const s = 1 + Math.sin(time / 280) * 0.06
     for (const [id, group] of this.plantGroups) {
-      const scale = this.growing.has(id) && !this.reducedMotion ? s : 1
+      let scale = this.growing.has(id) && !this.reducedMotion ? s : 1
+      if (group.userData.bounceUntil && group.userData.bounceUntil > time) {
+        const remain = (group.userData.bounceUntil - time) / 450
+        const bounce = Math.sin(remain * Math.PI * 3) * 0.14 * remain
+        scale *= 1 + bounce
+      }
       group.scale.setScalar(scale)
+    }
+  }
+
+  waterPlantAnimation(plant: WorldPlant): void {
+    playWaterSfx()
+    const from = new THREE.Vector3(this.camera.position.x, this.camera.position.y - 0.2, this.camera.position.z)
+    const to = new THREE.Vector3(plant.x, 0.05, plant.z)
+    const count = 36
+    const positions = new Float32Array(count * 3)
+    for (let i = 0; i < count; i++) {
+      positions[i * 3] = from.x
+      positions[i * 3 + 1] = from.y
+      positions[i * 3 + 2] = from.z
+    }
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    const mat = new THREE.PointsMaterial({
+      color: '#6ee7b7',
+      size: 0.14,
+      transparent: true,
+      opacity: 0.9,
+      depthWrite: false,
+    })
+    const points = new THREE.Points(geo, mat)
+    this.scene.add(points)
+    this.wateringArcs.push({
+      points,
+      positions,
+      startT: performance.now(),
+      duration: 0.55,
+      from,
+      to,
+      plantId: plant.id,
+    })
+
+    // Soil mound darkens to moist earth
+    const group = this.plantGroups.get(plant.id)
+    if (group) {
+      group.traverse((obj) => {
+        if (obj instanceof THREE.Mesh && obj.geometry instanceof THREE.ConeGeometry && obj.position.y <= 0.05) {
+          if (obj.material instanceof THREE.MeshStandardMaterial) {
+            obj.material.color.set('#160e0a')
+            obj.material.roughness = 0.4
+          }
+        }
+      })
+    }
+  }
+
+  private updateWateringArcs(time: number): void {
+    for (let i = this.wateringArcs.length - 1; i >= 0; i--) {
+      const arc = this.wateringArcs[i]
+      const elapsed = (time - arc.startT) / 1000
+      const t = Math.min(1, elapsed / arc.duration)
+      const count = arc.positions.length / 3
+
+      for (let p = 0; p < count; p++) {
+        const pT = Math.max(0, Math.min(1, t - (p / count) * 0.28))
+        const x = arc.from.x + (arc.to.x - arc.from.x) * pT + Math.sin(p * 2.1) * (1 - pT) * 0.18
+        const z = arc.from.z + (arc.to.z - arc.from.z) * pT + Math.cos(p * 2.7) * (1 - pT) * 0.18
+        const y = arc.from.y + (arc.to.y - arc.from.y) * pT + Math.sin(pT * Math.PI) * 1.35
+        arc.positions[p * 3] = x
+        arc.positions[p * 3 + 1] = y
+        arc.positions[p * 3 + 2] = z
+      }
+      arc.points.geometry.attributes.position.needsUpdate = true
+
+      if (t >= 1) {
+        // Turgor bounce on the plant
+        const grp = this.plantGroups.get(arc.plantId)
+        if (grp) {
+          grp.userData.bounceUntil = time + 450
+        }
+        // Cleanup arc
+        this.scene.remove(arc.points)
+        arc.points.geometry.dispose()
+        if (arc.points.material instanceof THREE.Material) arc.points.material.dispose()
+        this.wateringArcs.splice(i, 1)
+      }
     }
   }
 

@@ -5,6 +5,13 @@ import { useReducedMotion } from '@/hooks/useReducedMotion'
 import type { PlayerState, WorldPlant } from '@/lib/open-world/types'
 import { layoutGardenWorld } from '@/lib/open-world/layout'
 import { createPlayer } from '@/lib/open-world/locomotion'
+import {
+  canQuickWater,
+  computeCurrentMoisture,
+  getHealthStatus,
+  waterPlant,
+  type WateringResult,
+} from '@/lib/tending-logic'
 import { OpenWorldEngine } from './engine'
 import { OpenWorldHud } from './OpenWorldHud'
 
@@ -15,6 +22,7 @@ export interface OpenWorldGardenProps {
   growingMemories?: Set<string>
   paused?: boolean
   onMemoryClick: (memory: Memory) => void
+  onWaterMemory?: (memoryId: string, result: WateringResult) => void
   onExit: () => void
 }
 
@@ -25,6 +33,7 @@ export function OpenWorldGarden({
   growingMemories = new Set(),
   paused = false,
   onMemoryClick,
+  onWaterMemory,
   onExit,
 }: OpenWorldGardenProps) {
   const reducedMotion = useReducedMotion()
@@ -33,6 +42,7 @@ export function OpenWorldGarden({
   const lookPointer = useRef<number | null>(null)
   const lastLook = useRef({ x: 0, y: 0 })
   const memoriesRef = useRef(memories)
+  const onWaterMemoryRef = useRef(onWaterMemory)
 
   const [world, setWorld] = useState(() => layoutGardenWorld(memories))
   const [player, setPlayer] = useState(() => createPlayer(world))
@@ -57,6 +67,30 @@ export function OpenWorldGarden({
     if (memory) onMemoryClick(memory)
   }, [onMemoryClick])
 
+  const onWaterPlant = useCallback((plant: WorldPlant) => {
+    if (!engineRef.current) return
+    const mem = memoriesRef.current.find((m) => m.id === plant.id)
+    if (!mem) return
+
+    const initM = mem.growthMetrics?.vitality ?? 80.0
+    const lastW = mem.growthMetrics?.lastInteractionAt
+    const curM = computeCurrentMoisture(initM, lastW, mem.plantVariety, season)
+
+    if (!canQuickWater(curM)) return
+
+    const result = waterPlant(curM, 'quick')
+    if (result.success) {
+      engineRef.current.waterPlantAnimation(plant)
+      onWaterMemoryRef.current?.(mem.id, result)
+    }
+  }, [season])
+
+  const onWaterPlantRef = useRef(onWaterPlant)
+  useEffect(() => {
+    onWaterPlantRef.current = onWaterPlant
+    onWaterMemoryRef.current = onWaterMemory
+  }, [onWaterPlant, onWaterMemory])
+
   useEffect(() => {
     memoriesRef.current = memories
   }, [memories])
@@ -71,6 +105,7 @@ export function OpenWorldGarden({
         onProximity,
         onPlayer,
         onInteract: onInteractPlant,
+        onWater: (plant) => onWaterPlantRef.current(plant),
       },
     })
     engineRef.current = engine
@@ -122,6 +157,15 @@ export function OpenWorldGarden({
     onInteractPlant(nearby)
   }, [nearby, onInteractPlant])
 
+  const targetMemory = nearby ? memories.find((m) => m.id === nearby.id) : null
+  const initialMoisture = targetMemory?.growthMetrics?.vitality ?? 80.0
+  const lastWateredAt = targetMemory?.growthMetrics?.lastInteractionAt
+  const currentMoisture = targetMemory
+    ? computeCurrentMoisture(initialMoisture, lastWateredAt, targetMemory.plantVariety, season)
+    : 100.0
+  const canWater = targetMemory ? canQuickWater(currentMoisture) : false
+  const healthStatus = targetMemory ? getHealthStatus(currentMoisture) : undefined
+
   return (
     <div
       className="relative h-full w-full overflow-hidden bg-[#0d0913]"
@@ -163,6 +207,10 @@ export function OpenWorldGarden({
         onExit={onExit}
         onLock={() => engineRef.current?.requestLock()}
         onInteract={interactNearby}
+        onWater={() => nearby && onWaterPlant(nearby)}
+        canWater={canWater}
+        moistureLevel={targetMemory ? currentMoisture : undefined}
+        healthStatus={healthStatus}
         onStick={(stick) => engineRef.current?.setStick(stick)}
       />
     </div>

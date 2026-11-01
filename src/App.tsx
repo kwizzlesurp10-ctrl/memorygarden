@@ -902,6 +902,32 @@ function App() {
   const handleEnterWalk = () => setViewMode('walk')
   const handleExitWalk = () => setViewMode('garden')
 
+  const handleWaterMemory = useCallback((memoryId: string, result: import('@/lib/tending-logic').WateringResult) => {
+    setMemories((currentMemories) =>
+      (currentMemories || []).map((m) => {
+        if (m.id !== memoryId) return m
+        const oldMetrics = m.growthMetrics || {
+          vitality: 80,
+          height: 1.2,
+          width: 0.8,
+          bloomCount: 3,
+          foliageDensity: 0.8,
+          rarityScore: 1.0,
+          lastInteractionAt: Date.now(),
+        }
+        return {
+          ...m,
+          growthMetrics: {
+            ...oldMetrics,
+            vitality: result.newMoisture,
+            lastInteractionAt: Date.now(),
+          },
+        }
+      })
+    )
+    toast.success(result.message)
+  }, [setMemories])
+
   const handleInviteToGarden = () => {
     if (activeGarden) {
       setIsInviteDialogOpen(true)
@@ -1262,6 +1288,7 @@ function App() {
                         growingMemories={growingMemories}
                         paused={selectedMemory !== null}
                         onMemoryClick={handleMemoryClick}
+                        onWaterMemory={handleWaterMemory}
                         onExit={handleExitWalk}
                       />
                     </Suspense>
