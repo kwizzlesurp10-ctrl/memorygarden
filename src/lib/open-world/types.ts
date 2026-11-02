@@ -1,4 +1,11 @@
-import type { EmotionalTone, PlantHealthStatus, PlantStage, PlantVariety } from '@/lib/types'
+import type {
+  EmotionalTone,
+  GardenGift,
+  GroveProjectMilestone,
+  PlantHealthStatus,
+  PlantStage,
+  PlantVariety,
+} from '@/lib/types'
 
 export interface Vec2 {
   x: number
@@ -17,6 +24,7 @@ export interface WorldPlant {
   x: number
   z: number
   radius: number
+  colliderRadius?: number
   height: number
   variety: PlantVariety
   stage: PlantStage
@@ -35,6 +43,16 @@ export interface WorldPlant {
     avatarUrl?: string
   }
   isSanctuaryCircle?: boolean
+  isSleepingSeed?: boolean
+  visibility?: 'public' | 'circle' | 'private'
+  activeGifts?: GardenGift[]
+}
+
+export interface WorldFillerFlora {
+  x: number
+  z: number
+  scale: number
+  tone: EmotionalTone
 }
 
 export interface WorldPath {
@@ -75,6 +93,8 @@ export interface GardenWorld {
   sanctuaryCircle?: WorldCircle
   hasGardenBonds?: boolean
   bondPartnerName?: string
+  groveMilestone?: GroveProjectMilestone
+  fillerFlora?: WorldFillerFlora[]
 }
 
 export interface PlayerState {

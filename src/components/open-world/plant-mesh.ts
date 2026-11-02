@@ -15,6 +15,11 @@ const geo = {
   box: new THREE.BoxGeometry(1, 1, 1),
 }
 
+// Protect shared static geometries from disposal during plant mesh updates
+Object.values(geo).forEach((g) => {
+  g.userData.isSharedStatic = true
+})
+
 function mat(
   color: string,
   opts?: {
@@ -38,11 +43,211 @@ function mat(
   })
 }
 
+function addGiftMeshes(
+  g: THREE.Group,
+  plant: WorldPlant,
+  recipe: PlantVisualRecipe,
+): void {
+  const gifts = plant.activeGifts
+  if (!gifts || gifts.length === 0) return
+
+  for (const gift of gifts) {
+    const giftGroup = new THREE.Group()
+    giftGroup.name = `gift:${gift.id}`
+    giftGroup.userData.giftId = gift.id
+    giftGroup.userData.giftType = gift.giftType
+
+    const ang = gift.positionOffset?.angle ?? 0.6
+    const dist = Math.max(0.24, gift.positionOffset?.distance ?? 0.3)
+    const gx = Math.cos(ang) * dist
+    const gz = Math.sin(ang) * dist
+
+    if (gift.giftType === 'blossom_note') {
+      // Origami folded blossom note with soft aura ring
+      const noteMat = mat('#fdf2f8', {
+        emissive: recipe.bloom,
+        emissiveIntensity: 0.55,
+        roughness: 0.35,
+      })
+      for (let p = 0; p < 4; p++) {
+        const pAng = (p / 4) * Math.PI * 2
+        const fold = new THREE.Mesh(geo.cone, noteMat)
+        fold.scale.set(0.032, 0.065, 0.015)
+        fold.position.set(Math.cos(pAng) * 0.025, 0.08, Math.sin(pAng) * 0.025)
+        fold.rotation.y = -pAng + Math.PI / 2
+        fold.rotation.x = 0.55
+        giftGroup.add(fold)
+      }
+      const auraRing = new THREE.Mesh(
+        geo.ring,
+        mat(recipe.bloom, {
+          emissive: recipe.bloom,
+          emissiveIntensity: 0.6,
+          transparent: true,
+          opacity: 0.5,
+        }),
+      )
+      auraRing.rotation.x = -Math.PI / 2
+      auraRing.scale.setScalar(0.085)
+      auraRing.position.y = 0.02
+      giftGroup.add(auraRing)
+      giftGroup.position.set(gx, 0, gz)
+    } else if (gift.giftType === 'paper_lantern') {
+      // Warm glowing paper lantern at plant base
+      const woodCapMat = mat('#3e2723', { roughness: 0.85 })
+      const lanternMat = mat('#ffedd5', {
+        emissive: '#ff9933',
+        emissiveIntensity: 1.35,
+        roughness: 0.25,
+      })
+      const base = new THREE.Mesh(geo.stem, woodCapMat)
+      base.scale.set(0.055, 0.02, 0.055)
+      base.position.y = 0.02
+      giftGroup.add(base)
+
+      const core = new THREE.Mesh(geo.stem, lanternMat)
+      core.scale.set(0.05, 0.12, 0.05)
+      core.position.y = 0.09
+      giftGroup.add(core)
+
+      const roof = new THREE.Mesh(geo.cone, woodCapMat)
+      roof.scale.set(0.07, 0.04, 0.07)
+      roof.position.y = 0.165
+      giftGroup.add(roof)
+      giftGroup.position.set(gx, 0, gz)
+    } else if (gift.giftType === 'dew_vial') {
+      // Translucent cyan glass vial nestled in soil loam
+      const vialGlassMat = mat('#67e8f9', {
+        emissive: '#22d3ee',
+        emissiveIntensity: 0.75,
+        roughness: 0.12,
+        metalness: 0.15,
+        transparent: true,
+        opacity: 0.86,
+      })
+      const corkMat = mat('#a16207', { roughness: 0.9 })
+      const vial = new THREE.Mesh(geo.stem, vialGlassMat)
+      vial.scale.set(0.032, 0.1, 0.032)
+      vial.position.y = 0.06
+      vial.rotation.z = 0.22
+      giftGroup.add(vial)
+
+      const stopper = new THREE.Mesh(geo.stem, corkMat)
+      stopper.scale.set(0.022, 0.025, 0.022)
+      stopper.position.set(-0.012, 0.115, 0)
+      stopper.rotation.z = 0.22
+      giftGroup.add(stopper)
+      giftGroup.position.set(gx, 0, gz)
+    } else {
+      // Wind chime suspended beside canopy
+      const canopyDiskMat = mat('#543825', { roughness: 0.8 })
+      const chimeMetalMat = mat('#e2e8f0', {
+        emissive: '#93c5fd',
+        emissiveIntensity: 0.3,
+        roughness: 0.2,
+        metalness: 0.85,
+      })
+      const hangY = Math.max(0.28, recipe.stemHeight * 0.65)
+      const topDisk = new THREE.Mesh(geo.disk, canopyDiskMat)
+      topDisk.rotation.x = Math.PI / 2
+      topDisk.scale.setScalar(0.045)
+      topDisk.position.y = hangY
+      giftGroup.add(topDisk)
+
+      for (let t = 0; t < 4; t++) {
+        const tAng = (t / 4) * Math.PI * 2
+        const tube = new THREE.Mesh(geo.stem, chimeMetalMat)
+        const tubeLen = 0.07 + (t % 2) * 0.02
+        tube.scale.set(0.006, tubeLen, 0.006)
+        tube.position.set(
+          Math.cos(tAng) * 0.028,
+          hangY - tubeLen / 2 - 0.01,
+          Math.sin(tAng) * 0.028,
+        )
+        giftGroup.add(tube)
+      }
+      giftGroup.position.set(gx, 0, gz)
+    }
+
+    g.add(giftGroup)
+  }
+}
+
 export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): THREE.Group {
   const g = new THREE.Group()
   g.name = `plant:${plant.id}`
   g.userData.memoryId = plant.id
   const rng = gardenRng((plant.id.charCodeAt(0) * 997 + plant.id.length * 13) >>> 0)
+
+  // Mode B Privacy: The "Sleeping Seed" crystalline opalescent bud
+  if (plant.isSleepingSeed) {
+    const soilMat = mat('#1e162b', { roughness: 0.8 })
+    const mound = new THREE.Mesh(geo.cone, soilMat)
+    mound.scale.set(0.22, 0.055, 0.22)
+    mound.position.y = 0.028
+    g.add(mound)
+
+    const budMat = mat('#d8c8f0', {
+      emissive: '#b8a0e8',
+      emissiveIntensity: 0.45,
+      roughness: 0.25,
+      metalness: 0.15,
+    })
+    const bud = new THREE.Mesh(geo.sphere, budMat)
+    bud.scale.set(0.085, 0.13, 0.085)
+    bud.position.y = 0.12
+    bud.castShadow = true
+    g.add(bud)
+
+    for (let s = 0; s < 3; s++) {
+      const sAng = (s / 3) * Math.PI * 2
+      const sepal = new THREE.Mesh(geo.cone, budMat)
+      sepal.scale.set(0.035, 0.11, 0.02)
+      sepal.position.set(Math.cos(sAng) * 0.05, 0.09, Math.sin(sAng) * 0.05)
+      sepal.rotation.y = -sAng + Math.PI / 2
+      sepal.rotation.x = 0.45
+      g.add(sepal)
+    }
+
+    const mistRing = new THREE.Mesh(
+      geo.ring,
+      mat('#e2e8f0', {
+        emissive: '#c4b5fd',
+        emissiveIntensity: 0.35,
+        transparent: true,
+        opacity: 0.45,
+      }),
+    )
+    mistRing.rotation.x = -Math.PI / 2
+    mistRing.scale.setScalar(0.28)
+    mistRing.position.y = 0.02
+    g.add(mistRing)
+
+    // 6 slow-drifting mist motes around the Sleeping Seed
+    const moteCount = 6
+    const motePos = new Float32Array(moteCount * 3)
+    for (let i = 0; i < moteCount; i++) {
+      const a = (i / moteCount) * Math.PI * 2
+      motePos[i * 3] = Math.cos(a) * 0.18
+      motePos[i * 3 + 1] = 0.12 + (i % 3) * 0.06
+      motePos[i * 3 + 2] = Math.sin(a) * 0.18
+    }
+    const moteGeo = new THREE.BufferGeometry()
+    moteGeo.setAttribute('position', new THREE.BufferAttribute(motePos, 3))
+    const moteMat = new THREE.PointsMaterial({
+      color: '#e9d5ff',
+      size: 0.045,
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false,
+    })
+    g.add(new THREE.Points(moteGeo, moteMat))
+
+    addGiftMeshes(g, plant, recipe)
+    g.position.set(plant.x, 0, plant.z)
+    g.userData.baseScale = 1
+    return g
+  }
 
   const wiltingFactor = plant.wiltingFactor ?? 0
   const healthStatus = plant.healthStatus ?? 'healthy'
@@ -220,6 +425,7 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
       g.add(dew)
     }
 
+    addGiftMeshes(g, plant, recipe)
     g.position.set(plant.x, 0, plant.z)
     g.userData.baseScale = 1
     return g
@@ -643,6 +849,7 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
     }
   }
 
+  addGiftMeshes(g, plant, recipe)
   g.position.set(plant.x, 0, plant.z)
   g.userData.baseScale = 1
   return g
@@ -651,12 +858,18 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
 export function disposePlantGroup(group: THREE.Group): void {
   group.traverse((obj: THREE.Object3D) => {
     if (obj instanceof THREE.Mesh || obj instanceof THREE.Points) {
-      if (obj.geometry && !obj.userData.isSharedStatic) {
+      if (obj.geometry && !obj.geometry.userData?.isSharedStatic && !obj.userData.isSharedStatic) {
         obj.geometry.dispose()
       }
+      const disposeMat = (m: THREE.Material) => {
+        const std = m as THREE.MeshStandardMaterial
+        std.map?.dispose()
+        std.emissiveMap?.dispose()
+        m.dispose()
+      }
       const material = obj.material
-      if (Array.isArray(material)) material.forEach((m) => m.dispose())
-      else material?.dispose()
+      if (Array.isArray(material)) material.forEach(disposeMat)
+      else if (material) disposeMat(material)
     }
   })
 }

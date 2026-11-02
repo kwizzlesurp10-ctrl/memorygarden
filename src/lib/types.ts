@@ -167,6 +167,8 @@ export interface Memory {
   isSharedPlot?: boolean
   /** Privacy visibility tier */
   visibility?: 'public' | 'circle' | 'private'
+  /** 3D gifts and notes left at the base of this plant */
+  gifts?: GardenGift[]
 }
 
 export interface SharedMemory {
@@ -280,6 +282,57 @@ export interface GardenBond {
   lastReciprocalWaterAt: string
   bondLevel: number
   totalReciprocalTends: number
+}
+
+// ──── Phase 4: 3D Gifts, Grove Milestones, Privacy & Gentle Whispers ─────────
+export type GardenGiftType = 'blossom_note' | 'paper_lantern' | 'dew_vial' | 'wind_chime'
+
+export interface GardenGift {
+  id: string
+  memoryId: string
+  senderId: string
+  senderLogin: string
+  senderAvatarUrl?: string
+  giftType: GardenGiftType
+  message?: string
+  createdAt: string
+  openedAt?: string
+  positionOffset: {
+    angle: number
+    distance: number
+  }
+}
+
+export type GroveFeatureId =
+  | 'birdbath'
+  | 'fireflies'
+  | 'sakura_tree'
+  | 'starlight_fountain'
+  | 'aurora'
+
+export interface GroveProjectMilestone {
+  gardenId: string
+  totalCommunityWaterings: number
+  currentTier: number
+  unlockedFeatures: GroveFeatureId[]
+  nextMilestoneAt: number
+}
+
+export type PrivacyMode = 'camouflage' | 'sleeping_seed'
+
+export type GentleWhisperCategory =
+  | 'on_this_day'
+  | 'social_care'
+  | 'gentle_thirst'
+  | 'seasonal_solstice'
+
+export interface GentleWhisper {
+  id: string
+  category: GentleWhisperCategory
+  title: string
+  message: string
+  memoryId?: string
+  createdAt: string
 }
 
 export interface UserPreferences {

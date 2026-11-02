@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import type { Memory, Season } from '@/lib/types'
+import type { GardenGiftType, Memory, Season } from '@/lib/types'
 import { todPalette, realClockTod } from '@/lib/garden/day-night'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import type { PlayerState, WorldPlant } from '@/lib/open-world/types'
@@ -27,9 +27,19 @@ import {
   type GardenStreak,
 } from '@/lib/gentle-streaks'
 import { toLocalISODate } from '@/lib/date-utils'
-import { playDewHarvestSfx } from '@/lib/water-sound'
+import {
+  playDewHarvestSfx,
+  playGiftChimeSfx,
+  playHealingSeedSfx,
+} from '@/lib/water-sound'
 import { getLocalUser } from '@/lib/local-user'
 import { recordReciprocalWatering, syncRemoteWatering } from '@/lib/social-tending'
+import {
+  GIFT_METADATA,
+  incrementCommunityWaterings,
+  openGardenGift,
+  placeGardenGift,
+} from '@/lib/garden-gifts'
 import { OpenWorldEngine } from './engine'
 import { OpenWorldHud } from './OpenWorldHud'
 
@@ -115,8 +125,12 @@ export function OpenWorldGarden({
 
     const result = waterPlant(curM, 'quick')
     if (result.success) {
+      if (plant.isSleepingSeed) {
+        playHealingSeedSfx()
+      }
       engineRef.current.waterPlantAnimation(plant)
       onWaterMemoryRef.current?.(mem.id, result)
+      incrementCommunityWaterings(1, memoriesRef.current)
 
       // Advance daily gentle streak & award +2 Dew Currency
       setStreak((prev) => {
@@ -253,9 +267,64 @@ export function OpenWorldGarden({
   }, [])
 
   const interactNearby = useCallback(() => {
-    if (!nearby) return
+    if (!nearby || nearby.isSleepingSeed) return
     onInteractPlant(nearby)
   }, [nearby, onInteractPlant])
+
+  const handleLeaveGift = useCallback(
+    (giftType: GardenGiftType) => {
+      if (!nearby) return
+      const mem = memoriesRef.current.find((m) => m.id === nearby.id)
+      if (!mem) return
+      const localUser = getLocalUser()
+      const { gift } = placeGardenGift(mem, localUser, giftType)
+      playGiftChimeSfx()
+      engineRef.current?.setMemories(memoriesRef.current)
+      const w = engineRef.current?.getWorld()
+      if (w) {
+        setWorld(w)
+        const updatedNearby = w.plants.find((p) => p.id === nearby.id) ?? null
+        setNearby(updatedNearby)
+      }
+      toast.success(
+        `${GIFT_METADATA[gift.giftType].icon} Left a ${GIFT_METADATA[gift.giftType].label} beside this plant!`,
+      )
+    },
+    [nearby],
+  )
+
+  const handleOpenGift = useCallback(
+    (giftId: string) => {
+      if (!nearby) return
+      const mem = memoriesRef.current.find((m) => m.id === nearby.id)
+      if (!mem) return
+      const { gift, vitalityAdded } = openGardenGift(mem, giftId)
+      if (!gift) return
+      playGiftChimeSfx()
+      if (vitalityAdded > 0) {
+        const initM = mem.growthMetrics?.vitality ?? 80
+        const waterRes = waterPlant(initM, 'quick')
+        onWaterMemoryRef.current?.(mem.id, waterRes)
+      }
+      engineRef.current?.setMemories(memoriesRef.current)
+      const w = engineRef.current?.getWorld()
+      if (w) {
+        setWorld(w)
+        const updatedNearby = w.plants.find((p) => p.id === nearby.id) ?? null
+        setNearby(updatedNearby)
+      }
+      toast.success(
+        `${GIFT_METADATA[gift.giftType].icon} Opened ${GIFT_METADATA[gift.giftType].label} from ${gift.senderLogin}`,
+        {
+          description:
+            vitalityAdded > 0
+              ? `${gift.message} (+${vitalityAdded}% Pure Dew vitality boost!)`
+              : gift.message,
+        },
+      )
+    },
+    [nearby],
+  )
 
   const targetMemory = nearby ? memories.find((m) => m.id === nearby.id) : null
   const initialMoisture = targetMemory?.growthMetrics?.vitality ?? 80.0
@@ -319,6 +388,8 @@ export function OpenWorldGarden({
         canHarvestDew={canHarvestDew}
         onHarvestDew={handleHarvestDew}
         bondPartnerName={world.bondPartnerName}
+        onLeaveGift={handleLeaveGift}
+        onOpenGift={handleOpenGift}
       />
     </div>
   )

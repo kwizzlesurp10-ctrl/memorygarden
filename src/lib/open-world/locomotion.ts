@@ -52,9 +52,41 @@ export function positionBlocked(
   const shedR = Math.max(shed.width, shed.depth) * 0.55
   if (circleBlocked(x, z, radius, shed.x, shed.z, shedR)) return true
   for (const plant of plants) {
-    if (circleBlocked(x, z, radius, plant.x, plant.z, plant.radius)) return true
+    const cr = plant.colliderRadius ?? plant.radius
+    if (circleBlocked(x, z, radius, plant.x, plant.z, cr)) return true
   }
   return false
+}
+
+/**
+ * Resolves any radial overlap between the player and nearby plant trunk colliders
+ * (e.g., if a plant grows a stage in-place while the player stands beside it).
+ */
+export function resolveDepenetration(
+  x: number,
+  z: number,
+  world: GardenWorld,
+  radius: number = PLAYER_RADIUS,
+): { x: number; z: number } {
+  let outX = x
+  let outZ = z
+  for (const plant of world.plants) {
+    const cr = plant.colliderRadius ?? plant.radius
+    const min = radius + cr
+    const dx = outX - plant.x
+    const dz = outZ - plant.z
+    const d = Math.hypot(dx, dz)
+    if (d < min) {
+      if (d < 1e-5) {
+        outX = plant.x + min
+      } else {
+        const push = min - d + 0.01
+        outX += (dx / d) * push
+        outZ += (dz / d) * push
+      }
+    }
+  }
+  return { x: outX, z: outZ }
 }
 
 export function stepPlayer(
@@ -78,8 +110,9 @@ export function stepPlayer(
   const dx = (forward * -sin + strafe * cos) * scale * speed * t
   const dz = (forward * -cos + strafe * -sin) * scale * speed * t
 
-  let x = player.x
-  let z = player.z
+  const depen = resolveDepenetration(player.x, player.z, world)
+  let x = depen.x
+  let z = depen.z
   if (!positionBlocked(x + dx, z, world)) x += dx
   if (!positionBlocked(x, z + dz, world)) z += dz
 

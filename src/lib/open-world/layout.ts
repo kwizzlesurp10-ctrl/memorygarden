@@ -7,6 +7,13 @@ import {
 } from '@/lib/tending-logic'
 import { hasActiveGardenBond } from '@/lib/social-tending'
 import {
+  computeGroveMilestone,
+  getGiftsForMemory,
+  loadCommunityWateringCount,
+  loadGardenGifts,
+} from '@/lib/garden-gifts'
+import { generateBedFillerFlora } from '@/lib/privacy-engine'
+import {
   PATH_WIDTH,
   PLAYER_RADIUS,
   SEPARATION_GAP,
@@ -176,9 +183,12 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
   const gate = { x: 0, z: 38 }
   const sanctuaryCircle = { ...SANCTUARY_CIRCLE }
 
+  const storedGifts = loadGardenGifts()
+
   const plants: WorldPlant[] = memories.map((memory) => {
     const isCollaborative = Boolean(memory.isSharedPlot || memory.visibility === 'circle')
     const radius = plantRadius(memory.plantStage, memory.plantVariety)
+    const colliderRadius = Math.min(radius, 0.22)
     const height = plantHeight(memory.plantStage, memory.plantVariety)
 
     let x = 0
@@ -230,11 +240,15 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
     const needsWater = moistureLevel < 30.0
     const isEternal = memory.plantVariety === 'eternal_rose' || (memory.visitCount || 0) >= 100
 
+    const allMemGifts = memory.gifts ?? getGiftsForMemory(memory.id, storedGifts)
+    const activeGifts = allMemGifts.filter((g) => !g.openedAt)
+
     return {
       id: memory.id,
       x,
       z,
       radius,
+      colliderRadius,
       height,
       variety: memory.plantVariety,
       stage: memory.plantStage,
@@ -249,6 +263,8 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
       isEternal,
       plantedBy: memory.plantedBy,
       isSanctuaryCircle: isCollaborative,
+      visibility: memory.visibility ?? 'public',
+      activeGifts,
     }
   })
 
@@ -276,6 +292,8 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
   }
 
   const bondCheck = hasActiveGardenBond()
+  const groveMilestone = computeGroveMilestone(loadCommunityWateringCount(memories))
+  const fillerFlora = generateBedFillerFlora(BEDS, plants)
 
   return {
     bounds: { minX: -half, maxX: half, minZ: -half, maxZ: half },
@@ -289,6 +307,8 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
     sanctuaryCircle,
     hasGardenBonds: bondCheck.active,
     bondPartnerName: bondCheck.partnerName,
+    groveMilestone,
+    fillerFlora,
   }
 }
 

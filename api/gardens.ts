@@ -61,6 +61,11 @@ export default async function handler(req: Request): Promise<Response> {
       const gardenId = url.searchParams.get('id')
       
       if (gardenId) {
+        const viewerId = url.searchParams.get('viewerId')
+        const privacyMode = (url.searchParams.get('privacyMode') ?? 'camouflage') as
+          | 'camouflage'
+          | 'sleeping_seed'
+
         // Get single garden with memories
         const gardens = await sql`
           SELECT g.*, 
@@ -73,22 +78,116 @@ export default async function handler(req: Request): Promise<Response> {
         if (gardens.length === 0) {
           return jsonResponse(404, { error: 'Garden not found' })
         }
+
+        const garden = gardens[0]
+        const isOwner = Boolean(viewerId && garden.owner_id === viewerId)
         
-        const memories = await sql`
-          SELECT * FROM garden_memories 
+        const rawMemories = await sql`
+          SELECT
+            id,
+            garden_id,
+            contributor_id,
+            contributor_name,
+            contributor_avatar_url,
+            photo_url,
+            text,
+            memory_date,
+            location,
+            position_x,
+            position_y,
+            emotional_tone,
+            plant_stage,
+            plant_variety,
+            visit_count,
+            last_visited,
+            planted_at,
+            reflections,
+            genetics_seed
+          FROM garden_memories 
           WHERE garden_id = ${gardenId}::uuid
           ORDER BY planted_at DESC
         `
+
+        const privateMemoryIds = new Set<string>()
+        const memories = []
+        let privIdx = 0
+
+        for (const m of rawMemories) {
+          const isPrivate = (m as { visibility?: string }).visibility === 'private'
+          if (isPrivate && !isOwner) {
+            privateMemoryIds.add(String(m.id))
+            if (privacyMode === 'sleeping_seed') {
+              const theta = (2 * Math.PI * privIdx) / Math.max(1, rawMemories.length)
+              privIdx++
+              memories.push({
+                id: m.id,
+                garden_id: m.garden_id,
+                contributor_id: null,
+                contributor_name: 'A Quiet Gardener',
+                contributor_avatar_url: null,
+                photo_url: '',
+                text: 'A quiet memory rests here in gentle contemplation',
+                memory_date: null,
+                location: null,
+                position_x: 7.2 * Math.cos(theta),
+                position_y: -5.5 + 7.2 * Math.sin(theta),
+                emotional_tone: 'peaceful',
+                plant_stage: 'sprout',
+                plant_variety: 'flower',
+                visit_count: m.visit_count,
+                last_visited: m.last_visited,
+                planted_at: m.planted_at,
+                reflections: [],
+                visibility: 'private',
+              })
+            }
+            continue
+          }
+
+          // Server-side reflection filtering: non-owners only receive social tends (isTend === true)
+          const rawReflections = Array.isArray(m.reflections) ? m.reflections : []
+          const filteredReflections = isOwner
+            ? rawReflections
+            : rawReflections.filter(
+                (r: { isTend?: boolean; userId?: string }) =>
+                  r.isTend === true || (r.userId && r.userId !== m.contributor_id),
+              )
+
+          memories.push({
+            ...m,
+            reflections: filteredReflections,
+          })
+        }
         
-        const activity = await sql`
-          SELECT * FROM garden_activity 
+        const rawActivity = await sql`
+          SELECT
+            id,
+            garden_id,
+            user_id,
+            user_name,
+            activity_type,
+            memory_id,
+            description,
+            created_at
+          FROM garden_activity 
           WHERE garden_id = ${gardenId}::uuid
           ORDER BY created_at DESC
           LIMIT 20
         `
+
+        const activity = rawActivity.map((act) => {
+          if (!isOwner && act.memory_id && privateMemoryIds.has(String(act.memory_id))) {
+            return {
+              ...act,
+              memory_id: null,
+              description: `${act.user_name || 'A gardener'} tended a quiet seed in the garden`,
+            }
+          }
+          return act
+        })
         
         return jsonResponse(200, { 
-          garden: gardens[0], 
+          garden, 
           memories,
           activity
         })
@@ -306,7 +405,8 @@ export default async function handler(req: Request): Promise<Response> {
         userId,
         userName,
         text: reflection,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        isTend: true,
       }
       
       await sql`

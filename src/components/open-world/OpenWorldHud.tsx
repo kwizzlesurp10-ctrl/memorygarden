@@ -1,6 +1,8 @@
 import { ArrowLeft, PersonSimpleWalk } from '@phosphor-icons/react'
 import type { PlayerState, WorldPlant, GardenWorld } from '@/lib/open-world/types'
+import type { GardenGiftType } from '@/lib/types'
 import type { PlantHealthStatus } from '@/lib/tending-logic'
+import { GIFT_METADATA } from '@/lib/garden-gifts'
 import { OpenWorldMinimap } from './OpenWorldMinimap'
 import { VirtualJoystick } from './VirtualJoystick'
 
@@ -24,6 +26,8 @@ interface OpenWorldHudProps {
   canHarvestDew?: boolean
   onHarvestDew?: () => void
   bondPartnerName?: string
+  onLeaveGift?: (giftType: GardenGiftType) => void
+  onOpenGift?: (giftId: string) => void
 }
 
 export function OpenWorldHud({
@@ -46,7 +50,12 @@ export function OpenWorldHud({
   canHarvestDew = false,
   onHarvestDew,
   bondPartnerName,
+  onLeaveGift,
+  onOpenGift,
 }: OpenWorldHudProps) {
+  const groveMilestone = world.groveMilestone
+  const activeGifts = nearby?.activeGifts ?? []
+  const firstUnopenedGift = activeGifts[0] ?? null
   return (
     <div className="pointer-events-none absolute inset-0 z-10 text-[#f0e7da]">
       <div className="pointer-events-auto absolute left-3 top-3 flex items-center gap-2">
@@ -87,6 +96,19 @@ export function OpenWorldHud({
           >
             <span>💕</span>
             <span className="font-medium">Bond · {bondPartnerName}</span>
+          </div>
+        ) : null}
+
+        {groveMilestone ? (
+          <div
+            className="hidden sm:flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-200 backdrop-blur-sm shadow-sm"
+            title="The Grove Project — Collective Sanctuary Unlocks"
+          >
+            <span>🌸</span>
+            <span className="font-medium">
+              Grove Tier {groveMilestone.currentTier} · {groveMilestone.totalCommunityWaterings}/
+              {groveMilestone.nextMilestoneAt}
+            </span>
           </div>
         ) : null}
       </div>
@@ -181,7 +203,7 @@ export function OpenWorldHud({
               </div>
               <p className="line-clamp-2 text-sm font-medium mt-0.5">{nearby.title}</p>
               
-              <div className="mt-2.5 flex items-center gap-2">
+              <div className="mt-2.5 flex flex-wrap items-center gap-2">
                 {onWater ? (
                   canWater ? (
                     <button
@@ -189,7 +211,11 @@ export function OpenWorldHud({
                       onClick={onWater}
                       className="rounded-full bg-cyan-500/90 hover:bg-cyan-400 px-3 py-1 text-xs font-semibold text-slate-950 transition-colors shadow-sm"
                     >
-                      {coarse
+                      {nearby.isSleepingSeed
+                        ? coarse
+                          ? '💧 Send Gentle Care'
+                          : 'Q · Send Gentle Care'
+                        : coarse
                         ? nearby.plantedBy
                           ? '💧 Water with Care'
                           : moistureLevel !== undefined && moistureLevel <= 0
@@ -208,20 +234,53 @@ export function OpenWorldHud({
                   )
                 ) : null}
 
-                <button
-                  type="button"
-                  onClick={onInteract}
-                  className="rounded-full bg-[#f0e7da] hover:bg-white px-3 py-1 text-xs font-medium text-[#1a1220] transition-colors"
-                >
-                  {coarse
-                    ? nearby.plantedBy
-                      ? 'Read Memory'
-                      : 'Remember'
-                    : nearby.plantedBy
-                    ? 'E · Read Memory'
-                    : 'E · Remember'}
-                </button>
+                {!nearby.isSleepingSeed ? (
+                  <button
+                    type="button"
+                    onClick={onInteract}
+                    className="rounded-full bg-[#f0e7da] hover:bg-white px-3 py-1 text-xs font-medium text-[#1a1220] transition-colors"
+                  >
+                    {coarse
+                      ? nearby.plantedBy
+                        ? 'Read Memory'
+                        : 'Remember'
+                      : nearby.plantedBy
+                      ? 'E · Read Memory'
+                      : 'E · Remember'}
+                  </button>
+                ) : null}
+
+                {firstUnopenedGift && onOpenGift ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenGift(firstUnopenedGift.id)}
+                    className="rounded-full bg-amber-400/90 hover:bg-amber-300 px-3 py-1 text-xs font-semibold text-slate-950 transition-colors shadow-sm"
+                  >
+                    {GIFT_METADATA[firstUnopenedGift.giftType].icon} Open {GIFT_METADATA[firstUnopenedGift.giftType].label}
+                  </button>
+                ) : null}
               </div>
+
+              {onLeaveGift && !nearby.isSleepingSeed ? (
+                <div className="mt-2.5 flex items-center gap-1.5 border-t border-[#f0e7da]/15 pt-2">
+                  <span className="text-[10px] uppercase tracking-wider text-[#f0e7da]/55">
+                    Leave 3D Gift:
+                  </span>
+                  {(['blossom_note', 'paper_lantern', 'dew_vial', 'wind_chime'] as const).map(
+                    (gType) => (
+                      <button
+                        key={gType}
+                        type="button"
+                        onClick={() => onLeaveGift(gType)}
+                        title={`Leave ${GIFT_METADATA[gType].label}: ${GIFT_METADATA[gType].description}`}
+                        className="rounded-full border border-[#f0e7da]/20 bg-white/5 hover:bg-white/15 px-2 py-0.5 text-[11px] transition-colors"
+                      >
+                        {GIFT_METADATA[gType].icon} {GIFT_METADATA[gType].label.split(' ')[0]}
+                      </button>
+                    ),
+                  )}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

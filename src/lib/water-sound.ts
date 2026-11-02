@@ -117,6 +117,68 @@ class WaterSoundEngine {
       osc.stop(startT + 0.9)
     })
   }
+
+  /**
+   * 432 Hz warm harmonic healing chime for tending a Sleeping Seed in the Contemplation Ring.
+   */
+  playHealingSeedSfx(opts?: { volume?: number }): void {
+    const ctx = this.getContext()
+    if (!ctx) return
+    if (ctx.state === 'suspended') {
+      void ctx.resume()
+    }
+    const now = ctx.currentTime
+    const vol = opts?.volume ?? 0.3
+
+    const freqs = [432, 648, 864]
+    freqs.forEach((freq, idx) => {
+      const startT = now + idx * 0.09
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(freq, startT)
+      gain.gain.setValueAtTime(0.0001, startT)
+      gain.gain.linearRampToValueAtTime(vol * 0.2, startT + 0.05)
+      gain.gain.exponentialRampToValueAtTime(0.0001, startT + 1.1)
+
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(startT)
+      osc.stop(startT + 1.15)
+    })
+  }
+
+  /**
+   * Soft resonant chime when leaving or opening a 3D gift at a plant's base.
+   */
+  playGiftChimeSfx(opts?: { volume?: number }): void {
+    const ctx = this.getContext()
+    if (!ctx) return
+    if (ctx.state === 'suspended') {
+      void ctx.resume()
+    }
+    const now = ctx.currentTime
+    const vol = opts?.volume ?? 0.28
+
+    const freqs = [1174.66, 1479.98, 1760.0] // D6 -> F#6 -> A6
+    freqs.forEach((freq, idx) => {
+      const startT = now + idx * 0.06
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+
+      osc.type = 'triangle'
+      osc.frequency.setValueAtTime(freq, startT)
+      gain.gain.setValueAtTime(0.0001, startT)
+      gain.gain.linearRampToValueAtTime(vol * 0.2, startT + 0.025)
+      gain.gain.exponentialRampToValueAtTime(0.0001, startT + 0.75)
+
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(startT)
+      osc.stop(startT + 0.8)
+    })
+  }
 }
 
 export const waterAudio = new WaterSoundEngine()
@@ -126,4 +188,12 @@ export function playWaterSfx(opts?: { pitch?: number; volume?: number }): void {
 
 export function playDewHarvestSfx(opts?: { volume?: number }): void {
   waterAudio.playDewHarvestSfx(opts)
+}
+
+export function playHealingSeedSfx(opts?: { volume?: number }): void {
+  waterAudio.playHealingSeedSfx(opts)
+}
+
+export function playGiftChimeSfx(opts?: { volume?: number }): void {
+  waterAudio.playGiftChimeSfx(opts)
 }

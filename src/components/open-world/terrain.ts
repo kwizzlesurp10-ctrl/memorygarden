@@ -515,7 +515,164 @@ export function buildTerrain(
   scArch.position.set(scCenter.x, 0, scCenter.z + scCenter.radius)
   sanctuaryGroup.add(scArch)
 
+  // ── "The Grove Project" Community Milestone 3D Unlocks ─────────────────
+  const unlockedFeatures = new Set(world.groveMilestone?.unlockedFeatures ?? [])
+  let sanctuaryFireflies: THREE.Points | null = null
+  let sanctuaryFireflyPositions: Float32Array | null = null
+  const auroraRibbons: THREE.Mesh[] = []
+
+  // Tier 1 (25 waterings): Sanctuary Carved Birdbath & Songbirds
+  if (unlockedFeatures.has('birdbath')) {
+    const scBb = new THREE.Group()
+    const scBbCol = new THREE.Mesh(track(new THREE.CylinderGeometry(0.12, 0.18, 0.78, 12)), rockMat)
+    scBbCol.position.y = 0.39
+    scBb.add(scBbCol)
+    const scBbTop = new THREE.Mesh(track(new THREE.CylinderGeometry(0.52, 0.24, 0.16, 16)), rockMat)
+    scBbTop.position.y = 0.82
+    scBb.add(scBbTop)
+    const birdMat = track(
+      new THREE.MeshStandardMaterial({ color: '#7dd3fc', emissive: '#38bdf8', emissiveIntensity: 0.35 }),
+    )
+    const bird = new THREE.Mesh(track(new THREE.ConeGeometry(0.06, 0.14, 6)), birdMat)
+    bird.position.set(0.32, 0.94, 0)
+    bird.rotation.z = -0.35
+    scBb.add(bird)
+    scBb.position.set(scCenter.x - scCenter.radius - 1.2, 0, scCenter.z + 1.5)
+    sanctuaryGroup.add(scBb)
+  }
+
+  // Tier 2 (75 waterings): 40 Bioluminescent Emerald Fireflies over Sanctuary Circle
+  if (unlockedFeatures.has('fireflies')) {
+    const ffCount = 40
+    sanctuaryFireflyPositions = new Float32Array(ffCount * 3)
+    const ffRng = gardenRng(75)
+    for (let i = 0; i < ffCount; i++) {
+      const a = ffRng() * Math.PI * 2
+      const r = ffRng() * (scCenter.radius * 0.92)
+      sanctuaryFireflyPositions[i * 3] = scCenter.x + Math.cos(a) * r
+      sanctuaryFireflyPositions[i * 3 + 1] = 0.45 + ffRng() * 2.2
+      sanctuaryFireflyPositions[i * 3 + 2] = scCenter.z + Math.sin(a) * r
+    }
+    const ffGeo = track(new THREE.BufferGeometry())
+    ffGeo.setAttribute('position', new THREE.BufferAttribute(sanctuaryFireflyPositions, 3))
+    const ffMat = track(
+      new THREE.PointsMaterial({
+        color: '#34d399',
+        size: 0.14,
+        transparent: true,
+        opacity: 0.92,
+        depthWrite: false,
+      }),
+    )
+    sanctuaryFireflies = new THREE.Points(ffGeo, ffMat)
+    sanctuaryGroup.add(sanctuaryFireflies)
+  }
+
+  // Tier 3 (150 waterings): Ancient Grandfather Sakura Tree at (0, -32.2)
+  if (unlockedFeatures.has('sakura_tree')) {
+    const sakuraGroup = new THREE.Group()
+    sakuraGroup.name = 'grove:sakura_tree'
+    const trunkMat = track(new THREE.MeshStandardMaterial({ color: '#432818', roughness: 0.88 }))
+    const sakuraBlossomMat = track(
+      new THREE.MeshStandardMaterial({
+        color: '#fbcfe8',
+        emissive: '#f472b6',
+        emissiveIntensity: 0.48,
+        roughness: 0.45,
+      }),
+    )
+    const trunk = new THREE.Mesh(track(new THREE.CylinderGeometry(0.42, 0.72, 4.2, 10)), trunkMat)
+    trunk.position.y = 2.1
+    trunk.castShadow = true
+    sakuraGroup.add(trunk)
+
+    const canopyOffsets = [
+      { x: 0, y: 4.8, z: 0, rx: 2.8, ry: 1.7, rz: 2.8 },
+      { x: -1.6, y: 4.1, z: 0.8, rx: 1.9, ry: 1.3, rz: 1.9 },
+      { x: 1.6, y: 4.2, z: 0.7, rx: 1.9, ry: 1.3, rz: 1.9 },
+      { x: 0, y: 3.9, z: 1.6, rx: 2.0, ry: 1.2, rz: 1.8 },
+      { x: 0, y: 5.7, z: -0.3, rx: 2.1, ry: 1.4, rz: 2.1 },
+    ]
+    const sakuraSphereGeo = track(new THREE.SphereGeometry(1, 12, 10))
+    for (const co of canopyOffsets) {
+      const lobe = new THREE.Mesh(sakuraSphereGeo, sakuraBlossomMat)
+      lobe.scale.set(co.rx, co.ry, co.rz)
+      lobe.position.set(co.x, co.y, co.z)
+      lobe.castShadow = true
+      sakuraGroup.add(lobe)
+    }
+    sakuraGroup.position.set(scCenter.x, 0, scCenter.z - scCenter.radius - 1.2)
+    sanctuaryGroup.add(sakuraGroup)
+  }
+
+  // Tier 4 (300 waterings): Illuminated Starlight Fountain Jets in Central Basin
+  if (unlockedFeatures.has('starlight_fountain')) {
+    const fountainJetMat = track(
+      new THREE.MeshStandardMaterial({
+        color: '#bae6fd',
+        emissive: '#38bdf8',
+        emissiveIntensity: 1.15,
+        transparent: true,
+        opacity: 0.85,
+        roughness: 0.15,
+      }),
+    )
+    const centerSpire = new THREE.Mesh(
+      track(new THREE.CylinderGeometry(0.18, 0.36, 1.85, 16)),
+      fountainJetMat,
+    )
+    centerSpire.position.set(scCenter.x, 1.15, scCenter.z)
+    sanctuaryGroup.add(centerSpire)
+
+    const upperBowl = new THREE.Mesh(track(new THREE.CylinderGeometry(0.68, 0.25, 0.18, 16)), rockMat)
+    upperBowl.position.set(scCenter.x, 1.25, scCenter.z)
+    sanctuaryGroup.add(upperBowl)
+  }
+
+  // Tier 5 (500 waterings): Aurora Borealis Night Sky Ribbons
+  if (unlockedFeatures.has('aurora')) {
+    const auroraColors = ['#34d399', '#a855f7']
+    auroraColors.forEach((col, idx) => {
+      const aMat = track(
+        new THREE.MeshBasicMaterial({
+          color: col,
+          transparent: true,
+          opacity: 0.32,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        }),
+      )
+      const aGeo = track(new THREE.CylinderGeometry(68 + idx * 6, 72 + idx * 6, 14, 32, 1, true, Math.PI * 0.65, Math.PI * 0.7))
+      const ribbon = new THREE.Mesh(aGeo, aMat)
+      ribbon.position.set(0, 46 + idx * 6, -15)
+      root.add(ribbon)
+      auroraRibbons.push(ribbon)
+    })
+  }
+
   root.add(sanctuaryGroup)
+
+  // ── Negative-Space Masking: Bed Filler Flora (Wild Clover & Ferns) ──────
+  if (world.fillerFlora && world.fillerFlora.length > 0) {
+    const fillerGeo = track(new THREE.ConeGeometry(0.14, 0.22, 6))
+    const fillerMat = track(
+      new THREE.MeshStandardMaterial({
+        color: palette.silSoft ?? '#2c163c',
+        roughness: 0.92,
+      }),
+    )
+    const fillerInst = new THREE.InstancedMesh(fillerGeo, fillerMat, world.fillerFlora.length)
+    const fDummy = new THREE.Object3D()
+    world.fillerFlora.forEach((fl, i) => {
+      fDummy.position.set(fl.x, 0.1, fl.z)
+      fDummy.rotation.y = (i * 1.618) % (Math.PI * 2)
+      fDummy.scale.setScalar(fl.scale)
+      fDummy.updateMatrix()
+      fillerInst.setMatrixAt(i, fDummy.matrix)
+    })
+    fillerInst.instanceMatrix.needsUpdate = true
+    root.add(fillerInst)
+  }
 
   // ── Garden Bonds: Twin Fireflies at Entrance Pergola ─────────────────
   let bondFireflies: THREE.Points | null = null
@@ -742,6 +899,20 @@ export function buildTerrain(
 
         bondFireflies.geometry.attributes.position.needsUpdate = true
       }
+
+      // Sanctuary Circle firefly swarm gentle vertical oscillation
+      if (sanctuaryFireflies && sanctuaryFireflyPositions) {
+        const sCount = sanctuaryFireflyPositions.length / 3
+        for (let i = 0; i < sCount; i++) {
+          sanctuaryFireflyPositions[i * 3 + 1] += Math.sin(time * 0.002 + i * 0.7) * 0.003
+        }
+        sanctuaryFireflies.geometry.attributes.position.needsUpdate = true
+      }
+
+      // Aurora Borealis slow celestial drift
+      auroraRibbons.forEach((rib, idx) => {
+        rib.rotation.y = Math.sin(time * 0.0004 + idx) * 0.12
+      })
     },
     dispose: () => {
       disposables.forEach((d) => d.dispose())
