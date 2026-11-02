@@ -41,6 +41,31 @@ export function OpenWorldMinimap({ world, player, hasMorningDew = false }: OpenW
       ctx.restore()
     }
 
+    // Sanctuary Circle collaborative plot boundary
+    if (world.sanctuaryCircle) {
+      const sc = worldToMinimap(world.sanctuaryCircle.x, world.sanctuaryCircle.z, world.bounds, SIZE)
+      const scR = (world.sanctuaryCircle.radius / (world.bounds.maxX - world.bounds.minX)) * SIZE
+      ctx.save()
+      ctx.strokeStyle = 'rgba(167, 139, 250, 0.45)'
+      ctx.lineWidth = 1
+      ctx.setLineDash([2, 2])
+      ctx.beginPath()
+      ctx.arc(sc.x, sc.y, scR, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.restore()
+    }
+
+    // Garden Bond indicator at entrance
+    if (world.hasGardenBonds) {
+      const gPos = worldToMinimap(world.gate.x, world.gate.z - 2.8, world.bounds, SIZE)
+      ctx.save()
+      ctx.fillStyle = '#fbbf24'
+      ctx.beginPath()
+      ctx.arc(gPos.x, gPos.y, 2.2, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+    }
+
     for (const plant of world.plants) {
       const p = worldToMinimap(plant.x, plant.z, world.bounds, SIZE)
 

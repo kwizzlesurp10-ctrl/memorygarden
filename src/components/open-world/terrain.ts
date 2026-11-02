@@ -452,6 +452,92 @@ export function buildTerrain(
     root.add(lGroup)
   })
 
+  // ── The Sanctuary Circle (Collaborative Plot) ──────────────────────────
+  const scCenter = world.sanctuaryCircle ?? { x: 0, z: -25, radius: 7.0 }
+  const sanctuaryGroup = new THREE.Group()
+
+  // Outer mossy stone border
+  const stoneRingGeo = track(new THREE.RingGeometry(scCenter.radius * 0.95, scCenter.radius + 0.45, 36))
+  const stoneRing = new THREE.Mesh(stoneRingGeo, steppingStoneMat)
+  stoneRing.rotation.x = -Math.PI / 2
+  stoneRing.position.set(scCenter.x, 0.04, scCenter.z)
+  stoneRing.receiveShadow = true
+  sanctuaryGroup.add(stoneRing)
+
+  // Perimeter engraved contributor stones (12 stepping stones around border)
+  const scStoneGeo = track(new THREE.CircleGeometry(0.48, 12))
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2
+    const cStone = new THREE.Mesh(scStoneGeo, steppingStoneMat)
+    cStone.rotation.x = -Math.PI / 2
+    cStone.position.set(
+      scCenter.x + Math.cos(a) * (scCenter.radius + 0.1),
+      0.045,
+      scCenter.z + Math.sin(a) * (scCenter.radius + 0.1),
+    )
+    cStone.receiveShadow = true
+    sanctuaryGroup.add(cStone)
+  }
+
+  // Central Starlight Basin & Pool
+  const basinLip = new THREE.Mesh(track(new THREE.CylinderGeometry(1.4, 1.6, 0.32, 24)), rockMat)
+  basinLip.position.set(scCenter.x, 0.16, scCenter.z)
+  basinLip.castShadow = true
+  basinLip.receiveShadow = true
+  sanctuaryGroup.add(basinLip)
+
+  const basinPoolMat = track(
+    new THREE.MeshStandardMaterial({
+      color: '#1a1f3c',
+      roughness: 0.15,
+      metalness: 0.3,
+      emissive: '#38bdf8',
+      emissiveIntensity: 0.28,
+    }),
+  )
+  const basinPool = new THREE.Mesh(track(new THREE.CircleGeometry(1.32, 24)), basinPoolMat)
+  basinPool.rotation.x = -Math.PI / 2
+  basinPool.position.set(scCenter.x, 0.3, scCenter.z)
+  sanctuaryGroup.add(basinPool)
+
+  // Rustic Timber Gateway at the South entrance of Sanctuary Circle
+  const scArch = new THREE.Group()
+  for (const sx of [-1.8, 1.8]) {
+    const post = new THREE.Mesh(track(new THREE.BoxGeometry(0.25, 2.5, 0.25)), wood)
+    post.position.set(sx, 1.25, 0)
+    post.castShadow = true
+    scArch.add(post)
+  }
+  const scLintel = new THREE.Mesh(track(new THREE.BoxGeometry(4.2, 0.2, 0.3)), wood)
+  scLintel.position.set(0, 2.45, 0)
+  scLintel.castShadow = true
+  scArch.add(scLintel)
+  scArch.position.set(scCenter.x, 0, scCenter.z + scCenter.radius)
+  sanctuaryGroup.add(scArch)
+
+  root.add(sanctuaryGroup)
+
+  // ── Garden Bonds: Twin Fireflies at Entrance Pergola ─────────────────
+  let bondFireflies: THREE.Points | null = null
+  let bondPositions: Float32Array | null = null
+  if (world.hasGardenBonds) {
+    const bCount = 2
+    bondPositions = new Float32Array(bCount * 3)
+    const bondGeo = track(new THREE.BufferGeometry())
+    bondGeo.setAttribute('position', new THREE.BufferAttribute(bondPositions, 3))
+    const bondMat = track(
+      new THREE.PointsMaterial({
+        color: '#fbbf24',
+        size: 0.16,
+        transparent: true,
+        opacity: 0.95,
+        depthWrite: false,
+      }),
+    )
+    bondFireflies = new THREE.Points(bondGeo, bondMat)
+    root.add(bondFireflies)
+  }
+
   // ── Garden Shed ────────────────────────────────────────────────────────
   const roof = track(new THREE.MeshStandardMaterial({ color: palette.sil, roughness: 0.7 }))
   const shed = new THREE.Group()
@@ -639,6 +725,23 @@ export function buildTerrain(
           c.group.position.x = -95
         }
       })
+
+      // Twin Fireflies of Friendship orbiting near entrance pergola
+      if (bondFireflies && bondPositions) {
+        const t = time * 0.0024
+        const gateZ = world.gate.z - 2.8
+        // Firefly 1
+        bondPositions[0] = Math.cos(t) * 0.48
+        bondPositions[1] = 2.15 + Math.sin(t * 1.6) * 0.2
+        bondPositions[2] = gateZ + Math.sin(t) * 0.48
+
+        // Firefly 2 (intertwined harmonic orbit)
+        bondPositions[3] = Math.cos(t + Math.PI) * 0.48
+        bondPositions[4] = 2.15 + Math.sin((t + Math.PI) * 1.6) * 0.2
+        bondPositions[5] = gateZ + Math.sin(t + Math.PI) * 0.48
+
+        bondFireflies.geometry.attributes.position.needsUpdate = true
+      }
     },
     dispose: () => {
       disposables.forEach((d) => d.dispose())

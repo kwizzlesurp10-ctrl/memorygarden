@@ -28,6 +28,8 @@ import {
 } from '@/lib/gentle-streaks'
 import { toLocalISODate } from '@/lib/date-utils'
 import { playDewHarvestSfx } from '@/lib/water-sound'
+import { getLocalUser } from '@/lib/local-user'
+import { recordReciprocalWatering, syncRemoteWatering } from '@/lib/social-tending'
 import { OpenWorldEngine } from './engine'
 import { OpenWorldHud } from './OpenWorldHud'
 
@@ -127,6 +129,17 @@ export function OpenWorldGarden({
         saveDewCurrency(nextDew)
         return nextDew
       })
+
+      // Reciprocal Social Tending: if watering another gardener's planted memory
+      const localUser = getLocalUser()
+      const isOtherPlanter = Boolean(mem.plantedBy && mem.plantedBy.id !== localUser.id)
+      if (isOtherPlanter) {
+        const recip = recordReciprocalWatering(mem, localUser)
+        void syncRemoteWatering(mem.id, localUser)
+        toast.success(recip.notificationMessage, {
+          description: `Garden Bond with ${mem.plantedBy?.login ?? 'host'} strengthened (Level ${recip.bond.bondLevel})!`,
+        })
+      }
     }
   }, [season])
 
@@ -305,6 +318,7 @@ export function OpenWorldGarden({
         dewCurrency={dew}
         canHarvestDew={canHarvestDew}
         onHarvestDew={handleHarvestDew}
+        bondPartnerName={world.bondPartnerName}
       />
     </div>
   )

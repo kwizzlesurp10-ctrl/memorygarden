@@ -23,6 +23,7 @@ interface OpenWorldHudProps {
   dewCurrency?: number
   canHarvestDew?: boolean
   onHarvestDew?: () => void
+  bondPartnerName?: string
 }
 
 export function OpenWorldHud({
@@ -44,6 +45,7 @@ export function OpenWorldHud({
   dewCurrency,
   canHarvestDew = false,
   onHarvestDew,
+  bondPartnerName,
 }: OpenWorldHudProps) {
   return (
     <div className="pointer-events-none absolute inset-0 z-10 text-[#f0e7da]">
@@ -75,6 +77,16 @@ export function OpenWorldHud({
                 </span>
               </>
             ) : null}
+          </div>
+        ) : null}
+
+        {bondPartnerName ? (
+          <div
+            className="flex items-center gap-1.5 rounded-full border border-amber-400/35 bg-amber-950/45 px-3 py-2 text-xs text-amber-200 backdrop-blur-sm shadow-sm"
+            title="Active 48-Hour Garden Bond (Twin Fireflies at Entrance)"
+          >
+            <span>💕</span>
+            <span className="font-medium">Bond · {bondPartnerName}</span>
           </div>
         ) : null}
       </div>
@@ -142,7 +154,13 @@ export function OpenWorldHud({
             ) : null}
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] uppercase tracking-wide text-[#f0e7da]/60">A memory grows here</p>
+                <p className="text-[11px] uppercase tracking-wide text-[#f0e7da]/60 truncate">
+                  {nearby.plantedBy
+                    ? `Planted with love by ${nearby.plantedBy.login}`
+                    : nearby.isSanctuaryCircle
+                    ? 'The Sanctuary Circle'
+                    : 'A memory grows here'}
+                </p>
                 {moistureLevel !== undefined ? (
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide ${
@@ -172,9 +190,13 @@ export function OpenWorldHud({
                       className="rounded-full bg-cyan-500/90 hover:bg-cyan-400 px-3 py-1 text-xs font-semibold text-slate-950 transition-colors shadow-sm"
                     >
                       {coarse
-                        ? moistureLevel !== undefined && moistureLevel <= 0
+                        ? nearby.plantedBy
+                          ? '💧 Water with Care'
+                          : moistureLevel !== undefined && moistureLevel <= 0
                           ? '✨ Revive'
                           : '💧 Water'
+                        : nearby.plantedBy
+                        ? 'Q · Water with Care'
                         : moistureLevel !== undefined && moistureLevel <= 0
                         ? 'Q · Revive (80%)'
                         : 'Q · Water (+25%)'}
@@ -191,7 +213,13 @@ export function OpenWorldHud({
                   onClick={onInteract}
                   className="rounded-full bg-[#f0e7da] hover:bg-white px-3 py-1 text-xs font-medium text-[#1a1220] transition-colors"
                 >
-                  {coarse ? 'Remember' : 'E · Remember'}
+                  {coarse
+                    ? nearby.plantedBy
+                      ? 'Read Memory'
+                      : 'Remember'
+                    : nearby.plantedBy
+                    ? 'E · Read Memory'
+                    : 'E · Remember'}
                 </button>
               </div>
             </div>

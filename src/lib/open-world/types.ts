@@ -29,6 +29,12 @@ export interface WorldPlant {
   wiltingFactor?: number
   needsWater?: boolean
   isEternal?: boolean
+  plantedBy?: {
+    id: string
+    login: string
+    avatarUrl?: string
+  }
+  isSanctuaryCircle?: boolean
 }
 
 export interface WorldPath {
@@ -66,6 +72,9 @@ export interface GardenWorld {
   shed: WorldShed
   gate: Vec2
   beds: WorldBed[]
+  sanctuaryCircle?: WorldCircle
+  hasGardenBonds?: boolean
+  bondPartnerName?: string
 }
 
 export interface PlayerState {

@@ -5,6 +5,7 @@ import {
   computeWiltingFactor,
   getHealthStatus,
 } from '@/lib/tending-logic'
+import { hasActiveGardenBond } from '@/lib/social-tending'
 import {
   PATH_WIDTH,
   PLAYER_RADIUS,
@@ -20,6 +21,8 @@ const BEDS: WorldBed[] = [
   { tone: 'nostalgic', x: 17, z: 3, radius: 9.5 },
   { tone: 'bittersweet', x: 0, z: 16, radius: 9 },
 ]
+
+export const SANCTUARY_CIRCLE = { x: 0, z: -25, radius: 7.0 }
 
 const STAGE_RADIUS: Record<PlantStage, number> = {
   seed: 0.18,
@@ -136,6 +139,7 @@ function buildPaths(): GardenWorld['paths'] {
     { x: 0, z: 10 },
     { x: 0, z: -2 },
     { x: 0, z: -14 },
+    { x: 0, z: -25 }, // reaches Sanctuary Circle
   ]
   const branches = BEDS.map((bed) => ({
     points: [
@@ -145,11 +149,24 @@ function buildPaths(): GardenWorld['paths'] {
     ],
     width: PATH_WIDTH * 0.78,
   }))
-  return [{ points: spine, width: PATH_WIDTH }, ...branches]
+
+  // Sanctuary Circle perimeter ring path (radius 6.5)
+  const ringPoints: Vec2[] = []
+  const ringSteps = 16
+  for (let s = 0; s <= ringSteps; s++) {
+    const a = (s / ringSteps) * Math.PI * 2
+    ringPoints.push({
+      x: Math.cos(a) * 6.5,
+      z: SANCTUARY_CIRCLE.z + Math.sin(a) * 6.5,
+    })
+  }
+  const sanctuaryRing = { points: ringPoints, width: PATH_WIDTH * 0.7 }
+
+  return [{ points: spine, width: PATH_WIDTH }, ...branches, sanctuaryRing]
 }
 
 /**
- * Stable walkable layout: emotional-tone beds + canvas X + id scatter.
+ * Stable walkable layout: emotional-tone beds + canvas X + id scatter + Sanctuary Circle.
  * Same memory set always yields the same world coordinates.
  */
 export function layoutGardenWorld(memories: Memory[], season: Season = 'spring'): GardenWorld {
@@ -157,28 +174,53 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
   const pond = { x: 0, z: -5.5, radius: 5.4 }
   const shed = { x: -30, z: 20, width: 4.2, depth: 3.2, yaw: 0.2 }
   const gate = { x: 0, z: 38 }
+  const sanctuaryCircle = { ...SANCTUARY_CIRCLE }
 
   const plants: WorldPlant[] = memories.map((memory) => {
-    const bed = bedFor(memory.emotionalTone)
-    const canvasX = ((memory.position.x % 1200) / 1200 - 0.5) * 28
-    const jx = (u01(`${memory.id}:x`) - 0.5) * 8.5
-    const jz = (u01(`${memory.id}:z`) - 0.5) * 8.5
-    let x = bed.x * 0.62 + canvasX * 0.38 + jx
-    let z = bed.z + jz
+    const isCollaborative = Boolean(memory.isSharedPlot || memory.visibility === 'circle')
     const radius = plantRadius(memory.plantStage, memory.plantVariety)
     const height = plantHeight(memory.plantStage, memory.plantVariety)
-    const pondClear = pushOutOfCircle(x, z, pond.x, pond.z, pond.radius + radius + 0.8)
-    x = pondClear.x
-    z = pondClear.z
-    const shedClear = pushOutOfCircle(
-      x,
-      z,
-      shed.x,
-      shed.z,
-      Math.max(shed.width, shed.depth) * 0.7 + radius + 0.6,
-    )
-    x = shedClear.x
-    z = shedClear.z
+
+    let x = 0
+    let z = 0
+
+    if (isCollaborative) {
+      // Position inside the Sanctuary Circle collaborative meadow
+      const ang = u01(`${memory.id}:sc:a`) * Math.PI * 2
+      const dist = 2.0 + u01(`${memory.id}:sc:r`) * 4.4
+      x = sanctuaryCircle.x + Math.cos(ang) * dist
+      z = sanctuaryCircle.z + Math.sin(ang) * dist
+    } else {
+      const bed = bedFor(memory.emotionalTone)
+      const canvasX = ((memory.position.x % 1200) / 1200 - 0.5) * 28
+      const jx = (u01(`${memory.id}:x`) - 0.5) * 8.5
+      const jz = (u01(`${memory.id}:z`) - 0.5) * 8.5
+      x = bed.x * 0.62 + canvasX * 0.38 + jx
+      z = bed.z + jz
+
+      // Clear from central pond, shed, and sanctuary circle
+      const pondClear = pushOutOfCircle(x, z, pond.x, pond.z, pond.radius + radius + 0.8)
+      x = pondClear.x
+      z = pondClear.z
+      const shedClear = pushOutOfCircle(
+        x,
+        z,
+        shed.x,
+        shed.z,
+        Math.max(shed.width, shed.depth) * 0.7 + radius + 0.6,
+      )
+      x = shedClear.x
+      z = shedClear.z
+      const scClear = pushOutOfCircle(
+        x,
+        z,
+        sanctuaryCircle.x,
+        sanctuaryCircle.z,
+        sanctuaryCircle.radius + radius + 0.8,
+      )
+      x = scClear.x
+      z = scClear.z
+    }
 
     const initM = memory.growthMetrics?.vitality ?? 80.0
     const lastW = memory.growthMetrics?.lastInteractionAt
@@ -205,14 +247,21 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
       wiltingFactor,
       needsWater,
       isEternal,
+      plantedBy: memory.plantedBy,
+      isSanctuaryCircle: isCollaborative,
     }
   })
 
   separatePlants(plants)
   for (const p of plants) {
-    const pondClear = pushOutOfCircle(p.x, p.z, pond.x, pond.z, pond.radius + p.radius + 0.8)
-    p.x = pondClear.x
-    p.z = pondClear.z
+    if (!p.isSanctuaryCircle) {
+      const pondClear = pushOutOfCircle(p.x, p.z, pond.x, pond.z, pond.radius + p.radius + 0.8)
+      p.x = pondClear.x
+      p.z = pondClear.z
+      const scClear = pushOutOfCircle(p.x, p.z, sanctuaryCircle.x, sanctuaryCircle.z, sanctuaryCircle.radius + p.radius + 0.8)
+      p.x = scClear.x
+      p.z = scClear.z
+    }
     clampPlant(p, half)
   }
 
@@ -226,6 +275,8 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
     }
   }
 
+  const bondCheck = hasActiveGardenBond()
+
   return {
     bounds: { minX: -half, maxX: half, minZ: -half, maxZ: half },
     spawn: { x: spawnX, z: spawnZ, yaw: 0 },
@@ -235,6 +286,9 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
     shed,
     gate,
     beds: BEDS,
+    sanctuaryCircle,
+    hasGardenBonds: bondCheck.active,
+    bondPartnerName: bondCheck.partnerName,
   }
 }
 

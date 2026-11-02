@@ -163,6 +163,10 @@ export interface Memory {
   parentMemories?: string[]
   /** True if this memory is a hybrid created via Cross-Pollination */
   isHybrid?: boolean
+  /** True if this memory belongs to the Sanctuary Circle collaborative meadow */
+  isSharedPlot?: boolean
+  /** Privacy visibility tier */
+  visibility?: 'public' | 'circle' | 'private'
 }
 
 export interface SharedMemory {
@@ -266,6 +270,16 @@ export interface DynamicVitalityMetrics extends GrowthMetrics {
   healthStatus: PlantHealthStatus
   wiltingFactor: number
   isEternal: boolean
+}
+
+/** Reciprocal tending bond between two gardeners (spawns twin fireflies) */
+export interface GardenBond {
+  partnerId: string
+  partnerLogin: string
+  partnerAvatarUrl?: string
+  lastReciprocalWaterAt: string
+  bondLevel: number
+  totalReciprocalTends: number
 }
 
 export interface UserPreferences {
