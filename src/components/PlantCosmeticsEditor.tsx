@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Palette, Sparkle, ArrowsClockwise, Drop } from '@phosphor-icons/react'
 import type { Memory, PaletteId, AdornmentId, PatternId, PlantCosmetics, UnlockState } from '@/lib/types'
+import { COSMETIC_PACKS, PAYMENT_SKUS } from '@/lib/payments/catalog'
 import { PALETTE_COLORS, UNLOCKABLE_ITEMS, REROLL_COST, canAffordReroll, ensureUnlockState } from '@/lib/unlock-system'
 
 interface PlantCosmeticsEditorProps {
@@ -16,6 +17,7 @@ interface PlantCosmeticsEditorProps {
   unlockState: UnlockState | undefined
   onSave: (memoryId: string, cosmetics: PlantCosmetics) => void
   onReroll: (memoryId: string) => void
+  onPurchaseStarlightPack?: () => Promise<void>
 }
 
 export function PlantCosmeticsEditor({
@@ -25,8 +27,15 @@ export function PlantCosmeticsEditor({
   unlockState,
   onSave,
   onReroll,
+  onPurchaseStarlightPack,
 }: PlantCosmeticsEditorProps) {
   const state = ensureUnlockState(unlockState)
+  const starlight = COSMETIC_PACKS.starlight
+  const starlightSku = PAYMENT_SKUS['cosmetic-starlight-pack']
+  const missingStarlightUnlock =
+    !starlight.palettes.every((id) => state.unlockedPalettes.includes(id as PaletteId)) ||
+    !starlight.patterns.every((id) => state.unlockedPatterns.includes(id as PatternId)) ||
+    !starlight.adornments.every((id) => state.unlockedAdornments.includes(id as AdornmentId))
   const [selectedPalette, setSelectedPalette] = useState<PaletteId | undefined>(
     memory?.cosmetics?.paletteId
   )
@@ -81,6 +90,20 @@ export function PlantCosmeticsEditor({
         </DialogHeader>
 
         <div className="space-y-5 py-2">
+          {missingStarlightUnlock && onPurchaseStarlightPack && (
+            <div className="rounded-lg border border-border bg-muted/20 p-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium">{starlight.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  Unlock midnight tones and night adornments — cosmetic only.
+                </p>
+              </div>
+              <Button type="button" size="sm" variant="secondary" onClick={() => void onPurchaseStarlightPack()}>
+                {starlightSku.displayPrice}
+              </Button>
+            </div>
+          )}
+
           {/* Re-roll genetics */}
           <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border">
             <div>
