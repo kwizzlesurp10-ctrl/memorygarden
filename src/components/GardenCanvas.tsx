@@ -17,8 +17,7 @@ import { GardenSceneSvg, SCENE_W, SCENE_H } from '@/components/garden/GardenScen
 import { GardenTodControls } from '@/components/garden/GardenTodControls'
 import { GardenLensDetail } from '@/components/garden/GardenLensDetail'
 import { StorageShedPanel } from '@/components/garden/StorageShedPanel'
-import { DreamPlantPanel } from '@/components/garden/DreamPlantPanel'
-import { RemembranceCandlesPanel } from '@/components/garden/RemembranceCandlesPanel'
+import { GardenLayoutToolDock } from '@/components/garden/GardenLayoutToolDock'
 import { GrowthCeremony } from '@/components/garden/GrowthCeremony'
 import { SeededPlantSvg } from '@/components/plants/SeededPlantSvg'
 import { HybridPlantSvg } from '@/components/plants/hybrid-builder'
@@ -245,21 +244,18 @@ export function GardenCanvas({
     <div className="relative w-full h-full overflow-hidden bg-[#0d0913]">
       {mood && <WeatherEffects mood={mood} season={season} />}
 
-      <div className="absolute bottom-20 left-3 z-30 flex flex-col gap-2 max-w-md w-[min(100%,420px)] pointer-events-none">
-        <div className="pointer-events-auto">
-          <DreamPlantPanel palette={palette} rimStrength={RIM_STRENGTH} motion={motion} onPlant={handleDreamPlant} />
-        </div>
-        <div className="pointer-events-auto">
-          <RemembranceCandlesPanel
-            candles={shedData.candles}
-            onLight={(c) => persistShed((d) => ({
-              ...d,
-              candles: [...d.candles, { ...c, id: `${Date.now()}-${Math.random()}` }].slice(0, 40),
-            }))}
-            onExtinguish={(id) => persistShed((d) => ({ ...d, candles: d.candles.filter((c) => c.id !== id) }))}
-          />
-        </div>
-      </div>
+      <GardenLayoutToolDock
+        palette={palette}
+        rimStrength={RIM_STRENGTH}
+        motion={motion}
+        candles={shedData.candles}
+        onPlant={handleDreamPlant}
+        onLightCandle={(c) => persistShed((d) => ({
+          ...d,
+          candles: [...d.candles, { ...c, id: `${Date.now()}-${Math.random()}` }].slice(0, 40),
+        }))}
+        onExtinguishCandle={(id) => persistShed((d) => ({ ...d, candles: d.candles.filter((c) => c.id !== id) }))}
+      />
 
       {onEnterWalk && (
         <button

@@ -6,9 +6,10 @@ interface RemembranceCandlesPanelProps {
   candles: Candle[]
   onLight: (candle: Omit<Candle, 'id'>) => void
   onExtinguish: (id: string) => void
+  onClose?: () => void
 }
 
-export function RemembranceCandlesPanel({ candles, onLight, onExtinguish }: RemembranceCandlesPanelProps) {
+export function RemembranceCandlesPanel({ candles, onLight, onExtinguish, onClose }: RemembranceCandlesPanelProps) {
   const [candleDate, setCandleDate] = useState('')
   const [candleNote, setCandleNote] = useState('')
 
@@ -24,9 +25,16 @@ export function RemembranceCandlesPanel({ candles, onLight, onExtinguish }: Reme
 
   return (
     <div className="rounded-xl border border-white/8 bg-black/30 p-4 text-[#f0e7da] font-serif space-y-3">
-      <div className="flex items-baseline gap-2">
-        <span className="rounded-md border border-[#ffd88a]/35 bg-[#ffd88a]/13 px-2 py-0.5 font-mono text-xs text-[#ffd88a]">6a</span>
-        <h3 className="text-lg font-semibold">Floating candles</h3>
+      <div className="space-y-1">
+        <div className="flex w-full items-center gap-2">
+          <span className="rounded-md border border-[#ffd88a]/35 bg-[#ffd88a]/13 px-2 py-0.5 font-mono text-xs text-[#ffd88a]">6a</span>
+          <h3 className="text-lg font-semibold">Floating candles</h3>
+          {onClose && (
+            <button type="button" onClick={onClose} className="ml-auto text-sm opacity-50 hover:opacity-90" aria-label="Close floating candles panel">
+              ✕
+            </button>
+          )}
+        </div>
         <p className="text-xs italic opacity-60">a candle on the water, in memory of a life</p>
       </div>
       <div className="flex flex-wrap gap-2">

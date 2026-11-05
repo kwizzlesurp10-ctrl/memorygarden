@@ -9,9 +9,10 @@ interface DreamPlantPanelProps {
   rimStrength: number
   motion: boolean
   onPlant: (genome: HybridGenome, idea: string) => void
+  onClose?: () => void
 }
 
-export function DreamPlantPanel({ palette, rimStrength, motion, onPlant }: DreamPlantPanelProps) {
+export function DreamPlantPanel({ palette, rimStrength, motion, onPlant, onClose }: DreamPlantPanelProps) {
   const [idea, setIdea] = useState('')
   const [dreaming, setDreaming] = useState(false)
   const [genome, setGenome] = useState<HybridGenome | null>(null)
@@ -32,9 +33,14 @@ export function DreamPlantPanel({ palette, rimStrength, motion, onPlant }: Dream
 
   return (
     <div className="rounded-xl border border-white/8 bg-black/30 p-4 text-[#f0e7da] font-serif space-y-3">
-      <div className="flex items-baseline gap-2">
+      <div className="flex w-full items-center gap-2">
         <span className="rounded-md border border-[#ffb877]/35 bg-[#ffb877]/14 px-2 py-0.5 font-mono text-xs text-[#ffb877]">3a</span>
         <h3 className="text-lg font-semibold">Dream a plant</h3>
+        {onClose && (
+          <button type="button" onClick={onClose} className="ml-auto text-sm opacity-50 hover:opacity-90" aria-label="Close dream a plant panel">
+            ✕
+          </button>
+        )}
       </div>
       <div className="flex gap-2">
         <input
