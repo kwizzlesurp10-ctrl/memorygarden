@@ -5,7 +5,7 @@ import {
   PAYMENT_SKUS,
   resolveStripePriceId,
   type PaymentSkuId,
-} from '../../src/lib/payments/catalog.ts'
+} from './lib/catalog'
 
 export const config = { runtime: 'edge' }
 

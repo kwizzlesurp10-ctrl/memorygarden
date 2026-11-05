@@ -1,8 +1,5 @@
-import {
-  createEmptyEntitlementList,
-  parseEntitlementList,
-} from '../../src/lib/payments/entitlements.ts'
-import { getKvEnv, isValidUserId, readEntitlementsRaw } from './kv.ts'
+import { createEmptyEntitlementList, parseEntitlementList } from './lib/entitlements'
+import { getKvEnv, isValidUserId, readEntitlementsRaw } from './lib/kv'
 
 export const config = { runtime: 'edge' }
 
