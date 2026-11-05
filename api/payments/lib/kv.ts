@@ -27,8 +27,19 @@ export async function kvGet(env: SyncEnv, key: string): Promise<string | null> {
     headers: { authorization: `Bearer ${env.token}` },
   })
   if (!res.ok) return null
-  const data = (await res.json()) as { result?: string | null }
-  return data.result ?? null
+  const data = (await res.json()) as { result?: unknown }
+  const result = data.result
+  if (result == null) return null
+  if (typeof result !== 'string') return JSON.stringify(result)
+  // kvSet JSON.stringifies the value, so a JSON document is stored as a string.
+  // Unwrap once so callers can JSON.parse the document itself.
+  try {
+    const once = JSON.parse(result) as unknown
+    if (typeof once === 'string') return once
+  } catch {
+    // result is already plain text, such as the event marker "1"
+  }
+  return result
 }
 
 export async function kvSet(env: SyncEnv, key: string, value: string): Promise<boolean> {
