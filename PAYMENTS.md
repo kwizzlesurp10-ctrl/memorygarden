@@ -74,4 +74,5 @@ Purchases are keyed to the local profile id from `getLocalUser()` (`memorygarden
 
 - Checkout Sessions omit `payment_method_types` so Stripe uses current defaults.
 - Server uses a per-request `Stripe` client with `Stripe.createFetchHttpClient()` for Edge compatibility.
+- Shared payment logic for Edge routes lives under **`api/payments/lib/`** (not `src/`) so Vercel Edge bundling stays within supported module boundaries.
 - Webhook idempotency: processed event ids stored under `mg:stripe:event:<id>` in KV.

@@ -3,8 +3,8 @@ import {
   createEmptyEntitlementList,
   markEntitlementConsumed,
   parseEntitlementList,
-} from '../../src/lib/payments/entitlements'
-import { getKvEnv, isValidUserId, readEntitlementsRaw, writeEntitlementsRaw } from './kv'
+} from './lib/entitlements'
+import { getKvEnv, isValidUserId, readEntitlementsRaw, writeEntitlementsRaw } from './lib/kv'
 
 export const config = { runtime: 'edge' }
 

@@ -1,20 +1,17 @@
 import Stripe from 'stripe'
-import {
-  createEmptyEntitlementList,
-  parseEntitlementList,
-} from '../../src/lib/payments/entitlements'
+import { createEmptyEntitlementList, parseEntitlementList } from './lib/entitlements'
 import {
   fulfillCheckoutIntoEntitlements,
   parseCheckoutSessionMetadata,
   shouldFulfillCheckoutSession,
-} from '../../src/lib/payments/stripe-fulfillment'
+} from './lib/stripe-fulfillment'
 import {
   getKvEnv,
   hasProcessedStripeEvent,
   markStripeEventProcessed,
   readEntitlementsRaw,
   writeEntitlementsRaw,
-} from './kv'
+} from './lib/kv'
 
 export const config = { runtime: 'edge' }
 
