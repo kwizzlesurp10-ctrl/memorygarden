@@ -2,12 +2,12 @@ import {
   isPaymentSkuId,
   PAYMENT_SKUS,
   type PaymentSkuId,
-} from '@/lib/payments/catalog'
+} from './catalog'
 import {
   appendEntitlementIfNew,
   type EntitlementList,
   type StoredEntitlement,
-} from '@/lib/payments/entitlements'
+} from './entitlements'
 
 export function shouldFulfillCheckoutSession(
   eventType: string,

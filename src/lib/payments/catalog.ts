@@ -1,4 +1,4 @@
-import type { AdornmentId, PaletteId, PatternId } from '@/lib/types'
+import type { AdornmentId, PaletteId, PatternId } from '../types'
 
 export type PaymentSkuId =
   | 'fertilizer-premium'

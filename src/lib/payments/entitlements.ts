@@ -1,11 +1,11 @@
-import type { UnlockState, PaletteId, AdornmentId, PatternId } from '@/lib/types'
-import { ensureUnlockState } from '@/lib/unlock-system'
+import type { UnlockState, PaletteId, AdornmentId, PatternId } from '../types'
+import { ensureUnlockState } from '../unlock-system'
 import {
   COSMETIC_PACKS,
   type PaymentSkuId,
   PAYMENT_SKUS,
   type FertilizerBoostLevel,
-} from '@/lib/payments/catalog'
+} from './catalog'
 
 export type EntitlementStatus = 'active' | 'consumed'
 
