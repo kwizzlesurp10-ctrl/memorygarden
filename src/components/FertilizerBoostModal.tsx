@@ -11,7 +11,8 @@ interface FertilizerBoostModalProps {
   open: boolean
   onClose: () => void
   memory: Memory | null
-  onApplyBoost: (boostLevel: 'standard' | 'premium' | 'legendary') => void
+  onApplyFreeBoost: (boostLevel: 'standard') => void
+  onPurchaseBoost: (boostLevel: 'premium' | 'legendary', memoryId: string) => Promise<void>
 }
 
 type BoostLevel = 'standard' | 'premium' | 'legendary'
@@ -61,27 +62,39 @@ const boostOptions: BoostOption[] = [
   },
 ]
 
-export function FertilizerBoostModal({ open, onClose, memory, onApplyBoost }: FertilizerBoostModalProps) {
+export function FertilizerBoostModal({
+  open,
+  onClose,
+  memory,
+  onApplyFreeBoost,
+  onPurchaseBoost,
+}: FertilizerBoostModalProps) {
   const [selectedBoost, setSelectedBoost] = useState<BoostLevel | null>(null)
   const [isApplying, setIsApplying] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
 
   const handleApply = async () => {
-    if (!selectedBoost) return
+    if (!selectedBoost || !memory) return
+
+    if (selectedBoost === 'standard') {
+      setIsApplying(true)
+      onApplyFreeBoost('standard')
+      setIsApplying(false)
+      setShowSuccess(true)
+      setTimeout(() => {
+        setShowSuccess(false)
+        setSelectedBoost(null)
+        onClose()
+      }, 2200)
+      return
+    }
 
     setIsApplying(true)
-    
-    await new Promise(resolve => setTimeout(resolve, 1200))
-    
-    onApplyBoost(selectedBoost)
-    setIsApplying(false)
-    setShowSuccess(true)
-    
-    setTimeout(() => {
-      setShowSuccess(false)
-      setSelectedBoost(null)
-      onClose()
-    }, 2200)
+    try {
+      await onPurchaseBoost(selectedBoost, memory.id)
+    } catch {
+      setIsApplying(false)
+    }
   }
 
   if (!memory) return null
@@ -363,12 +376,17 @@ export function FertilizerBoostModal({ open, onClose, memory, onApplyBoost }: Fe
                         >
                           <Sparkle size={20} weight="fill" />
                         </motion.div>
-                        Applying...
+                        {selectedBoost === 'standard' ? 'Applying…' : 'Opening checkout…'}
                       </motion.div>
+                    ) : selectedBoost === 'standard' ? (
+                      <>
+                        <Lightning size={20} weight="fill" className="mr-2" />
+                        Apply free boost
+                      </>
                     ) : (
                       <>
                         <Lightning size={20} weight="fill" className="mr-2" />
-                        Apply Boost
+                        Continue to secure checkout
                       </>
                     )}
                     

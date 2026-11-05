@@ -7,10 +7,14 @@ import { Trophy, Lock, Drop, Sun, Flower, Star } from '@phosphor-icons/react'
 import type { UnlockState, RarityTier } from '@/lib/types'
 import { UNLOCKABLE_ITEMS, ACHIEVEMENT_RULES, getCurrencyInfo, getRarityInfo, ensureUnlockState } from '@/lib/unlock-system'
 
+import { Button } from '@/components/ui/button'
+import { COSMETIC_PACKS, PAYMENT_SKUS } from '@/lib/payments/catalog'
+
 interface GardenUnlocksProps {
   open: boolean
   onClose: () => void
   unlockState: UnlockState | undefined
+  onPurchaseStarlightPack?: () => Promise<void>
 }
 
 const CURRENCY_ICONS: Record<string, React.ReactNode> = {
@@ -33,8 +37,19 @@ function RarityBadge({ rarity }: { rarity: RarityTier }) {
   )
 }
 
-export function GardenUnlocks({ open, onClose, unlockState }: GardenUnlocksProps) {
+export function GardenUnlocks({
+  open,
+  onClose,
+  unlockState,
+  onPurchaseStarlightPack,
+}: GardenUnlocksProps) {
   const state = ensureUnlockState(unlockState)
+  const starlight = COSMETIC_PACKS.starlight
+  const starlightSku = PAYMENT_SKUS['cosmetic-starlight-pack']
+  const hasStarlightPack =
+    starlight.palettes.every((id) => state.unlockedPalettes.includes(id as never)) &&
+    starlight.patterns.every((id) => state.unlockedPatterns.includes(id as never)) &&
+    starlight.adornments.every((id) => state.unlockedAdornments.includes(id as never))
 
   const isUnlocked = (item: typeof UNLOCKABLE_ITEMS[0]) => {
     switch (item.type) {
@@ -85,6 +100,27 @@ export function GardenUnlocks({ open, onClose, unlockState }: GardenUnlocksProps
             })}
           </div>
         </div>
+
+        {!hasStarlightPack && onPurchaseStarlightPack && (
+          <div className="px-6 pb-3">
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">{starlight.name}</p>
+                <p className="text-xs text-muted-foreground mt-1">{starlight.description}</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Optional support — core garden play stays free.
+                </p>
+              </div>
+              <Button
+                type="button"
+                className="shrink-0"
+                onClick={() => void onPurchaseStarlightPack()}
+              >
+                Buy {starlightSku.displayPrice}
+              </Button>
+            </div>
+          </div>
+        )}
 
         <Tabs defaultValue="palettes" className="flex-1 flex flex-col min-h-0">
           <div className="px-6">

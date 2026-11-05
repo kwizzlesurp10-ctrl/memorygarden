@@ -22,7 +22,7 @@ MemoryGarden reimagines how we preserve and revisit memories. Instead of flippin
 ### 🌿 Plant & Tend Memories
 - **Planting**: Upload a photo, write about the moment, and watch your memory sprout on the canvas.
 - **Tending**: Open memories often to see them bloom and mature; reflections deepen the story each time you return.
-- **Fertilizer Boost**: Three tiers (Garden Boost, Premium, Legendary) accelerate growth with distinct particle effects.
+- **Fertilizer Boost**: Garden Boost is free; Premium and Legendary use Stripe Checkout. Growth applies only after webhook-verified payment.
 
 ### ✨ AI-Powered Insights
 
@@ -132,6 +132,7 @@ The production story on **Vercel** is a static SPA plus two Edge routes:
 
 1. **`/api/llm`** — Proxies classification and reflection prompts to Anthropic. Set **`ANTHROPIC_API_KEY`** in the project. Without it, AI features degrade cleanly while the garden keeps working.
 2. **`/api/sync`** — Optional metadata sync to **Vercel KV / Upstash** using **`KV_REST_API_URL`** and **`KV_REST_API_TOKEN`**. Photos and audio stay on-device (IndexedDB); only structured fields participate when sync is on.
+3. **Stripe one-time purchases** — Fertilizer boosts (Premium / Legendary) and the optional Starlight cosmetic pack use **`/api/payments/*`** (Checkout + webhook fulfillment). See **[PAYMENTS.md](./PAYMENTS.md)** for Price IDs, webhook events, and all required env vars (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, price env vars, plus KV for entitlements).
 
 Pushes to **`main`** trigger `npm install` and `npm run build`. **`legacy-peer-deps`** in `.npmrc` keeps Vite 8 and `@vitejs/plugin-react-swc` compatible.
 

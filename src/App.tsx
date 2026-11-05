@@ -46,6 +46,10 @@ import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 import { EmptyGarden } from '@/components/EmptyGarden'
 import { useCloudSync, type SyncStatus } from '@/hooks/use-cloud-sync'
 import { toggleReaction, type ReactionType } from '@/lib/social'
+import { skuForFertilizerLevel } from '@/lib/payments/catalog'
+import { applyCosmeticPackToUnlockState } from '@/lib/payments/entitlements'
+import { redirectToCheckout } from '@/lib/payments/client'
+import { resolvePaidCheckoutSession } from '@/lib/payments/apply-return'
 
 function describeSyncStatus(status: SyncStatus): string | null {
   switch (status.kind) {
@@ -787,39 +791,28 @@ function App() {
     }
   }
 
-  const handleApplyBoost = (boostLevel: 'standard' | 'premium' | 'legendary') => {
-    if (!memoryToBoost) return
+  const applyFertilizerToMemory = useCallback(
+    (memoryId: string, boostLevel: 'standard' | 'premium' | 'legendary') => {
+      setMemories((currentMemories) => {
+        const target = (currentMemories || []).find((m) => m.id === memoryId)
+        if (!target) return currentMemories || []
 
-    const boostedMemory = applyPremiumFertilizer(memoryToBoost, boostLevel)
-    
-    setGrowingMemories((prev) => new Set(prev).add(memoryToBoost.id))
-    setMemoryBoostTiers((prev) => new Map(prev).set(memoryToBoost.id, boostLevel))
-    
-    setTimeout(() => {
-      setGrowingMemories((prev) => {
-        const next = new Set(prev)
-        next.delete(memoryToBoost.id)
-        return next
-      })
-      setMemoryBoostTiers((prev) => {
-        const next = new Map(prev)
-        next.delete(memoryToBoost.id)
-        return next
-      })
-    }, 2000)
-    
-    setMemories((currentMemories) =>
-      (currentMemories || []).map((m) => {
-        if (m.id === memoryToBoost.id) {
-          const updatedMemory = {
-            ...m,
-            visitCount: boostedMemory.visitCount,
-          }
+        const boostedMemory = applyPremiumFertilizer(target, boostLevel)
+        const boostNames = {
+          standard: 'Garden Boost',
+          premium: 'Premium Fertilizer',
+          legendary: 'Legendary Elixir',
+        }
+        toast.success(`${boostNames[boostLevel]} applied! Your memory is flourishing.`)
+
+        return (currentMemories || []).map((m) => {
+          if (m.id !== memoryId) return m
+          const updatedMemory = { ...m, visitCount: boostedMemory.visitCount }
           const nearbyMemories = (currentMemories || []).filter(
             (nm) =>
-              nm.id !== memoryToBoost.id &&
+              nm.id !== memoryId &&
               Math.abs(nm.position.x - m.position.x) < 300 &&
-              Math.abs(nm.position.y - m.position.y) < 300
+              Math.abs(nm.position.y - m.position.y) < 300,
           )
           const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
           return {
@@ -827,19 +820,113 @@ function App() {
             growthMetrics,
             plantStage: getPlantStage(updatedMemory),
           }
-        }
-        return m
+        })
       })
-    )
 
-    const boostNames = {
-      standard: 'Garden Boost',
-      premium: 'Premium Fertilizer',
-      legendary: 'Legendary Elixir',
+      setGrowingMemories((prev) => new Set(prev).add(memoryId))
+      setMemoryBoostTiers((prev) => new Map(prev).set(memoryId, boostLevel))
+
+      setTimeout(() => {
+        setGrowingMemories((prev) => {
+          const next = new Set(prev)
+          next.delete(memoryId)
+          return next
+        })
+        setMemoryBoostTiers((prev) => {
+          const next = new Map(prev)
+          next.delete(memoryId)
+          return next
+        })
+      }, 2000)
+    },
+    [setMemories],
+  )
+
+  const handleApplyFreeBoost = useCallback(
+    (boostLevel: 'standard') => {
+      if (!memoryToBoost) return
+      applyFertilizerToMemory(memoryToBoost.id, boostLevel)
+      setIsBoostModalOpen(false)
+      setMemoryToBoost(null)
+    },
+    [applyFertilizerToMemory, memoryToBoost],
+  )
+
+  const handlePurchaseBoost = useCallback(
+    async (boostLevel: 'premium' | 'legendary', memoryId: string) => {
+      await redirectToCheckout({
+        userId: localUser.id,
+        sku: skuForFertilizerLevel(boostLevel),
+        memoryId,
+        returnPath: window.location.pathname,
+      })
+    },
+    [localUser.id],
+  )
+
+  const handlePurchaseStarlightPack = useCallback(async () => {
+    await redirectToCheckout({
+      userId: localUser.id,
+      sku: 'cosmetic-starlight-pack',
+      returnPath: window.location.pathname,
+    })
+  }, [localUser.id])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const checkoutState = params.get('checkout')
+    const sessionId = params.get('session_id')
+
+    const cleanCheckoutParams = () => {
+      params.delete('checkout')
+      params.delete('session_id')
+      const next = params.toString()
+      const nextUrl = `${window.location.pathname}${next ? `?${next}` : ''}${window.location.hash}`
+      window.history.replaceState({}, '', nextUrl)
     }
 
-    toast.success(`${boostNames[boostLevel]} applied! Your memory is flourishing.`)
-  }
+    if (checkoutState === 'cancelled') {
+      toast.message('Checkout cancelled — your garden is unchanged.')
+      cleanCheckoutParams()
+      return
+    }
+
+    if (checkoutState !== 'success' || !sessionId) return
+
+    void (async () => {
+      try {
+        const result = await resolvePaidCheckoutSession({
+          userId: localUser.id,
+          sessionId,
+        })
+
+        if (result.kind === 'pending') {
+          toast.error('Payment is still confirming. Refresh in a moment if unlocks are missing.')
+          return
+        }
+
+        if (result.kind === 'fertilizer') {
+          applyFertilizerToMemory(result.memoryId, result.boostLevel)
+          setIsBoostModalOpen(false)
+          setMemoryToBoost(null)
+          return
+        }
+
+        if (result.kind === 'cosmetic_pack') {
+          updateUnlockState((state) => applyCosmeticPackToUnlockState(state, result.packId))
+          toast.success('Starlight Collection unlocked — purely cosmetic, enjoy!')
+          return
+        }
+
+        toast.error('We could not match this checkout to a garden unlock.')
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Could not verify payment'
+        toast.error(message)
+      } finally {
+        cleanCheckoutParams()
+      }
+    })()
+  }, [applyFertilizerToMemory, localUser.id, updateUnlockState])
 
   const handleCrossPollinateInit = (memoryId: string) => {
     const parent1 = safeMemories.find(m => m.id === memoryId)
@@ -1488,7 +1575,8 @@ function App() {
             setMemoryToBoost(null)
           }}
           memory={memoryToBoost}
-          onApplyBoost={handleApplyBoost}
+          onApplyFreeBoost={handleApplyFreeBoost}
+          onPurchaseBoost={handlePurchaseBoost}
         />
 
         <ExportGarden
@@ -1562,6 +1650,7 @@ function App() {
           open={isUnlocksOpen}
           onClose={() => setIsUnlocksOpen(false)}
           unlockState={safePreferences.unlockState}
+          onPurchaseStarlightPack={handlePurchaseStarlightPack}
         />
 
         <PlantCosmeticsEditor
@@ -1574,6 +1663,7 @@ function App() {
           unlockState={safePreferences.unlockState}
           onSave={handleSaveCosmetics}
           onReroll={handleRerollGenetics}
+          onPurchaseStarlightPack={handlePurchaseStarlightPack}
         />
 
         {/* Keyboard Shortcuts Panel */}
