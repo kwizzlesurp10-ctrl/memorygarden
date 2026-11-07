@@ -2,6 +2,18 @@
 
 **Not legal advice.** Owners should have counsel review before marketplace listing.
 
+## Optional account (Neon Auth)
+
+When the owner enables Managed Better Auth, users may **optionally** sign in. The app still works fully without signing in.
+
+| Data | Where |
+|------|--------|
+| Neon Auth user (email, hashed password in Neon) | Neon `neon_auth` schema (Managed Better Auth) |
+| Link: Neon user ↔ browser local user id | Neon app table `mg_local_identity_link` |
+| Session JWT | Short-lived token in client memory; sent as `Authorization` header to Edge APIs |
+
+Sign-in does **not** delete or replace local memories. Linking records which browser profile bought or synced under which account. Purchase restore for signed-in users reads existing KV entitlements for all linked local ids.
+
 ## What stays on the device
 
 By default, memories, reflections, photos, audio, unlock progress, and the anonymous local gardener profile remain in the browser (localStorage + IndexedDB). Clearing site data or switching browsers without a backup removes access to that garden unless cloud sync or a JSON backup was used.

@@ -1,3 +1,4 @@
+import { authFetch } from '@/lib/auth/auth-fetch'
 import type { GardenBond, Memory, PlantStage, Reflection } from './types'
 import type { LocalUser } from './local-user'
 
@@ -204,7 +205,7 @@ export async function syncRemoteWatering(
   visitorUser: LocalUser,
 ): Promise<{ success: boolean; visitCount?: number; newStage?: string }> {
   try {
-    const res = await fetch('/api/gardens/water', {
+    const res = await authFetch('/api/gardens/water', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

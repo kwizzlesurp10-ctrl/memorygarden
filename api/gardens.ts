@@ -12,6 +12,7 @@
  */
 
 import { neon } from '@neondatabase/serverless'
+import { assertLocalUserIdAllowed, resolveRequestAuth } from './lib/auth-guard'
 import { isValidUserId, isValidUuid, sanitizeShortLabel } from './lib/api-ids'
 import {
   parseGardenAccessBody,
@@ -33,7 +34,7 @@ function jsonResponse(status: number, body: unknown): Response {
       'content-type': 'application/json; charset=utf-8',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   })
 }
@@ -52,7 +53,7 @@ export default async function handler(req: Request): Promise<Response> {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
     })
   }
@@ -67,6 +68,16 @@ export default async function handler(req: Request): Promise<Response> {
   const action = pathParts[2] // e.g., 'join', 'leave', 'plant', etc.
 
   try {
+    const authResult = await resolveRequestAuth(req, sql)
+    if ('error' in authResult) return authResult.error
+    const auth = authResult
+
+    async function gateUserId(localUserId: string): Promise<Response | null> {
+      const gate = await assertLocalUserIdAllowed(auth, localUserId, sql)
+      if (!gate.ok) return jsonResponse(gate.status, { error: gate.error })
+      return null
+    }
+
     // GET /api/gardens - List all public gardens
     if (req.method === 'GET' && !action) {
       const gardenId = url.searchParams.get('id')
@@ -199,6 +210,8 @@ export default async function handler(req: Request): Promise<Response> {
         return jsonResponse(400, { error: parsed.error })
       }
       const { gardenId, userId, userName } = parsed.value
+      const denied = await gateUserId(userId)
+      if (denied) return denied
       const userAvatar =
         rawBody && typeof rawBody === 'object' && typeof (rawBody as { userAvatar?: unknown }).userAvatar === 'string'
           ? (rawBody as { userAvatar: string }).userAvatar
@@ -237,6 +250,8 @@ export default async function handler(req: Request): Promise<Response> {
         return jsonResponse(400, { error: parsed.error })
       }
       const { gardenId, userId, userName } = parsed
+      const deniedLeave = await gateUserId(userId)
+      if (deniedLeave) return deniedLeave
 
       await sql`
         DELETE FROM garden_members 
@@ -286,6 +301,9 @@ export default async function handler(req: Request): Promise<Response> {
         return jsonResponse(400, { error: 'Payload too large' })
       }
 
+      const deniedPlant = await gateUserId(contributorId)
+      if (deniedPlant) return deniedPlant
+
       const geneticsSeed = `${gardenId}-${Date.now()}-${Math.random().toString(36).slice(2)}`
       
       const result = await sql`
@@ -319,6 +337,10 @@ export default async function handler(req: Request): Promise<Response> {
         return jsonResponse(400, { error: parsed.error })
       }
       const { memoryId, userId, userName } = parsed
+      if (userId) {
+        const deniedWater = await gateUserId(userId)
+        if (deniedWater) return deniedWater
+      }
 
       const result = await sql`
         UPDATE garden_memories 
@@ -371,6 +393,10 @@ export default async function handler(req: Request): Promise<Response> {
           : ''
       if (!reflection || reflection.length > 4_000) {
         return jsonResponse(400, { error: 'Invalid reflection' })
+      }
+      if (userId) {
+        const deniedReflect = await gateUserId(userId)
+        if (deniedReflect) return deniedReflect
       }
 
       const memory = await sql`

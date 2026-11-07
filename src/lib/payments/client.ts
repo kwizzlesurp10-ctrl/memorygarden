@@ -1,3 +1,4 @@
+import { authFetch } from '@/lib/auth/auth-fetch'
 import type { PaymentSkuId } from '@/lib/payments/catalog'
 import type { StoredEntitlement } from '@/lib/payments/entitlements'
 
@@ -22,7 +23,7 @@ export interface EntitlementsResponse {
 export async function createCheckoutSession(
   body: CreateCheckoutSessionRequest,
 ): Promise<CreateCheckoutSessionResponse> {
-  const res = await fetch('/api/payments/create-checkout-session', {
+  const res = await authFetch('/api/payments/create-checkout-session', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
@@ -40,7 +41,7 @@ export async function fetchEntitlements(params: {
 }): Promise<EntitlementsResponse> {
   const search = new URLSearchParams({ userId: params.userId })
   if (params.sessionId) search.set('sessionId', params.sessionId)
-  const res = await fetch(`/api/payments/entitlements?${search.toString()}`)
+  const res = await authFetch(`/api/payments/entitlements?${search.toString()}`)
   const data = (await res.json()) as EntitlementsResponse & { error?: string }
   if (!res.ok) {
     throw new Error(data.error ?? 'Could not load entitlements')
@@ -53,7 +54,7 @@ export async function consumeEntitlement(params: {
   entitlementId: string
   stripeSessionId: string
 }): Promise<void> {
-  const res = await fetch('/api/payments/consume', {
+  const res = await authFetch('/api/payments/consume', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(params),

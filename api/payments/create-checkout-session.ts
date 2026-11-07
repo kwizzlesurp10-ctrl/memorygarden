@@ -1,5 +1,7 @@
 import Stripe from 'stripe'
 import { z } from 'zod'
+import { assertLocalUserIdAllowed, resolveRequestAuth } from '../lib/auth-guard'
+import { getNeonSql } from '../lib/db'
 import {
   isPaymentSkuId,
   PAYMENT_SKUS,
@@ -23,7 +25,7 @@ function jsonResponse(status: number, body: unknown): Response {
       'content-type': 'application/json; charset=utf-8',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   })
 }
@@ -61,7 +63,7 @@ export default async function handler(req: Request): Promise<Response> {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
     })
   }
@@ -83,6 +85,12 @@ export default async function handler(req: Request): Promise<Response> {
     const message = err instanceof z.ZodError ? err.issues[0]?.message : 'Invalid body'
     return jsonResponse(400, { error: message ?? 'Invalid body' })
   }
+
+  const sql = getNeonSql()
+  const authResult = await resolveRequestAuth(req, sql)
+  if ('error' in authResult) return authResult.error
+  const gate = await assertLocalUserIdAllowed(authResult, parsed.userId, sql)
+  if (!gate.ok) return jsonResponse(gate.status, { error: gate.error })
 
   const skuDef = PAYMENT_SKUS[parsed.sku as PaymentSkuId]
   if (skuDef.kind === 'fertilizer' && !parsed.memoryId) {
