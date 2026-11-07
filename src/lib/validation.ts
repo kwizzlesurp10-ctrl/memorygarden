@@ -6,7 +6,7 @@
  * Callers should never receive raw exceptions from these helpers.
  */
 
-import { memoryHasPlantableContent, parseHttpHttpsLinkUrl, MAX_MEMORY_LINK_URL_LENGTH } from './memory-link'
+import { parseHttpHttpsLinkUrl, MAX_MEMORY_LINK_URL_LENGTH } from './memory-link'
 import type {
   Memory,
   EmotionalTone,
@@ -395,22 +395,15 @@ export function validateMemory(input: unknown): ValidationResult<Memory> {
     errors.push(...validatePlantTraits(m.traits))
   }
 
-  const text = typeof m.text === 'string' ? m.text : ''
-  const photoUrl = typeof m.photoUrl === 'string' ? m.photoUrl : ''
-  const linkUrl = typeof m.linkUrl === 'string' ? m.linkUrl : ''
-  if (!memoryHasPlantableContent({ text, photoUrl, linkUrl })) {
-    errors.push(
-      fieldError('content', 'memory must include at least one of: text, photo, or link'),
-    )
-  }
-
   if (errors.length > 0) return fail(errors)
 
+  const linkUrl = typeof m.linkUrl === 'string' ? m.linkUrl : ''
   const normalizedLink = linkUrl.trim() ? parseHttpHttpsLinkUrl(linkUrl).normalized : undefined
+  const text = typeof m.text === 'string' ? m.text : ''
   return ok({
     ...(m as Memory),
     text: text.trim(),
-    photoUrl,
+    photoUrl: typeof m.photoUrl === 'string' ? m.photoUrl : '',
     linkUrl: normalizedLink || undefined,
   })
 }
