@@ -126,6 +126,8 @@ export interface Memory {
   text: string
   date: string
   location?: string
+  /** Optional http(s) link to a post, article, or page tied to this memory */
+  linkUrl?: string
   plantedAt: string
   position: Position
   emotionalTone: EmotionalTone
@@ -179,6 +181,7 @@ export interface SharedMemory {
   text: string
   date: string
   location?: string
+  linkUrl?: string
   plantedAt: string
   emotionalTone: EmotionalTone
   plantStage: PlantStage

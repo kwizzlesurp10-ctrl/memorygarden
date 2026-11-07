@@ -20,6 +20,7 @@ import {
   WORLD_HALF,
 } from './constants'
 import type { GardenWorld, Vec2, WorldBed, WorldPlant } from './types'
+import { memoryPrimaryLabel } from '@/lib/memory-display'
 
 const BEDS: WorldBed[] = [
   { tone: 'happy', x: -16, z: -15, radius: 10 },
@@ -57,12 +58,6 @@ const TREE_VARIETIES = new Set<PlantVariety>(['tree', 'ancient_oak'])
 
 function u01(salt: string): number {
   return hashString(salt) / 4294967296
-}
-
-function titleFrom(text: string): string {
-  const trimmed = text.trim().replace(/\s+/g, ' ')
-  if (trimmed.length <= 72) return trimmed || 'A planted memory'
-  return `${trimmed.slice(0, 69).trimEnd()}…`
 }
 
 export function plantRadius(stage: PlantStage, variety: PlantVariety): number {
@@ -253,7 +248,7 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
       variety: memory.plantVariety,
       stage: memory.plantStage,
       tone: memory.emotionalTone,
-      title: titleFrom(memory.text),
+      title: memoryPrimaryLabel(memory),
       photoUrl: memory.photoUrl,
       isHybrid: Boolean(memory.isHybrid),
       moistureLevel,

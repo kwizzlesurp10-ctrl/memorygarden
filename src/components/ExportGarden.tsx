@@ -9,6 +9,7 @@ import { Export, Image as ImageIcon, FilePdf, Check } from '@phosphor-icons/reac
 import { toast } from 'sonner'
 import type { Memory } from '@/lib/types'
 import { format as formatDate } from 'date-fns'
+import { memoryExportSnippet } from '@/lib/memory-display'
 
 interface ExportGardenProps {
   open: boolean
@@ -159,7 +160,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
       ctx.fillStyle = '#4a4a4a'
       ctx.font = '14px "Crimson Pro", serif'
       const maxTextWidth = cardWidth - 30
-      const words = memory.text.split(' ')
+      const words = memoryExportSnippet(memory, 240).split(' ')
       let line = ''
       let lineY = y + 240
       const maxLines = 2
@@ -267,7 +268,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
       // Draw small text
       ctx.fillStyle = '#333'
       ctx.font = `${10 * scale}px sans-serif`
-      ctx.fillText(memory.text.substring(0, 30) + '...', x + dotSize + 4, y + 4)
+      ctx.fillText(memoryExportSnippet(memory, 30), x + dotSize + 4, y + 4)
 
       setProgress(60 + ((i + 1) / sortedMemories.length) * 30)
     }
@@ -410,7 +411,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
 
         ctx.fillStyle = '#2a2a2a'
         ctx.font = '32px "Crimson Pro", serif'
-        const words = memory.text.split(' ')
+        const words = memoryExportSnippet(memory, 240).split(' ')
         let line = ''
         let lineY = y + (memory.location ? 150 : 120)
         const lineHeight = 42

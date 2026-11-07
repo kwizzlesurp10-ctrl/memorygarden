@@ -6,6 +6,8 @@ import { Tree, CalendarBlank, MapPin, Plant } from '@phosphor-icons/react'
 import { AudioPlayer } from '@/components/AudioPlayer'
 import { format } from 'date-fns'
 import type { SharedMemory } from '@/lib/types'
+import { MemoryLinkCard } from '@/components/MemoryLinkCard'
+import { memoryBodyFallback } from '@/lib/memory-display'
 
 interface SharedMemoryViewProps {
   memory: SharedMemory
@@ -65,8 +67,15 @@ export function SharedMemoryView({ memory }: SharedMemoryViewProps) {
             </div>
 
             <div className="p-8 space-y-6">
-              <div>
-                <p className="text-xl leading-relaxed">{memory.text}</p>
+              <div className="space-y-4">
+                {memory.text?.trim() ? (
+                  <p className="text-xl leading-relaxed">{memory.text}</p>
+                ) : (
+                  <p className="text-xl leading-relaxed text-muted-foreground italic">
+                    {memoryBodyFallback(memory)}
+                  </p>
+                )}
+                {memory.linkUrl ? <MemoryLinkCard linkUrl={memory.linkUrl} /> : null}
               </div>
 
               <Separator />

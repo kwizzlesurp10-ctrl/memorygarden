@@ -318,6 +318,30 @@ describe('validateMemory', () => {
     expect(result.ok).toBe(false)
   })
 
+  it('allows empty text when a photo or link is present', () => {
+    expect(
+      validateMemory(makeMinimalMemory({ text: '', linkUrl: 'https://example.com/page' })).ok,
+    ).toBe(true)
+    expect(validateMemory(makeMinimalMemory({ text: '' })).ok).toBe(true)
+  })
+
+  it('fails when text, photo, and link are all absent', () => {
+    const result = validateMemory(
+      makeMinimalMemory({ text: '', photoUrl: '', linkUrl: undefined }),
+    )
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.field === 'content')).toBe(true)
+    }
+  })
+
+  it('rejects invalid linkUrl schemes', () => {
+    const result = validateMemory(
+      makeMinimalMemory({ linkUrl: 'javascript:alert(1)' }),
+    )
+    expect(result.ok).toBe(false)
+  })
+
   it('fails for invalid emotional tone', () => {
     const result = validateMemory(makeMinimalMemory({ emotionalTone: 'angry' as 'peaceful' }))
     expect(result.ok).toBe(false)

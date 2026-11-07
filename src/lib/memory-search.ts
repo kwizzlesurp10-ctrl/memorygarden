@@ -24,7 +24,7 @@ export interface SearchHit {
   highlights: Record<string, string>
 }
 
-export type MatchedField = 'text' | 'location' | 'reflection' | 'date'
+export type MatchedField = 'text' | 'link' | 'location' | 'reflection' | 'date'
 
 // ── Scoring weights ──────────────────────────────────────────────────────────
 
@@ -115,7 +115,8 @@ function scoreMemory(
   const matchedFields: MatchedField[] = []
   const highlights: Record<string, string> = {}
 
-  const textLower = memory.text.toLowerCase()
+  const textLower = (memory.text ?? '').toLowerCase()
+  const linkLower = (memory.linkUrl ?? '').toLowerCase()
   const queryLower = rawQuery.toLowerCase().trim()
 
   // ── Exact phrase bonus ────────────────────────────────────────────────────
@@ -132,8 +133,24 @@ function scoreMemory(
   if (textTokenHits > 0) {
     score += textTokenHits * WEIGHT.textToken
     if (!matchedFields.includes('text')) matchedFields.push('text')
-    const snippet = extractSnippet(memory.text, tokens)
+    const snippet = extractSnippet(memory.text || '', tokens)
     highlights['text'] = highlightTokens(snippet, tokens)
+  }
+
+  if (linkLower) {
+    let linkHits = 0
+    for (const token of tokens) {
+      if (linkLower.includes(token)) linkHits++
+    }
+    if (queryLower && linkLower.includes(queryLower)) {
+      score += WEIGHT.textExact * 0.85
+      if (!matchedFields.includes('link')) matchedFields.push('link')
+    }
+    if (linkHits > 0) {
+      score += linkHits * WEIGHT.textToken * 0.9
+      if (!matchedFields.includes('link')) matchedFields.push('link')
+      highlights['link'] = highlightTokens(memory.linkUrl ?? '', tokens)
+    }
   }
 
   // ── Location ──────────────────────────────────────────────────────────────
