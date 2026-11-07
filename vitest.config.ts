@@ -1,7 +1,9 @@
+import react from '@vitejs/plugin-react-swc'
 import { defineConfig } from 'vitest/config'
 import { resolve } from 'path'
 
 export default defineConfig({
+  plugins: [react()],
   test: {
     environment: 'jsdom',
     setupFiles: ['src/test/setup.ts'],

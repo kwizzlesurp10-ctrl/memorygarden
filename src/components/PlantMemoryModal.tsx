@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { CalendarBlank, Image as ImageIcon, MapPin, Plant as PlantIcon, Sparkle } from '@phosphor-icons/react'
+import { CalendarBlank, Image as ImageIcon, MapPin, Plant as PlantIcon, Sparkle, X } from '@phosphor-icons/react'
 import { AudioRecorder } from '@/components/AudioRecorder'
 import { FlowerPlant } from '@/components/plants/FlowerPlant'
 import { TreePlant, SucculentPlant, VinePlant, HerbPlant, WildflowerPlant } from '@/components/plants/OtherPlants'
@@ -22,7 +22,7 @@ interface PlantMemoryModalProps {
   open: boolean
   onClose: () => void
   onPlant: (data: {
-    photoFile: File
+    photoFile?: File
     text: string
     date: string
     location?: string
@@ -56,6 +56,8 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
   const [recordingType, setRecordingType] = useState<'voice-note' | 'ambient-sound'>('voice-note')
   const [isPlanting, setIsPlanting] = useState(false)
   const [isPlanted, setIsPlanted] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const previewObjectUrlRef = useRef<string | null>(null)
 
   // Plant picker state
   const [selectedVariety, setSelectedVariety] = useState<PlantVariety | null>(null)
@@ -85,6 +87,31 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
     }
   }, [onClose])
 
+  const revokePreviewUrl = useCallback(() => {
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current)
+      previewObjectUrlRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => revokePreviewUrl()
+  }, [revokePreviewUrl])
+
+  const handleRemovePhoto = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      revokePreviewUrl()
+      setPhotoPreview(null)
+      setPhotoFile(null)
+      if (photoInputRef.current) {
+        photoInputRef.current.value = ''
+      }
+    },
+    [revokePreviewUrl],
+  )
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -92,12 +119,11 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
         toast.error('Photo must be smaller than 5MB')
         return
       }
+      revokePreviewUrl()
       setPhotoFile(file)
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
+      const objectUrl = URL.createObjectURL(file)
+      previewObjectUrlRef.current = objectUrl
+      setPhotoPreview(objectUrl)
     }
   }
 
@@ -121,10 +147,6 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
   }
 
   const handlePlant = async () => {
-    if (!photoFile) {
-      toast.error('Please select a photo')
-      return
-    }
     if (text.trim().length < 5) {
       toast.error('Please write at least a few words about this memory')
       return
@@ -134,7 +156,7 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
     try {
       const finalVariety: PlantVariety = selectedVariety ?? suggestedVariety ?? 'flower'
       await onPlant({
-        photoFile,
+        photoFile: photoFile ?? undefined,
         text: text.trim(),
         date: date.toISOString(),
         location: location.trim() || undefined,
@@ -142,8 +164,12 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
         plantVariety: finalVariety,
       })
 
+      revokePreviewUrl()
       setPhotoFile(null)
       setPhotoPreview(null)
+      if (photoInputRef.current) {
+        photoInputRef.current.value = ''
+      }
       setText('')
       setDate(new Date())
       setLocation('')
@@ -164,8 +190,8 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[min(90dvh,100%)] max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+        <DialogHeader className="shrink-0 px-6 pt-6">
           <DialogTitle className="text-2xl flex items-center gap-2">
             <PlantIcon className="text-primary" size={28} weight="duotone" />
             Plant a Memory
@@ -180,7 +206,7 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center py-10 space-y-4 text-center min-h-[320px]"
+              className="flex min-h-[320px] flex-col items-center justify-center space-y-4 px-6 py-10 text-center"
             >
               <SeedGrowingAnimation />
               <motion.div
@@ -199,39 +225,54 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="space-y-6 py-4"
+              className="flex min-h-0 flex-1 flex-col"
             >
+              <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-4">
               {/* Photo */}
               <div className="space-y-2">
-                <Label htmlFor="photo">Photo *</Label>
+                <Label htmlFor="photo">Photo (optional)</Label>
                 <div className="relative">
                   <input
+                    ref={photoInputRef}
                     id="photo"
                     type="file"
                     accept="image/*"
                     onChange={handlePhotoChange}
                     className="hidden"
                   />
-                  <label
-                    htmlFor="photo"
-                    className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
-                  >
-                    {photoPreview ? (
+                  {photoPreview ? (
+                    <div className="relative flex w-full items-center justify-center overflow-hidden rounded-lg border-2 border-border bg-muted/30">
                       <motion.img
-                        initial={{ opacity: 0, scale: 0.9 }}
+                        initial={{ opacity: 0, scale: 0.98 }}
                         animate={{ opacity: 1, scale: 1 }}
                         src={photoPreview}
-                        alt="Preview"
-                        className="w-full h-full object-cover rounded-lg"
+                        alt="Selected memory photo preview"
+                        className="max-h-[min(40vh,14rem)] w-full object-contain"
                       />
-                    ) : (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleRemovePhoto}
+                        aria-label="Remove image"
+                        className="absolute right-2 top-2 gap-1 shadow-md"
+                      >
+                        <X size={16} weight="bold" aria-hidden />
+                        Remove image
+                      </Button>
+                    </div>
+                  ) : (
+                    <label
+                      htmlFor="photo"
+                      className="flex h-40 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border transition-colors hover:border-primary"
+                    >
                       <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                         <ImageIcon size={48} weight="duotone" />
                         <p className="text-sm">Click to upload or drag and drop</p>
                         <p className="text-xs">PNG, JPG up to 5MB</p>
                       </div>
-                    )}
-                  </label>
+                    </label>
+                  )}
                 </div>
               </div>
 
@@ -374,8 +415,9 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
                   </div>
                 )}
               </div>
+              </div>
 
-              <div className="flex justify-end gap-3 pt-4">
+              <div className="flex shrink-0 justify-end gap-3 border-t border-border px-6 py-4">
                 <Button variant="outline" onClick={onClose} disabled={isPlanting}>
                   Cancel
                 </Button>

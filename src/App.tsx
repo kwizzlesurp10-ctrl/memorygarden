@@ -323,106 +323,108 @@ function App() {
   }
 
   const handlePlantMemory = async (data: {
-    photoFile: File
+    photoFile?: File
     text: string
     date: string
     location?: string
     audioRecordings: AudioRecording[]
     plantVariety: PlantVariety
   }) => {
+    const finishPlanting = async (photoUrl: string) => {
+      const emotionalTone = await classifyEmotionalTone(data.text)
+
+      let finalTraits: PlantTraits = {}
+      let finalVariety = data.plantVariety ?? selectPlantVariety(emotionalTone, data.text)
+      let finalGeneticsSeed = generateGeneticsSeed()
+      let isHybrid = false
+      let parentMemories: string[] | undefined = undefined
+
+      if (hybridParents) {
+        const hybridData = generateHybridTraits(hybridParents[0], hybridParents[1])
+        finalTraits = hybridData.traits
+        finalGeneticsSeed = hybridData.geneticsSeed
+        finalVariety = hybridData.variety
+        isHybrid = true
+        parentMemories = [hybridParents[0].id, hybridParents[1].id]
+        setHybridParents(null)
+      }
+
+      const newMemory: Memory = {
+        id: `memory-${Date.now()}`,
+        photoUrl,
+        text: data.text,
+        date: data.date,
+        location: data.location,
+        plantedAt: new Date().toISOString(),
+        position: {
+          x: 180 + Math.random() * 840,
+          y: 430 + Math.random() * 35,
+        },
+        emotionalTone,
+        plantVariety: finalVariety,
+        plantStage: 'seed',
+        visitCount: 0,
+        reflections: [],
+        audioRecordings: data.audioRecordings,
+        geneticsSeed: finalGeneticsSeed,
+        traits: finalTraits,
+        unlocks: [],
+        genetics: generatePlantGenetics(`${Date.now()}-${Math.random().toString(36).substring(2)}`),
+        plantedBy: user
+          ? { id: user.id, login: user.login, avatarUrl: user.avatarUrl }
+          : undefined,
+        isHybrid,
+        parentMemories,
+      }
+
+      setMemories((currentMemories) => [...(currentMemories || []), newMemory])
+
+      const currentSeason = getSeason()
+      const seasonKey = `${currentSeason}-${new Date().getFullYear()}`
+      updateUnlockState((state) => {
+        const award = awardForPlanting()
+        return {
+          ...state,
+          wallet: applyAward(state.wallet, award),
+          counters: {
+            ...state.counters,
+            totalMemoriesPlanted: state.counters.totalMemoriesPlanted + 1,
+            seasonalPlantings: {
+              ...state.counters.seasonalPlantings,
+              [seasonKey]: (state.counters.seasonalPlantings[seasonKey] || 0) + 1,
+            },
+          },
+        }
+      })
+
+      setGrowingMemories((prev) => new Set(prev).add(newMemory.id))
+      setTimeout(() => {
+        setGrowingMemories((prev) => {
+          const next = new Set(prev)
+          next.delete(newMemory.id)
+          return next
+        })
+      }, 3000) // matches PLANTING_CELEBRATION_MS in PlantMemoryModal
+    }
+
+    if (!data.photoFile) {
+      await finishPlanting('')
+      return
+    }
+
     const reader = new FileReader()
     reader.readAsDataURL(data.photoFile)
-    
+
     return new Promise<void>((resolve, reject) => {
       reader.onload = async () => {
         try {
-          const photoUrl = reader.result as string
-          
-          const emotionalTone = await classifyEmotionalTone(data.text)
-          const plantVariety = data.plantVariety ?? selectPlantVariety(emotionalTone, data.text)
-          
-          let finalTraits: PlantTraits = {}
-          let finalVariety = data.plantVariety ?? selectPlantVariety(emotionalTone, data.text)
-          let finalGeneticsSeed = generateGeneticsSeed()
-          let isHybrid = false
-          let parentMemories: string[] | undefined = undefined
-
-          if (hybridParents) {
-             const hybridData = generateHybridTraits(hybridParents[0], hybridParents[1])
-             finalTraits = hybridData.traits
-             finalGeneticsSeed = hybridData.geneticsSeed
-             // Let the hybrid logic override the variety
-             finalVariety = hybridData.variety
-             isHybrid = true
-             parentMemories = [hybridParents[0].id, hybridParents[1].id]
-             setHybridParents(null)
-          }
-
-          const newMemory: Memory = {
-            id: `memory-${Date.now()}`,
-            photoUrl,
-            text: data.text,
-            date: data.date,
-            location: data.location,
-            plantedAt: new Date().toISOString(),
-            position: {
-              x: 180 + Math.random() * 840,
-              y: 430 + Math.random() * 35,
-            },
-            emotionalTone,
-            plantVariety: finalVariety,
-            plantStage: 'seed',
-            visitCount: 0,
-            reflections: [],
-            audioRecordings: data.audioRecordings,
-            geneticsSeed: finalGeneticsSeed,
-            traits: finalTraits,
-            unlocks: [],
-            genetics: generatePlantGenetics(`${Date.now()}-${Math.random().toString(36).substring(2)}`),
-            plantedBy: user
-              ? { id: user.id, login: user.login, avatarUrl: user.avatarUrl }
-              : undefined,
-            isHybrid,
-            parentMemories,
-          }
-
-          setMemories((currentMemories) => [...(currentMemories || []), newMemory])
-
-          // Award currency and update counters for planting
-          const currentSeason = getSeason()
-          const seasonKey = `${currentSeason}-${new Date().getFullYear()}`
-          updateUnlockState((state) => {
-            const award = awardForPlanting()
-            return {
-              ...state,
-              wallet: applyAward(state.wallet, award),
-              counters: {
-                ...state.counters,
-                totalMemoriesPlanted: state.counters.totalMemoriesPlanted + 1,
-                seasonalPlantings: {
-                  ...state.counters.seasonalPlantings,
-                  [seasonKey]: (state.counters.seasonalPlantings[seasonKey] || 0) + 1,
-                },
-              },
-            }
-          })
-
-          // Trigger sprouting particle animation on the canvas when seed first appears
-          setGrowingMemories((prev) => new Set(prev).add(newMemory.id))
-          setTimeout(() => {
-            setGrowingMemories((prev) => {
-              const next = new Set(prev)
-              next.delete(newMemory.id)
-              return next
-            })
-          }, 3000) // matches PLANTING_CELEBRATION_MS in PlantMemoryModal
-
+          await finishPlanting(reader.result as string)
           resolve()
         } catch (error) {
           reject(error)
         }
       }
-      
+
       reader.onerror = () => reject(new Error('Failed to read file'))
     })
   }
