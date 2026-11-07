@@ -25,6 +25,8 @@
  *   POST /api/sync   { userId, document }  → 200 { updatedAt }
  */
 
+import { isValidUserId } from './lib/api-ids'
+
 export const config = { runtime: 'edge' }
 
 interface SyncEnv {
@@ -44,10 +46,6 @@ function jsonResponse(status: number, body: unknown): Response {
     status,
     headers: { 'content-type': 'application/json; charset=utf-8' },
   })
-}
-
-function isValidUserId(id: unknown): id is string {
-  return typeof id === 'string' && /^[a-zA-Z0-9-]{8,64}$/.test(id)
 }
 
 function userKey(id: string): string {

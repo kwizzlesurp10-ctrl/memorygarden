@@ -4,6 +4,7 @@ import {
   markEntitlementConsumed,
   parseEntitlementList,
 } from './lib/entitlements'
+import { isValidStripeCheckoutSessionId } from '../lib/api-ids'
 import { getKvEnv, isValidUserId, readEntitlementsRaw, writeEntitlementsRaw } from './lib/kv'
 
 export const config = { runtime: 'edge' }
@@ -11,6 +12,7 @@ export const config = { runtime: 'edge' }
 const bodySchema = z.object({
   userId: z.string().regex(/^[a-zA-Z0-9-]{8,64}$/),
   entitlementId: z.string().uuid(),
+  stripeSessionId: z.string().min(16).max(128),
 })
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -57,12 +59,18 @@ export default async function handler(req: Request): Promise<Response> {
   if (!isValidUserId(parsed.userId)) {
     return jsonResponse(400, { error: 'Invalid userId' })
   }
+  if (!isValidStripeCheckoutSessionId(parsed.stripeSessionId)) {
+    return jsonResponse(400, { error: 'Invalid stripeSessionId' })
+  }
 
   const raw = await readEntitlementsRaw(kv, parsed.userId)
   const list = raw ? parseEntitlementList(JSON.parse(raw)) : createEmptyEntitlementList()
   const target = list.entitlements.find((e) => e.id === parsed.entitlementId)
   if (!target) {
     return jsonResponse(404, { error: 'Entitlement not found' })
+  }
+  if (target.stripeSessionId !== parsed.stripeSessionId) {
+    return jsonResponse(403, { error: 'stripeSessionId does not match entitlement' })
   }
   if (target.status === 'consumed') {
     return jsonResponse(200, { ok: true, alreadyConsumed: true })

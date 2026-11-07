@@ -10,9 +10,7 @@ export function getKvEnv(): SyncEnv | null {
   return { url, token }
 }
 
-export function isValidUserId(id: unknown): id is string {
-  return typeof id === 'string' && /^[a-zA-Z0-9-]{8,64}$/.test(id)
-}
+export { isValidUserId } from '../../lib/api-ids'
 
 function entitlementsKey(userId: string): string {
   return `mg:entitlements:${userId}`

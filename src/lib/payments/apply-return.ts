@@ -33,7 +33,11 @@ export async function resolvePaidCheckoutSession(params: {
     if (!boostLevel || !entitlement.memoryId) {
       return { kind: 'none' }
     }
-    await consumeEntitlement({ userId: params.userId, entitlementId: entitlement.id })
+    await consumeEntitlement({
+      userId: params.userId,
+      entitlementId: entitlement.id,
+      stripeSessionId: params.sessionId,
+    })
     return {
       kind: 'fertilizer',
       memoryId: entitlement.memoryId,
@@ -45,7 +49,11 @@ export async function resolvePaidCheckoutSession(params: {
   if (skuDef.kind === 'cosmetic_pack') {
     const packId = cosmeticPackIdForSku(entitlement.sku)
     if (!packId) return { kind: 'none' }
-    await consumeEntitlement({ userId: params.userId, entitlementId: entitlement.id })
+    await consumeEntitlement({
+      userId: params.userId,
+      entitlementId: entitlement.id,
+      stripeSessionId: params.sessionId,
+    })
     return { kind: 'cosmetic_pack', packId, entitlementId: entitlement.id }
   }
 
