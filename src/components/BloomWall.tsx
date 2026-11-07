@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Flower } from '@phosphor-icons/react'
+import { Flower, Link as LinkIcon } from '@phosphor-icons/react'
 import type { Memory } from '@/lib/types'
 import { getPlantStage } from '@/lib/garden-helpers'
 import { bloomWallTileSortWeight, getBloomWallTileSpan } from '@/lib/bloom-wall-layout'
+import { memoryPrimaryLabel } from '@/lib/memory-display'
 import { format } from 'date-fns'
 
 export interface BloomWallProps {
@@ -65,7 +66,7 @@ export function BloomWall({ memories, onMemoryClick }: BloomWallProps) {
             {ordered.map((memory) => {
               const stage = getPlantStage(memory)
               const { colSpan, rowSpan } = getBloomWallTileSpan(stage)
-              const label = memory.text.trim().slice(0, 120) || 'Memory'
+              const label = memoryPrimaryLabel(memory).slice(0, 120)
               return (
                 <motion.li
                   key={memory.id}
@@ -82,23 +83,28 @@ export function BloomWall({ memories, onMemoryClick }: BloomWallProps) {
                     className="relative h-full w-full min-h-[4.5rem] overflow-hidden rounded-2xl border border-primary/15 bg-card text-left shadow-sm outline-none transition-[box-shadow,transform,border-color] duration-200 hover:border-primary/35 hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     aria-label={`Open memory from ${format(new Date(memory.date), 'MMMM d, yyyy')}`}
                   >
-                    <img
-                      src={memory.photoUrl}
-                      alt=""
-                      loading="lazy"
-                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
-                    />
+                    {memory.photoUrl?.trim() ? (
+                      <img
+                        src={memory.photoUrl}
+                        alt=""
+                        loading="lazy"
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-muted to-background" aria-hidden />
+                    )}
                     <div
                       className="absolute inset-0 bg-gradient-to-t from-[color-mix(in_oklch,var(--foreground)_55%,transparent)] via-[color-mix(in_oklch,var(--foreground)_12%,transparent)] to-transparent opacity-90"
                       aria-hidden
                     />
                     <div className="absolute inset-x-0 bottom-0 p-3 pt-8 text-[oklch(0.99_0.01_95)] space-y-0.5 [text-shadow:0_1px_3px_color-mix(in_oklch,var(--foreground)_45%,transparent)]">
-                      <p className="text-[0.65rem] uppercase tracking-wider opacity-90 font-medium">
+                      <p className="text-[0.65rem] uppercase tracking-wider opacity-90 font-medium flex items-center gap-1">
                         {stage.replace(/_/g, ' ')}
+                        {memory.linkUrl ? <LinkIcon size={12} weight="bold" aria-label="Has link" /> : null}
                       </p>
                       <p className="text-sm font-medium leading-snug line-clamp-2 drop-shadow-sm">
                         {label}
-                        {memory.text.trim().length > 120 ? '…' : ''}
+                        {label.length >= 120 ? '…' : ''}
                       </p>
                       <p className="text-[0.7rem] opacity-80">
                         {format(new Date(memory.date), 'MMM d, yyyy')}

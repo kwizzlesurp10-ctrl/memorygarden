@@ -23,6 +23,7 @@ import {
   type CommunityPrivacyMode,
   type RawGardenMemoryRow,
 } from './gardens/lib/community-memory-privacy'
+import { parseHttpHttpsLinkUrl } from '../src/lib/memory-link'
 
 export const config = { runtime: 'edge' }
 
@@ -267,25 +268,38 @@ export default async function handler(req: Request): Promise<Response> {
         positionY: number
         emotionalTone: string
         plantVariety: string
+        linkUrl?: string
       }
       
       const {
         gardenId, contributorId, contributorName, contributorAvatar,
         photoUrl, text, memoryDate, location, positionX, positionY,
-        emotionalTone, plantVariety
+        emotionalTone, plantVariety, linkUrl: bodyLinkUrl,
       } = body
 
       if (!isValidUuid(gardenId) || !isValidUserId(contributorId)) {
         return jsonResponse(400, { error: 'Invalid gardenId or contributorId' })
       }
       const safeContributorName = sanitizeShortLabel(contributorName, 64)
-      if (!safeContributorName || !photoUrl || typeof photoUrl !== 'string' || !text || typeof text !== 'string') {
+      const safeText = typeof text === 'string' ? text.trim() : ''
+      const safePhoto = typeof photoUrl === 'string' ? photoUrl : ''
+      if (!safeContributorName) {
         return jsonResponse(400, { error: 'Required fields missing' })
       }
-      if (text.length > 20_000 || photoUrl.length > 2_000_000) {
+      let normalizedLink: string | null = null
+      if (bodyLinkUrl !== undefined && bodyLinkUrl !== null && String(bodyLinkUrl).trim() !== '') {
+        const parsed = parseHttpHttpsLinkUrl(String(bodyLinkUrl))
+        if (!parsed.valid) {
+          return jsonResponse(400, { error: parsed.error ?? 'Invalid linkUrl' })
+        }
+        normalizedLink = parsed.normalized
+      }
+      if (!safeText && !safePhoto && !normalizedLink) {
+        return jsonResponse(400, { error: 'Memory must include text, a photo, or a link' })
+      }
+      if (safeText.length > 20_000 || safePhoto.length > 2_000_000) {
         return jsonResponse(400, { error: 'Payload too large' })
       }
-
       const geneticsSeed = `${gardenId}-${Date.now()}-${Math.random().toString(36).slice(2)}`
       
       const result = await sql`
@@ -296,7 +310,7 @@ export default async function handler(req: Request): Promise<Response> {
         )
         VALUES (
           ${gardenId}::uuid, ${contributorId}, ${safeContributorName}, ${contributorAvatar || null},
-          ${photoUrl}, ${text}, ${memoryDate || null}::date, ${location || null}, ${positionX}, ${positionY},
+          ${safePhoto || ''}, ${safeText}, ${memoryDate || null}::date, ${location || null}, ${positionX}, ${positionY},
           ${emotionalTone || 'peaceful'}, ${plantVariety || 'flower'}, ${geneticsSeed}
         )
         RETURNING id

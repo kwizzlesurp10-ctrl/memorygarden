@@ -186,10 +186,19 @@ export async function generateAIReflection(memory: Memory, nearbyMemories: Memor
     return 'AI reflection is not available in this environment.'
   }
 
+  const memoryText = memory.text?.trim()
+  if (!memoryText) {
+    return memory.linkUrl?.trim()
+      ? 'This memory is held in a link you saved — visiting it in quiet moments can be its own reflection.'
+      : 'This memory is held in an image — let it speak without words for a while.'
+  }
+
   try {
-    const prompt = llm.prompt`Memory text: "${memory.text}"
+    const prompt = llm.prompt`Memory text: "${memoryText}"
 Emotional tone: ${memory.emotionalTone}
-${nearbyMemories.length > 0 ? `Nearby memories: ${nearbyMemories.map((m: Memory) => m.text.slice(0, 50)).join('; ')}` : ''}
+${nearbyMemories.length > 0
+      ? `Nearby memories: ${nearbyMemories.map((m: Memory) => (m.text?.trim() || m.linkUrl || 'A quiet memory').slice(0, 50)).join('; ')}`
+      : ''}
 
 Write a brief, poetic reflection (2-3 sentences) that honors this memory and offers gentle insight.
 - Offer perspective without being prescriptive

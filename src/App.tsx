@@ -37,6 +37,7 @@ const ContributorLeaderboard = lazy(() => import('@/components/ContributorLeader
 const OpenWorldGarden = lazy(() => import('@/components/open-world/OpenWorldGarden').then(m => ({ default: m.OpenWorldGarden })))
 import { countUnreadActivity, deriveActivityFromMemories } from '@/lib/activity-helpers'
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod, generateHybridTraits } from '@/lib/garden-helpers'
+import { memoryPrimaryLabel } from '@/lib/memory-display'
 import { realClockTod, todToDayPeriod } from '@/lib/garden/day-night'
 import { ensureUnlockState, generatePlantGenetics, awardForReflection, awardForRevisit, awardForClusterTending, awardForPlanting, applyAward, evaluateUnlocks, applyNewUnlocks, evaluateAchievements, deductRerollCost, canAffordReroll, UNLOCKABLE_ITEMS } from '@/lib/unlock-system'
 import { generateGeneticsSeed, computeUnlocks } from '@/lib/trait-system'
@@ -327,11 +328,13 @@ function App() {
     text: string
     date: string
     location?: string
+    linkUrl?: string
     audioRecordings: AudioRecording[]
     plantVariety: PlantVariety
   }) => {
     const finishPlanting = async (photoUrl: string) => {
-      const emotionalTone = await classifyEmotionalTone(data.text)
+      const toneSource = data.text.trim() || data.linkUrl?.trim() || ''
+      const emotionalTone = await classifyEmotionalTone(toneSource)
 
       let finalTraits: PlantTraits = {}
       let finalVariety = data.plantVariety ?? selectPlantVariety(emotionalTone, data.text)
@@ -355,6 +358,7 @@ function App() {
         text: data.text,
         date: data.date,
         location: data.location,
+        linkUrl: data.linkUrl,
         plantedAt: new Date().toISOString(),
         position: {
           x: 180 + Math.random() * 840,
@@ -747,6 +751,7 @@ function App() {
       text: memory.text,
       date: memory.date,
       location: memory.location,
+      linkUrl: memory.linkUrl,
       plantedAt: memory.plantedAt,
       emotionalTone: memory.emotionalTone,
       plantStage: memory.plantStage,
@@ -1416,11 +1421,17 @@ function App() {
                           onClick={() => handleMemoryClick(memory)}
                           className="flex gap-4 p-4 bg-card rounded-lg border border-border cursor-pointer hover:border-primary/50 transition-colors"
                         >
-                          <img
-                            src={memory.photoUrl}
-                            alt="Memory"
-                            className="w-20 h-20 md:w-32 md:h-32 object-cover rounded-md flex-shrink-0"
-                          />
+                          {memory.photoUrl?.trim() ? (
+                            <img
+                              src={memory.photoUrl}
+                              alt="Memory"
+                              className="w-20 h-20 md:w-32 md:h-32 object-cover rounded-md flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-20 h-20 md:w-32 md:h-32 rounded-md flex-shrink-0 bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                              No photo
+                            </div>
+                          )}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-muted-foreground mb-2">
                               {new Date(memory.date).toLocaleDateString('en-US', {
@@ -1429,7 +1440,7 @@ function App() {
                                 day: 'numeric',
                               })}
                             </p>
-                            <p className="line-clamp-2">{memory.text}</p>
+                            <p className="line-clamp-2">{memoryPrimaryLabel(memory)}</p>
                           </div>
                         </motion.div>
                       ))

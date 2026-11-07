@@ -129,6 +129,75 @@ describe('PlantMemoryModal image UX', () => {
     expect((document.body.querySelector('#text') as HTMLTextAreaElement).value).toBe(typed)
   })
 
+  it('disables plant when text, photo, and link are all empty', () => {
+    renderModal()
+    const plantButton = Array.from(document.body.querySelectorAll('button')).find((btn) =>
+      btn.textContent?.includes('Plant Memory'),
+    ) as HTMLButtonElement
+    expect(plantButton.disabled).toBe(true)
+  })
+
+  it('plants with only a link', async () => {
+    const onPlant = vi.fn().mockResolvedValue(undefined)
+    renderModal(onPlant)
+    const linkInput = document.body.querySelector('#link') as HTMLInputElement
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+      setter?.call(linkInput, 'https://example.com/story')
+      linkInput.dispatchEvent(new Event('input', { bubbles: true }))
+      linkInput.dispatchEvent(new Event('blur', { bubbles: true }))
+    })
+    const plantButton = Array.from(document.body.querySelectorAll('button')).find((btn) =>
+      btn.textContent?.includes('Plant Memory'),
+    ) as HTMLButtonElement
+    await act(async () => {
+      plantButton.click()
+      await Promise.resolve()
+    })
+    expect(onPlant).toHaveBeenCalledTimes(1)
+    expect(onPlant.mock.calls[0][0].linkUrl).toBe('https://example.com/story')
+    expect(onPlant.mock.calls[0][0].text).toBe('')
+  })
+
+  it('rejects invalid link schemes with inline error', async () => {
+    renderModal()
+    const linkInput = document.body.querySelector('#link') as HTMLInputElement
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+      setter?.call(linkInput, 'javascript:alert(1)')
+      linkInput.dispatchEvent(new Event('input', { bubbles: true }))
+      linkInput.dispatchEvent(new Event('blur', { bubbles: true }))
+    })
+    expect(document.body.querySelector('#link-error')).toBeTruthy()
+    const plantButton = Array.from(document.body.querySelectorAll('button')).find((btn) =>
+      btn.textContent?.includes('Plant Memory'),
+    ) as HTMLButtonElement
+    expect(plantButton.disabled).toBe(true)
+  })
+
+  it('plants with only an image', async () => {
+    const onPlant = vi.fn().mockResolvedValue(undefined)
+    renderModal(onPlant)
+    const fileInput = document.body.querySelector('#photo') as HTMLInputElement
+    await act(async () => {
+      Object.defineProperty(fileInput, 'files', {
+        configurable: true,
+        value: [makeTestImageFile()],
+      })
+      fileInput.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    const plantButton = Array.from(document.body.querySelectorAll('button')).find((btn) =>
+      btn.textContent?.includes('Plant Memory'),
+    ) as HTMLButtonElement
+    await act(async () => {
+      plantButton.click()
+      await Promise.resolve()
+    })
+    expect(onPlant).toHaveBeenCalledTimes(1)
+    expect(onPlant.mock.calls[0][0].photoFile).toBeTruthy()
+    expect(onPlant.mock.calls[0][0].text).toBe('')
+  })
+
   it('calls onPlant without a photo after the image is removed', async () => {
     const onPlant = vi.fn().mockResolvedValue(undefined)
     renderModal(onPlant)

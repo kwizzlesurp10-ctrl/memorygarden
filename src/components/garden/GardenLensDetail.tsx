@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Memory } from '@/lib/types'
+import { memoryPrimaryLabel } from '@/lib/memory-display'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { plantStageToIndex, indexToPlantStage } from '@/lib/garden/stage'
 import { SeededPlantSvg } from '@/components/plants/SeededPlantSvg'
@@ -124,7 +125,9 @@ export function GardenLensDetail({ memory, palette, rimStrength, motion: motionE
             )}
             <div>
               <h2 className="text-xl font-semibold">{isHybrid ? memory.hybridGenome?.name : memory.plantVariety}</h2>
-              <p className="text-sm opacity-70 italic mt-1 line-clamp-3">{memory.text}</p>
+              <p className="text-sm opacity-70 italic mt-1 line-clamp-3">
+                {memory.text?.trim() ? memory.text : memoryPrimaryLabel(memory)}
+              </p>
               <p className="text-xs font-mono opacity-45 mt-2">{memory.date}</p>
             </div>
           </div>

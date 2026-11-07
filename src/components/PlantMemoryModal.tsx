@@ -9,11 +9,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { CalendarBlank, Image as ImageIcon, MapPin, Plant as PlantIcon, Sparkle, X } from '@phosphor-icons/react'
+import { CalendarBlank, Image as ImageIcon, Link as LinkIcon, MapPin, Plant as PlantIcon, Sparkle, X } from '@phosphor-icons/react'
 import { AudioRecorder } from '@/components/AudioRecorder'
 import { FlowerPlant } from '@/components/plants/FlowerPlant'
 import { TreePlant, SucculentPlant, VinePlant, HerbPlant, WildflowerPlant } from '@/components/plants/OtherPlants'
 import { classifyEmotionalTone, selectPlantVariety } from '@/lib/garden-helpers'
+import { memoryHasPlantableContent, parseHttpHttpsLinkUrl } from '@/lib/memory-link'
+import { MemoryLinkCard } from '@/components/MemoryLinkCard'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import type { AudioRecording, PlantVariety } from '@/lib/types'
@@ -28,6 +30,7 @@ interface PlantMemoryModalProps {
     location?: string
     audioRecordings: AudioRecording[]
     plantVariety: PlantVariety
+    linkUrl?: string
   }) => void
 }
 
@@ -52,6 +55,8 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
   const [text, setText] = useState('')
   const [date, setDate] = useState<Date>(new Date())
   const [location, setLocation] = useState('')
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkError, setLinkError] = useState<string | null>(null)
   const [audioRecordings, setAudioRecordings] = useState<AudioRecording[]>([])
   const [recordingType, setRecordingType] = useState<'voice-note' | 'ambient-sound'>('voice-note')
   const [isPlanting, setIsPlanting] = useState(false)
@@ -146,20 +151,49 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
     })
   }
 
+  const handleLinkChange = (value: string) => {
+    setLinkUrl(value)
+    if (!value.trim()) {
+      setLinkError(null)
+      return
+    }
+    const parsed = parseHttpHttpsLinkUrl(value)
+    setLinkError(parsed.valid ? null : parsed.error ?? 'Invalid link')
+  }
+
+  const handleRemoveLink = () => {
+    setLinkUrl('')
+    setLinkError(null)
+  }
+
+  const linkValidation = linkUrl.trim() ? parseHttpHttpsLinkUrl(linkUrl) : { valid: true, normalized: '' as string }
+  const hasInvalidLink = linkUrl.trim().length > 0 && !linkValidation.valid
+  const canPlant = !hasInvalidLink && memoryHasPlantableContent({
+    text,
+    photoFile: Boolean(photoFile),
+    linkUrl: linkValidation.valid ? linkValidation.normalized || linkUrl : '',
+  })
+
   const handlePlant = async () => {
-    if (text.trim().length < 5) {
-      toast.error('Please write at least a few words about this memory')
+    if (hasInvalidLink) {
+      toast.error(linkError ?? 'Fix the link URL before planting')
+      return
+    }
+    if (!canPlant) {
+      toast.error('Add text, a photo, or a link to plant this memory')
       return
     }
 
     setIsPlanting(true)
     try {
       const finalVariety: PlantVariety = selectedVariety ?? suggestedVariety ?? 'flower'
+      const normalizedLink = linkUrl.trim() ? parseHttpHttpsLinkUrl(linkUrl).normalized : undefined
       await onPlant({
         photoFile: photoFile ?? undefined,
         text: text.trim(),
         date: date.toISOString(),
         location: location.trim() || undefined,
+        linkUrl: normalizedLink || undefined,
         audioRecordings,
         plantVariety: finalVariety,
       })
@@ -173,6 +207,8 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
       setText('')
       setDate(new Date())
       setLocation('')
+      setLinkUrl('')
+      setLinkError(null)
       setAudioRecordings([])
       setSelectedVariety(null)
       setSuggestedVariety('flower')
@@ -278,7 +314,7 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
 
               {/* Memory text */}
               <div className="space-y-2">
-                <Label htmlFor="text">Memory *</Label>
+                <Label htmlFor="text">Memory (optional)</Label>
                 <Textarea
                   id="text"
                   placeholder="Write a few sentences about this memory... What were you feeling? Who was there? What made this moment special?"
@@ -288,6 +324,48 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
                   className="resize-none"
                 />
                 <p className="text-xs text-muted-foreground">{text.length} characters</p>
+              </div>
+
+              {/* Link */}
+              <div className="space-y-2">
+                <Label htmlFor="link">Link (optional)</Label>
+                {linkUrl.trim() && linkValidation.valid && linkValidation.normalized ? (
+                  <MemoryLinkCard
+                    linkUrl={linkValidation.normalized}
+                    compact
+                    onRemove={handleRemoveLink}
+                  />
+                ) : (
+                  <div className="space-y-1.5">
+                    <div className="relative">
+                      <LinkIcon
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                        size={16}
+                      />
+                      <Input
+                        id="link"
+                        type="url"
+                        inputMode="url"
+                        placeholder="https://..."
+                        value={linkUrl}
+                        onChange={(e) => handleLinkChange(e.target.value)}
+                        onBlur={() => handleLinkChange(linkUrl)}
+                        className="pl-9"
+                        aria-invalid={hasInvalidLink}
+                        aria-describedby={linkError ? 'link-error' : undefined}
+                      />
+                    </div>
+                    {linkError ? (
+                      <p id="link-error" className="text-xs text-destructive">
+                        {linkError}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Paste a webpage or social post URL (http or https only).
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Plant picker */}
@@ -417,11 +495,17 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
               </div>
               </div>
 
-              <div className="flex shrink-0 justify-end gap-3 border-t border-border px-6 py-4">
+              <div className="flex shrink-0 flex-col gap-2 border-t border-border px-6 py-4">
+                {!canPlant && !hasInvalidLink ? (
+                  <p className="text-xs text-muted-foreground text-right">
+                    Add text, a photo, or a link to plant this memory.
+                  </p>
+                ) : null}
+                <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={onClose} disabled={isPlanting}>
                   Cancel
                 </Button>
-                <Button onClick={handlePlant} disabled={isPlanting} className="min-w-32">
+                <Button onClick={handlePlant} disabled={isPlanting || !canPlant} className="min-w-32">
                   <AnimatePresence mode="wait">
                     {isPlanting ? (
                       <motion.span
@@ -446,6 +530,7 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
                     )}
                   </AnimatePresence>
                 </Button>
+                </div>
               </div>
             </motion.div>
           )}

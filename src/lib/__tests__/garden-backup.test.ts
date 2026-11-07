@@ -56,6 +56,23 @@ describe('garden backup round-trip', () => {
     expect(result.skippedCount).toBe(1)
   })
 
+  it('round-trips linkUrl on v1 backups', () => {
+    const withLink = { ...sampleMemory('m-link'), linkUrl: 'https://example.com/memory' }
+    const doc = buildGardenBackupDocument({
+      localUserId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+      memories: [withLink],
+      preferences: prefs,
+    })
+    const parsed = parseGardenBackup(doc)
+    expect(parsed.memories[0].linkUrl).toBe('https://example.com/memory')
+    const legacy = buildGardenBackupDocument({
+      localUserId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+      memories: [sampleMemory('legacy')],
+      preferences: prefs,
+    })
+    expect(parseGardenBackup(legacy).memories[0].linkUrl).toBeUndefined()
+  })
+
   it('hydrates idb photo refs when media map is present', () => {
     const doc = buildGardenBackupDocument({
       localUserId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',

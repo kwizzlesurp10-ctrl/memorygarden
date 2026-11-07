@@ -18,6 +18,8 @@ import { toast } from 'sonner'
 import { calculateGrowthMetrics } from '@/lib/garden-helpers'
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { MemoryLinkCard } from '@/components/MemoryLinkCard'
+import { memoryBodyFallback } from '@/lib/memory-display'
 
 interface MemoryCardProps {
   memory: Memory | null
@@ -247,11 +249,15 @@ export function MemoryCard({
             exit={{ opacity: 0, y: 20 }}
             className="relative w-full h-80 flex-shrink-0 overflow-hidden"
           >
-            <img
-              src={memory.photoUrl}
-              alt="Memory"
-              className="w-full h-full object-cover"
-            />
+            {memory.photoUrl?.trim() ? (
+              <img
+                src={memory.photoUrl}
+                alt="Memory"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="h-full w-full bg-gradient-to-br from-primary/25 via-muted to-background" />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-card/90 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-6 flex items-end justify-between">
               <div className="flex flex-wrap gap-2">
@@ -312,8 +318,15 @@ export function MemoryCard({
           </motion.div>
 
           <div className="p-6 space-y-6">
-              <div>
-                <p className="text-lg leading-relaxed">{memory.text}</p>
+              <div className="space-y-4">
+                {memory.text?.trim() ? (
+                  <p className="text-lg leading-relaxed">{memory.text}</p>
+                ) : (
+                  <p className="text-lg leading-relaxed text-muted-foreground italic">
+                    {memoryBodyFallback(memory)}
+                  </p>
+                )}
+                {memory.linkUrl ? <MemoryLinkCard linkUrl={memory.linkUrl} /> : null}
               </div>
 
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">

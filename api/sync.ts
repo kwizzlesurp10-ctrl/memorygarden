@@ -26,6 +26,7 @@
  */
 
 import { isValidUserId } from './lib/api-ids'
+import { validateMemory } from '../src/lib/validation'
 
 export const config = { runtime: 'edge' }
 
@@ -103,6 +104,19 @@ export default async function handler(req: Request): Promise<Response> {
     }
     if (!body.document || typeof body.document !== 'object') {
       return jsonResponse(400, { error: 'Document required' })
+    }
+    const doc = body.document as { memories?: unknown }
+    if (Array.isArray(doc.memories)) {
+      for (let i = 0; i < doc.memories.length; i++) {
+        const checked = validateMemory(doc.memories[i])
+        if (!checked.ok) {
+          return jsonResponse(400, {
+            error: 'Invalid memory in sync document',
+            index: i,
+            details: checked.errors,
+          })
+        }
+      }
     }
     const updatedAt = new Date().toISOString()
     const payload = { ...(body.document as Record<string, unknown>), updatedAt }
