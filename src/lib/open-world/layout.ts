@@ -191,8 +191,8 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
     const colliderRadius = Math.min(radius, 0.22)
     const height = plantHeight(memory.plantStage, memory.plantVariety)
 
-    let x = 0
-    let z = 0
+    let x: number
+    let z: number
 
     if (isCollaborative) {
       // Position inside the Sanctuary Circle collaborative meadow

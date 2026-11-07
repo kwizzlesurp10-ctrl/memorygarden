@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { LocalUser, Memory } from '../types'
+import type { Memory } from '../types'
+import type { LocalUser } from '../local-user'
 import {
   BOND_WINDOW_MS,
   STORAGE_KEY_BONDS,

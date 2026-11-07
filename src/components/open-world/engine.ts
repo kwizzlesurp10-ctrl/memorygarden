@@ -418,7 +418,7 @@ export class OpenWorldEngine {
     // Soil mound darkens to moist earth
     const group = this.plantGroups.get(plant.id)
     if (group) {
-      group.traverse((obj) => {
+      group.traverse((obj: THREE.Object3D) => {
         if (obj instanceof THREE.Mesh && obj.geometry instanceof THREE.ConeGeometry && obj.position.y <= 0.05) {
           if (obj.material instanceof THREE.MeshStandardMaterial) {
             obj.material.color.set('#160e0a')

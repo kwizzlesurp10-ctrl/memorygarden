@@ -40,11 +40,12 @@ export const SEASONAL_FACTORS: Record<Season, number> = {
 }
 
 export const WEATHER_FACTORS: Record<WeatherType, number> = {
-  rain: 0.20,
-  mist: 0.60,
-  sun: 1.00,
-  cloud: 0.85,
-  snow: 0.70,
+  sunny: 1.0,
+  mist: 0.6,
+  rain: 0.2,
+  'rain-sun': 0.75,
+  'golden-haze': 0.95,
+  'partly-cloudy': 0.85,
 }
 
 /** Diurnal transpiration factor (slowed nighttime evaporation). */
@@ -62,7 +63,7 @@ export function computeCurrentMoisture(
   lastWateredAt: string | number | undefined,
   variety: PlantVariety = 'flower',
   season: Season = 'spring',
-  weather: WeatherType = 'sun',
+  weather: WeatherType = 'sunny',
   nowMs: number = Date.now(),
 ): number {
   if (lastWateredAt === undefined || lastWateredAt === null) {

@@ -23,6 +23,7 @@ import {
   Keyboard,
   SpeakerHigh,
   CloudArrowUp,
+  CloudArrowDown,
   Globe,
   ChatCircleDots,
   PersonSimpleWalk,
@@ -54,6 +55,7 @@ export interface AppHeaderProps {
   onToggleCloudSync: (enabled: boolean) => void
   onOpenUnlocks: () => void
   onOpenExport: () => void
+  onOpenBackup: () => void
   onOpenPlantStyle: () => void
   onInviteToGarden: () => void
   onOpenShortcuts: () => void
@@ -82,6 +84,7 @@ export function AppHeader(props: AppHeaderProps) {
     onToggleCloudSync,
     onOpenUnlocks,
     onOpenExport,
+    onOpenBackup,
     onOpenPlantStyle,
     onInviteToGarden,
     onOpenShortcuts,
@@ -189,6 +192,10 @@ export function AppHeader(props: AppHeaderProps) {
             <DropdownMenuItem onClick={onOpenExport}>
               <Export size={16} className="mr-2" />
               Export Garden
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onOpenBackup}>
+              <CloudArrowDown size={16} className="mr-2" />
+              Backup &amp; restore
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onOpenPlantStyle}>
               <Palette size={16} className="mr-2" />

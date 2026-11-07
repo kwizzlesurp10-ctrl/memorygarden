@@ -11,6 +11,8 @@
  *           5xx { error: string }
  */
 
+import { assertLlmRateLimit } from './llm-rate-limit'
+
 export const config = { runtime: 'edge' }
 
 interface RequestBody {
@@ -32,6 +34,11 @@ function jsonResponse(status: number, body: unknown): Response {
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
     return jsonResponse(405, { error: 'POST required' })
+  }
+
+  const rateLimited = await assertLlmRateLimit(req)
+  if (rateLimited) {
+    return rateLimited
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
