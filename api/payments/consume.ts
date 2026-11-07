@@ -12,7 +12,8 @@ export const config = { runtime: 'edge' }
 const bodySchema = z.object({
   userId: z.string().regex(/^[a-zA-Z0-9-]{8,64}$/),
   entitlementId: z.string().uuid(),
-  stripeSessionId: z.string().min(16).max(128),
+  /** Optional for backward compatibility with clients deployed before session proof */
+  stripeSessionId: z.string().min(16).max(128).optional(),
 })
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -59,7 +60,10 @@ export default async function handler(req: Request): Promise<Response> {
   if (!isValidUserId(parsed.userId)) {
     return jsonResponse(400, { error: 'Invalid userId' })
   }
-  if (!isValidStripeCheckoutSessionId(parsed.stripeSessionId)) {
+  if (
+    parsed.stripeSessionId != null &&
+    !isValidStripeCheckoutSessionId(parsed.stripeSessionId)
+  ) {
     return jsonResponse(400, { error: 'Invalid stripeSessionId' })
   }
 
@@ -69,7 +73,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!target) {
     return jsonResponse(404, { error: 'Entitlement not found' })
   }
-  if (target.stripeSessionId !== parsed.stripeSessionId) {
+  if (parsed.stripeSessionId != null && target.stripeSessionId !== parsed.stripeSessionId) {
     return jsonResponse(403, { error: 'stripeSessionId does not match entitlement' })
   }
   if (target.status === 'consumed') {

@@ -21,20 +21,33 @@ function entitlement(partial: Partial<StoredEntitlement>): StoredEntitlement {
 }
 
 describe('entitlements-access', () => {
-  it('rejects lookup without a Stripe session id', () => {
+  it('allows userId-only lookup for backward compatibility', () => {
     const result = validateEntitlementsQuery({ userId, sessionId: null })
-    expect(result.ok).toBe(false)
-    if (!result.ok) {
-      expect(result.status).toBe(400)
+    expect(result.ok).toBe(true)
+  })
+
+  it('returns all entitlements when sessionId is omitted', () => {
+    const list = createEmptyEntitlementList()
+    list.entitlements = [
+      entitlement({ stripeSessionId: sessionA }),
+      entitlement({
+        id: '22222222-2222-4222-8222-222222222222',
+        stripeSessionId: sessionB,
+      }),
+    ]
+    const resolved = resolveEntitlementsForQuery({ userId, sessionId: null }, list)
+    expect(resolved.ok).toBe(true)
+    if (resolved.ok) {
+      expect(resolved.entitlements).toHaveLength(2)
     }
   })
 
-  it('rejects invalid session id format', () => {
+  it('rejects invalid session id format when provided', () => {
     const result = validateEntitlementsQuery({ userId, sessionId: 'not_a_session' })
     expect(result.ok).toBe(false)
   })
 
-  it('filters entitlements to the requested checkout session', () => {
+  it('filters entitlements when sessionId is provided', () => {
     const list = createEmptyEntitlementList()
     list.entitlements = [
       entitlement({ stripeSessionId: sessionA }),

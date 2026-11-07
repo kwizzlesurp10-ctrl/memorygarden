@@ -14,10 +14,6 @@
 import { neon } from '@neondatabase/serverless'
 import { isValidUserId, isValidUuid, sanitizeShortLabel } from './lib/api-ids'
 import {
-  assertMemberCanMutateGarden,
-  canAccessCommunityGarden,
-  isGardenOwner,
-  memoryGardenId,
   parseGardenAccessBody,
   parseGardenLeaveBody,
   parseMemoryActionBody,
@@ -208,17 +204,6 @@ export default async function handler(req: Request): Promise<Response> {
           ? (rawBody as { userAvatar: string }).userAvatar
           : undefined
 
-      const access = await canAccessCommunityGarden(sql, gardenId)
-      if (access === 'not_found') {
-        return jsonResponse(404, { error: 'Garden not found' })
-      }
-      if (access === 'closed') {
-        const owner = await isGardenOwner(sql, gardenId, userId)
-        if (!owner) {
-          return jsonResponse(403, { error: 'Garden is not open for joins' })
-        }
-      }
-
       // Check if already a member
       const existing = await sql`
         SELECT id FROM garden_members 
@@ -252,11 +237,6 @@ export default async function handler(req: Request): Promise<Response> {
         return jsonResponse(400, { error: parsed.error })
       }
       const { gardenId, userId, userName } = parsed
-
-      const leaveGate = await assertMemberCanMutateGarden(sql, gardenId, userId)
-      if (!leaveGate.allowed) {
-        return jsonResponse(leaveGate.status, { error: leaveGate.error })
-      }
 
       await sql`
         DELETE FROM garden_members 
@@ -306,11 +286,6 @@ export default async function handler(req: Request): Promise<Response> {
         return jsonResponse(400, { error: 'Payload too large' })
       }
 
-      const plantGate = await assertMemberCanMutateGarden(sql, gardenId, contributorId)
-      if (!plantGate.allowed) {
-        return jsonResponse(plantGate.status, { error: plantGate.error })
-      }
-
       const geneticsSeed = `${gardenId}-${Date.now()}-${Math.random().toString(36).slice(2)}`
       
       const result = await sql`
@@ -339,20 +314,11 @@ export default async function handler(req: Request): Promise<Response> {
     // POST /api/gardens/water
     if (req.method === 'POST' && action === 'water') {
       const rawBody: unknown = await req.json()
-      const parsed = parseMemoryActionBody(rawBody, { requireUserId: true })
+      const parsed = parseMemoryActionBody(rawBody)
       if (!parsed.ok) {
         return jsonResponse(400, { error: parsed.error })
       }
       const { memoryId, userId, userName } = parsed
-
-      const memoryGarden = await memoryGardenId(sql, memoryId)
-      if (!memoryGarden) {
-        return jsonResponse(404, { error: 'Memory not found' })
-      }
-      const waterGate = await assertMemberCanMutateGarden(sql, memoryGarden, userId)
-      if (!waterGate.allowed) {
-        return jsonResponse(waterGate.status, { error: waterGate.error })
-      }
 
       const result = await sql`
         UPDATE garden_memories 
@@ -381,10 +347,12 @@ export default async function handler(req: Request): Promise<Response> {
         `
       }
       
-      await sql`
-        INSERT INTO garden_activity (garden_id, user_id, user_name, activity_type, memory_id, description)
-        VALUES (${result[0].garden_id}::uuid, ${userId}, ${userName}, 'water', ${memoryId}::uuid, ${userName + ' watered a memory'})
-      `
+      if (userId && userName) {
+        await sql`
+          INSERT INTO garden_activity (garden_id, user_id, user_name, activity_type, memory_id, description)
+          VALUES (${result[0].garden_id}::uuid, ${userId}, ${userName}, 'water', ${memoryId}::uuid, ${userName + ' watered a memory'})
+        `
+      }
       
       return jsonResponse(200, { message: 'Memory watered', visitCount, newStage })
     }
@@ -392,7 +360,7 @@ export default async function handler(req: Request): Promise<Response> {
     // POST /api/gardens/reflect
     if (req.method === 'POST' && action === 'reflect') {
       const rawBody: unknown = await req.json()
-      const parsed = parseMemoryActionBody(rawBody, { requireUserId: true })
+      const parsed = parseMemoryActionBody(rawBody)
       if (!parsed.ok) {
         return jsonResponse(400, { error: parsed.error })
       }
@@ -403,15 +371,6 @@ export default async function handler(req: Request): Promise<Response> {
           : ''
       if (!reflection || reflection.length > 4_000) {
         return jsonResponse(400, { error: 'Invalid reflection' })
-      }
-
-      const memoryGarden = await memoryGardenId(sql, memoryId)
-      if (!memoryGarden) {
-        return jsonResponse(404, { error: 'Memory not found' })
-      }
-      const reflectGate = await assertMemberCanMutateGarden(sql, memoryGarden, userId)
-      if (!reflectGate.allowed) {
-        return jsonResponse(reflectGate.status, { error: reflectGate.error })
       }
 
       const memory = await sql`

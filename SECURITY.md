@@ -22,11 +22,11 @@ End users are identified by a **browser-generated local profile** (`src/lib/loca
 ## API notes
 
 - **`/api/sync`** — Last-write-wins per `userId`. Shared user-id validation (`api/sync.ts`, `api/lib/api-ids.ts`). No possession proof.
-- **`/api/gardens`** — GET validates UUID garden ids and optional `viewerId`. POST join/plant/water/reflect/leave enforce id format, public-garden join rules for non-owners, and **membership (or ownership) checks** before mutating community data (`api/gardens/lib/garden-access.ts`). Caller-supplied user ids are still trusted once format checks pass.
+- **`/api/gardens`** — GET validates UUID garden ids and optional `viewerId`. POST routes enforce **caller id format** via shared parsers (`api/gardens/lib/garden-access.ts`). **Membership authorization** is not enforced server-side yet (owner decision); collaborative invite UI is local-first today.
 - **`/api/llm`** — Proxies to Anthropic; optional KV rate limit (~60 requests/hour/IP when KV is configured). No end-user auth (`api/llm.ts`, `api/llm-rate-limit.ts`).
 - **`/api/payments/webhook`** — Stripe signature verification and event idempotency via KV (`api/payments/webhook.ts`). Checkout metadata includes client-chosen `userId`.
-- **`GET /api/payments/entitlements`** — Requires valid `userId` **and** a Stripe Checkout `sessionId` (`cs_test_` / `cs_live_`); returns only entitlements tied to that session (`api/payments/lib/entitlements-access.ts`).
-- **`POST /api/payments/consume`** — Requires `stripeSessionId` matching the entitlement record (`api/payments/consume.ts`).
+- **`GET /api/payments/entitlements`** — Requires valid `userId`; optional `sessionId` filters to one checkout (shipped client always passes `sessionId` during return polling). Full listing by `userId` alone remains for backward compatibility (`api/payments/lib/entitlements-access.ts`).
+- **`POST /api/payments/consume`** — Requires `userId` + `entitlementId`; optional `stripeSessionId` is enforced when provided (new client sends it; older bundles may omit it).
 
 ## Dependency audit
 

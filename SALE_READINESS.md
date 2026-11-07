@@ -17,7 +17,7 @@ Commands run on Ubuntu, Node v22.x, `pnpm install --frozen-lockfile`:
 | `pnpm run build` | Pass | Pass (agent) |
 | `pnpm run typecheck` | Pass | Pass (agent) |
 | `pnpm run lint` | 0 errors | 0 errors (agent) |
-| `pnpm test` | **667 pass** | **679 pass** (+12 regression tests) |
+| `pnpm test` | **667 pass** | **680 pass** (+13 regression tests) |
 | `pnpm audit` | **44** (5 low / 19 moderate / 20 high) | **17** (1 low / 4 moderate / 12 high) after Vite 8.3.6, Vitest 4.1.12, `undici>=8.10.2` override |
 
 CI (`.github/workflows/ci.yml`) uses **pnpm** and **Node 22** per PR #192. Vercel install/build commands use pnpm frozen lockfile (`vercel.json`).
@@ -80,7 +80,7 @@ Format: `src/lib/garden-backup.ts` — `version: 1` JSON schema with optional `m
 | 2 Local ids / API trust | **Changed** | Still browser-local ids; **strict id validation** (`api/lib/api-ids.ts`) on sync/gardens/payments. No cryptographic identity — documented. |
 | 3 Community visibility | **Confirmed → fixed** | Filtering used `visibility` but SQL omitted column — **added**; logic extracted to `api/gardens/lib/community-memory-privacy.ts` + tests. |
 | 4 LLM auth / rate limit | **Changed** | Still no user auth; **KV rate limit** added when KV configured (`api/llm-rate-limit.ts`). |
-| 5 Stripe | **Changed** | Webhook unchanged; **GET entitlements** requires Checkout `sessionId`; **consume** requires matching `stripeSessionId`. Client checkout return flow already supplies session id. |
+| 5 Stripe | **Changed** | Webhook unchanged; entitlements GET keeps optional `sessionId` filter (client polls with session on return); consume accepts optional `stripeSessionId` (enforced when sent — compatible with main JS). |
 | 6 Backup / export label | **Changed** | Versioned backup UI + module; export PDF option **labeled PNG booklet** (`ExportGarden.tsx`). Cloud sync still excludes media. |
 | 7 Privacy / SECURITY | **Changed** | Replaced template `SECURITY.md`; added `docs/PRIVACY.md`. |
 | 8 License | **Confirmed** | `LICENSE` = MIT, GitHub, Inc. — investigate assignment; do not remove notice. |
@@ -91,7 +91,7 @@ Format: `src/lib/garden-backup.ts` — `version: 1` JSON schema with optional `m
 ## Owner decisions (not implemented — would need identity, spend, or breaking changes)
 
 1. **Authentication** (OAuth, passkeys, email magic link) tying KV/entitlements to verified users.
-2. **Strong community auth** — membership checks added for mutating routes, but still trust caller `userId` (see #1).
+2. **Server-side garden membership proofs** on plant/water/reflect (parsers + helpers exist; not wired to avoid breaking link-join / remote water without `garden_members` rows).
 3. **Encrypt** KV/DB at rest or per-user encryption keys.
 4. **Production Stripe** live mode confirmation, MRR/churn export, tax/VAT, refund policy.
 5. **Trademark / brand** clearance and optional rename.
@@ -116,7 +116,7 @@ Format: `src/lib/garden-backup.ts` — `version: 1` JSON schema with optional `m
 ## Remaining risks
 
 - Spoofed `userId` can still read/write **sync** KV and can act as a garden member if they know ids — format checks ≠ auth.
-- Entitlement **listing by userId alone** removed; guessing session ids is harder but checkout session ids remain URL-visible on return.
+- Entitlement listing by `userId` alone is still possible server-side (client does not use it after checkout; unlocks live in local preferences).
 - LLM endpoint is a cost-abuse surface when KV is unset.
 - Large JS bundle (three.js walk mode) — monitor Vercel limits.
 - Public MIT repo — forks allowed; exclusivity requires separate IP agreement.
