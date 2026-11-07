@@ -1,5 +1,6 @@
 import { createEmptyEntitlementList, parseEntitlementList } from './lib/entitlements'
-import { getKvEnv, isValidUserId, readEntitlementsRaw } from './lib/kv'
+import { resolveEntitlementsForQuery } from './lib/entitlements-access'
+import { getKvEnv, readEntitlementsRaw } from './lib/kv'
 
 export const config = { runtime: 'edge' }
 
@@ -27,20 +28,20 @@ export default async function handler(req: Request): Promise<Response> {
   const userId = url.searchParams.get('userId')
   const sessionId = url.searchParams.get('sessionId')
 
-  if (!isValidUserId(userId)) {
-    return jsonResponse(400, { error: 'Invalid userId' })
+  const pre = resolveEntitlementsForQuery({ userId, sessionId }, createEmptyEntitlementList())
+  if (!pre.ok) {
+    return jsonResponse(pre.status, { error: pre.error })
   }
 
-  const raw = await readEntitlementsRaw(kv, userId)
+  const raw = await readEntitlementsRaw(kv, userId as string)
   const list = raw ? parseEntitlementList(JSON.parse(raw)) : createEmptyEntitlementList()
-
-  let entitlements = list.entitlements
-  if (sessionId) {
-    entitlements = entitlements.filter((e) => e.stripeSessionId === sessionId)
+  const resolved = resolveEntitlementsForQuery({ userId, sessionId }, list)
+  if (!resolved.ok) {
+    return jsonResponse(resolved.status, { error: resolved.error })
   }
 
   return jsonResponse(200, {
-    entitlements,
+    entitlements: resolved.entitlements,
     updatedAt: list.updatedAt,
   })
 }

@@ -51,6 +51,7 @@ export async function fetchEntitlements(params: {
 export async function consumeEntitlement(params: {
   userId: string
   entitlementId: string
+  stripeSessionId: string
 }): Promise<void> {
   const res = await fetch('/api/payments/consume', {
     method: 'POST',

@@ -12,6 +12,12 @@
  */
 
 import { neon } from '@neondatabase/serverless'
+import { isValidUserId, isValidUuid, sanitizeShortLabel } from './lib/api-ids'
+import {
+  parseGardenAccessBody,
+  parseGardenLeaveBody,
+  parseMemoryActionBody,
+} from './gardens/lib/garden-access'
 import {
   sanitizeGardenMemoriesForViewer,
   type CommunityPrivacyMode,
@@ -66,7 +72,13 @@ export default async function handler(req: Request): Promise<Response> {
       const gardenId = url.searchParams.get('id')
       
       if (gardenId) {
+        if (!isValidUuid(gardenId)) {
+          return jsonResponse(400, { error: 'Invalid garden id' })
+        }
         const viewerId = url.searchParams.get('viewerId')
+        if (viewerId && !isValidUserId(viewerId)) {
+          return jsonResponse(400, { error: 'Invalid viewerId' })
+        }
         const privacyMode = (url.searchParams.get('privacyMode') ?? 'camouflage') as CommunityPrivacyMode
 
         // Get single garden with memories
@@ -181,13 +193,17 @@ export default async function handler(req: Request): Promise<Response> {
 
     // POST /api/gardens/join
     if (req.method === 'POST' && action === 'join') {
-      const body = await req.json() as { gardenId: string; userId: string; userName: string; userAvatar?: string }
-      const { gardenId, userId, userName, userAvatar } = body
-      
-      if (!gardenId || !userId || !userName) {
-        return jsonResponse(400, { error: 'gardenId, userId, and userName required' })
+      const rawBody: unknown = await req.json()
+      const parsed = parseGardenAccessBody(rawBody)
+      if (!parsed.ok) {
+        return jsonResponse(400, { error: parsed.error })
       }
-      
+      const { gardenId, userId, userName } = parsed.value
+      const userAvatar =
+        rawBody && typeof rawBody === 'object' && typeof (rawBody as { userAvatar?: unknown }).userAvatar === 'string'
+          ? (rawBody as { userAvatar: string }).userAvatar
+          : undefined
+
       // Check if already a member
       const existing = await sql`
         SELECT id FROM garden_members 
@@ -215,13 +231,13 @@ export default async function handler(req: Request): Promise<Response> {
 
     // POST /api/gardens/leave
     if (req.method === 'POST' && action === 'leave') {
-      const body = await req.json() as { gardenId: string; userId: string; userName: string }
-      const { gardenId, userId, userName } = body
-      
-      if (!gardenId || !userId) {
-        return jsonResponse(400, { error: 'gardenId and userId required' })
+      const rawBody: unknown = await req.json()
+      const parsed = parseGardenLeaveBody(rawBody)
+      if (!parsed.ok) {
+        return jsonResponse(400, { error: parsed.error })
       }
-      
+      const { gardenId, userId, userName } = parsed
+
       await sql`
         DELETE FROM garden_members 
         WHERE garden_id = ${gardenId}::uuid AND user_id = ${userId}
@@ -230,7 +246,7 @@ export default async function handler(req: Request): Promise<Response> {
       // Log activity
       await sql`
         INSERT INTO garden_activity (garden_id, user_id, user_name, activity_type, description)
-        VALUES (${gardenId}::uuid, ${userId}, ${userName || 'Someone'}, 'leave', ${(userName || 'Someone') + ' left the garden'})
+        VALUES (${gardenId}::uuid, ${userId}, ${userName}, 'leave', ${userName + ' left the garden'})
       `
       
       return jsonResponse(200, { message: 'Left garden successfully' })
@@ -258,11 +274,18 @@ export default async function handler(req: Request): Promise<Response> {
         photoUrl, text, memoryDate, location, positionX, positionY,
         emotionalTone, plantVariety
       } = body
-      
-      if (!gardenId || !contributorId || !photoUrl || !text) {
+
+      if (!isValidUuid(gardenId) || !isValidUserId(contributorId)) {
+        return jsonResponse(400, { error: 'Invalid gardenId or contributorId' })
+      }
+      const safeContributorName = sanitizeShortLabel(contributorName, 64)
+      if (!safeContributorName || !photoUrl || typeof photoUrl !== 'string' || !text || typeof text !== 'string') {
         return jsonResponse(400, { error: 'Required fields missing' })
       }
-      
+      if (text.length > 20_000 || photoUrl.length > 2_000_000) {
+        return jsonResponse(400, { error: 'Payload too large' })
+      }
+
       const geneticsSeed = `${gardenId}-${Date.now()}-${Math.random().toString(36).slice(2)}`
       
       const result = await sql`
@@ -272,7 +295,7 @@ export default async function handler(req: Request): Promise<Response> {
           emotional_tone, plant_variety, genetics_seed
         )
         VALUES (
-          ${gardenId}::uuid, ${contributorId}, ${contributorName}, ${contributorAvatar || null},
+          ${gardenId}::uuid, ${contributorId}, ${safeContributorName}, ${contributorAvatar || null},
           ${photoUrl}, ${text}, ${memoryDate || null}::date, ${location || null}, ${positionX}, ${positionY},
           ${emotionalTone || 'peaceful'}, ${plantVariety || 'flower'}, ${geneticsSeed}
         )
@@ -282,7 +305,7 @@ export default async function handler(req: Request): Promise<Response> {
       // Log activity
       await sql`
         INSERT INTO garden_activity (garden_id, user_id, user_name, activity_type, memory_id, description)
-        VALUES (${gardenId}::uuid, ${contributorId}, ${contributorName}, 'plant', ${result[0].id}::uuid, ${contributorName + ' planted a new memory'})
+        VALUES (${gardenId}::uuid, ${contributorId}, ${safeContributorName}, 'plant', ${result[0].id}::uuid, ${safeContributorName + ' planted a new memory'})
       `
       
       return jsonResponse(200, { message: 'Memory planted', memoryId: result[0].id })
@@ -290,13 +313,13 @@ export default async function handler(req: Request): Promise<Response> {
 
     // POST /api/gardens/water
     if (req.method === 'POST' && action === 'water') {
-      const body = await req.json() as { memoryId: string; userId: string; userName: string }
-      const { memoryId, userId, userName } = body
-      
-      if (!memoryId) {
-        return jsonResponse(400, { error: 'memoryId required' })
+      const rawBody: unknown = await req.json()
+      const parsed = parseMemoryActionBody(rawBody)
+      if (!parsed.ok) {
+        return jsonResponse(400, { error: parsed.error })
       }
-      
+      const { memoryId, userId, userName } = parsed
+
       const result = await sql`
         UPDATE garden_memories 
         SET visit_count = visit_count + 1, last_visited = NOW()
@@ -324,7 +347,6 @@ export default async function handler(req: Request): Promise<Response> {
         `
       }
       
-      // Log activity
       if (userId && userName) {
         await sql`
           INSERT INTO garden_activity (garden_id, user_id, user_name, activity_type, memory_id, description)
@@ -337,19 +359,20 @@ export default async function handler(req: Request): Promise<Response> {
 
     // POST /api/gardens/reflect
     if (req.method === 'POST' && action === 'reflect') {
-      const body = await req.json() as { 
-        memoryId: string
-        userId: string
-        userName: string
-        reflection: string 
+      const rawBody: unknown = await req.json()
+      const parsed = parseMemoryActionBody(rawBody)
+      if (!parsed.ok) {
+        return jsonResponse(400, { error: parsed.error })
       }
-      const { memoryId, userId, userName, reflection } = body
-      
-      if (!memoryId || !reflection) {
-        return jsonResponse(400, { error: 'memoryId and reflection required' })
+      const { memoryId, userId, userName } = parsed
+      const reflection =
+        rawBody && typeof rawBody === 'object' && typeof (rawBody as { reflection?: unknown }).reflection === 'string'
+          ? (rawBody as { reflection: string }).reflection.trim()
+          : ''
+      if (!reflection || reflection.length > 4_000) {
+        return jsonResponse(400, { error: 'Invalid reflection' })
       }
-      
-      // Get current reflections
+
       const memory = await sql`
         SELECT reflections, garden_id FROM garden_memories WHERE id = ${memoryId}::uuid
       `
