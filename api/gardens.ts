@@ -281,24 +281,17 @@ export default async function handler(req: Request): Promise<Response> {
         return jsonResponse(400, { error: 'Invalid gardenId or contributorId' })
       }
       const safeContributorName = sanitizeShortLabel(contributorName, 64)
-      const safeText = typeof text === 'string' ? text.trim() : ''
-      const safePhoto = typeof photoUrl === 'string' ? photoUrl : ''
-      if (!safeContributorName) {
+      if (!safeContributorName || !photoUrl || typeof photoUrl !== 'string' || !text || typeof text !== 'string') {
         return jsonResponse(400, { error: 'Required fields missing' })
       }
-      let normalizedLink: string | null = null
+      if (text.length > 20_000 || photoUrl.length > 2_000_000) {
+        return jsonResponse(400, { error: 'Payload too large' })
+      }
       if (bodyLinkUrl !== undefined && bodyLinkUrl !== null && String(bodyLinkUrl).trim() !== '') {
         const parsed = parseHttpHttpsLinkUrl(String(bodyLinkUrl))
         if (!parsed.valid) {
           return jsonResponse(400, { error: parsed.error ?? 'Invalid linkUrl' })
         }
-        normalizedLink = parsed.normalized
-      }
-      if (!safeText && !safePhoto && !normalizedLink) {
-        return jsonResponse(400, { error: 'Memory must include text, a photo, or a link' })
-      }
-      if (safeText.length > 20_000 || safePhoto.length > 2_000_000) {
-        return jsonResponse(400, { error: 'Payload too large' })
       }
       const geneticsSeed = `${gardenId}-${Date.now()}-${Math.random().toString(36).slice(2)}`
       
@@ -310,7 +303,7 @@ export default async function handler(req: Request): Promise<Response> {
         )
         VALUES (
           ${gardenId}::uuid, ${contributorId}, ${safeContributorName}, ${contributorAvatar || null},
-          ${safePhoto || ''}, ${safeText}, ${memoryDate || null}::date, ${location || null}, ${positionX}, ${positionY},
+          ${photoUrl}, ${text}, ${memoryDate || null}::date, ${location || null}, ${positionX}, ${positionY},
           ${emotionalTone || 'peaceful'}, ${plantVariety || 'flower'}, ${geneticsSeed}
         )
         RETURNING id

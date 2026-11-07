@@ -26,7 +26,7 @@
  */
 
 import { isValidUserId } from './lib/api-ids'
-import { validateMemory } from '../src/lib/validation'
+import { sanitizeSyncDocument } from '../src/lib/sync-document'
 
 export const config = { runtime: 'edge' }
 
@@ -105,21 +105,9 @@ export default async function handler(req: Request): Promise<Response> {
     if (!body.document || typeof body.document !== 'object') {
       return jsonResponse(400, { error: 'Document required' })
     }
-    const doc = body.document as { memories?: unknown }
-    if (Array.isArray(doc.memories)) {
-      for (let i = 0; i < doc.memories.length; i++) {
-        const checked = validateMemory(doc.memories[i])
-        if (!checked.ok) {
-          return jsonResponse(400, {
-            error: 'Invalid memory in sync document',
-            index: i,
-            details: checked.errors,
-          })
-        }
-      }
-    }
+    const sanitized = sanitizeSyncDocument(body.document as Record<string, unknown>)
     const updatedAt = new Date().toISOString()
-    const payload = { ...(body.document as Record<string, unknown>), updatedAt }
+    const payload = { ...sanitized, updatedAt }
     const serialized = JSON.stringify(payload)
     if (serialized.length > 1_000_000) {
       return jsonResponse(413, { error: 'Document too large' })

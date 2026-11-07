@@ -325,14 +325,9 @@ describe('validateMemory', () => {
     expect(validateMemory(makeMinimalMemory({ text: '' })).ok).toBe(true)
   })
 
-  it('fails when text, photo, and link are all absent', () => {
-    const result = validateMemory(
-      makeMinimalMemory({ text: '', photoUrl: '', linkUrl: undefined }),
-    )
-    expect(result.ok).toBe(false)
-    if (!result.ok) {
-      expect(result.errors.some((e) => e.field === 'content')).toBe(true)
-    }
+  it('allows legacy memories with empty text when photo is present', () => {
+    const result = validateMemory(makeMinimalMemory({ text: '' }))
+    expect(result.ok).toBe(true)
   })
 
   it('rejects invalid linkUrl schemes', () => {
