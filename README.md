@@ -1,7 +1,7 @@
 # MemoryGarden 🌱
 
 [content-to-enhance id="introduction"]
-MemoryGarden is a calm, emotional space for the moments that matter: plant each memory like a seed, return to tend it, and watch it grow into something alive on the canvas—never rushed, never noisy, always yours.
+MemoryGarden is a calm, emotional space for the moments that matter: plant each memory like a seed, return to tend it, and watch it grow through eight living stages—from quiet **seed** to venerable **elder**—on an illustrated canvas, in a Three.js **Walk** meadow, or among friends in shared groves. Nothing is rushed; whispers and seasons invite you back without guilt.
 [/content-to-enhance]
 
 ## What is MemoryGarden?
@@ -9,65 +9,89 @@ MemoryGarden is a calm, emotional space for the moments that matter: plant each 
 [content-to-enhance id="memory-garden-concept"]
 MemoryGarden reimagines how we preserve and revisit memories. Instead of flipping through static albums, your moments live as plants in a garden that responds to you:
 
-- **Grow over time** — Plants advance through stages as you visit and reflect; neglect and care both leave traces you can feel.
-- **Reflect emotions** — AI-assisted tone hints shape variety and color so the garden mirrors how each memory feels.
-- **Encourage reflection** — Add notes when you revisit; invite gentle, poetic insights when you ask the Garden AI.
-- **Create connections** — Spatial proximity and clustering help you notice themes across seasons of your life.
-- **Adapt to seasons** — Light, mood, and atmosphere follow real time and season so the garden stays tied to the world outside the screen.
+- **Grow over time** — Stages advance through visits, age, and care: `seed → sprout → seedling → young → bud → bloom → mature → elder`.
+- **Reflect emotions** — Classification steers variety, OKLCH palette, and growth character across five **emotional tones** (`happy`, `reflective`, `bittersweet`, `peaceful`, `nostalgic`).
+- **Dream and hybridize** — **Dream a plant** turns words into genome seeds stored in the **Storage Shed**; pollination links two parents into custom **hybrids** with motifs and graft lines.
+- **Walk among memories** — **Walk** is a first-person Three.js open world: emotional tone beds, **Grove Project** milestones, **3D gifts**, and **sleeping seed** / **camouflage** privacy for visitors.
+- **Encourage reflection** — Water & reflect, **Garden AI** reflections, **Garden Lens** loupe on the 2D canvas, and **gentle whispers** (rule-of-three re-engagement, never punitive).
+- **Create connections** — Spatial clustering, timeline, Bloom Wall, **community explore** (`/api/gardens` + Neon), and optional KV metadata sync.
+- **Adapt to seasons** — Day/night, seasonal mood, ambient audio, and weather accents follow real time so the garden stays tied to the world outside the screen.
 [/content-to-enhance]
 
 ## Features
 
 [content-to-enhance id="core-features"]
 ### 🌿 Plant & Tend Memories
-- **Planting**: Upload a photo, write about the moment, and watch your memory sprout on the canvas.
-- **Tending**: Open memories often to see them bloom and mature; reflections deepen the story each time you return.
-- **Fertilizer Boost**: Garden Boost is free; Premium and Legendary use Stripe Checkout. Growth applies only after webhook-verified payment.
+- **Planting**: Photo (IndexedDB-backed blobs + local metadata), text, date, optional location/voice, and emotional classification.
+- **Tending**: Visits advance **`getPlantStage()`**; reflections deepen the story; trait slots unlock from growth history.
+- **Fertilizer Boost**: Garden Boost is free; Premium and Legendary use Stripe Checkout—growth applies only after **webhook-verified** payment ([PAYMENTS.md](./PAYMENTS.md)).
+
+### 🔬 Garden Lens (2D canvas)
+- **Loupe**: Magnifying lens with adjustable zoom on the SVG garden canvas—parallax pauses while the lens is active for precise tending.
+
+### 🧬 Hybrids, Dream & Shed
+- **Dream a plant**: Describe an idea; `dreamPlant()` yields a **HybridGenome** (offline seed or AI-assisted when `/api/llm` is configured).
+- **Storage Shed**: Keeps dreamt seeds, planted hybrids, memorial **candles**, and shed style (`antique` | `storybook` | `glass` | `modern`).
+- **Pollination**: Link two parent memories, then plant a child with merged **generateHybridTraits()**.
+
+### 🚶 Walk (open world)
+- **Three.js** first-person garden: WASD movement, interact radius, tone-colored beds, procedural plant meshes through **elder**.
+- **Grove Project** (five tiers at 25 / 75 / 150 / 300 / 500 collective waterings): birdbath → fireflies → sakura → starlight fountain → aurora skybox features unlock in Walk terrain.
+- **3D gifts** on nearby plants: Blossom Note, Paper Lantern, Dewdrop Vial (+vitality), Wind Chime—leave, discover, and open gifts in the HUD.
+- **Privacy**: **Camouflage** (Poisson filler flora, zero coordinate drift) and **sleeping seed** (contemplation-ring projection, redacted visitor view) via `privacy-engine`.
 
 ### ✨ AI-Powered Insights
-
-- **Emotional tone**: Text is classified to steer plant variety, palette, and growth character.
-- **Garden AI**: Poetic reflections and prompts that connect nearby memories without overwhelming the original voice.
-- **Memory Clusters**: Thematic or temporal groupings so you can browse by mood as well as by place.
+- **Emotional tone**: `kind: 'classify'` → **Claude Haiku** (`claude-haiku-4-5-20251001`).
+- **Garden AI / reflections**: `kind: 'reflect'` → **Claude Sonnet** (`claude-sonnet-4-6`).
+- **Client resolution**: `getLLMProvider()` — `fetch('/api/llm')` first, optional `window.spark.llm` when present, static fallback when unavailable.
 
 ### 🎨 Beautiful Views
-- **Garden**: Illustrated pan-and-zoom canvas with animated plants and layered backgrounds.
-- **Walk**: First-person open world — enter the garden gate and walk among your memories.
+- **Garden**: Infinite pannable/zoomable canvas (primary 2D view) with animated plants and layered backgrounds.
+- **Walk**: Three.js open world among your memories.
 - **Timeline**: Chronological path through every planted moment.
-- **Clusters**: Grouped cards for thematic exploration.
-- **Bloom Wall**: A gallery spotlight for memories that have reached full bloom.
+- **Clusters**: Thematic or AI-suggested groupings.
+- **Bloom Wall**: Gallery spotlight for memories in full bloom / mature stages.
+- **Community explore**: Browse and tend public gardens when `DATABASE_URL` backs `/api/gardens`.
 
 ### 👥 Collaboration & Sharing
-- **Collaborative gardens**: Shared spaces to grow memories together when that mode is enabled.
-- **Private sharing**: Share specific memories with link-based access you control.
+- **Collaborative gardens**: Shared spaces with invites when enabled; Neon-backed community routes for join / plant / water / reflect.
+- **Private sharing**: Link-based access you control; visitor projections respect privacy mode.
+- **Gentle whispers**: On-this-day, social care, thirst nudges, and solstice invites—capped at three compassionate prompts per week.
 
 ### 🌓 Living Atmosphere
-- **Day / night**: Background and lighting follow local time.
-- **Seasonal mood**: Subtle shifts for the current season and overall garden “weather.”
-- **Ambient sound**: Optional audio that tracks time of day and season.
+- **Day / night** and **seasonal** gradients; optional ambient sound tied to time and season.
+- **Weather & lens flare** accents on supported views.
 
 ### ⌨️ Power user affordances
-- **Keyboard shortcuts**: Fast navigation and actions (`?` opens the cheat sheet).
-- **Protocol handlers**: Deep links such as `web+memorygarden://` when installed as a PWA.
-- **PWA**: Install for an app-like shell and optional protocol registration.
+- **Keyboard shortcuts** (`?` cheat sheet), **protocol handlers** (`web+memorygarden://` PWA), and **ValidationResult**-typed parsers in `src/lib/validation.ts` for safe imports and settings.
 [/content-to-enhance]
 
 ## Technical Architecture
 
 [content-to-enhance id="how-it-works"]
-MemoryGarden is a client-heavy React app tuned for smooth, organic motion and local-first data.
+MemoryGarden is a client-heavy **React 19 + TypeScript** app tuned for smooth, organic motion and local-first data.
 
 ### Frontend stack
-- **React 19 + TypeScript** — UI and state.
-- **Vite** — Dev server and production bundle.
-- **Tailwind CSS** — Layout and responsive styling.
-- **Framer Motion** — Springs and transitions that feel alive.
-- **Radix UI** — Accessible primitives (dialogs, tabs, etc.).
-- **Persistence** — `useKV` from `@/lib/storage` scopes data per local user in **localStorage**; large photo payloads use **IndexedDB** so you stay under typical string quotas.
-- **AI** — `POST` to **`/api/llm`** (Vercel Edge): prompts go to **Anthropic** with `ANTHROPIC_API_KEY` on the server. The browser never sees the key. If the route is missing or returns `503`, the app falls back gracefully (including optional **GitHub Spark** `window.spark` where present).
+| Layer | Choice |
+|-------|--------|
+| UI | React 19, Radix primitives, Tailwind, Framer Motion |
+| Build | Vite 8 |
+| Persistence | `useKV` → namespaced **localStorage** per `LocalUser`; large blobs in **IndexedDB** |
+| 2D garden | SVG scene graph, Garden Lens loupe, hybrid builder UI |
+| 3D Walk | **three** r184, custom plant meshes and terrain milestones |
+| AI client | `src/lib/llm-client.ts` → `POST /api/llm` |
+| Types & validation | `src/lib/types.ts`, discriminated **`ValidationResult<T>`** in `validation.ts` |
+
+### Vercel Edge API (summary)
+| Route | Purpose | Key env |
+|-------|---------|---------|
+| `POST /api/llm` | Anthropic proxy (classify / reflect) | `ANTHROPIC_API_KEY` |
+| `GET/POST /api/sync` | KV metadata sync (last-write-wins; **photos not synced**) | `KV_REST_API_URL`, `KV_REST_API_TOKEN` |
+| `GET/POST /api/gardens` (+ join, plant, water, …) | Public / community gardens | `DATABASE_URL` (Neon) |
+| `/api/payments/*` | Stripe Checkout, webhook fulfillment, entitlements | `STRIPE_*`, price IDs, KV for entitlements — see [PAYMENTS.md](./PAYMENTS.md) |
 
 ### Sub-projects
-- **Volatility Sentinel** (`volatility-sentinel/` in the repo) — Standalone Python agent example (CoinGecko) you run separately from the Vite app; CI exercises it from its own directory.
+- **Volatility Sentinel** (`volatility-sentinel/`) — Standalone Python agent example (CoinGecko); exercised separately from the Vite app in CI.
 [/content-to-enhance]
 
 ## Getting Started
@@ -106,6 +130,7 @@ Output is written to **`dist/`** for static hosting.
 npm run lint
 npm test
 ```
+**Vitest**: **658** tests across **35** files (single run).
 
 ### Preview the production bundle
 ```bash
@@ -115,24 +140,23 @@ Serves **`dist/`** locally (Vite preview server).
 
 ## Testing
 
-Vitest drives automated checks for garden logic, storage edge cases, LLM client wiring, and more.
+Vitest drives automated checks for growth logic, storage edge cases, LLM client wiring, privacy projections, grove gifts, payments entitlements, and more.
 
 ### Commands
 - **One-off run**: `npm test`
 - **Watch**: `npm run test:watch`
 - **Coverage**: `npm run test:coverage`
-
-Typical areas covered include growth and stage logic, unlock/currency paths, trait helpers, local user migration, and HTTP LLM behavior.
 [/content-to-enhance]
 
 ## Deployment
 
 [content-to-enhance id="configuration"]
-The production story on **Vercel** is a static SPA plus two Edge routes:
+The production story on **Vercel** is a static SPA plus Edge routes:
 
-1. **`/api/llm`** — Proxies classification and reflection prompts to Anthropic. Set **`ANTHROPIC_API_KEY`** in the project. Without it, AI features degrade cleanly while the garden keeps working.
-2. **`/api/sync`** — Optional metadata sync to **Vercel KV / Upstash** using **`KV_REST_API_URL`** and **`KV_REST_API_TOKEN`**. Photos and audio stay on-device (IndexedDB); only structured fields participate when sync is on.
-3. **Stripe one-time purchases** — Fertilizer boosts (Premium / Legendary) and the optional Starlight cosmetic pack use **`/api/payments/*`** (Checkout + webhook fulfillment). See **[PAYMENTS.md](./PAYMENTS.md)** for Price IDs, webhook events, and all required env vars (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, price env vars, plus KV for entitlements).
+1. **`/api/llm`** — Proxies classification and reflection to Anthropic. Set **`ANTHROPIC_API_KEY`**. Without it, AI features degrade cleanly (dream/hybrid fallbacks remain).
+2. **`/api/sync`** — Optional metadata sync to **Vercel KV / Upstash** via **`KV_REST_API_URL`** and **`KV_REST_API_TOKEN`**. Photos stay on-device (IndexedDB); structured fields sync when enabled.
+3. **`/api/gardens`** — Community gardens on **Neon** with **`DATABASE_URL`**. Returns **503** when unset; the explore UI backs off honestly.
+4. **Stripe one-time purchases** — Fertilizer boosts (Premium / Legendary) and the Starlight cosmetic pack use **`/api/payments/*`** (Checkout + webhook fulfillment). See **[PAYMENTS.md](./PAYMENTS.md)** for Price IDs, webhook events, and required env vars (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, price env vars, plus KV for entitlements).
 
 Pushes to **`main`** trigger `npm install` and `npm run build`. **`legacy-peer-deps`** in `.npmrc` keeps Vite 8 and `@vitejs/plugin-react-swc` compatible.
 
@@ -140,8 +164,9 @@ The header **Sync to cloud** control reflects real status and backs off when the
 
 ## Privacy & Data
 
-- **Local-first**: Memories and media default to the browser (localStorage-scoped keys + IndexedDB for blobs). Nothing leaves the device except what you explicitly sync or share.
-- **AI payloads**: Classification uses truncated memory text; reflections may include short snippets from nearby memories—never photos or account profiles in those paths.
+- **Local-first**: Memories and media default to the browser (localStorage-scoped keys + IndexedDB for blobs). Nothing leaves the device except what you explicitly sync, share, or post to community gardens.
+- **Visitor privacy**: **Camouflage** and **sleeping seed** modes reshape the Walk world for guests without leaking coordinates or media.
+- **AI payloads**: Classification uses truncated memory text; reflections may include short snippets from nearby memories—never photo bytes or full account profiles in those paths.
 - **Export**: Full-garden export from settings when you want a portable archive.
 [/content-to-enhance]
 
@@ -150,23 +175,30 @@ The header **Sync to cloud** control reflects real status and backs off when the
 [content-to-enhance id="roadmap"]
 Directions worth prioritizing as MemoryGarden matures:
 
-- **Collaboration** — Richer shared-garden invitations, presence, and conflict-safe merges for joint tending.
+- **Collaboration depth** — Richer shared-garden invitations, presence, and conflict-safe merges for joint tending on Neon.
+- **Whispers & PWA** — Web Push for gentle whispers and anniversary care without breaking the rule-of-three philosophy.
 - **Export & print** — Higher-fidelity PDF and poster layouts from the Bloom Wall and timeline.
-- **Accessibility & i18n** — Audit across canvas, modals, and keyboard flows; extract copy for translation.
-- **Performance at scale** — Continue canvas virtualization and asset prioritization for very large gardens (500+ plants).
+- **Accessibility & i18n** — Audit across canvas, Walk controls, modals, and keyboard flows; extract copy for translation.
+- **Performance at scale** — Continue canvas virtualization, Walk LOD, and asset prioritization for very large gardens (500+ plants).
 [/content-to-enhance]
 
 ## FAQ
 
 [content-to-enhance id="faq"]
 **Where does my data live?**  
-By default on your device: scoped localStorage for structured data and IndexedDB for heavy blobs. Cloud sync of metadata is optional and only active when KV credentials are configured.
+By default on your device: scoped localStorage for structured data and IndexedDB for heavy blobs. Cloud sync of metadata is optional (`/api/sync`) and only active when KV credentials are configured. Community garden posts require `DATABASE_URL`.
 
 **Are photos sent to the AI?**  
-No. AI calls operate on text (and brief neighboring context for reflections), not image bytes.
+No. AI calls operate on text (and brief neighboring context for reflections), not image bytes. Sync also omits `photoUrl` blobs.
 
 **Which LLM runs in production?**  
-Deployed apps use **`/api/llm`** → Anthropic (see `api/llm.ts`). Spark environments may still expose `window.spark.llm` as a fallback path in client code.
+Deployed apps use **`/api/llm`** → Anthropic (**Haiku** for classify, **Sonnet** for reflect). Spark environments may still expose `window.spark.llm` as a secondary path in client code.
+
+**What plant stages exist?**  
+Eight stages: `seed`, `sprout`, `seedling`, `young`, `bud`, `bloom`, `mature`, `elder` — computed by **`getPlantStage()`** from visits, planting age, and boosts.
+
+**How do Grove tiers work?**  
+Collective watering counts unlock five Walk features at **25 / 75 / 150 / 300 / 500** waterings (birdbath through aurora). Progress is tracked locally and reflected in the Walk HUD.
 
 **How do I contribute or report an issue?**  
 Use GitHub issues and pull requests on this repository.
