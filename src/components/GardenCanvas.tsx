@@ -1,5 +1,7 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
-import type { Memory, Season, StorageShedData, ShedSeed, PlantedHybrid } from '@/lib/types'
+import type { GardenLandscapeView, Memory, Season, StorageShedData, ShedSeed, PlantedHybrid } from '@/lib/types'
+import { projectMemoryToScene, resolveGardenLandscapeView } from '@/lib/garden/landscape-view'
+import { GardenViewPicker } from '@/components/garden/GardenViewPicker'
 import { WeatherEffects } from './WeatherEffects'
 import { GardenClusterPaths } from './GardenClusterPaths'
 import { getPlantSize } from '@/lib/garden-helpers'
@@ -41,13 +43,8 @@ interface GardenCanvasProps {
   mood?: import('@/lib/types').GardenMood | null
   onPlantHybrid?: (genome: import('@/lib/types').HybridGenome, idea: string, position: { x: number; y: number }) => void
   onEnterWalk?: () => void
-}
-
-function clampScenePosition(x: number, y: number): { x: number; y: number } {
-  return {
-    x: Math.max(80, Math.min(SCENE_W - 80, x % SCENE_W)),
-    y: Math.max(420, Math.min(468, y % SCENE_H)),
-  }
+  landscapeView?: GardenLandscapeView
+  onLandscapeViewChange?: (view: GardenLandscapeView) => void
 }
 
 export function GardenCanvas({
@@ -60,6 +57,8 @@ export function GardenCanvas({
   mood = null,
   onPlantHybrid,
   onEnterWalk,
+  landscapeView,
+  onLandscapeViewChange,
 }: GardenCanvasProps) {
   const reducedMotion = useReducedMotion()
   const motion = !reducedMotion
@@ -88,6 +87,7 @@ export function GardenCanvas({
   const sceneWrapRef = useRef<HTMLDivElement>(null)
 
   const palette = useMemo(() => todPalette(tod, season), [tod, season])
+  const resolvedView = useMemo(() => resolveGardenLandscapeView(landscapeView), [landscapeView])
 
   // Parallax tilt fights the loupe (and confuses pointer→scene mapping) — off while lens is active.
   useParallaxCursor(
@@ -168,7 +168,7 @@ export function GardenCanvas({
 
   const memoryPlants = useMemo(() => (
     memories.map((memory) => {
-      const pos = clampScenePosition(memory.position.x, memory.position.y)
+      const pos = projectMemoryToScene(memory.position, resolvedView)
       const isDimmed = highlightedMemoryIds !== null && !highlightedMemoryIds.has(memory.id)
       const isGrowing = growingMemories.has(memory.id)
       const size = getPlantSize(memory.plantStage) as number
@@ -217,7 +217,7 @@ export function GardenCanvas({
         </g>
       )
     })
-  ), [memories, highlightedMemoryIds, growingMemories, lensOn, palette, motion])
+  ), [memories, highlightedMemoryIds, growingMemories, lensOn, palette, motion, resolvedView])
 
   const onLensMove = useCallback((e: React.PointerEvent) => {
     if (!lensOn || !sceneWrapRef.current) return
@@ -240,6 +240,14 @@ export function GardenCanvas({
   return (
     <div className="relative w-full h-full overflow-hidden bg-[#0d0913]">
       {mood && <WeatherEffects mood={mood} season={season} />}
+
+      {onLandscapeViewChange ? (
+        <GardenViewPicker
+          className="absolute z-40 left-3 top-3 max-w-[min(100%,420px)]"
+          value={landscapeView}
+          onChange={onLandscapeViewChange}
+        />
+      ) : null}
 
       <GardenLayoutToolDock
         palette={palette}
@@ -334,6 +342,7 @@ export function GardenCanvas({
             gardenSeed={GARDEN_SEED}
             rimStrength={RIM_STRENGTH}
             motion={motion}
+            landscapeView={resolvedView}
             shedStyle={shedData.shedStyle}
             onShedClick={() => setShedOpen(true)}
             planted={shedData.planted}

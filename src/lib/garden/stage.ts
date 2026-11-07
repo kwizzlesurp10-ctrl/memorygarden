@@ -20,3 +20,7 @@ export function plantStageToIndex(stage: PlantStage): number {
 export function indexToPlantStage(index: number): PlantStage {
   return INDEX_STAGE[Math.max(0, Math.min(7, index))] ?? 'seed'
 }
+
+export function maxPlantStage(a: PlantStage, b: PlantStage): PlantStage {
+  return plantStageToIndex(a) >= plantStageToIndex(b) ? a : b
+}

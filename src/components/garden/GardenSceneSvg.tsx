@@ -5,7 +5,8 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react'
-import type { Candle, PlantedHybrid, ShedStyle } from '@/lib/types'
+import type { Candle, GardenLandscapeView, PlantedHybrid, ShedStyle } from '@/lib/types'
+import { getViewWaterLayout, resolveGardenLandscapeView } from '@/lib/garden/landscape-view'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { gardenRng } from '@/lib/garden/prng'
 import { indexToPlantStage } from '@/lib/garden/stage'
@@ -24,6 +25,7 @@ export interface GardenSceneSvgProps {
   gardenSeed: number
   rimStrength: number
   motion: boolean
+  landscapeView?: GardenLandscapeView
   shedStyle: ShedStyle
   onShedClick?: () => void
   planted: PlantedHybrid[]
@@ -254,10 +256,11 @@ export interface GardenSkyLayerProps {
   sceneKey: string
   motion: boolean
   rngData: SceneRngData
+  waterTopY: number
 }
 
 export const GardenSkyLayer = forwardRef<SVGGElement, GardenSkyLayerProps>(function GardenSkyLayer(
-  { palette: C, sceneKey: k, motion, rngData },
+  { palette: C, sceneKey: k, motion, rngData, waterTopY },
   ref,
 ) {
   const birdAlpha = C.birdAlpha ?? 1
@@ -276,7 +279,7 @@ export const GardenSkyLayer = forwardRef<SVGGElement, GardenSkyLayerProps>(funct
           <stop offset={1} stopColor={C.waterTint[1]} stopOpacity={0.92} />
         </linearGradient>
         <clipPath id={`wc${k}`}>
-          <rect x={0} y={SCENE_HZ} width={SCENE_W} height={SCENE_H - SCENE_HZ} />
+          <rect x={0} y={waterTopY} width={SCENE_W} height={Math.max(0, SCENE_H - waterTopY)} />
         </clipPath>
       </defs>
 
@@ -570,6 +573,7 @@ export interface GardenMidWaterLayerProps {
   gardenSeed: number
   rimStrength: number
   motion: boolean
+  landscapeView: GardenLandscapeView
   planted: PlantedHybrid[]
   candles: Candle[]
   memoryPlants?: ReactNode
@@ -583,6 +587,7 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
     gardenSeed: seed,
     rimStrength: rim,
     motion,
+    landscapeView,
     planted,
     candles,
     memoryPlants,
@@ -591,28 +596,85 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
   ref,
 ) {
   const sortedCandles = useMemo(() => [...candles].sort((a, b) => a.y - b.y), [candles])
+  const waterLayout = useMemo(() => getViewWaterLayout(landscapeView), [landscapeView])
+  const waterTopY = waterLayout.bandHeight > 0 ? waterLayout.waterTopY : SCENE_H
+  const showReflection = waterLayout.bandHeight > 48 && !waterLayout.corner
 
   return (
-    <g ref={ref} data-layer="mid">
+    <g ref={ref} data-layer="mid" data-landscape-view={landscapeView}>
       <MidNearLandContent palette={C} gardenSeed={seed} rimStrength={rim} motion={motion} />
       <PlantedHybridsContent palette={C} rimStrength={rim} motion={motion} planted={planted} />
       {memoryPlants}
 
-      <rect x={0} y={SCENE_HZ} width={SCENE_W} height={SCENE_H - SCENE_HZ} fill={C.waterTint[1]} />
-
-      <g clipPath={`url(#wc${k})`} opacity={0.32} style={{ filter: 'blur(1.4px)' }}>
-        <g transform={`translate(0 ${SCENE_HZ * 1.92}) scale(1 -0.92)`}>
-          <ReflectLandContent
-            palette={C}
-            gardenSeed={seed}
-            rimStrength={rim}
-            motion={motion}
-            planted={planted}
+      {waterTopY > SCENE_HZ + 6 ? (
+        <>
+          <path
+            d={`M 0 ${SCENE_HZ + 2} Q 300 ${SCENE_HZ - 4} 600 ${SCENE_HZ + 6} T 1200 ${SCENE_HZ} L 1200 ${waterTopY} L 0 ${waterTopY} Z`}
+            fill={C.hills[2]}
+            opacity={0.96}
           />
-        </g>
-      </g>
+          <path
+            d={`M 0 ${SCENE_HZ + 8} Q 420 ${waterTopY - 22} 820 ${SCENE_HZ + 14} T 1200 ${waterTopY - 8} L 1200 ${waterTopY + 2} L 0 ${waterTopY + 2} Z`}
+            fill={C.bank}
+            opacity={0.88}
+          />
+          <g transform={`translate(180 ${waterTopY - 18}) scale(1.1)`}>
+            {grassTuft({ C, r: gardenRng(seed + 401) })}
+          </g>
+          <g transform={`translate(520 ${waterTopY - 12}) scale(0.95)`}>
+            {grassTuft({ C, r: gardenRng(seed + 402) })}
+          </g>
+          <g transform={`translate(920 ${waterTopY - 16}) scale(1.05)`}>
+            {grassTuft({ C, r: gardenRng(seed + 403) })}
+          </g>
+        </>
+      ) : null}
 
-      <rect x={0} y={SCENE_HZ} width={SCENE_W} height={SCENE_H - SCENE_HZ} fill={`url(#wv${k})`} />
+      {waterLayout.bandHeight > 0 ? (
+        <rect x={0} y={waterTopY} width={SCENE_W} height={waterLayout.bandHeight} fill={C.waterTint[1]} />
+      ) : null}
+
+      {waterLayout.corner ? (
+        <rect
+          x={waterLayout.corner.x}
+          y={waterLayout.corner.y}
+          width={waterLayout.corner.width}
+          height={waterLayout.corner.height}
+          rx={12}
+          fill={C.waterTint[1]}
+          opacity={0.92}
+        />
+      ) : null}
+
+      {showReflection ? (
+        <g clipPath={`url(#wc${k})`} opacity={0.32} style={{ filter: 'blur(1.4px)' }}>
+          <g transform={`translate(0 ${waterTopY * 1.92}) scale(1 -0.92)`}>
+            <ReflectLandContent
+              palette={C}
+              gardenSeed={seed}
+              rimStrength={rim}
+              motion={motion}
+              planted={planted}
+            />
+          </g>
+        </g>
+      ) : null}
+
+      {waterLayout.bandHeight > 0 ? (
+        <rect x={0} y={waterTopY} width={SCENE_W} height={waterLayout.bandHeight} fill={`url(#wv${k})`} />
+      ) : null}
+
+      {waterLayout.corner ? (
+        <rect
+          x={waterLayout.corner.x}
+          y={waterLayout.corner.y}
+          width={waterLayout.corner.width}
+          height={waterLayout.corner.height}
+          rx={12}
+          fill={`url(#wv${k})`}
+          opacity={0.85}
+        />
+      ) : null}
 
       {C.sun ? (
         <>
@@ -649,55 +711,65 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
         />
       ) : null}
 
-      <g>
-        {rngData.ripples.map((rp, i) => (
-          <line
-            key={i}
-            x1={rp.x1}
-            y1={rp.y1}
-            x2={rp.x2}
-            y2={rp.y2}
-            stroke={C.ripple}
-            strokeWidth={rp.strokeWidth}
-            opacity={rp.opacity}
-            strokeLinecap="round"
-            style={rp.style}
+      {(waterLayout.bandHeight > 0 || waterLayout.corner) ? (
+        <g>
+          {rngData.ripples
+            .filter((rp) => rp.y1 >= waterTopY - 12)
+            .map((rp, i) => (
+              <line
+                key={i}
+                x1={rp.x1}
+                y1={rp.y1}
+                x2={rp.x2}
+                y2={rp.y2}
+                stroke={C.ripple}
+                strokeWidth={rp.strokeWidth}
+                opacity={rp.opacity * (waterLayout.bandHeight > 80 ? 1 : 0.55)}
+                strokeLinecap="round"
+                style={rp.style}
+              />
+            ))}
+        </g>
+      ) : null}
+
+      {waterLayout.bandHeight > 40 ? (
+        <line
+          x1={0}
+          y1={waterTopY}
+          x2={SCENE_W}
+          y2={waterTopY}
+          stroke={C.rim}
+          strokeWidth={0.8}
+          opacity={0.18 * rim}
+        />
+      ) : null}
+
+      {landscapeView === 'pond' || landscapeView === 'lakeside' ? (
+        <>
+          <PlantAt
+            variety="lotus"
+            stage={C.lotusDormant ? 1 : 6}
+            palette={C}
+            x={800}
+            y={Math.min(598, waterTopY + 88)}
+            sc={1.15}
+            seedN={seed + 19}
+            rim={rim}
+            motion={motion}
           />
-        ))}
-      </g>
-
-      <line
-        x1={0}
-        y1={SCENE_HZ}
-        x2={SCENE_W}
-        y2={SCENE_HZ}
-        stroke={C.rim}
-        strokeWidth={0.8}
-        opacity={0.18 * rim}
-      />
-
-      <PlantAt
-        variety="lotus"
-        stage={C.lotusDormant ? 1 : 6}
-        palette={C}
-        x={800}
-        y={598}
-        sc={1.15}
-        seedN={seed + 19}
-        rim={rim}
-        motion={motion}
-      />
-      <PlantAt
-        variety="lotus"
-        stage={C.lotusDormant ? 0 : 3}
-        palette={C}
-        x={728}
-        y={616}
-        sc={0.9}
-        seedN={seed + 20}
-        rim={rim}
-        motion={motion}
-      />
+          <PlantAt
+            variety="lotus"
+            stage={C.lotusDormant ? 0 : 3}
+            palette={C}
+            x={728}
+            y={Math.min(616, waterTopY + 98)}
+            sc={0.9}
+            seedN={seed + 20}
+            rim={rim}
+            motion={motion}
+          />
+        </>
+      ) : null}
 
       {sortedCandles.length > 0 ? (
         <g>
@@ -896,6 +968,7 @@ export function GardenSceneSvg({
   gardenSeed,
   rimStrength,
   motion,
+  landscapeView,
   shedStyle,
   onShedClick,
   planted,
@@ -903,6 +976,11 @@ export function GardenSceneSvg({
   memoryPlants,
   layerRefs,
 }: GardenSceneSvgProps) {
+  const resolvedView = resolveGardenLandscapeView(landscapeView)
+  const waterTopY = useMemo(() => {
+    const layout = getViewWaterLayout(resolvedView)
+    return layout.bandHeight > 0 ? layout.waterTopY : SCENE_H
+  }, [resolvedView])
   const rngData = useMemo(
     () => computeSceneRngData(gardenSeed, sceneKey, palette, motion),
     [gardenSeed, sceneKey, palette, motion],
@@ -922,6 +1000,7 @@ export function GardenSceneSvg({
         sceneKey={sceneKey}
         motion={motion}
         rngData={rngData}
+        waterTopY={waterTopY}
       />
       <GardenFarLayer
         ref={layerRefs?.far}
@@ -937,6 +1016,7 @@ export function GardenSceneSvg({
         gardenSeed={gardenSeed}
         rimStrength={rimStrength}
         motion={motion}
+        landscapeView={resolvedView}
         planted={planted}
         candles={candles}
         memoryPlants={memoryPlants}

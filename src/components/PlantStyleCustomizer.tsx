@@ -5,12 +5,15 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Palette, Sparkle } from '@phosphor-icons/react'
-import type { PlantStylePreference, ArtStyle } from '@/lib/types'
+import type { GardenLandscapeView, PlantStylePreference, ArtStyle } from '@/lib/types'
+import { GardenViewPicker } from '@/components/garden/GardenViewPicker'
 
 interface PlantStyleCustomizerProps {
   open: boolean
   onClose: () => void
   currentStyle: PlantStylePreference | undefined
+  landscapeView?: GardenLandscapeView
+  onLandscapeViewChange?: (view: GardenLandscapeView) => void
   onSave: (style: PlantStylePreference) => void
 }
 
@@ -23,7 +26,14 @@ const ART_STYLES: { value: ArtStyle; label: string; description: string }[] = [
   { value: 'photorealistic', label: 'Photorealistic', description: 'Lifelike photographic quality' },
 ]
 
-export function PlantStyleCustomizer({ open, onClose, currentStyle, onSave }: PlantStyleCustomizerProps) {
+export function PlantStyleCustomizer({
+  open,
+  onClose,
+  currentStyle,
+  landscapeView,
+  onLandscapeViewChange,
+  onSave,
+}: PlantStyleCustomizerProps) {
   const [artStyle, setArtStyle] = useState<ArtStyle>(currentStyle?.artStyle || 'watercolor')
   const [customHints, setCustomHints] = useState(currentStyle?.customPromptHints || '')
 
@@ -70,6 +80,13 @@ export function PlantStyleCustomizer({ open, onClose, currentStyle, onSave }: Pl
               ))}
             </div>
           </div>
+
+          {onLandscapeViewChange ? (
+            <div className="space-y-2">
+              <Label>2D garden view</Label>
+              <GardenViewPicker layout="cards" value={landscapeView} onChange={onLandscapeViewChange} />
+            </div>
+          ) : null}
 
           <div className="space-y-2">
             <Label htmlFor="custom-hints">Custom Description (optional)</Label>

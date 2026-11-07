@@ -338,6 +338,8 @@ export interface GentleWhisper {
   createdAt: string
 }
 
+export type GardenLandscapeView = 'pond' | 'lakeside' | 'meadow' | 'garden_path'
+
 export interface UserPreferences {
   hasCompletedOnboarding: boolean
   soundEnabled: boolean
@@ -345,6 +347,8 @@ export interface UserPreferences {
   plantStylePreference?: PlantStylePreference
   unlockState?: UnlockState
   gardenDefaults?: GardenDefaults
+  /** 2D garden camera; omitted = pond (legacy default). */
+  gardenLandscapeView?: GardenLandscapeView
   cloudSyncEnabled?: boolean
 }
 
