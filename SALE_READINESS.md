@@ -17,7 +17,7 @@ Commands run on Ubuntu, Node v22.x, `pnpm install --frozen-lockfile`:
 | `pnpm run build` | Pass | Pass (agent) |
 | `pnpm run typecheck` | Pass | Pass (agent) |
 | `pnpm run lint` | 0 errors | 0 errors (agent) |
-| `pnpm test` | **667 pass** | **680 pass** (+13 regression tests) |
+| `pnpm test` | **691 pass** (post #193 main) | **691 pass** (includes auth/linking/restore tests) |
 | `pnpm audit` | **44** (5 low / 19 moderate / 20 high) | **17** (1 low / 4 moderate / 12 high) after Vite 8.3.6, Vitest 4.1.12, `undici>=8.10.2` override |
 
 CI (`.github/workflows/ci.yml`) uses **pnpm** and **Node 22** per PR #192. Vercel install/build commands use pnpm frozen lockfile (`vercel.json`).
