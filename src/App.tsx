@@ -13,6 +13,7 @@ import { Onboarding } from '@/components/Onboarding'
 import { SearchFilterBar } from '@/components/SearchFilterBar'
 import { KeyboardShortcutsPanel } from '@/components/KeyboardShortcutsPanel'
 import { AppHeader, type ViewMode } from '@/components/AppHeader'
+import { GardenBackupDialog } from '@/components/GardenBackupDialog'
 import { useKeyboardShortcuts, APP_SHORTCUTS } from '@/lib/keyboard-shortcuts'
 import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits, PlantVariety, HybridGenome } from '@/lib/types'
 
@@ -125,6 +126,7 @@ function App() {
   const [aiReflection, setAiReflection] = useState<string>('')
   const [isLoadingAI, setIsLoadingAI] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false)
   const [season, setSeason] = useState(getSeason())
   const [todHours, setTodHours] = useState(() => realClockTod())
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
@@ -1286,6 +1288,7 @@ function App() {
           }}
           onOpenUnlocks={() => setIsUnlocksOpen(true)}
           onOpenExport={() => setIsExportModalOpen(true)}
+          onOpenBackup={() => setIsBackupModalOpen(true)}
           onOpenPlantStyle={() => setIsStyleCustomizerOpen(true)}
           onInviteToGarden={handleInviteToGarden}
           onOpenShortcuts={() => setIsShortcutsPanelOpen(true)}
@@ -1583,6 +1586,18 @@ function App() {
           open={isExportModalOpen}
           onClose={() => setIsExportModalOpen(false)}
           memories={activeFilterCount > 0 ? filteredMemories : safeMemories}
+        />
+
+        <GardenBackupDialog
+          open={isBackupModalOpen}
+          onClose={() => setIsBackupModalOpen(false)}
+          localUserId={localUser.id}
+          memories={safeMemories}
+          preferences={safePreferences}
+          onImport={(nextMemories, nextPreferences) => {
+            setMemories(nextMemories)
+            setPreferences(nextPreferences)
+          }}
         />
 
         {/* Feature 2: Collaborative Garden Dialogs */}

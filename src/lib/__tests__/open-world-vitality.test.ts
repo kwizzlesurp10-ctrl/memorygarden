@@ -104,7 +104,7 @@ describe('open-world vitality & 3-tier visual state mapping', () => {
     })
     const world = layoutGardenWorld([mem])
     const plant = world.plants[0]
-    const palette = todPalette('day', 'spring')
+    const palette = todPalette(0.42, 'spring')
     const recipe = plantRecipe(mem.plantVariety, mem.plantStage, mem.emotionalTone, palette, plant.height, false)
 
     const group = createPlantGroup(plant, recipe)
@@ -112,7 +112,7 @@ describe('open-world vitality & 3-tier visual state mapping', () => {
 
     // Check for Points (sparkle motes)
     let foundPoints = false
-    group.traverse((obj) => {
+    group.traverse((obj: THREE.Object3D) => {
       if (obj instanceof THREE.Points) foundPoints = true
     })
     expect(foundPoints).toBe(true)
@@ -132,7 +132,7 @@ describe('open-world vitality & 3-tier visual state mapping', () => {
     })
     const world = layoutGardenWorld([mem])
     const plant = world.plants[0]
-    const palette = todPalette('day', 'spring')
+    const palette = todPalette(0.42, 'spring')
     const recipe = plantRecipe(mem.plantVariety, mem.plantStage, mem.emotionalTone, palette, plant.height, false)
 
     const group = createPlantGroup(plant, recipe)
@@ -142,7 +142,7 @@ describe('open-world vitality & 3-tier visual state mapping', () => {
 
     // Check for mist ring
     let foundMistRing = false
-    group.traverse((obj) => {
+    group.traverse((obj: THREE.Object3D) => {
       if (obj instanceof THREE.Mesh && obj.geometry instanceof THREE.RingGeometry) {
         foundMistRing = true
       }

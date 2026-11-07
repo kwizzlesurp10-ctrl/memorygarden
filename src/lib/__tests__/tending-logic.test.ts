@@ -14,34 +14,34 @@ describe('computeCurrentMoisture', () => {
   const now = 1700000000000
 
   it('handles zero elapsed time safely', () => {
-    const m = computeCurrentMoisture(100.0, now, 'flower', 'spring', 'sun', now)
+    const m = computeCurrentMoisture(100.0, now, 'flower', 'spring', 'sunny', now)
     expect(m).toBe(100.0)
   })
 
   it('protects against clock skew with future timestamps', () => {
     const future = now + 10000
-    const m = computeCurrentMoisture(80.0, future, 'flower', 'spring', 'sun', now)
+    const m = computeCurrentMoisture(80.0, future, 'flower', 'spring', 'sunny', now)
     expect(m).toBe(80.0)
   })
 
   it('depletes succulents slower than flowers', () => {
     const hours = 24
     const past = now - hours * oneHourMs
-    const succulentMoisture = computeCurrentMoisture(100.0, past, 'succulent', 'spring', 'sun', now)
-    const flowerMoisture = computeCurrentMoisture(100.0, past, 'flower', 'spring', 'sun', now)
+    const succulentMoisture = computeCurrentMoisture(100.0, past, 'succulent', 'spring', 'sunny', now)
+    const flowerMoisture = computeCurrentMoisture(100.0, past, 'flower', 'spring', 'sunny', now)
     expect(succulentMoisture).toBeGreaterThan(flowerMoisture)
   })
 
   it('clamps lower bound to 0.0 without going negative', () => {
     const longAgo = now - 1000 * oneHourMs // 1000 hours ago
-    const m = computeCurrentMoisture(100.0, longAgo, 'flower', 'spring', 'sun', now)
+    const m = computeCurrentMoisture(100.0, longAgo, 'flower', 'spring', 'sunny', now)
     expect(m).toBe(0.0)
   })
 
   it('accounts for rain slowing moisture loss', () => {
     const past = now - 20 * oneHourMs
     const rainMoisture = computeCurrentMoisture(100.0, past, 'flower', 'spring', 'rain', now)
-    const sunMoisture = computeCurrentMoisture(100.0, past, 'flower', 'spring', 'sun', now)
+    const sunMoisture = computeCurrentMoisture(100.0, past, 'flower', 'spring', 'sunny', now)
     expect(rainMoisture).toBeGreaterThan(sunMoisture)
   })
 })

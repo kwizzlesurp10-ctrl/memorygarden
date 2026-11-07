@@ -12,6 +12,11 @@
  */
 
 import { neon } from '@neondatabase/serverless'
+import {
+  sanitizeGardenMemoriesForViewer,
+  type CommunityPrivacyMode,
+  type RawGardenMemoryRow,
+} from './gardens/lib/community-memory-privacy'
 
 export const config = { runtime: 'edge' }
 
@@ -62,9 +67,7 @@ export default async function handler(req: Request): Promise<Response> {
       
       if (gardenId) {
         const viewerId = url.searchParams.get('viewerId')
-        const privacyMode = (url.searchParams.get('privacyMode') ?? 'camouflage') as
-          | 'camouflage'
-          | 'sleeping_seed'
+        const privacyMode = (url.searchParams.get('privacyMode') ?? 'camouflage') as CommunityPrivacyMode
 
         // Get single garden with memories
         const gardens = await sql`
@@ -102,62 +105,18 @@ export default async function handler(req: Request): Promise<Response> {
             last_visited,
             planted_at,
             reflections,
-            genetics_seed
+            genetics_seed,
+            visibility
           FROM garden_memories 
           WHERE garden_id = ${gardenId}::uuid
           ORDER BY planted_at DESC
         `
 
-        const privateMemoryIds = new Set<string>()
-        const memories = []
-        let privIdx = 0
-
-        for (const m of rawMemories) {
-          const isPrivate = (m as { visibility?: string }).visibility === 'private'
-          if (isPrivate && !isOwner) {
-            privateMemoryIds.add(String(m.id))
-            if (privacyMode === 'sleeping_seed') {
-              const theta = (2 * Math.PI * privIdx) / Math.max(1, rawMemories.length)
-              privIdx++
-              memories.push({
-                id: m.id,
-                garden_id: m.garden_id,
-                contributor_id: null,
-                contributor_name: 'A Quiet Gardener',
-                contributor_avatar_url: null,
-                photo_url: '',
-                text: 'A quiet memory rests here in gentle contemplation',
-                memory_date: null,
-                location: null,
-                position_x: 7.2 * Math.cos(theta),
-                position_y: -5.5 + 7.2 * Math.sin(theta),
-                emotional_tone: 'peaceful',
-                plant_stage: 'sprout',
-                plant_variety: 'flower',
-                visit_count: m.visit_count,
-                last_visited: m.last_visited,
-                planted_at: m.planted_at,
-                reflections: [],
-                visibility: 'private',
-              })
-            }
-            continue
-          }
-
-          // Server-side reflection filtering: non-owners only receive social tends (isTend === true)
-          const rawReflections = Array.isArray(m.reflections) ? m.reflections : []
-          const filteredReflections = isOwner
-            ? rawReflections
-            : rawReflections.filter(
-                (r: { isTend?: boolean; userId?: string }) =>
-                  r.isTend === true || (r.userId && r.userId !== m.contributor_id),
-              )
-
-          memories.push({
-            ...m,
-            reflections: filteredReflections,
-          })
-        }
+        const { memories, privateMemoryIds } = sanitizeGardenMemoriesForViewer({
+          rawMemories: rawMemories as RawGardenMemoryRow[],
+          isOwner,
+          privacyMode,
+        })
         
         const rawActivity = await sql`
           SELECT

@@ -1,3 +1,5 @@
+/* Parallax intentionally mutates layer DOM transforms — exempt from immutability lint. */
+/* eslint-disable react-hooks/immutability */
 import { useEffect, useRef, type RefObject } from 'react'
 
 const DEPTHS = [4, 9, 15, 24] as const
@@ -19,12 +21,23 @@ export function useParallaxCursor(
   const rafRef = useRef<number | null>(null)
 
   useEffect(() => {
-    if (!enabled) {
-      const layers = [refs.sky, refs.far, refs.mid, refs.foreground]
-      for (const ref of layers) {
-        if (ref.current) ref.current.style.transform = ''
+    const resetTransforms = (): void => {
+      const layerEls = [
+        refs.sky.current,
+        refs.far.current,
+        refs.mid.current,
+        refs.foreground.current,
+      ]
+      for (const el of layerEls) {
+        if (el) el.style.transform = ''
       }
-      if (refs.frame.current) refs.frame.current.style.transform = ''
+      if (refs.frame.current) {
+        refs.frame.current.style.transform = ''
+      }
+    }
+
+    if (!enabled) {
+      resetTransforms()
       return
     }
 
@@ -57,6 +70,7 @@ export function useParallaxCursor(
     return () => {
       window.removeEventListener('pointermove', onMove)
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+      requestAnimationFrame(resetTransforms)
     }
   }, [enabled, refs.sky, refs.far, refs.mid, refs.foreground, refs.frame])
 }

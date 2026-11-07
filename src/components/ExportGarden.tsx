@@ -551,9 +551,9 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
                     <div className="flex items-center gap-3">
                       <FilePdf size={24} weight="duotone" className="text-primary" />
                       <div>
-                        <div className="font-semibold">Memory Booklet</div>
+                        <div className="font-semibold">Memory Booklet (PNG)</div>
                         <div className="text-sm text-muted-foreground">
-                          Multi-page document with all memories
+                          Multi-page PNG scroll — not a PDF file
                         </div>
                       </div>
                     </div>
@@ -568,7 +568,7 @@ export function ExportGarden({ open, onClose, memories }: ExportGardenProps) {
                   ? 'A high-resolution image showing your most recent memories in a beautiful grid layout.'
                   : format === 'garden-view'
                   ? 'Captures the spatial layout of your garden showing memories in their planted positions.'
-                  : 'A printable multi-page document with all your memories, perfect for creating a physical keepsake.'}
+                  : 'A tall multi-page PNG booklet (canvas render). Print or convert to PDF externally if you need a .pdf file.'}
               </p>
             </div>
 

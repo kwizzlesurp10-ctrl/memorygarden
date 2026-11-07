@@ -357,7 +357,7 @@ export function generateGentleWhispers(
     const thirstyMemory = memories.find((m) => {
       const initM = m.growthMetrics?.vitality ?? 80
       const lastW = m.growthMetrics?.lastInteractionAt
-      const curM = computeCurrentMoisture(initM, lastW, m.plantVariety, season, now.getTime())
+      const curM = computeCurrentMoisture(initM, lastW, m.plantVariety, season, 'sunny', now.getTime())
       const status = getHealthStatus(curM)
       return status === 'thirsty' || status === 'wilting'
     })

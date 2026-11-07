@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import type { GardenGiftType, Memory, Season } from '@/lib/types'
+import type { GardenGiftType, GardenStreak, Memory, Season } from '@/lib/types'
 import { todPalette, realClockTod } from '@/lib/garden/day-night'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import type { PlayerState, WorldPlant } from '@/lib/open-world/types'
@@ -24,7 +24,6 @@ import {
   saveDewCurrency,
   saveGardenStreak,
   saveLastDewHarvestDate,
-  type GardenStreak,
 } from '@/lib/gentle-streaks'
 import { toLocalISODate } from '@/lib/date-utils'
 import {
@@ -83,20 +82,24 @@ export function OpenWorldGarden({
 
   // Gentle Streaks & Dew Currency
   const [streak, setStreak] = useState<GardenStreak>(() => loadGardenStreak())
+  const bootStreakEvaluated = useRef(false)
   const [dew, setDew] = useState<number>(() => loadDewCurrency())
   const [lastDewHarvestDate, setLastDewHarvestDate] = useState<string>(() => loadLastDewHarvestDate())
 
-  // Evaluate streak transitions on mount (compassionate shield protection)
   useEffect(() => {
+    if (bootStreakEvaluated.current) return
+    bootStreakEvaluated.current = true
     const res = evaluateStreakTransition(streak)
     if (res.shieldConsumed) {
       toast.info('A Dewdrop of Grace protected your unbroken streak while you were away!')
     }
     if (res.isNewDay) {
-      setStreak(res.streak)
-      saveGardenStreak(res.streak)
+      queueMicrotask(() => {
+        setStreak(res.streak)
+        saveGardenStreak(res.streak)
+      })
     }
-  }, [])
+  }, [streak])
 
   const onProximity = useCallback((plant: WorldPlant | null) => {
     setNearby(plant)

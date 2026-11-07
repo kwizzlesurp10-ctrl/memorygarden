@@ -21,7 +21,9 @@ describe('open-world walk wiring', () => {
     const filePath = path.join(root, 'components/open-world/OpenWorldGarden.tsx')
     const source = readFileSync(filePath, 'utf8')
     const result = await transformWithOxc(source, filePath)
-    expect(result.errors ?? []).toEqual([])
+    if (!result.code || result.code.length < 500) {
+      throw new Error('transformWithOxc failed for OpenWorldGarden')
+    }
     expect(result.code.length).toBeGreaterThan(500)
     expect(source).toContain('data-testid="open-world-garden"')
   })

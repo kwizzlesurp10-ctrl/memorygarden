@@ -65,7 +65,8 @@ export function GardenCanvas({
   const motion = !reducedMotion
   const userId = getLocalUser().id
 
-  const [season, setSeason] = useState<Season>(propSeason ?? 'summer')
+  const [localSeason, setLocalSeason] = useState<Season>(propSeason ?? 'summer')
+  const season = propSeason ?? localSeason
   const [tod, setTod] = useState(realClockTod)
   const [playing, setPlaying] = useState(true)
   const [lensOn, setLensOn] = useState(false)
@@ -124,10 +125,6 @@ export function GardenCanvas({
       return next
     })
   }, [seedLensAtCenter])
-
-  useEffect(() => {
-    if (propSeason) setSeason(propSeason)
-  }, [propSeason])
 
   useEffect(() => {
     if (!playing) return
@@ -396,7 +393,7 @@ export function GardenCanvas({
         season={season}
         onTodChange={(t) => { setTod(t); setPlaying(false) }}
         onPlayToggle={() => setPlaying((p) => !p)}
-        onSeasonChange={setSeason}
+        onSeasonChange={setLocalSeason}
       />
 
       <StorageShedPanel
