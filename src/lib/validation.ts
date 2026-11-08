@@ -558,6 +558,13 @@ export function validateUserPreferences(input: unknown): ValidationResult<Partia
     errors.push(...validateDateString(p.lastVisit, 'lastVisit'))
   }
 
+  if (p.gardenLandscapeView !== undefined) {
+    const validViews = new Set(['pond', 'lakeside', 'meadow', 'garden_path'])
+    if (!validViews.has(p.gardenLandscapeView)) {
+      errors.push(fieldError('gardenLandscapeView', 'must be pond, lakeside, meadow, or garden_path'))
+    }
+  }
+
   if (errors.length > 0) return fail(errors)
   return ok(p)
 }

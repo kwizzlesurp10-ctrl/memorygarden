@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import type { GardenLandscapeView } from '@/lib/types'
+import { GardenViewPicker } from '@/components/garden/GardenViewPicker'
+import { ONBOARDING_DEFAULT_LANDSCAPE_VIEW } from '@/lib/garden/landscape-view'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -6,7 +9,7 @@ import { Plant, Drop, Sparkle, Tree } from '@phosphor-icons/react'
 
 interface OnboardingProps {
   open: boolean
-  onComplete: () => void
+  onComplete: (landscapeView?: GardenLandscapeView) => void
 }
 
 const steps = [
@@ -30,16 +33,24 @@ const steps = [
     title: 'Discover Connections',
     description: 'The garden\'s AI will help you see patterns and connections between memories you might not notice. Ask questions, receive gentle reflections, and explore your life\'s tapestry.',
   },
+  {
+    icon: Tree,
+    title: 'Choose Your Vista',
+    description: 'Pick how your 2D garden greets you. You can change this anytime from plant style settings or the garden toolbar.',
+  },
 ]
+
+const VIEW_STEP_INDEX = 4
 
 export function Onboarding({ open, onComplete }: OnboardingProps) {
   const [currentStep, setCurrentStep] = useState(0)
+  const [landscapeView, setLandscapeView] = useState<GardenLandscapeView>(ONBOARDING_DEFAULT_LANDSCAPE_VIEW)
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep((prev) => prev + 1)
     } else {
-      onComplete()
+      onComplete(landscapeView)
     }
   }
 
@@ -79,6 +90,14 @@ export function Onboarding({ open, onComplete }: OnboardingProps) {
               <p className="text-muted-foreground leading-relaxed max-w-md">
                 {step.description}
               </p>
+              {currentStep === VIEW_STEP_INDEX ? (
+                <GardenViewPicker
+                  layout="cards"
+                  value={landscapeView}
+                  onChange={setLandscapeView}
+                  className="w-full max-w-md text-left"
+                />
+              ) : null}
             </div>
 
             <div className="flex gap-2 pt-4">

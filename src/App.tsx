@@ -15,7 +15,8 @@ import { KeyboardShortcutsPanel } from '@/components/KeyboardShortcutsPanel'
 import { AppHeader, type ViewMode } from '@/components/AppHeader'
 import { GardenBackupDialog } from '@/components/GardenBackupDialog'
 import { useKeyboardShortcuts, APP_SHORTCUTS } from '@/lib/keyboard-shortcuts'
-import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits, PlantVariety, HybridGenome } from '@/lib/types'
+import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits, PlantVariety, HybridGenome, GardenLandscapeView } from '@/lib/types'
+import { EditPlantDialog, type EditPlantPayload } from '@/components/EditPlantDialog'
 
 // ── Lazy-loaded non-critical components (modals, dialogs, secondary views) ──
 const ExportGarden = lazy(() => import('@/components/ExportGarden').then(m => ({ default: m.ExportGarden })))
@@ -36,7 +37,7 @@ const ActivityFeed = lazy(() => import('@/components/ActivityFeed').then(m => ({
 const ContributorLeaderboard = lazy(() => import('@/components/ContributorLeaderboard').then(m => ({ default: m.ContributorLeaderboard })))
 const OpenWorldGarden = lazy(() => import('@/components/open-world/OpenWorldGarden').then(m => ({ default: m.OpenWorldGarden })))
 import { countUnreadActivity, deriveActivityFromMemories } from '@/lib/activity-helpers'
-import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod, generateHybridTraits } from '@/lib/garden-helpers'
+import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod, generateHybridTraits, plantStageAfterGrowth, applyManualPlantStage } from '@/lib/garden-helpers'
 import { memoryPrimaryLabel } from '@/lib/memory-display'
 import { realClockTod, todToDayPeriod } from '@/lib/garden/day-night'
 import { ensureUnlockState, generatePlantGenetics, awardForReflection, awardForRevisit, awardForClusterTending, awardForPlanting, applyAward, evaluateUnlocks, applyNewUnlocks, evaluateAchievements, deductRerollCost, canAffordReroll, UNLOCKABLE_ITEMS } from '@/lib/unlock-system'
@@ -170,6 +171,7 @@ function App() {
 
   // Feature 5: AI Plant Style state
   const [isStyleCustomizerOpen, setIsStyleCustomizerOpen] = useState(false)
+  const [isEditPlantOpen, setIsEditPlantOpen] = useState(false)
 
   // Constraint / Unlock system state
   const [isUnlocksOpen, setIsUnlocksOpen] = useState(false)
@@ -314,14 +316,49 @@ function App() {
     return () => clearInterval(id)
   }, [])
 
-  const handleCompleteOnboarding = () => {
+  const handleCompleteOnboarding = (landscapeView?: GardenLandscapeView) => {
     setPreferences((current) => ({
       soundEnabled: current?.soundEnabled || false,
       lastVisit: current?.lastVisit || new Date().toISOString(),
       hasCompletedOnboarding: true,
+      ...(landscapeView ? { gardenLandscapeView: landscapeView } : {}),
     }))
     setIsPlantModalOpen(true)
   }
+
+  const handleLandscapeViewChange = useCallback((view: GardenLandscapeView) => {
+    setPreferences((current) => ({
+      ...(current ?? fallbackPreferences),
+      gardenLandscapeView: view,
+    }))
+  }, [setPreferences, fallbackPreferences])
+
+  const handleEditPlantSave = useCallback((memoryId: string, payload: EditPlantPayload) => {
+    setMemories((currentMemories) => {
+      const next = (currentMemories || []).map((m) => {
+        if (m.id !== memoryId) return m
+        const nearby = (currentMemories || []).filter(
+          (nm) =>
+            nm.id !== memoryId &&
+            Math.abs(nm.position.x - m.position.x) < 300 &&
+            Math.abs(nm.position.y - m.position.y) < 300,
+        )
+        const withFields: Memory = {
+          ...m,
+          text: payload.text,
+          linkUrl: payload.linkUrl,
+          plantVariety: payload.plantVariety,
+          traits: payload.traits,
+        }
+        return applyManualPlantStage({ ...withFields, plantStage: payload.plantStage }, payload.plantStage, nearby)
+      })
+      const edited = next.find((m) => m.id === memoryId)
+      if (edited) setSelectedMemory(edited)
+      return next
+    })
+    setIsEditPlantOpen(false)
+    toast.success('Plant updated')
+  }, [setMemories])
 
   const handlePlantMemory = async (data: {
     photoFile?: File
@@ -498,7 +535,7 @@ function App() {
           const updatedWithStage = {
             ...updatedMemory,
             growthMetrics,
-            plantStage: getPlantStage(updatedMemory),
+            plantStage: plantStageAfterGrowth(updatedMemory, growthMetrics),
           }
           return {
             ...updatedWithStage,
@@ -661,7 +698,7 @@ function App() {
           const updatedWithStage = {
             ...updatedMemory,
             growthMetrics,
-            plantStage: getPlantStage(updatedMemory),
+            plantStage: plantStageAfterGrowth(updatedMemory, growthMetrics),
           }
           return {
             ...updatedWithStage,
@@ -827,7 +864,7 @@ function App() {
           return {
             ...updatedMemory,
             growthMetrics,
-            plantStage: getPlantStage(updatedMemory),
+            plantStage: plantStageAfterGrowth(updatedMemory, growthMetrics),
           }
         })
       })
@@ -1355,6 +1392,8 @@ function App() {
                       mood={gardenMood}
                       onPlantHybrid={handlePlantHybrid}
                       onEnterWalk={handleEnterWalk}
+                      landscapeView={safePreferences.gardenLandscapeView}
+                      onLandscapeViewChange={handleLandscapeViewChange}
                     />
                   </SectionErrorBoundary>
                 )}
@@ -1564,6 +1603,7 @@ function App() {
         onBoost={handleOpenBoost}
         onUpdateTraits={handleUpdateTraits}
         onCustomize={selectedMemory ? () => handleOpenCosmeticsEditor(selectedMemory) : undefined}
+        onEditPlant={selectedMemory ? () => setIsEditPlantOpen(true) : undefined}
         onCrossPollinate={handleCrossPollinateInit}
         aiReflection={aiReflection}
         isLoadingAI={isLoadingAI}
@@ -1670,7 +1710,17 @@ function App() {
           open={isStyleCustomizerOpen}
           onClose={() => setIsStyleCustomizerOpen(false)}
           currentStyle={safePreferences.plantStylePreference}
+          landscapeView={safePreferences.gardenLandscapeView}
+          onLandscapeViewChange={handleLandscapeViewChange}
           onSave={handleSavePlantStyle}
+        />
+
+        <EditPlantDialog
+          open={isEditPlantOpen && selectedMemory !== null}
+          memory={selectedMemory}
+          unlockState={safePreferences.unlockState}
+          onClose={() => setIsEditPlantOpen(false)}
+          onSave={handleEditPlantSave}
         />
 
         {/* Constraint System: Unlocks & Cosmetics */}

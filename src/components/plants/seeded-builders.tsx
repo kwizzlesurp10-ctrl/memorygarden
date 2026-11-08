@@ -6,14 +6,87 @@ import type { SeededPlantContext, SeededVariety } from './types'
 
 export type HybridPlantPalette = Pick<ScenePalette, 'sil' | 'silSoft' | 'rim' | 'glow' | 'accent'>
 
+const rimStroke = (C: HybridPlantPalette, rim: number) => ({
+  stroke: C.rim,
+  strokeOpacity: 0.5 * rim,
+  strokeWidth: 0.6,
+})
+
+function seedInSoil(C: HybridPlantPalette, rim: number, r: () => number): ReactNode[] {
+  return [
+    e('path', {
+      key: 'mound',
+      d: 'M -10 1 Q -4 -5 4 -4 Q 10 -3 10 1 Q 0 3 -10 1 Z',
+      fill: C.silSoft,
+      stroke: C.rim,
+      strokeOpacity: 0.35 * rim,
+      strokeWidth: 0.5,
+    }),
+    e('path', {
+      key: 'crack',
+      d: 'M -3 0 Q 0 -2.2 3 0',
+      stroke: C.rim,
+      strokeOpacity: 0.25 * rim,
+      strokeWidth: 0.45,
+      fill: 'none',
+    }),
+    e('ellipse', {
+      key: 'seed',
+      cx: (r() - 0.5) * 1.2,
+      cy: -3.6,
+      rx: 2.1,
+      ry: 2.8,
+      fill: C.sil,
+      ...rimStroke(C, rim),
+    }),
+    e('circle', { key: 'dew', cx: 1.2, cy: -4.8, r: 0.55, fill: C.glow, opacity: 0.75 }),
+  ]
+}
+
+function sproutPair(C: HybridPlantPalette, rim: number, tipY: number, tipX: number): ReactNode[] {
+  return [
+    e('path', {
+      key: 'c1',
+      d: `M ${tipX} ${tipY} Q ${tipX - 5} ${tipY - 3}, ${tipX - 6} ${tipY - 7}`,
+      stroke: C.sil,
+      strokeWidth: 1.05,
+      fill: 'none',
+      strokeLinecap: 'round',
+    }),
+    e('path', {
+      key: 'c2',
+      d: `M ${tipX} ${tipY} Q ${tipX + 5} ${tipY - 3}, ${tipX + 6} ${tipY - 7}`,
+      stroke: C.sil,
+      strokeWidth: 1.05,
+      fill: 'none',
+      strokeLinecap: 'round',
+    }),
+    e('ellipse', {
+      key: 'l1',
+      cx: tipX - 6,
+      cy: tipY - 7.5,
+      rx: 2.8,
+      ry: 1.6,
+      fill: C.silSoft,
+      ...rimStroke(C, rim),
+    }),
+    e('ellipse', {
+      key: 'l2',
+      cx: tipX + 6,
+      cy: tipY - 7.5,
+      rx: 2.8,
+      ry: 1.6,
+      fill: C.silSoft,
+      ...rimStroke(C, rim),
+    }),
+  ]
+}
+
 function buildFlower(s: number, r: () => number, C: HybridPlantPalette, rim: number, motion: boolean): ReactNode[] {
   const out: ReactNode[] = []
-    const rimS = { stroke: C.rim, strokeOpacity: 0.5 * rim, strokeWidth: 0.6 };
+    const rimS = rimStroke(C, rim);
     if (s === 0) {
-      out.push(e('path', { key: 'm', d: 'M -8 0 Q 0 -6 8 0 Z', fill: C.silSoft }));
-      out.push(e('ellipse', { key: 'sd', cx: 0, cy: -4.4, rx: 2.4, ry: 3.2, fill: C.sil, stroke: C.rim, strokeOpacity: 0.7 * rim, strokeWidth: 0.6 }));
-      out.push(e('circle', { key: 'g', cx: 0.9, cy: -5.4, r: 0.7, fill: C.glow, opacity: 0.85 }));
-      return out;
+      return seedInSoil(C, rim, r);
     }
     const H = [0, 13, 25, 38, 50, 58, 66, 72][s];
     const lean = (r() - 0.5) * 12;
@@ -31,8 +104,7 @@ function buildFlower(s: number, r: () => number, C: HybridPlantPalette, rim: num
       out.push(e('path', { key: 'l' + i, d: `M ${px} ${py} Q ${px + side * ll * 0.55} ${py - ll * 0.5}, ${px + side * ll} ${py - ll * 0.28} Q ${px + side * ll * 0.5} ${py + ll * 0.08}, ${px} ${py} Z`, fill: C.sil, ...rimS }));
     }
     if (s === 1) {
-      out.push(e('path', { key: 'c1', d: `M ${tipX} ${tipY} Q ${tipX - 6} ${tipY - 4}, ${tipX - 7} ${tipY - 8.5} Q ${tipX - 2} ${tipY - 6}, ${tipX} ${tipY} Z`, fill: C.sil, ...rimS }));
-      out.push(e('path', { key: 'c2', d: `M ${tipX} ${tipY} Q ${tipX + 6} ${tipY - 4}, ${tipX + 7} ${tipY - 8.5} Q ${tipX + 2} ${tipY - 6}, ${tipX} ${tipY} Z`, fill: C.sil, ...rimS }));
+      out.push(...sproutPair(C, rim, tipY, tipX));
     }
     if (s === 2 || s === 3) {
       const tl = 5 + s * 1.6;
@@ -47,37 +119,62 @@ function buildFlower(s: number, r: () => number, C: HybridPlantPalette, rim: num
       out.push(e('path', { key: 'sp1', d: `M ${tipX - 4} ${tipY + 1} Q ${tipX - 6} ${tipY - 3}, ${tipX - 4.5} ${tipY - 6}`, stroke: C.sil, strokeWidth: 1.1, fill: 'none', strokeLinecap: 'round' }));
       out.push(e('path', { key: 'sp2', d: `M ${tipX + 4} ${tipY + 1} Q ${tipX + 6} ${tipY - 3}, ${tipX + 4.5} ${tipY - 6}`, stroke: C.sil, strokeWidth: 1.1, fill: 'none', strokeLinecap: 'round' }));
     }
-    if (s >= 5) {
-      const n = [0, 0, 0, 0, 0, 6, 9, 12][s];
-      const pr = [0, 0, 0, 0, 0, 7, 8.5, 9.5][s];
-      out.push(e('circle', { key: 'hg', cx: tipX, cy: tipY, r: pr * 1.7, fill: C.glow, opacity: 0.15, style: { filter: 'blur(4px)' } }));
-      for (let i = 0; i < n; i++) {
-        const a = i * 360 / n + (r() - 0.5) * 12;
-        out.push(e('g', { key: 'p' + i, transform: `translate(${tipX} ${tipY}) rotate(${a})` },
-          e('path', { d: `M 0 0 Q ${-pr * 0.34} ${-pr * 0.55}, 0 ${-pr} Q ${pr * 0.34} ${-pr * 0.55}, 0 0 Z`, fill: C.sil, stroke: C.rim, strokeOpacity: 0.5 * rim, strokeWidth: 0.5 })));
+    if (s === 5) {
+      const pr = 7.5
+      out.push(e('circle', { key: 'hg', cx: tipX, cy: tipY, r: pr * 1.6, fill: C.glow, opacity: 0.15, style: { filter: 'blur(4px)' } }));
+      for (let i = 0; i < 6; i++) {
+        const a = i * 60 + (r() - 0.5) * 10
+        out.push(e('g', { key: 'bp' + i, transform: `translate(${tipX} ${tipY}) rotate(${a})` },
+          e('path', {
+            d: `M 0 0 Q ${-pr * 0.42} ${-pr * 0.62}, 0 ${-pr} Q ${pr * 0.42} ${-pr * 0.62}, 0 0 Z`,
+            fill: C.sil,
+            stroke: C.rim,
+            strokeOpacity: 0.55 * rim,
+            strokeWidth: 0.5,
+            transform: 'rotate(-8)',
+          })));
       }
-      out.push(e('circle', { key: 'cc', cx: tipX, cy: tipY, r: 2.4 + s * 0.2, fill: C.glow, opacity: 0.95 }));
-      out.push(e('circle', { key: 'ci', cx: tipX, cy: tipY, r: 1.1, fill: '#ffffff', opacity: 0.8 }));
+      out.push(e('circle', { key: 'cc', cx: tipX, cy: tipY, r: 2.8, fill: C.glow, opacity: 0.95 }));
+      out.push(e('circle', { key: 'ci', cx: tipX, cy: tipY, r: 1.15, fill: '#ffffff', opacity: 0.85 }));
     }
-    if (s >= 6) {
-      const bx = lean * 0.5 + 14, by = -H * 0.62;
+    if (s === 6) {
+      const n = 11
+      const pr = 9
+      out.push(e('circle', { key: 'hg', cx: tipX, cy: tipY, r: pr * 1.8, fill: C.glow, opacity: 0.17, style: { filter: 'blur(4px)' } }));
+      for (let i = 0; i < n; i++) {
+        const a = i * 360 / n + (r() - 0.5) * 8
+        out.push(e('g', { key: 'mp' + i, transform: `translate(${tipX} ${tipY}) rotate(${a})` },
+          e('path', { d: `M 0 0 Q ${-pr * 0.36} ${-pr * 0.58}, 0 ${-pr} Q ${pr * 0.36} ${-pr * 0.58}, 0 0 Z`, fill: C.sil, stroke: C.rim, strokeOpacity: 0.5 * rim, strokeWidth: 0.5 })));
+      }
+      out.push(e('circle', { key: 'cc', cx: tipX, cy: tipY, r: 3.1, fill: C.glow, opacity: 0.95 }));
+      const bx = lean * 0.5 + 14
+      const by = -H * 0.62
       out.push(e('path', { key: 'sbs', d: `M ${lean * 0.55} ${-H * 0.5} Q ${bx - 4} ${by + 8}, ${bx} ${by}`, stroke: C.sil, strokeWidth: 1, fill: 'none', strokeLinecap: 'round' }));
       out.push(e('path', { key: 'sbb', d: `M ${bx} ${by + 1.5} C ${bx - 3} ${by - 0.5}, ${bx - 2.4} ${by - 5.5}, ${bx} ${by - 7} C ${bx + 2.4} ${by - 5.5}, ${bx + 3} ${by - 0.5}, ${bx} ${by + 1.5} Z`, fill: C.sil, stroke: C.rim, strokeOpacity: 0.5 * rim, strokeWidth: 0.5 }));
-      out.push(e('circle', { key: 'sbg', cx: bx, cy: by - 6, r: 0.8, fill: C.glow, opacity: 0.8 }));
     }
     if (s === 7) {
+      const n = 12
+      const pr = 9.2
+      for (let i = 0; i < n; i++) {
+        const a = i * 360 / n + (r() - 0.5) * 10
+        const droop = i % 2 === 0 ? 1.12 : 0.92
+        out.push(e('g', { key: 'ep' + i, transform: `translate(${tipX} ${tipY - 2}) rotate(${a}) scale(1 ${droop})` },
+          e('path', { d: `M 0 0 Q ${-pr * 0.34} ${-pr * 0.55}, 0 ${-pr * 0.95} Q ${pr * 0.34} ${-pr * 0.5}, 0 0 Z`, fill: C.silSoft, stroke: C.rim, strokeOpacity: 0.42 * rim, strokeWidth: 0.45, transform: 'rotate(6)' })));
+      }
+      out.push(e('circle', { key: 'cc', cx: tipX, cy: tipY - 1, r: 2.6, fill: C.glow, opacity: 0.85 }));
+      for (let i = 0; i < 4; i++) {
+        const sx = tipX + (i - 1.5) * 5.5
+        const sy = tipY - pr - 4 - i * 1.2
+        out.push(e('ellipse', { key: 'sd' + i, cx: sx, cy: sy, rx: 1.3, ry: 2.2, fill: C.silSoft, opacity: 0.9 }));
+      }
       [[-1, 0.55], [1, 0.42]].forEach(([sd, f], j) => {
-        const bx = tipX + sd * 17, by = -H * f - 8;
+        const bx = tipX + sd * 17
+        const by = -H * f - 8
         out.push(e('path', { key: 'e' + j + 's', d: `M ${lean * 0.4 * f} ${-H * f} Q ${bx - sd * 6} ${by + 12}, ${bx} ${by}`, stroke: C.sil, strokeWidth: 1.1, fill: 'none', strokeLinecap: 'round' }));
-        out.push(e('circle', { key: 'e' + j + 'g', cx: bx, cy: by, r: 7, fill: C.glow, opacity: 0.13, style: { filter: 'blur(3px)' } }));
-        for (let i = 0; i < 6; i++) {
-          out.push(e('g', { key: 'e' + j + 'p' + i, transform: `translate(${bx} ${by}) rotate(${i * 60 + j * 25})` },
-            e('path', { d: 'M 0 0 Q -1.6 -2.6, 0 -4.8 Q 1.6 -2.6, 0 0 Z', fill: C.sil, stroke: C.rim, strokeOpacity: 0.45 * rim, strokeWidth: 0.4 })));
-        }
-        out.push(e('circle', { key: 'e' + j + 'c', cx: bx, cy: by, r: 1.5, fill: C.glow, opacity: 0.9 }));
-      });
+        out.push(e('circle', { key: 'e' + j + 'c', cx: bx, cy: by, r: 1.5, fill: C.glow, opacity: 0.75 }));
+      })
       if (motion) for (let i = 0; i < 3; i++) {
-        out.push(e('circle', { key: 'mt' + i, cx: tipX - 8 + i * 8, cy: tipY - 12 - i * 3, r: 0.9, fill: C.glow, opacity: 0.7, style: { animation: `mgMote ${3 + r() * 2}s ease-in-out ${r() * 2.5}s infinite` } }));
+        out.push(e('circle', { key: 'mt' + i, cx: tipX - 8 + i * 8, cy: tipY - 14 - i * 3, r: 0.9, fill: C.glow, opacity: 0.7, style: { animation: `mgMote ${3 + r() * 2}s ease-in-out ${r() * 2.5}s infinite` } }));
       }
     }
     return out;
@@ -87,9 +184,11 @@ function buildFlower(s: number, r: () => number, C: HybridPlantPalette, rim: num
 function buildTree(s: number, r: () => number, C: HybridPlantPalette, rim: number, motion: boolean): ReactNode[] {
   const out: ReactNode[] = []
     if (s === 0) {
-      out.push(e('path', { key: 'm', d: 'M -8 0 Q 0 -6 8 0 Z', fill: C.silSoft }));
-      out.push(e('ellipse', { key: 'a', cx: 0, cy: -4.5, rx: 3, ry: 3.6, fill: C.sil, stroke: C.rim, strokeOpacity: 0.6 * rim, strokeWidth: 0.6 }));
-      out.push(e('path', { key: 'c', d: 'M -3 -7 Q 0 -9 3 -7 L 2.4 -5.6 Q 0 -7 -2.4 -5.6 Z', fill: C.silSoft }));
+      return seedInSoil(C, rim, r);
+    }
+    if (s === 1) {
+      out.push(e('path', { key: 'st', d: 'M 0 0 L 0 -10', stroke: C.sil, strokeWidth: 1.2, strokeLinecap: 'round' }));
+      out.push(...sproutPair(C, rim, -10, 0));
       return out;
     }
     const H = [0, 15, 28, 42, 56, 68, 80, 90][s];
@@ -108,7 +207,8 @@ function buildTree(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
       out.push(e('path', { key: 'b' + i, d: `M 0 ${y0} Q ${side * len * 0.55} ${y0 - len * 0.4}, ${side * len} ${y0 - len * 0.72}`, stroke: C.sil, strokeWidth: Math.max(0.7, 2.4 - i * 0.25), fill: 'none', strokeLinecap: 'round' }));
     }
     if (s >= 2) {
-      const cw = 7 + s * 4.2, ch = 5 + s * 3;
+      const bloomScale = s === 5 ? 0.88 : s === 6 ? 1.05 : s === 7 ? 1.12 : 1;
+      const cw = (7 + s * 4.2) * bloomScale, ch = (5 + s * 3) * bloomScale;
       const blobs = 3 + s * 2;
       out.push(e('ellipse', { key: 'cb', cx: 0, cy: -H - ch * 0.35, rx: cw, ry: ch * 0.85, fill: C.sil }));
       for (let j = 0; j < blobs; j++) {
@@ -134,9 +234,7 @@ function buildTree(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
 function buildSucculent(s: number, r: () => number, C: HybridPlantPalette, rim: number, motion: boolean): ReactNode[] {
   const out: ReactNode[] = []
     if (s === 0) {
-      out.push(e('path', { key: 'm', d: 'M -7 0 Q 0 -5 7 0 Z', fill: C.silSoft }));
-      out.push(e('circle', { key: 'p', cx: 0, cy: -3.6, r: 2.6, fill: C.sil, stroke: C.rim, strokeOpacity: 0.6 * rim, strokeWidth: 0.6 }));
-      return out;
+      return seedInSoil(C, rim, r);
     }
     const LR = 5 + s * 2.4;
     const layers = [1, 1, 1, 2, 2, 3, 3, 4][s];
@@ -167,9 +265,7 @@ function buildSucculent(s: number, r: () => number, C: HybridPlantPalette, rim: 
 function buildVine(s: number, r: () => number, C: HybridPlantPalette, rim: number, motion: boolean): ReactNode[] {
   const out: ReactNode[] = []
     if (s === 0) {
-      out.push(e('path', { key: 'm', d: 'M -7 0 Q 0 -5 7 0 Z', fill: C.silSoft }));
-      out.push(e('ellipse', { key: 'p', cx: 0, cy: -3.5, rx: 2, ry: 2.8, fill: C.sil, stroke: C.rim, strokeOpacity: 0.6 * rim, strokeWidth: 0.5 }));
-      return out;
+      return seedInSoil(C, rim, r);
     }
     const H = [0, 12, 22, 34, 46, 56, 66, 74][s];
     out.push(e('path', { key: 'stake', d: `M 2 0 L 4 ${-H * 0.92}`, stroke: C.silSoft, strokeWidth: 1.5, strokeLinecap: 'round' }));
@@ -222,9 +318,7 @@ function buildVine(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
 function buildHerb(s: number, r: () => number, C: HybridPlantPalette, rim: number, motion: boolean): ReactNode[] {
   const out: ReactNode[] = []
     if (s === 0) {
-      out.push(e('path', { key: 'm', d: 'M -6 0 Q 0 -5 6 0 Z', fill: C.silSoft }));
-      out.push(e('circle', { key: 'p', cx: 0, cy: -3.4, r: 1.8, fill: C.sil, stroke: C.rim, strokeOpacity: 0.6 * rim, strokeWidth: 0.5 }));
-      return out;
+      return seedInSoil(C, rim, r);
     }
     const K = [0, 2, 3, 4, 5, 6, 7, 9][s];
     for (let i = 0; i < K; i++) {
@@ -253,9 +347,7 @@ function buildHerb(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
 function buildWildflower(s: number, r: () => number, C: HybridPlantPalette, rim: number, motion: boolean): ReactNode[] {
   const out: ReactNode[] = []
     if (s === 0) {
-      out.push(e('path', { key: 'm', d: 'M -6 0 Q 0 -5 6 0 Z', fill: C.silSoft }));
-      out.push(e('ellipse', { key: 'p', cx: 0, cy: -3.4, rx: 1.6, ry: 2.2, fill: C.sil, stroke: C.rim, strokeOpacity: 0.6 * rim, strokeWidth: 0.5 }));
-      return out;
+      return seedInSoil(C, rim, r);
     }
     const M = [0, 1, 2, 3, 5, 7, 9, 11][s];
     const spread = 3 + s * 3.1;
@@ -285,9 +377,7 @@ function buildWildflower(s: number, r: () => number, C: HybridPlantPalette, rim:
 function buildFern(s: number, r: () => number, C: HybridPlantPalette, rim: number, motion: boolean): ReactNode[] {
   const out: ReactNode[] = []
     if (s === 0) {
-      out.push(e('path', { key: 'm', d: 'M -6 0 Q 0 -5 6 0 Z', fill: C.silSoft }));
-      out.push(e('circle', { key: 'p', cx: 0, cy: -3.2, r: 2, fill: C.sil, stroke: C.rim, strokeOpacity: 0.6 * rim, strokeWidth: 0.5 }));
-      return out;
+      return seedInSoil(C, rim, r);
     }
     const F = [0, 1, 2, 3, 4, 5, 6, 7][s];
     for (let f = 0; f < F; f++) {
@@ -331,9 +421,7 @@ function buildFern(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
 function buildMushroom(s: number, r: () => number, C: HybridPlantPalette, rim: number, motion: boolean): ReactNode[] {
   const out: ReactNode[] = []
     if (s === 0) {
-      out.push(e('path', { key: 'm', d: 'M -6 0 Q 0 -4 6 0 Z', fill: C.silSoft }));
-      out.push(e('circle', { key: 'p', cx: 0, cy: -2.8, r: 1.7, fill: C.sil, stroke: C.rim, strokeOpacity: 0.6 * rim, strokeWidth: 0.5 }));
-      return out;
+      return seedInSoil(C, rim, r);
     }
     const members = ([[0, 0, 1], [-6.5, 0.5, 0.68], [6, 0.5, 0.8], [-11, 1, 0.5]] as [number, number, number][]).slice(0, [1, 1, 1, 2, 2, 3, 3, 4][s]);
     members.forEach(([mx, my, msc], mi) => {
