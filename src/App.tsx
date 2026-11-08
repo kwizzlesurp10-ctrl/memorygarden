@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
 import { useKV } from '@/lib/storage'
 import { useMemoriesKV } from '@/hooks/use-memories-kv'
-import { createSeededMemories } from '@/lib/seed-memories'
+import { createGardenStarterDecor } from '@/lib/garden/garden-starter-decor'
+import { seedFromGenetics } from '@/lib/garden/prng'
 import { Toaster, toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -111,14 +112,21 @@ function App() {
     lastVisit: new Date().toISOString(),
   })
 
-  // Seed beautiful example memories only on first-ever load
+  // Persistent starter scenery for new empty gardens (not memories).
   useEffect(() => {
-    if (!preferences?.hasCompletedOnboarding && memories.length === 0) {
-      const seeded = createSeededMemories()
-      setMemories(seeded)
-      setPreferences(p => ({ ...p, hasCompletedOnboarding: true }))
-    }
-  }, [preferences, memories])
+    if (memories.length > 0) return
+    if (preferences?.gardenStarterDecor) return
+    const gardenSeed = seedFromGenetics(localUser.id, 'starter-garden')
+    const decor = createGardenStarterDecor(gardenSeed)
+    setPreferences((p) => {
+      const base: UserPreferences = p ?? {
+        hasCompletedOnboarding: false,
+        soundEnabled: false,
+        lastVisit: new Date().toISOString(),
+      }
+      return { ...base, gardenStarterDecor: decor }
+    })
+  }, [memories.length, preferences?.gardenStarterDecor, localUser.id, setPreferences])
 
   const [viewMode, setViewMode] = useState<ViewMode>('garden')
   const [visitingGardenId, setVisitingGardenId] = useState<string | null>(null)
@@ -1377,26 +1385,23 @@ function App() {
                 exit={{ opacity: 0 }}
                 className="w-full h-full"
               >
-                {safeMemories.length === 0 ? (
-                  <EmptyGarden onPlantFirst={() => setIsPlantModalOpen(true)} />
-                ) : (
-                  <SectionErrorBoundary label="garden view">
-                    <GardenCanvas
-                      memories={safeMemories}
-                      onMemoryClick={handleMemoryClick}
-                      onMemoryMove={handleMemoryMove}
-                      season={season}
-                      growingMemories={growingMemories}
-                      memoryBoostTiers={memoryBoostTiers}
-                      highlightedMemoryIds={highlightedMemoryIds}
-                      mood={gardenMood}
-                      onPlantHybrid={handlePlantHybrid}
-                      onEnterWalk={handleEnterWalk}
-                      landscapeView={safePreferences.gardenLandscapeView}
-                      onLandscapeViewChange={handleLandscapeViewChange}
-                    />
-                  </SectionErrorBoundary>
-                )}
+                <SectionErrorBoundary label="garden view">
+                  <GardenCanvas
+                    memories={safeMemories}
+                    onMemoryClick={handleMemoryClick}
+                    onMemoryMove={handleMemoryMove}
+                    season={season}
+                    growingMemories={growingMemories}
+                    memoryBoostTiers={memoryBoostTiers}
+                    highlightedMemoryIds={highlightedMemoryIds}
+                    mood={gardenMood}
+                    onPlantHybrid={handlePlantHybrid}
+                    onEnterWalk={safeMemories.length > 0 ? handleEnterWalk : undefined}
+                    landscapeView={safePreferences.gardenLandscapeView}
+                    onLandscapeViewChange={handleLandscapeViewChange}
+                    starterDecor={safePreferences.gardenStarterDecor}
+                  />
+                </SectionErrorBoundary>
               </motion.div>
             )}
 

@@ -1,4 +1,5 @@
 import type { PlantStage } from '@/lib/types'
+import type { PlantFacing } from '@/lib/garden/landscape-world'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { gardenRng, seedFromGenetics } from '@/lib/garden/prng'
 import { plantStageToIndex } from '@/lib/garden/stage'
@@ -13,6 +14,7 @@ export interface SeededPlantSvgProps {
   rimStrength: number
   motion: boolean
   scale?: number
+  facing?: PlantFacing
   className?: string
 }
 
@@ -24,12 +26,13 @@ export function SeededPlantSvg({
   rimStrength,
   motion,
   scale = 1,
+  facing = 'front',
   className,
 }: SeededPlantSvgProps) {
   const seedN = seedFromGenetics(geneticsSeed, `${variety}-${stage}`)
   const rng = gardenRng(seedN)
   const stageIndex = plantStageToIndex(stage)
-  const ctx = { stageIndex, palette, rimStrength, motion, rng }
+  const ctx = { stageIndex, palette, rimStrength, motion, rng, facing }
   const nodes = buildSeededPlant(variety, ctx)
   const swayStyle = getSwayStyle(seedN, motion, variety === 'tree')
 

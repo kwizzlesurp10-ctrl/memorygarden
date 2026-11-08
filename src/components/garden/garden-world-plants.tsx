@@ -1,0 +1,70 @@
+import type { ReactNode } from 'react'
+import type { GardenLandscapeView, GardenStarterDecor } from '@/lib/types'
+import type { ScenePalette } from '@/lib/garden/palettes'
+import { projectWorldToScene } from '@/lib/garden/landscape-world'
+import { SeededPlantSvg } from '@/components/plants/SeededPlantSvg'
+
+export interface WorldPlantRenderItem {
+  key: string
+  depth: number
+  node: ReactNode
+}
+
+export function buildStarterWorldPlants(
+  decor: GardenStarterDecor | undefined,
+  view: GardenLandscapeView,
+  palette: ScenePalette,
+  rim: number,
+  motion: boolean,
+): WorldPlantRenderItem[] {
+  if (!decor) return []
+  const items: WorldPlantRenderItem[] = []
+
+  const elder = projectWorldToScene({ wx: decor.elderTree.wx, wz: decor.elderTree.wz }, view)
+  items.push({
+    key: 'starter-elder',
+    depth: elder.depth,
+    node: (
+      <g transform={`translate(${elder.x} ${elder.y})`}>
+        <SeededPlantSvg
+          variety="tree"
+          stage="elder"
+          geneticsSeed={decor.elderTree.geneticsSeed}
+          palette={palette}
+          rimStrength={rim}
+          motion={motion}
+          scale={decor.elderTree.scale}
+          facing={elder.facing}
+        />
+      </g>
+    ),
+  })
+
+  for (const shroom of decor.mushrooms) {
+    const proj = projectWorldToScene({ wx: shroom.wx, wz: shroom.wz }, view)
+    items.push({
+      key: shroom.id,
+      depth: proj.depth,
+      node: (
+        <g transform={`translate(${proj.x} ${proj.y})`}>
+          <SeededPlantSvg
+            variety="mushroom"
+            stage="mature"
+            geneticsSeed={shroom.geneticsSeed}
+            palette={palette}
+            rimStrength={rim}
+            motion={motion}
+            scale={shroom.scale}
+            facing={proj.facing}
+          />
+        </g>
+      ),
+    })
+  }
+
+  return items.sort((a, b) => a.depth - b.depth)
+}
+
+export function sortWorldLayer(nodes: WorldPlantRenderItem[]): ReactNode[] {
+  return nodes.map((n) => <g key={n.key}>{n.node}</g>)
+}

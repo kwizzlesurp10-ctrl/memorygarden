@@ -2,6 +2,7 @@ import { createElement as e, type ReactNode, type CSSProperties } from 'react'
 import type { HybridBaseVariety } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { cx3 } from '@/lib/garden/bezier'
+import { applyPlantFacing } from './facing-art'
 import type { SeededPlantContext, SeededVariety } from './types'
 
 export type HybridPlantPalette = Pick<ScenePalette, 'sil' | 'silSoft' | 'rim' | 'glow' | 'accent'>
@@ -515,7 +516,9 @@ export function buildSeededPlant(
 ): ReactNode[] {
   if (typeof ctxOrS === 'object') {
     const ctx = ctxOrS
-    return BUILDERS[variety](ctx.stageIndex, ctx.rng, ctx.palette, ctx.rimStrength, ctx.motion)
+    const base = BUILDERS[variety](ctx.stageIndex, ctx.rng, ctx.palette, ctx.rimStrength, ctx.motion)
+    const facing = ctx.facing ?? 'front'
+    return applyPlantFacing(variety, facing, base, ctx.palette, ctx.rimStrength, ctx.stageIndex)
   }
   return BUILDERS[variety](ctxOrS, r!, C!, rim!, motion!)
 }

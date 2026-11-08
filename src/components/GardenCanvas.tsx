@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
-import type { GardenLandscapeView, Memory, Season, StorageShedData, ShedSeed, PlantedHybrid } from '@/lib/types'
-import { projectMemoryToScene, resolveGardenLandscapeView } from '@/lib/garden/landscape-view'
+import type { GardenLandscapeView, GardenStarterDecor, Memory, Season, StorageShedData, ShedSeed, PlantedHybrid } from '@/lib/types'
+import { resolveGardenLandscapeView } from '@/lib/garden/landscape-view'
+import { projectMemoryToSceneWorld } from '@/lib/garden/landscape-world'
 import { GardenViewPicker } from '@/components/garden/GardenViewPicker'
 import { WeatherEffects } from './WeatherEffects'
 import { GardenClusterPaths } from './GardenClusterPaths'
@@ -45,6 +46,7 @@ interface GardenCanvasProps {
   onEnterWalk?: () => void
   landscapeView?: GardenLandscapeView
   onLandscapeViewChange?: (view: GardenLandscapeView) => void
+  starterDecor?: GardenStarterDecor
 }
 
 export function GardenCanvas({
@@ -59,6 +61,7 @@ export function GardenCanvas({
   onEnterWalk,
   landscapeView,
   onLandscapeViewChange,
+  starterDecor,
 }: GardenCanvasProps) {
   const reducedMotion = useReducedMotion()
   const motion = !reducedMotion
@@ -167,14 +170,17 @@ export function GardenCanvas({
   }, [handlePlantFromShed, persistShed])
 
   const memoryPlants = useMemo(() => (
-    memories.map((memory) => {
-      const pos = projectMemoryToScene(memory.position, resolvedView)
+    [...memories]
+      .map((memory) => {
+      const pos = projectMemoryToSceneWorld(memory.position, resolvedView)
       const isDimmed = highlightedMemoryIds !== null && !highlightedMemoryIds.has(memory.id)
       const isGrowing = growingMemories.has(memory.id)
       const size = getPlantSize(memory.plantStage) as number
       const sc = Math.max(0.55, Math.min(1.4, size / 90))
 
-      return (
+      return {
+        depth: pos.depth,
+        node: (
         <g
           key={memory.id}
           transform={`translate(${pos.x} ${pos.y})`}
@@ -210,14 +216,18 @@ export function GardenCanvas({
                   palette={palette}
                   rimStrength={RIM_STRENGTH}
                   motion={motion}
+                  facing={pos.facing}
                 />
               )}
             </g>
           </GrowthCeremony>
         </g>
-      )
+      ),
+      }
     })
-  ), [memories, highlightedMemoryIds, growingMemories, lensOn, palette, motion, resolvedView])
+      .sort((a, b) => a.depth - b.depth)
+      .map((item) => item.node)
+  ), [memories, highlightedMemoryIds, growingMemories, lensOn, palette, motion, resolvedView, draggingMemory, onMemoryClick])
 
   const onLensMove = useCallback((e: React.PointerEvent) => {
     if (!lensOn || !sceneWrapRef.current) return
@@ -348,6 +358,7 @@ export function GardenCanvas({
             planted={shedData.planted}
             candles={shedData.candles}
             memoryPlants={memoryPlants}
+            starterDecor={starterDecor}
             layerRefs={{ sky: skyRef, far: farRef, mid: midRef, foreground: fgRef }}
           />
 
