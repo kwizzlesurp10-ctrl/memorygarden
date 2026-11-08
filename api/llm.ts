@@ -1,9 +1,9 @@
 /**
- * Vercel Edge Function — proxies LLM completions to Anthropic.
+ * Vercel Edge Function — proxies LLM completions to xAI (Grok) or Anthropic.
  *
- * Reads ANTHROPIC_API_KEY from the environment. The client never sees
- * the key. If the key is absent, returns 503 so the client falls back
- * to its no-AI behavior.
+ * Prefers XAI_API_KEY (Grok, OpenAI-compatible API) when set, otherwise
+ * ANTHROPIC_API_KEY. The client never sees either key. If neither key is
+ * set, returns 503 so the client falls back to its no-AI behavior.
  *
  * Request:  POST /api/llm  body: { prompt: string, kind?: 'classify' | 'reflect', jsonMode?: boolean }
  * Response: 200 { text: string }
@@ -23,6 +23,32 @@ interface RequestBody {
 
 const MODEL_FAST = 'claude-haiku-4-5-20251001'
 const MODEL_RICH = 'claude-sonnet-4-6'
+const XAI_MODEL = 'grok-4.20-0309-non-reasoning'
+
+const SYSTEM_JSON = 'Reply with a single JSON value and no surrounding prose.'
+const SYSTEM_TEXT =
+  'You are a thoughtful writing companion for a personal memory garden. Be warm, contemplative, and brief.'
+
+async function completeXai(apiKey: string, prompt: string, jsonMode: boolean, maxTokens: number): Promise<Response | string> {
+  const upstream = await fetch('https://api.x.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: process.env.XAI_MODEL || XAI_MODEL,
+      max_tokens: maxTokens,
+      ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+      messages: [
+        { role: 'system', content: jsonMode ? SYSTEM_JSON : SYSTEM_TEXT },
+        { role: 'user', content: prompt },
+      ],
+    }),
+  })
+  if (!upstream.ok) {
+    return jsonResponse(upstream.status >= 500 ? 502 : upstream.status, { error: 'Upstream error' })
+  }
+  const data = (await upstream.json()) as { choices?: Array<{ message?: { content?: string } }> }
+  return (data.choices?.[0]?.message?.content ?? '').trim()
+}
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -41,8 +67,9 @@ export default async function handler(req: Request): Promise<Response> {
     return rateLimited
   }
 
+  const xaiKey = process.env.XAI_API_KEY
   const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
+  if (!xaiKey && !apiKey) {
     return jsonResponse(503, { error: 'AI not configured' })
   }
 
@@ -61,29 +88,31 @@ export default async function handler(req: Request): Promise<Response> {
   const kind = body.kind === 'classify' ? 'classify' : 'reflect'
   const jsonMode = body.jsonMode === true
   const model = kind === 'classify' ? MODEL_FAST : MODEL_RICH
-  const maxTokens = kind === 'classify' ? 32 : 256
+  // JSON replies (e.g. Dream a Plant genomes with SVG motif paths) need more room.
+  const maxTokens = kind === 'classify' ? 32 : jsonMode ? 1200 : 256
 
   try {
+    if (xaiKey) {
+      const out = await completeXai(xaiKey, prompt, jsonMode, maxTokens)
+      return typeof out === 'string' ? jsonResponse(200, { text: out }) : out
+    }
     const upstream = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-api-key': apiKey,
+        'x-api-key': apiKey!,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
         model,
         max_tokens: maxTokens,
-        system: jsonMode
-          ? 'Reply with a single JSON value and no surrounding prose.'
-          : 'You are a thoughtful writing companion for a personal memory garden. Be warm, contemplative, and brief.',
+        system: jsonMode ? SYSTEM_JSON : SYSTEM_TEXT,
         messages: [{ role: 'user', content: prompt }],
       }),
     })
 
     if (!upstream.ok) {
-      const detail = await upstream.text().catch(() => '')
-      return jsonResponse(upstream.status, { error: 'Upstream error', detail: detail.slice(0, 500) })
+      return jsonResponse(upstream.status >= 500 ? 502 : upstream.status, { error: 'Upstream error' })
     }
 
     const data = (await upstream.json()) as { content?: Array<{ type: string; text?: string }> }

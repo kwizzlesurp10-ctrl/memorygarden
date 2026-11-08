@@ -29,6 +29,21 @@ export function todPalette(t: number, season: Season): ScenePalette {
     fireAlpha: piecewise([[0, 1], [3.8, 1], [5.2, 0], [18.4, 0], [19.6, 0.5], [20.6, 1], [24, 1]], t),
     fireN: 16,
     shootAlpha: piecewise([[0, 1], [3.5, 1], [4.8, 0], [21, 0], [22, 0.8], [24, 1]], t),
+    plantDimBlend: piecewise(
+      [
+        [0, 1],
+        [5.4, 1],
+        [6.6, 0.55],
+        [7.4, 0],
+        [16.6, 0],
+        [17.4, 0.25],
+        [18.2, 0.55],
+        [19, 0.82],
+        [20, 1],
+        [24, 1],
+      ],
+      t,
+    ),
     mistAlpha: piecewise([[0, 0], [4.4, 0], [5.4, 0.9], [7.6, 0.7], [9.2, 0], [24, 0]], t),
     buttAlpha: piecewise([[0, 0], [8.5, 0], [10, 1], [16, 1], [17.8, 0], [24, 0]], t),
     leafAlpha: piecewise([[0, 0], [16.2, 0], [17.5, 1], [19.8, 0.4], [21, 0], [24, 0]], t),
@@ -69,7 +84,11 @@ export function todPalette(t: number, season: Season): ScenePalette {
 
   if (t >= 18.8 || t <= 5.8) {
     const pn = t >= 18.8 ? (t - 18.8) / 11 : (t + 5.2) / 11
-    palette.moon = { x: 110 + pn * 980, y: 455 - Math.sin(pn * Math.PI) * 330, r: 30 }
+    palette.moon = {
+      x: 110 + pn * 980 + 155,
+      y: 455 - Math.sin(pn * Math.PI) * 330 - 72,
+      r: 30,
+    }
   }
 
   return palette

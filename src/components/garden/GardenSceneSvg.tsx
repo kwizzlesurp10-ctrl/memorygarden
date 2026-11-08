@@ -5,7 +5,18 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react'
-import type { Candle, GardenLandscapeView, PlantedHybrid, ShedStyle } from '@/lib/types'
+import type { Candle, GardenLandscapeView, GardenStarterDecor, PlantedHybrid, ShedStyle } from '@/lib/types'
+import { buildStarterWorldPlants, sortWorldLayer } from '@/components/garden/garden-world-plants'
+import { buildWorldSceneryItems } from '@/components/garden/garden-world-scenery'
+import { VIEW_FRAME, projectWorldToSky } from '@/lib/garden/landscape-world'
+import {
+  farHillPathD,
+  hillPanX,
+  hillWorldShift,
+  midHillPathD,
+  nearHillPathD,
+} from '@/lib/garden/landscape-hills'
+import { WORLD_SUN } from '@/lib/garden/landscape-world-layout'
 import {
   getPondGeometry,
   getWaterReflectionCenterY,
@@ -13,12 +24,12 @@ import {
   rippleIntersectsWater,
   resolveGardenLandscapeView,
 } from '@/lib/garden/landscape-view'
+import { bandWaterShimmerLinesD } from '@/lib/garden/landscape-pond'
 import {
   AtmosphericGroundDetail,
   ForegroundBanks,
   PondShoreRim,
   SceneGroundPlane,
-  VIEW_MID_PARALLAX_X,
 } from '@/components/garden/landscape-ground'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { gardenRng } from '@/lib/garden/prng'
@@ -26,7 +37,7 @@ import { indexToPlantStage } from '@/lib/garden/stage'
 import { SeededPlantSvg } from '@/components/plants/SeededPlantSvg'
 import { HybridPlantSvg } from '@/components/plants/hybrid-builder'
 import type { SeededVariety } from '@/components/plants/types'
-import { candle, cattail, grassTuft, rock, shed } from './scenery'
+import { candle, cattail } from './scenery'
 export { SCENE_W, SCENE_H, SCENE_HZ } from '@/lib/garden/scene-constants'
 import { SCENE_H, SCENE_HZ, SCENE_W } from '@/lib/garden/scene-constants'
 
@@ -42,6 +53,7 @@ export interface GardenSceneSvgProps {
   planted: PlantedHybrid[]
   candles: Candle[]
   memoryPlants?: ReactNode
+  starterDecor?: GardenStarterDecor
   layerRefs?: {
     sky: RefObject<SVGGElement | null>
     far: RefObject<SVGGElement | null>
@@ -165,10 +177,10 @@ function computeSceneRngData(
   }
 
   const ripples: SceneRngData['ripples'] = []
-  for (let i = 0; i < 11; i++) {
+  for (let i = 0; i < 16; i++) {
     const ry = 484 + r() * 190
-    const rx = 30 + r() * 1040
-    const rl = 26 + r() * 110
+    const rx = 20 + r() * (SCENE_W - 40)
+    const rl = 26 + r() * 130
     ripples.push({
       x1: rx,
       y1: ry,
@@ -286,7 +298,14 @@ export const GardenSkyLayer = forwardRef<SVGGElement, GardenSkyLayerProps>(funct
             <stop key={i} offset={i / (C.sky.length - 1)} stopColor={c} />
           ))}
         </linearGradient>
-        <linearGradient id={`wv${k}`} x1={0} y1={0} x2={0} y2={1}>
+        <linearGradient
+          id={`wv${k}`}
+          x1={0}
+          y1={bandTopY}
+          x2={0}
+          y2={SCENE_H}
+          gradientUnits="userSpaceOnUse"
+        >
           <stop offset={0} stopColor={C.waterTint[0]} stopOpacity={0.4} />
           <stop offset={0.3} stopColor={C.waterTint[1]} stopOpacity={0.1} />
           <stop offset={1} stopColor={C.waterTint[1]} stopOpacity={0.92} />
@@ -297,6 +316,10 @@ export const GardenSkyLayer = forwardRef<SVGGElement, GardenSkyLayerProps>(funct
         <clipPath id={`wm${k}`}>
           <path d={pondGeom.waterPathD} />
         </clipPath>
+        {/* Explicit full-scene region so the blurred reflection never clips into a vertical seam. */}
+        <filter id={`wrb${k}`} filterUnits="userSpaceOnUse" x={-400} y={-200} width={SCENE_W + 800} height={SCENE_H + 400}>
+          <feGaussianBlur stdDeviation={1.4} />
+        </filter>
         <linearGradient id={`bankDeep${k}`} x1={0} y1={bandTopY - 80} x2={0} y2={bandTopY + 40} gradientUnits="userSpaceOnUse">
           <stop offset={0} stopColor={C.hills[1]} stopOpacity={0.4} />
           <stop offset={1} stopColor={C.bank} stopOpacity={0.95} />
@@ -320,17 +343,22 @@ export const GardenSkyLayer = forwardRef<SVGGElement, GardenSkyLayerProps>(funct
       </g>
 
       {C.sun ? (
-        <>
-          <circle
-            cx={C.sun.x}
-            cy={C.sun.y}
-            r={C.sun.r * 2.6}
-            fill={C.sun.glow}
-            opacity={0.22}
-            style={{ filter: 'blur(18px)' }}
-          />
-          <circle cx={C.sun.x} cy={C.sun.y} r={C.sun.r} fill={C.sun.disk} opacity={0.95} />
-        </>
+        (() => {
+          const sunPos = projectWorldToSky(WORLD_SUN, landscapeView)
+          return (
+            <>
+              <circle
+                cx={sunPos.x}
+                cy={sunPos.y}
+                r={C.sun.r * 2.6}
+                fill={C.sun.glow}
+                opacity={0.22}
+                style={{ filter: 'blur(18px)' }}
+              />
+              <circle cx={sunPos.x} cy={sunPos.y} r={C.sun.r} fill={C.sun.disk} opacity={0.95} />
+            </>
+          )
+        })()
       ) : null}
 
       {C.moon ? (
@@ -411,13 +439,17 @@ export interface GardenFarLayerProps {
   motion: boolean
 }
 
-export const GardenFarLayer = forwardRef<SVGGElement, GardenFarLayerProps>(function GardenFarLayer(
-  { palette: C, gardenSeed: seed, rimStrength: rim, motion },
+export interface GardenFarLayerPropsWithView extends GardenFarLayerProps {
+  landscapeView: GardenLandscapeView
+}
+
+export const GardenFarLayer = forwardRef<SVGGElement, GardenFarLayerPropsWithView>(function GardenFarLayer(
+  { palette: C, landscapeView },
   ref,
 ) {
   return (
     <g ref={ref} data-layer="far">
-      <FarLandContent palette={C} gardenSeed={seed} rimStrength={rim} motion={motion} />
+      <FarLandContent palette={C} gardenSeed={0} rimStrength={0} motion={false} landscapeView={landscapeView} />
     </g>
   )
 })
@@ -429,117 +461,34 @@ interface GardenLandProps {
   motion: boolean
 }
 
-function FarLandContent({ palette: C, gardenSeed: seed, rimStrength: rim }: GardenLandProps) {
+function FarLandContent({ palette: C, landscapeView }: GardenLandProps & { landscapeView: GardenLandscapeView }) {
+  const pan = hillPanX(landscapeView)
+  const shift = hillWorldShift(landscapeView)
   return (
-    <>
-      <path
-        d="M -4 402 Q 170 362 330 388 T 640 372 Q 810 352 960 384 T 1204 376 L 1204 472 L -4 472 Z"
-        fill={C.hills[0]}
-      />
-      <g>
-        <PlantAt
-          variety="tree"
-          stage={5}
-          palette={hillPalette(C, 1, { rim: C.rim, glow: C.glow, accent: C.accent })}
-          x={250}
-          y={384}
-          sc={0.42}
-          seedN={seed + 11}
-          rim={rim * 0.4}
-          motion={false}
-        />
-        <PlantAt
-          variety="tree"
-          stage={6}
-          palette={hillPalette(C, 1)}
-          x={700}
-          y={372}
-          sc={0.5}
-          seedN={seed + 12}
-          rim={rim * 0.4}
-          motion={false}
-        />
-        <PlantAt
-          variety="tree"
-          stage={4}
-          palette={hillPalette(C, 1)}
-          x={1080}
-          y={380}
-          sc={0.4}
-          seedN={seed + 13}
-          rim={rim * 0.4}
-          motion={false}
-        />
-      </g>
-    </>
-  )
-}
-
-function MidHillTerrainShapes({ palette: C }: { palette: ScenePalette }) {
-  return (
-    <>
-      <path
-        d="M -4 436 Q 200 404 380 424 T 720 414 Q 900 400 1040 426 T 1204 420 L 1204 472 L -4 472 Z"
-        fill={C.hills[1]}
-      />
-      <path
-        d="M -4 468 Q 90 442 210 452 Q 340 462 470 456 Q 620 448 760 460 Q 920 470 1030 458 Q 1120 450 1204 462 L 1204 472 L -4 472 Z"
-        fill={C.hills[2]}
-      />
-    </>
-  )
-}
-
-function MidHillPlants({ palette: C, gardenSeed: seed, rimStrength: rim, motion }: GardenLandProps) {
-  return (
-    <g>
-      <PlantAt
-        variety="tree"
-        stage={6}
-        palette={hillPalette(C, 2)}
-        x={480}
-        y={420}
-        sc={0.62}
-        seedN={seed + 14}
-        rim={rim * 0.6}
-        motion={motion}
-      />
-      <PlantAt
-        variety="herb"
-        stage={6}
-        palette={hillPalette(C, 2)}
-        x={560}
-        y={424}
-        sc={0.7}
-        seedN={seed + 15}
-        rim={rim * 0.6}
-        motion={motion}
-      />
-      <PlantAt
-        variety="tree"
-        stage={3}
-        palette={hillPalette(C, 2)}
-        x={920}
-        y={418}
-        sc={0.55}
-        seedN={seed + 16}
-        rim={rim * 0.6}
-        motion={motion}
-      />
-      <PlantAt variety="tree" stage={7} palette={C} x={140} y={452} sc={1.55} seedN={seed + 1} rim={rim} motion={motion} />
-      <PlantAt variety="mushroom" stage={6} palette={C} x={208} y={458} sc={0.65} seedN={seed + 2} rim={rim} motion={motion} />
-      <PlantAt variety="flower" stage={5} palette={C} x={300} y={456} sc={0.8} seedN={seed + 3} rim={rim} motion={motion} />
-      <PlantAt variety="wildflower" stage={6} palette={C} x={356} y={460} sc={0.75} seedN={seed + 4} rim={rim} motion={motion} />
-      <PlantAt variety="herb" stage={6} palette={C} x={424} y={458} sc={0.8} seedN={seed + 5} rim={rim} motion={motion} />
-      <PlantAt variety="fern" stage={6} palette={C} x={508} y={457} sc={0.8} seedN={seed + 6} rim={rim} motion={motion} />
-      <PlantAt variety="succulent" stage={6} palette={C} x={604} y={461} sc={0.85} seedN={seed + 7} rim={rim} motion={motion} />
-      <PlantAt variety="flower" stage={1} palette={C} x={660} y={462} sc={0.8} seedN={seed + 8} rim={rim} motion={motion} />
-      <PlantAt variety="flower" stage={0} palette={C} x={698} y={463} sc={0.8} seedN={seed + 9} rim={rim} motion={motion} />
-      <PlantAt variety="flower" stage={7} palette={C} x={866} y={462} sc={0.85} seedN={seed + 10} rim={rim} motion={motion} />
-      <PlantAt variety="vine" stage={6} palette={C} x={952} y={461} sc={0.85} seedN={seed + 17} rim={rim} motion={motion} />
-      <PlantAt variety="tree" stage={3} palette={C} x={1058} y={457} sc={1.15} seedN={seed + 18} rim={rim} motion={motion} />
+    <g transform={pan ? `translate(${pan} 0)` : undefined}>
+      <path d={farHillPathD(shift)} fill={C.hills[0]} />
     </g>
   )
+}
+
+function MidHillTerrainShapes({
+  palette: C,
+  landscapeView,
+}: {
+  palette: ScenePalette
+  landscapeView: GardenLandscapeView
+}) {
+  const shift = hillWorldShift(landscapeView)
+  return (
+    <>
+      <path d={midHillPathD(shift)} fill={C.hills[1]} />
+      <path d={nearHillPathD(shift)} fill={C.hills[2]} />
+    </>
+  )
+}
+
+function MidHillPlants(_props: GardenLandProps) {
+  return null
 }
 
 function PlantedHybridsContent({
@@ -579,11 +528,12 @@ function ReflectLandContent({
   rimStrength: rim,
   motion,
   planted,
-}: GardenLandProps & { planted: PlantedHybrid[] }) {
+  landscapeView,
+}: GardenLandProps & { planted: PlantedHybrid[]; landscapeView: GardenLandscapeView }) {
   return (
     <>
-      <FarLandContent palette={C} gardenSeed={seed} rimStrength={rim} motion={motion} />
-      <MidHillTerrainShapes palette={C} />
+      <FarLandContent palette={C} gardenSeed={seed} rimStrength={rim} motion={motion} landscapeView={landscapeView} />
+      <MidHillTerrainShapes palette={C} landscapeView={landscapeView} />
       <MidHillPlants palette={C} gardenSeed={seed} rimStrength={rim} motion={motion} />
       <PlantedHybridsContent palette={C} rimStrength={rim} motion={motion} planted={planted} />
     </>
@@ -600,6 +550,9 @@ export interface GardenMidWaterLayerProps {
   planted: PlantedHybrid[]
   candles: Candle[]
   memoryPlants?: ReactNode
+  starterDecor?: GardenStarterDecor
+  shedStyle: ShedStyle
+  onShedClick?: () => void
   rngData: SceneRngData
 }
 
@@ -614,27 +567,41 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
     planted,
     candles,
     memoryPlants,
+    starterDecor,
+    shedStyle,
+    onShedClick,
     rngData,
   },
   ref,
 ) {
+  const worldLayer = useMemo(() => {
+    const items = [
+      ...buildStarterWorldPlants(starterDecor, landscapeView, C, rim, motion),
+      ...buildWorldSceneryItems(landscapeView, C, rim, motion, seed, shedStyle, onShedClick, {
+        includeDistantTrees: !starterDecor,
+      }),
+    ].sort((a, b) => a.depth - b.depth)
+    return sortWorldLayer(items)
+  }, [starterDecor, landscapeView, C, rim, motion, seed, shedStyle, onShedClick])
   const sortedCandles = useMemo(() => [...candles].sort((a, b) => a.y - b.y), [candles])
   const pondGeom = useMemo(() => getPondGeometry(landscapeView), [landscapeView])
   const waterTopY = pondGeom.bandWater ? pondGeom.waterTopY : LANDSCAPE_HORIZON_Y
   const waterDepth = SCENE_H - waterTopY
   const showReflection = pondGeom.bandWater && waterDepth > 72
 
-  const reflectY = getWaterReflectionCenterY(landscapeView, C.sun?.x)
+  const sunSkyX = C.sun ? projectWorldToSky(WORLD_SUN, landscapeView).x : SCENE_W / 2
+  const reflectY = getWaterReflectionCenterY(landscapeView, sunSkyX)
   const smallPool = landscapeView === 'garden_path'
+  const waterShimmers = pondGeom.bandWater ? bandWaterShimmerLinesD(waterTopY) : []
 
   return (
     <g ref={ref} data-layer="mid" data-landscape-view={landscapeView}>
       <SceneGroundPlane palette={C} sceneKey={k} view={landscapeView} />
-      <MidHillTerrainShapes palette={C} />
-      <g transform={`translate(${VIEW_MID_PARALLAX_X[landscapeView]} 0)`}>
-        <MidHillPlants palette={C} gardenSeed={seed} rimStrength={rim} motion={motion} />
+      <g transform={`translate(${hillPanX(landscapeView)} 0)`}>
+        <MidHillTerrainShapes palette={C} landscapeView={landscapeView} />
       </g>
       <PlantedHybridsContent palette={C} rimStrength={rim} motion={motion} planted={planted} />
+      <g data-layer="world-scenery">{worldLayer}</g>
       {memoryPlants}
       <AtmosphericGroundDetail palette={C} gardenSeed={seed} rimStrength={rim} view={landscapeView} />
 
@@ -642,8 +609,20 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
         <path d={pondGeom.waterPathD} fill={C.waterTint[1]} />
         <path d={pondGeom.waterPathD} fill={`url(#wv${k})`} opacity={0.92} />
 
+        {waterShimmers.map((d, i) => (
+          <path
+            key={`wsh-${i}`}
+            d={d}
+            fill="none"
+            stroke={C.waterTint[0]}
+            strokeWidth={i % 2 === 0 ? 1.15 : 0.85}
+            strokeOpacity={0.11 + (i % 3) * 0.03}
+            strokeLinecap="round"
+          />
+        ))}
+
         {showReflection ? (
-          <g opacity={0.28} style={{ filter: 'blur(1.4px)' }}>
+          <g opacity={0.28} filter={`url(#wrb${k})`}>
             <g transform={`translate(0 ${waterTopY * 1.92}) scale(1 -0.92)`}>
               <ReflectLandContent
                 palette={C}
@@ -651,6 +630,7 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
                 rimStrength={rim}
                 motion={motion}
                 planted={planted}
+                landscapeView={landscapeView}
               />
             </g>
           </g>
@@ -665,7 +645,7 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
         {C.sun ? (
           <g opacity={smallPool ? 0.65 : 1}>
             <rect
-              x={C.sun.x - 12}
+              x={sunSkyX - 12}
               y={reflectY - 18}
               width={24}
               height={smallPool ? 48 : Math.min(waterDepth * 0.85, 180)}
@@ -675,7 +655,7 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
               style={{ filter: 'blur(10px)' }}
             />
             <ellipse
-              cx={C.sun.x}
+              cx={sunSkyX}
               cy={reflectY + 16}
               rx={smallPool ? 16 : 28}
               ry={smallPool ? 22 : Math.min(72, waterDepth * 0.45)}
@@ -684,7 +664,7 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
               style={{ filter: 'blur(8px)' }}
             />
             <ellipse
-              cx={C.sun.x}
+              cx={sunSkyX}
               cy={reflectY}
               rx={smallPool ? 7 : 9}
               ry={smallPool ? 14 : Math.min(48, waterDepth * 0.28)}
@@ -794,19 +774,10 @@ export interface GardenForegroundLayerProps {
   rngData: SceneRngData
 }
 
-const FOREGROUND_SHED_X: Record<GardenLandscapeView, number> = {
-  pond: 1075,
-  lakeside: 1062,
-  meadow: 1092,
-  garden_path: 1088,
-}
-
 export const GardenForegroundLayer = forwardRef<SVGGElement, GardenForegroundLayerProps>(function GardenForegroundLayer(
-  { palette: C, sceneKey: k, gardenSeed: seed, rimStrength: rim, motion, landscapeView, shedStyle, onShedClick, rngData },
+  { palette: C, sceneKey: k, gardenSeed: seed, rimStrength: rim, motion, landscapeView, rngData },
   ref,
 ) {
-  const shedX = FOREGROUND_SHED_X[landscapeView]
-  const parallaxX = VIEW_MID_PARALLAX_X[landscapeView] * 0.35
   return (
     <g ref={ref} data-layer="foreground">
       <ForegroundBanks
@@ -816,7 +787,7 @@ export const GardenForegroundLayer = forwardRef<SVGGElement, GardenForegroundLay
         sceneKey={k}
         view={landscapeView}
       />
-      <g transform={parallaxX ? `translate(${parallaxX} 0)` : undefined}>
+      <g transform={`translate(${VIEW_FRAME[landscapeView].panX * 0.2} 0)`}>
       <path
         d="M 0 606 Q 140 594 262 632"
         stroke={C.rim}
@@ -831,38 +802,6 @@ export const GardenForegroundLayer = forwardRef<SVGGElement, GardenForegroundLay
         fill="none"
         opacity={0.14 * rim}
       />
-
-      <g
-        transform={`translate(${shedX} 682) scale(1.6)`}
-        style={{ cursor: onShedClick ? 'pointer' : undefined }}
-        onClick={onShedClick}
-        role={onShedClick ? 'button' : undefined}
-        tabIndex={onShedClick ? 0 : undefined}
-        onKeyDown={
-          onShedClick
-            ? (e) => {
-                if (e.key === 'Enter' || e.key === ' ') onShedClick()
-              }
-            : undefined
-        }
-      >
-        {shed({ kind: shedStyle, C, rimStrength: rim, motion })}
-      </g>
-
-      <g transform="translate(66 614)">{cattail({ C, rimStrength: rim, r: gardenRng(seed + 30) })}</g>
-      <g transform="translate(102 608) scale(1.15)">{cattail({ C, rimStrength: rim, r: gardenRng(seed + 31) })}</g>
-      <g transform="translate(142 622) scale(0.85)">{cattail({ C, rimStrength: rim, r: gardenRng(seed + 32) })}</g>
-      <g transform="translate(230 640) scale(1.3)">{grassTuft({ C, r: gardenRng(seed + 33) })}</g>
-      <g transform="translate(330 664) scale(1.5)">{grassTuft({ C, r: gardenRng(seed + 34) })}</g>
-      <g transform="translate(1010 646) scale(1.35)">{grassTuft({ C, r: gardenRng(seed + 35) })}</g>
-      <g transform="translate(1130 630) scale(1.2)">{grassTuft({ C, r: gardenRng(seed + 36) })}</g>
-      <g transform="translate(430 682)">{rock({ C, rimStrength: rim, w: 16 })}</g>
-      <g transform="translate(470 690)">{rock({ C, rimStrength: rim, w: 9 })}</g>
-      <g transform="translate(900 686)">{rock({ C, rimStrength: rim, w: 12 })}</g>
-
-      <PlantAt variety="fern" stage={7} palette={C} x={196} y={672} sc={1.05} seedN={seed + 37} rim={rim} motion={motion} />
-      <PlantAt variety="mushroom" stage={7} palette={C} x={972} y={676} sc={1.1} seedN={seed + 38} rim={rim} motion={motion} />
-      <PlantAt variety="wildflower" stage={5} palette={C} x={950} y={676} sc={1.3} seedN={seed + 39} rim={rim} motion={motion} />
 
       {motion && (C.shootAlpha ?? 0) > 0.05 ? (
         <g opacity={C.shootAlpha}>
@@ -987,6 +926,7 @@ export function GardenSceneSvg({
   planted,
   candles,
   memoryPlants,
+  starterDecor,
   layerRefs,
 }: GardenSceneSvgProps) {
   const resolvedView = resolveGardenLandscapeView(landscapeView)
@@ -1018,6 +958,7 @@ export function GardenSceneSvg({
         gardenSeed={gardenSeed}
         rimStrength={rimStrength}
         motion={motion}
+        landscapeView={resolvedView}
       />
       <GardenMidWaterLayer
         ref={layerRefs?.mid}
@@ -1030,6 +971,9 @@ export function GardenSceneSvg({
         planted={planted}
         candles={candles}
         memoryPlants={memoryPlants}
+        starterDecor={starterDecor}
+        shedStyle={shedStyle}
+        onShedClick={onShedClick}
         rngData={rngData}
       />
       <GardenForegroundLayer

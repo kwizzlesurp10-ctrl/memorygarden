@@ -1,4 +1,5 @@
 import type { GardenLandscapeView, Position } from '@/lib/types'
+import { projectMemoryToSceneCompat } from '@/lib/garden/landscape-world'
 import { SCENE_H, SCENE_W } from '@/lib/garden/scene-constants'
 import {
   bandWaterTopY,
@@ -141,19 +142,7 @@ export function projectMemoryToScene(
   position: Position,
   view: GardenLandscapeView,
 ): { x: number; y: number } {
-  const { nx, ny } = normalizeStored(position)
-  const band = getViewPlantBand(view)
-  const x = Math.max(
-    band.xMin,
-    Math.min(band.xMax, band.xMin + nx * (band.xMax - band.xMin) + VIEW_X_SHIFT[view]),
-  )
-  let y = band.yMin + ny * (band.yMax - band.yMin)
-  const landY = band.landSurfaceY - 2
-  if (!isSceneYOnLand(y, view, x) || y > landY) {
-    y = Math.min(y, landY)
-  }
-  y = Math.max(band.yMin, Math.min(band.yMax, y))
-  return { x, y }
+  return projectMemoryToSceneCompat(position, view)
 }
 
 /** @deprecated */
