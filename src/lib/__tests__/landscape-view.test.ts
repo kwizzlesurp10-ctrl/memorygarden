@@ -2,13 +2,15 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_LANDSCAPE_VIEW,
   GARDEN_LANDSCAPE_VIEWS,
+  bandWaterTopYForTests,
+  getPondGeometry,
   getViewWaterLayout,
-  getWaterMaskClipRects,
   isSceneYOnLand,
   projectMemoryToScene,
   resolveGardenLandscapeView,
   rippleIntersectsWater,
 } from '@/lib/garden/landscape-view'
+import { LANDSCAPE_HORIZON_Y, POND_FULL_DEPTH } from '@/lib/garden/landscape-pond'
 
 describe('resolveGardenLandscapeView', () => {
   it('defaults to pond for missing preference (existing users)', () => {
@@ -21,14 +23,32 @@ describe('resolveGardenLandscapeView', () => {
   })
 })
 
+describe('pond geometry per view', () => {
+  it('slides shore downward as less pond is visible', () => {
+    const pond = bandWaterTopYForTests('pond')
+    const lake = bandWaterTopYForTests('lakeside')
+    const meadow = bandWaterTopYForTests('meadow')
+    expect(pond).toBe(LANDSCAPE_HORIZON_Y)
+    expect(lake).toBeGreaterThan(pond)
+    expect(meadow).toBeGreaterThan(lake)
+    expect(meadow).toBeLessThanOrEqual(LANDSCAPE_HORIZON_Y + POND_FULL_DEPTH)
+  })
+
+  it('garden path uses an organic corner pool path', () => {
+    const geom = getPondGeometry('garden_path')
+    expect(geom.bandWater).toBe(false)
+    expect(geom.waterPathD).toMatch(/^M /)
+    expect(getViewWaterLayout('garden_path').bandHeight).toBe(0)
+  })
+})
+
 describe('projectMemoryToScene', () => {
   const base = { x: 500, y: 450 }
 
   it('places plants on land for every landscape view', () => {
     for (const view of GARDEN_LANDSCAPE_VIEWS) {
       const pos = projectMemoryToScene(base, view)
-      expect(isSceneYOnLand(pos.y, view)).toBe(true)
-      expect(pos.y).toBeLessThan(pos.y + 1)
+      expect(isSceneYOnLand(pos.y, view, pos.x)).toBe(true)
     }
   })
 
@@ -39,21 +59,11 @@ describe('projectMemoryToScene', () => {
   })
 })
 
-describe('view water layout', () => {
-  it('garden path exposes a corner pool with visible height', () => {
-    const layout = getViewWaterLayout('garden_path')
-    expect(layout.bandHeight).toBe(0)
-    expect(layout.corner?.height).toBeGreaterThan(48)
-    expect(getWaterMaskClipRects(layout)).toHaveLength(1)
-  })
-
-  it('ripple intersection follows water mask per view', () => {
-    const meadow = getViewWaterLayout('meadow')
-    expect(rippleIntersectsWater(400, 640, meadow)).toBe(true)
-    expect(rippleIntersectsWater(400, 520, meadow)).toBe(false)
-
-    const path = getViewWaterLayout('garden_path')
-    expect(rippleIntersectsWater(80, 640, path)).toBe(true)
-    expect(rippleIntersectsWater(600, 640, path)).toBe(false)
+describe('water intersection', () => {
+  it('ripple intersection follows pond mask per view', () => {
+    expect(rippleIntersectsWater(400, 662, 'meadow')).toBe(true)
+    expect(rippleIntersectsWater(400, 580, 'meadow')).toBe(false)
+    expect(rippleIntersectsWater(120, 650, 'garden_path')).toBe(true)
+    expect(rippleIntersectsWater(600, 650, 'garden_path')).toBe(false)
   })
 })

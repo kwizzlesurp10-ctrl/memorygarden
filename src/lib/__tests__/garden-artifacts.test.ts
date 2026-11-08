@@ -16,10 +16,31 @@ import { SeededPlantSvg } from '@/components/plants/SeededPlantSvg'
 const outDir = process.env.ARTIFACT_DIR || '/opt/cursor/artifacts'
 
 const STAGE_CELL_W = 118
-const STAGE_CELL_H = 168
-const STAGE_ART_Y = 88
 
-function stageCell(stageIndex: number, variety: SeededVariety, palette: ReturnType<typeof todPalette>) {
+interface VarietyStageLayout {
+  rowHeight: number
+  anchorY: number
+  scale: number
+}
+
+const VARIETY_STAGE_LAYOUT: Record<SeededVariety, VarietyStageLayout> = {
+  flower: { rowHeight: 228, anchorY: 132, scale: 0.98 },
+  tree: { rowHeight: 260, anchorY: 218, scale: 0.52 },
+  herb: { rowHeight: 192, anchorY: 118, scale: 0.98 },
+  wildflower: { rowHeight: 196, anchorY: 114, scale: 0.95 },
+  mushroom: { rowHeight: 168, anchorY: 100, scale: 1 },
+  fern: { rowHeight: 200, anchorY: 125, scale: 0.95 },
+  vine: { rowHeight: 200, anchorY: 120, scale: 0.95 },
+  succulent: { rowHeight: 178, anchorY: 108, scale: 1 },
+  lotus: { rowHeight: 168, anchorY: 100, scale: 1 },
+}
+
+function stageCell(
+  stageIndex: number,
+  variety: SeededVariety,
+  palette: ReturnType<typeof todPalette>,
+  layout: VarietyStageLayout,
+) {
   const stage = PLANT_STAGES_ORDER[stageIndex]
   const nodes = buildSeededPlant(variety, {
     stageIndex,
@@ -28,8 +49,10 @@ function stageCell(stageIndex: number, variety: SeededVariety, palette: ReturnTy
     motion: false,
     rng: gardenRng(99 + stageIndex * 17 + variety.length * 3),
   })
-  const inner = renderToStaticMarkup(h('g', { transform: `translate(${STAGE_CELL_W * 0.5} ${STAGE_ART_Y}) scale(1.35)` }, nodes))
-  return `<g transform="translate(${stageIndex * STAGE_CELL_W} 0)">${inner}<text x="8" y="${STAGE_CELL_H - 10}" font-size="10" fill="#2d2418" font-family="system-ui,sans-serif">${stage}</text></g>`
+  const inner = renderToStaticMarkup(
+    h('g', { transform: `translate(${STAGE_CELL_W * 0.5} ${layout.anchorY}) scale(${layout.scale})` }, nodes),
+  )
+  return `<g transform="translate(${stageIndex * STAGE_CELL_W} 0)">${inner}<text x="8" y="${layout.rowHeight - 10}" font-size="10" fill="#2d2418" font-family="system-ui,sans-serif">${stage}</text></g>`
 }
 
 describe('garden visual artifacts', () => {
@@ -83,17 +106,25 @@ describe('garden visual artifacts', () => {
       writeFileSync(resolve(outDir, `garden-view-${view}.svg`), body, 'utf8')
     }
 
-    const flowerRow = PLANT_STAGES_ORDER.map((_, index) => stageCell(index, 'flower', palette)).join('')
-    const flowerSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PLANT_STAGES_ORDER.length * STAGE_CELL_W}" height="${STAGE_CELL_H}" viewBox="0 0 ${PLANT_STAGES_ORDER.length * STAGE_CELL_W} ${STAGE_CELL_H}">${flowerRow}</svg>`
+    const flowerLayout = VARIETY_STAGE_LAYOUT.flower
+    const flowerRow = PLANT_STAGES_ORDER.map((_, index) =>
+      stageCell(index, 'flower', palette, flowerLayout),
+    ).join('')
+    const flowerSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PLANT_STAGES_ORDER.length * STAGE_CELL_W}" height="${flowerLayout.rowHeight}" viewBox="0 0 ${PLANT_STAGES_ORDER.length * STAGE_CELL_W} ${flowerLayout.rowHeight}">${flowerRow}</svg>`
     writeFileSync(resolve(outDir, 'plant-stages-flower-row.svg'), flowerSvg, 'utf8')
 
     const gridVarieties: SeededVariety[] = ['flower', 'tree', 'herb', 'wildflower']
     const gridW = PLANT_STAGES_ORDER.length * STAGE_CELL_W
-    const gridH = gridVarieties.length * STAGE_CELL_H
+    let gridH = 0
     const gridRows = gridVarieties
-      .map((variety, row) => {
-        const cells = PLANT_STAGES_ORDER.map((_, stageIndex) => stageCell(stageIndex, variety, palette)).join('')
-        return `<g transform="translate(0 ${row * STAGE_CELL_H})"><text x="4" y="14" font-size="11" fill="#3d3024" font-family="system-ui,sans-serif" font-weight="600">${variety}</text>${cells}</g>`
+      .map((variety) => {
+        const layout = VARIETY_STAGE_LAYOUT[variety]
+        const rowY = gridH
+        gridH += layout.rowHeight
+        const cells = PLANT_STAGES_ORDER.map((_, stageIndex) =>
+          stageCell(stageIndex, variety, palette, layout),
+        ).join('')
+        return `<g transform="translate(0 ${rowY})"><text x="4" y="14" font-size="11" fill="#3d3024" font-family="system-ui,sans-serif" font-weight="600">${variety}</text>${cells}</g>`
       })
       .join('')
 

@@ -1,5 +1,14 @@
 import type { GardenLandscapeView, Position } from '@/lib/types'
-import { SCENE_H, SCENE_W } from '@/components/garden/GardenSceneSvg'
+import { SCENE_H, SCENE_W } from '@/lib/garden/scene-constants'
+import {
+  bandWaterTopY,
+  getPondGeometry,
+  LANDSCAPE_HORIZON_Y,
+  pointInWaterBand,
+  waterReflectionCenterY,
+} from '@/lib/garden/landscape-pond'
+
+export { LANDSCAPE_HORIZON_Y, getPondGeometry, type PondGeometry } from '@/lib/garden/landscape-pond'
 
 export const GARDEN_LANDSCAPE_VIEWS = [
   'pond',
@@ -24,6 +33,7 @@ export const GARDEN_LANDSCAPE_VIEW_META: readonly GardenLandscapeViewMeta[] = [
   { id: 'garden_path', label: 'Garden path', description: 'Winding path; water glimpsed at the edge' },
 ]
 
+/** @deprecated Use PondGeometry — kept for scene clip helpers. */
 export interface WaterRect {
   x: number
   y: number
@@ -33,11 +43,8 @@ export interface WaterRect {
 }
 
 export interface ViewWaterLayout {
-  /** Top edge of main water body (SVG y, increases downward). */
   waterTopY: number
-  /** Full-scene water band height; 0 when only a corner patch is used. */
   bandHeight: number
-  /** Optional corner pond (garden path) — visible sliver at frame edge. */
   corner?: WaterRect
 }
 
@@ -46,7 +53,6 @@ export interface ViewPlantBand {
   xMax: number
   yMin: number
   yMax: number
-  /** Land surface y — plants anchor above this. */
   landSurfaceY: number
 }
 
@@ -61,12 +67,11 @@ function normalizeStored(position: Position): { nx: number; ny: number } {
   return { nx, ny }
 }
 
-/** Horizontal parallax shift so the same garden reads as a different angle. */
 const VIEW_X_SHIFT: Record<GardenLandscapeView, number> = {
   pond: 0,
-  lakeside: -28,
-  meadow: 42,
-  garden_path: -18,
+  lakeside: -12,
+  meadow: 10,
+  garden_path: -8,
 }
 
 export function resolveGardenLandscapeView(
@@ -81,34 +86,23 @@ export function isGardenLandscapeView(value: unknown): value is GardenLandscapeV
 }
 
 export function getViewWaterLayout(view: GardenLandscapeView): ViewWaterLayout {
-  switch (view) {
-    case 'pond':
-      return { waterTopY: 470, bandHeight: SCENE_H - 470 }
-    case 'lakeside':
-      return { waterTopY: 518, bandHeight: SCENE_H - 518 }
-    case 'meadow':
-      return { waterTopY: 592, bandHeight: SCENE_H - 592 }
-    case 'garden_path':
-      return {
-        waterTopY: SCENE_H,
-        bandHeight: 0,
-        corner: { x: 0, y: 598, width: 340, height: 102, rx: 14 },
-      }
-    default: {
-      const _exhaustive: never = view
-      return _exhaustive
-    }
+  const geom = getPondGeometry(view)
+  if (geom.bandWater) {
+    return { waterTopY: geom.waterTopY, bandHeight: SCENE_H - geom.waterTopY }
   }
+  return { waterTopY: SCENE_H, bandHeight: 0 }
 }
 
 export function getViewPlantBand(view: GardenLandscapeView): ViewPlantBand {
+  const geom = getPondGeometry(view)
+  const landY = geom.bandWater ? geom.waterTopY - 6 : LANDSCAPE_HORIZON_Y + 40
   switch (view) {
     case 'pond':
-      return { xMin: 100, xMax: SCENE_W - 100, yMin: 432, yMax: 466, landSurfaceY: 468 }
+      return { xMin: 100, xMax: SCENE_W - 100, yMin: 432, yMax: 466, landSurfaceY: Math.min(466, landY) }
     case 'lakeside':
-      return { xMin: 90, xMax: SCENE_W - 90, yMin: 428, yMax: 512, landSurfaceY: 514 }
+      return { xMin: 90, xMax: SCENE_W - 90, yMin: 428, yMax: landY - 2, landSurfaceY: landY }
     case 'meadow':
-      return { xMin: 72, xMax: SCENE_W - 72, yMin: 418, yMax: 578, landSurfaceY: 586 }
+      return { xMin: 72, xMax: SCENE_W - 72, yMin: 418, yMax: landY - 2, landSurfaceY: landY }
     case 'garden_path':
       return { xMin: 160, xMax: SCENE_W - 48, yMin: 404, yMax: 612, landSurfaceY: 618 }
     default: {
@@ -118,18 +112,10 @@ export function getViewPlantBand(view: GardenLandscapeView): ViewPlantBand {
   }
 }
 
-/** True when a scene y coordinate is on land (not standing in open water). */
-function pointInRect(px: number, py: number, rect: WaterRect): boolean {
-  return px >= rect.x && px <= rect.x + rect.width && py >= rect.y && py <= rect.y + rect.height
-}
-
 export function getWaterMaskClipRects(layout: ViewWaterLayout): WaterRect[] {
   const rects: WaterRect[] = []
   if (layout.bandHeight > 0) {
     rects.push({ x: 0, y: layout.waterTopY, width: SCENE_W, height: layout.bandHeight })
-  }
-  if (layout.corner) {
-    rects.push(layout.corner)
   }
   return rects
 }
@@ -137,29 +123,18 @@ export function getWaterMaskClipRects(layout: ViewWaterLayout): WaterRect[] {
 export function rippleIntersectsWater(
   x: number,
   y: number,
-  layout: ViewWaterLayout,
+  view: GardenLandscapeView,
 ): boolean {
-  const rects = getWaterMaskClipRects(layout)
-  return rects.some((rect) => pointInRect(x, y, rect))
+  return pointInWaterBand(x, y, getPondGeometry(view))
 }
 
-/** Y anchor for sun/moon column reflections on the water surface. */
-export function getWaterReflectionCenterY(layout: ViewWaterLayout, fallbackSunX?: number): number {
-  void fallbackSunX
-  if (layout.bandHeight > 0) {
-    return layout.waterTopY + Math.min(72, layout.bandHeight * 0.45)
-  }
-  if (layout.corner) {
-    return layout.corner.y + layout.corner.height * 0.38
-  }
-  return SCENE_H - 40
+export function getWaterReflectionCenterY(view: GardenLandscapeView, _fallbackSunX?: number): number {
+  void _fallbackSunX
+  return waterReflectionCenterY(getPondGeometry(view))
 }
 
-export function isSceneYOnLand(y: number, view: GardenLandscapeView): boolean {
-  const layout = getViewWaterLayout(view)
-  const rects = getWaterMaskClipRects(layout)
-  if (rects.length === 0) return true
-  return !rects.some((rect) => y >= rect.y - 2 && y <= rect.y + rect.height + 2)
+export function isSceneYOnLand(y: number, view: GardenLandscapeView, x: number = SCENE_W / 2): boolean {
+  return !pointInWaterBand(x, y, getPondGeometry(view))
 }
 
 export function projectMemoryToScene(
@@ -174,9 +149,23 @@ export function projectMemoryToScene(
   )
   let y = band.yMin + ny * (band.yMax - band.yMin)
   const landY = band.landSurfaceY - 2
-  if (!isSceneYOnLand(y, view) || y > landY) {
+  if (!isSceneYOnLand(y, view, x) || y > landY) {
     y = Math.min(y, landY)
   }
   y = Math.max(band.yMin, Math.min(band.yMax, y))
   return { x, y }
+}
+
+/** @deprecated */
+export function cornerWaterPathD(corner: WaterRect): string {
+  return getPondGeometry('garden_path').waterPathD
+}
+
+export function shoreLineYForView(view: GardenLandscapeView): number {
+  const geom = getPondGeometry(view)
+  return geom.bandWater ? geom.waterTopY : LANDSCAPE_HORIZON_Y
+}
+
+export function bandWaterTopYForTests(view: GardenLandscapeView): number {
+  return bandWaterTopY(view)
 }
