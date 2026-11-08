@@ -74,12 +74,13 @@ export function buildWorldSceneryItems(
     objectYaw: WORLD_COTTAGE.yaw,
     layer: 'near',
   })
+  const shedY = shedProj.y + Math.min(6, shedProj.scale * 4)
   items.push({
     key: WORLD_COTTAGE.id,
     depth: shedProj.depth + 2,
     node: (
       <g
-        transform={`translate(${shedProj.x} ${shedProj.y}) scale(${shedProj.scale * shedDrawScale(shedProj.facing)})`}
+        transform={`translate(${shedProj.x} ${shedY}) scale(${shedProj.scale * shedDrawScale(shedProj.facing)})`}
         style={{ cursor: onShedClick ? 'pointer' : undefined }}
         onClick={onShedClick}
         role={onShedClick ? 'button' : undefined}

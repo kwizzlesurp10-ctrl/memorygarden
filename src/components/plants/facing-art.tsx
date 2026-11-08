@@ -60,29 +60,65 @@ function withMemoryPresentation(
   ]
 }
 
-function canopyMass(
+type CanopyTone = 'shadow' | 'mid' | 'light'
+
+function leafClump(
   key: string,
   cx: number,
   cy: number,
-  rx: number,
-  ry: number,
-  fill: string,
-  rim: number,
+  sx: number,
+  sy: number,
+  tone: CanopyTone,
   C: HybridPlantPalette,
-  opacity = 1,
+  rim: number,
+  flip = 1,
 ): ReactNode {
-  return e('ellipse', {
+  const fill = tone === 'shadow' ? C.sil : C.silSoft
+  const w = 26 * sx
+  const h = 20 * sy
+  const f = flip
+  const d = `M ${cx - w * f} ${cy} Q ${cx - w * 0.55 * f} ${cy - h * 1.35} ${cx - w * 0.15 * f} ${cy - h} Q ${cx + w * 0.35 * f} ${cy - h * 1.2} ${cx + w * 0.7 * f} ${cy - h * 0.55} Q ${cx + w * 0.45 * f} ${cy - h * 0.15} ${cx + w * f} ${cy + h * 0.12} Q ${cx + w * 0.1 * f} ${cy + h * 0.35} ${cx - w * f} ${cy} Z`
+  return e('path', {
     key,
-    cx,
-    cy,
-    rx,
-    ry,
+    d,
     fill,
-    opacity,
+    opacity: tone === 'light' ? 0.72 : tone === 'mid' ? 0.9 : 1,
     stroke: C.rim,
-    strokeOpacity: 0.12 * rim,
-    strokeWidth: 0.5,
+    strokeOpacity: 0.1 * rim,
+    strokeWidth: 0.45,
   })
+}
+
+function elderCanopy(facing: 'front' | 'back' | 'side', C: HybridPlantPalette, rim: number, flip = 1): ReactNode[] {
+  const f = flip
+  type Clump = [string, number, number, number, number, CanopyTone]
+  const clumps: Clump[] =
+    facing === 'front'
+      ? [
+          ['c0', -28 * f, -76, 1.15, 1.05, 'shadow'],
+          ['c1', 16 * f, -82, 1.05, 0.95, 'shadow'],
+          ['c2', -8 * f, -98, 1.35, 1.1, 'mid'],
+          ['c3', 12 * f, -92, 0.95, 0.85, 'mid'],
+          ['c4', -22 * f, -88, 0.82, 0.78, 'light'],
+          ['c5', 4 * f, -78, 0.75, 0.72, 'light'],
+          ['c6', -4 * f, -108, 1.1, 0.95, 'mid'],
+        ]
+      : facing === 'back'
+        ? [
+            ['c0', 8 * f, -94, 1.1, 1, 'shadow'],
+            ['c1', -14 * f, -80, 0.95, 0.88, 'mid'],
+            ['c2', 2 * f, -104, 1.05, 0.92, 'mid'],
+            ['c3', -6 * f, -96, 0.78, 0.8, 'light'],
+          ]
+        : [
+            ['c0', 12 * f, -86, 1.08, 0.98, 'shadow'],
+            ['c1', -16 * f, -78, 0.9, 0.82, 'mid'],
+            ['c2', 2 * f, -102, 1.05, 0.95, 'mid'],
+            ['c3', 18 * f, -74, 0.72, 0.68, 'light'],
+            ['c4', -6 * f, -92, 0.85, 0.8, 'mid'],
+            ['c5', 8 * f, -96, 0.7, 0.65, 'light'],
+          ]
+  return clumps.map(([key, cx, cy, sx, sy, tone]) => leafClump(key, cx, cy, sx, sy, tone, C, rim, f))
 }
 
 function buildElderTreeFacing(
@@ -93,136 +129,157 @@ function buildElderTreeFacing(
 ): ReactNode[] {
   const bark = C.sil
   const moss = C.silSoft
-  const highlight = C.glow
+  const lightBark = C.silSoft
   const out: ReactNode[] = []
-  const trunk = (d: string, key: string) =>
-    e('path', { key, d, fill: bark, stroke: C.rim, strokeOpacity: 0.45 * rim, strokeWidth: 0.75 })
 
-  const canopyStack = (facing: 'front' | 'back' | 'side', flip = 1): ReactNode[] => {
-    const sx = flip
-    type Mass = [number, number, number, number, string, number]
-    const masses: Mass[] =
-      facing === 'front'
-        ? [
-            [-26 * sx, -74, 28, 22, moss, 0.92],
-            [14 * sx, -80, 26, 20, bark, 0.95],
-            [-6 * sx, -94, 34, 26, moss, 1],
-            [8 * sx, -88, 20, 16, bark, 0.75],
-            [-14 * sx, -84, 18, 14, highlight, 0.35],
-          ]
-        : facing === 'back'
-          ? [
-              [6 * sx, -92, 30, 24, bark, 1],
-              [-10 * sx, -78, 22, 18, moss, 0.85],
-              [2 * sx, -98, 24, 18, moss, 0.8],
-            ]
-          : [
-              [10 * sx, -84, 28, 21, moss, 0.95],
-              [-14 * sx, -76, 18, 15, bark, 0.82],
-              [0, -100, 22, 18, moss, 0.88],
-              [16 * sx, -72, 14, 12, highlight, 0.3],
-            ]
-    return masses.map(([cx, cy, rx, ry, fill, op], i) =>
-      canopyMass(`cm${i}`, cx, cy, rx, ry, fill, rim, C, op),
-    )
-  }
+  const trunkFront = () => [
+    e('path', {
+      key: 'trunk',
+      d: 'M -15 1 C -18 0 -16 -2 -12 0 L -10 -42 C -8 -72 -5 -88 -2 -96 L 6 -96 C 9 -86 11 -68 13 -42 L 14 0 C 18 -2 16 1 12 1 Z',
+      fill: bark,
+      stroke: C.rim,
+      strokeOpacity: 0.4 * rim,
+      strokeWidth: 0.75,
+    }),
+    e('path', {
+      key: 'trunk-lit',
+      d: 'M 6 -20 C 9 -48 8 -74 6 -92',
+      stroke: lightBark,
+      strokeWidth: 2.2,
+      fill: 'none',
+      opacity: 0.45,
+      strokeLinecap: 'round',
+    }),
+    e('path', {
+      key: 'limb-l',
+      d: 'M -2 -52 C -14 -46 -34 -36 -42 -24',
+      stroke: bark,
+      strokeWidth: 5.2,
+      fill: 'none',
+      strokeLinecap: 'round',
+    }),
+    e('path', {
+      key: 'limb-r',
+      d: 'M 4 -64 C 14 -72 26 -68 30 -56',
+      stroke: moss,
+      strokeWidth: 3.8,
+      fill: 'none',
+      strokeLinecap: 'round',
+    }),
+    e('path', {
+      key: 'limb-up',
+      d: 'M 0 -76 C 6 -86 2 -94 -4 -98',
+      stroke: bark,
+      strokeWidth: 3.2,
+      fill: 'none',
+      strokeLinecap: 'round',
+    }),
+    e('path', {
+      key: 'low-limb',
+      d: 'M -2 -50 Q -30 -44 -42 -28 Q -24 -40 -2 -46',
+      stroke: moss,
+      strokeWidth: 4.6,
+      fill: 'none',
+      strokeLinecap: 'round',
+    }),
+    e('ellipse', {
+      key: 'hollow',
+      cx: 5,
+      cy: -38,
+      rx: 4.5,
+      ry: 7,
+      fill: C.glow,
+      opacity: 0.48,
+    }),
+    e('path', {
+      key: 'roots-l',
+      d: 'M -10 1 Q -22 9 -18 14 M -3 1 Q -16 10 -11 14 M 8 1 Q 16 8 20 11',
+      stroke: bark,
+      strokeWidth: 2.6,
+      fill: 'none',
+      strokeLinecap: 'round',
+    }),
+    e('path', {
+      key: 'lean',
+      d: 'M 8 -24 Q 14 -46 8 -62',
+      stroke: C.rim,
+      strokeWidth: 1,
+      fill: 'none',
+      opacity: 0.35 * rim,
+    }),
+  ]
 
   switch (facing) {
     case 'front':
-      out.push(
-        trunk('M -9 0 C -9 -38, -6 -66, -3 -90 L 5 -90 C 10 -62, 10 -36, 10 0 Z', 'tr'),
-        e('path', {
-          key: 'low-limb',
-          d: 'M -2 -50 Q -30 -44 -42 -28 Q -24 -40 -2 -46',
-          stroke: moss,
-          strokeWidth: 4.6,
-          fill: 'none',
-          strokeLinecap: 'round',
-        }),
-        e('path', {
-          key: 'branch-r',
-          d: 'M 4 -62 Q 18 -72 24 -64 Q 16 -68 6 -64',
-          stroke: bark,
-          strokeWidth: 2.4,
-          fill: 'none',
-          strokeLinecap: 'round',
-        }),
-        ...canopyStack('front'),
-        e('path', {
-          key: 'hl-rim',
-          d: 'M -38 -80 Q -8 -108 28 -76',
-          stroke: highlight,
-          strokeWidth: 1.4,
-          fill: 'none',
-          opacity: 0.25 * rim,
-        }),
-        e('ellipse', {
-          key: 'hollow',
-          cx: 5,
-          cy: -38,
-          rx: 4.5,
-          ry: 7,
-          fill: highlight,
-          opacity: 0.55,
-        }),
-        e('path', {
-          key: 'roots-l',
-          d: 'M -7 0 Q -20 7 -16 11 M -2 0 Q -14 9 -9 13',
-          stroke: bark,
-          strokeWidth: 2.4,
-          fill: 'none',
-          strokeLinecap: 'round',
-        }),
-        e('path', {
-          key: 'lean',
-          d: 'M 7 -22 Q 12 -44 7 -60',
-          stroke: C.rim,
-          strokeWidth: 1,
-          fill: 'none',
-          opacity: 0.35 * rim,
-        }),
-      )
+      out.push(...trunkFront(), ...elderCanopy('front', C, rim))
       break
     case 'back':
       out.push(
-        trunk('M -8 0 C -8 -36, -5 -60, 0 -88 L 7 -88 C 12 -58, 12 -34, 12 0 Z', 'tr'),
-        ...canopyStack('back'),
         e('path', {
-          key: 'roots-r',
-          d: 'M 7 0 Q 18 6 22 10 M 3 0 Q 16 8 20 12',
-          stroke: bark,
-          strokeWidth: 2.1,
-          fill: 'none',
-          strokeLinecap: 'round',
+          key: 'trunk',
+          d: 'M -12 1 C -15 0 -12 -2 -8 0 L -6 -40 C -4 -68 -2 -86 0 -94 L 8 -94 C 10 -84 12 -64 14 -38 L 16 0 C 20 -2 18 1 14 1 Z',
+          fill: bark,
         }),
-      )
-      break
-    case 'left':
-      out.push(
-        e('path', { key: 'trunk-edge', d: 'M -11 0 L -7 -92 L -2 -94 L 3 -90 L 7 0 Z', fill: bark }),
         e('path', {
-          key: 'limb-out',
-          d: 'M -7 -38 Q 16 -30 30 -18',
-          stroke: moss,
+          key: 'limb',
+          d: 'M 2 -58 C 12 -52 22 -42 26 -30',
+          stroke: bark,
           strokeWidth: 4,
           fill: 'none',
           strokeLinecap: 'round',
         }),
-        ...canopyStack('side', 1),
+        e('path', {
+          key: 'roots-r',
+          d: 'M 8 1 Q 20 8 24 12 M 2 1 Q 14 9 18 13',
+          stroke: bark,
+          strokeWidth: 2.4,
+          fill: 'none',
+          strokeLinecap: 'round',
+        }),
+        ...elderCanopy('back', C, rim),
+      )
+      break
+    case 'left':
+      out.push(
+        e('path', {
+          key: 'trunk',
+          d: 'M -14 1 L -8 -94 C -4 -98 0 -96 4 -90 L 10 1 C 6 3 2 2 -2 2 Z',
+          fill: bark,
+        }),
+        e('path', {
+          key: 'limb-out',
+          d: 'M -6 -40 C 10 -32 26 -22 34 -10',
+          stroke: moss,
+          strokeWidth: 4.4,
+          fill: 'none',
+          strokeLinecap: 'round',
+        }),
+        e('path', {
+          key: 'limb-up',
+          d: 'M -4 -70 C 4 -82 0 -92 -6 -98',
+          stroke: bark,
+          strokeWidth: 3.4,
+          fill: 'none',
+          strokeLinecap: 'round',
+        }),
+        ...elderCanopy('side', C, rim, 1),
       )
       break
     case 'right':
       out.push(
-        e('path', { key: 'trunk-edge', d: 'M 11 0 L 7 -90 L 2 -94 L -3 -90 L -7 0 Z', fill: bark }),
+        e('path', {
+          key: 'trunk',
+          d: 'M 14 1 L 8 -92 C 4 -98 0 -96 -4 -90 L -10 1 C -6 3 -2 2 2 2 Z',
+          fill: bark,
+        }),
         e('path', {
           key: 'limb-low',
-          d: 'M 5 -54 Q -18 -48 -30 -34',
+          d: 'M 6 -54 C -12 -48 -28 -36 -34 -24',
           stroke: moss,
           strokeWidth: 4.2,
           fill: 'none',
           strokeLinecap: 'round',
         }),
-        ...canopyStack('side', -1),
         e('circle', {
           key: 'knot',
           cx: 6,
@@ -233,6 +290,7 @@ function buildElderTreeFacing(
           strokeWidth: 0.6,
           strokeOpacity: 0.5 * rim,
         }),
+        ...elderCanopy('side', C, rim, -1),
       )
       break
     default: {
@@ -241,12 +299,84 @@ function buildElderTreeFacing(
     }
   }
 
-  out.push(e('ellipse', { key: 'base-shadow', cx: 0, cy: 3, rx: 22, ry: 4.5, fill: C.rim, opacity: 0.2 }))
+  out.push(e('ellipse', { key: 'base-shadow', cx: 0, cy: 4, rx: 26, ry: 5, fill: C.rim, opacity: 0.24 }))
 
   if (scale !== 1) {
     return [e('g', { key: 'elder-scale', transform: `scale(${scale})` }, out)]
   }
   return out
+}
+
+function mushroomCapColors(C: HybridPlantPalette): readonly [string, string, string, string] {
+  return [C.glow, C.silSoft, C.accent, C.sil]
+}
+
+function oneMushroom(
+  key: string,
+  w: number,
+  capFill: string,
+  rim: number,
+  C: HybridPlantPalette,
+  litSide: number,
+  spots: boolean,
+  tiltDeg: number,
+  showGill: boolean,
+): ReactNode {
+  const domeH = w * 0.62
+  const capW = w * 1.15
+  const stemW = w * 0.24
+  const stemH = w * 0.95
+  const baseY = 0
+  const gillY = -stemH + 1.5
+  return e(
+    'g',
+    { key, transform: `rotate(${tiltDeg})` },
+    e('ellipse', { key: 'sh', cx: litSide * 1.5, cy: baseY + 2.8, rx: capW * 0.95, ry: w * 0.14, fill: C.rim, opacity: 0.26 }),
+    e('rect', {
+      key: 'stem',
+      x: -stemW * 0.5,
+      y: -stemH,
+      width: stemW,
+      height: stemH,
+      rx: stemW * 0.4,
+      fill: C.glow,
+      opacity: 0.88,
+    }),
+    showGill
+      ? e('path', {
+          key: 'gill-band',
+          d: `M ${-capW * 0.55} ${gillY} Q 0 ${gillY + domeH * 0.12} ${capW * 0.55} ${gillY}`,
+          stroke: C.sil,
+          strokeWidth: Math.max(0.35, w * 0.045),
+          fill: 'none',
+          opacity: 0.42,
+          strokeLinecap: 'round',
+        })
+      : null,
+    e('path', {
+      key: 'cap',
+      d: `M ${-capW} ${baseY} Q ${-capW * 0.55} ${-domeH * 1.85} 0 ${-domeH * 1.55} Q ${capW * 0.55} ${-domeH * 1.85} ${capW} ${baseY} Z`,
+      fill: capFill,
+      stroke: C.rim,
+      strokeOpacity: 0.35 * rim,
+      strokeWidth: 0.5,
+    }),
+    e('path', {
+      key: 'cap-lit',
+      d: `M ${litSide * capW * 0.1} ${-domeH * 0.55} Q ${litSide * capW * 0.35} ${-domeH * 1.2} ${litSide * capW * 0.55} ${-domeH * 0.75}`,
+      stroke: C.glow,
+      strokeWidth: 0.65,
+      fill: 'none',
+      opacity: 0.45,
+      strokeLinecap: 'round',
+    }),
+    spots
+      ? [
+          e('circle', { key: 's1', cx: capW * 0.22, cy: -domeH * 1.1, r: w * 0.09, fill: C.glow, opacity: 0.92 }),
+          e('circle', { key: 's2', cx: -capW * 0.18, cy: -domeH * 0.85, r: w * 0.07, fill: C.glow, opacity: 0.88 }),
+        ]
+      : null,
+  )
 }
 
 export function buildReadableMushroomCluster(
@@ -255,82 +385,32 @@ export function buildReadableMushroomCluster(
   rim: number,
   stage: number,
 ): ReactNode[] {
-  const caps: readonly string[] = [C.glow, C.silSoft, C.sil, C.accent]
-  const stem = C.silSoft
-  const gill = C.rim
-  const tilt = facing === 'left' ? -10 : facing === 'right' ? 10 : facing === 'back' ? 3 : -5
-  const gillOpacity = facing === 'back' ? 0.75 : facing === 'front' ? 0.55 : 0.28
+  const palette = mushroomCapColors(C)
+  const lit = facing === 'right' || facing === 'back' ? -1 : 1
+  const showGill = facing === 'left' || facing === 'right' || facing === 'back'
   const out: ReactNode[] = []
 
-  const specs: [number, number, number, number][] =
+  const specs: [number, number, number, number, number, boolean][] =
     stage >= 6
       ? [
-          [0, 0, 1.15, 0],
-          [-11, 1.2, 0.78, 1],
-          [10, 0.6, 0.88, 2],
-          [-18, 1.8, 0.52, 0],
+          [0, 0, 1.12, 0, -4, false],
+          [-12, 1.5, 0.76, 1, 6, false],
+          [11, 0.8, 0.9, 2, -8, false],
+          [-17, 2.2, 0.55, 3, 10, true],
         ]
       : [
-          [0, 0, 1, 0],
-          [-8, 0.9, 0.7, 1],
+          [0, 0, 1, 0, -3, false],
+          [-9, 1.2, 0.72, 1, 5, false],
         ]
 
-  specs.forEach(([mx, my, sc, capIx], i) => {
-    const w = (7.5 + stage * 0.75) * sc
-    const h = w * 0.55
-    const capFill = caps[capIx % caps.length]
-    const stemW = w * 0.28
+  specs.forEach(([mx, my, sc, capIx, tilt, spots], i) => {
+    const w = (7 + stage * 0.7) * sc
+    const capFill = palette[capIx % palette.length]
     out.push(
       e(
         'g',
-        { key: `mc${i}`, transform: `translate(${mx} ${my}) rotate(${tilt * 0.12})` },
-        e('ellipse', { key: 'shadow', cx: tilt * 0.08, cy: 3.2, rx: w * 0.85, ry: h * 0.22, fill: C.rim, opacity: 0.22 }),
-        e('rect', {
-          key: 'stem',
-          x: -stemW * 0.5,
-          y: -h * 1.35,
-          width: stemW,
-          height: h * 1.35,
-          rx: stemW * 0.35,
-          fill: stem,
-          stroke: C.rim,
-          strokeOpacity: 0.25 * rim,
-          strokeWidth: 0.4,
-        }),
-        e('ellipse', {
-          key: 'gills',
-          cx: 0,
-          cy: -h * 0.15,
-          rx: w * 0.82,
-          ry: h * 0.32,
-          fill: gill,
-          opacity: gillOpacity * 0.35,
-        }),
-        e('ellipse', {
-          key: 'cap',
-          cx: tilt * 0.05,
-          cy: -h * 1.15,
-          rx: w,
-          ry: h,
-          fill: capFill,
-          stroke: C.rim,
-          strokeOpacity: 0.4 * rim,
-          strokeWidth: 0.55,
-        }),
-        capIx === 0
-          ? e('circle', { key: 'spot', cx: w * 0.35, cy: -h * 1.35, r: w * 0.11, fill: C.glow, opacity: 0.9 })
-          : null,
-        capIx === 1
-          ? e('circle', { key: 'spot2', cx: -w * 0.25, cy: -h * 1.2, r: w * 0.08, fill: C.glow, opacity: 0.85 })
-          : null,
-        e('path', {
-          key: 'cap-shine',
-          d: `M ${-w * 0.55} ${-h * 1.05} Q ${tilt * 0.05} ${-h * 1.55}, ${w * 0.35} ${-h * 1.1}`,
-          stroke: C.glow,
-          strokeWidth: 0.8,
-          fill: 'none',
-          opacity: 0.35,
-        }),
+        { key: `mc${i}`, transform: `translate(${mx} ${my})` },
+        oneMushroom(`m${i}`, w, capFill, rim, C, lit, spots, tilt, showGill),
       ),
     )
   })

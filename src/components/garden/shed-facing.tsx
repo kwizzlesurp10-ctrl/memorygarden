@@ -19,23 +19,36 @@ export function shedDrawScale(facing: PlantFacing): number {
   return SHED_FACING_SCALE[facing]
 }
 
+function plankLines(C: ScenePalette, x0: number, y0: number, w: number, h: number): ReactNode[] {
+  const lines: ReactNode[] = []
+  for (let i = 1; i < 4; i++) {
+    const y = y0 + (h * i) / 4
+    lines.push(
+      <line key={`pl${i}`} x1={x0} y1={y} x2={x0 + w} y2={y} stroke={C.rim} strokeWidth={0.35} opacity={0.18} />,
+    )
+  }
+  return lines
+}
+
 function sideElevation(C: ScenePalette, rim: number): ReactNode[] {
+  const wall = C.silSoft
+  const roof = C.sil
   return [
-    <rect key="wall" x={-46} y={-36} width={42} height={36} fill={C.sil} {...rs(C, rim, 0.45)} />,
-    <rect key="win" x={-36} y={-28} width={12} height={10} fill={C.glow} opacity={0.82} {...rs(C, rim, 0.4)} />,
-    <path key="roof-slope" d="M -48 -36 L -48 -58 L 6 -44 L 6 -20 L -48 -20 Z" fill={C.silSoft} {...rs(C, rim, 0.5)} />,
+    <ellipse key="ground-shadow" cx={-22} cy={2.8} rx={34} ry={3.8} fill={C.bank} opacity={0.55} />,
+    <rect key="wall" x={-46} y={-36} width={42} height={36} fill={wall} {...rs(C, rim, 0.28)} />,
+    ...plankLines(C, -46, -36, 42, 36),
+    <rect key="win" x={-36} y={-28} width={12} height={10} fill={C.glow} opacity={0.92} {...rs(C, rim, 0.35)} />,
+    <rect key="win-mullion" x={-30.5} y={-28} width={1} height={10} fill={C.rim} opacity={0.25} />,
     <path
-      key="eave"
-      d="M -50 -36 L -50 -60 L 8 -45"
-      stroke={C.rim}
-      strokeWidth={1.2}
-      fill="none"
-      opacity={0.5 * rim}
+      key="roof"
+      d="M -50 -36 L -50 -56 L 8 -42 L 8 -18 L -50 -18 Z"
+      fill={roof}
+      {...rs(C, rim, 0.4)}
     />,
-    <path key="thatch-edge" d="M -48 -58 Q -20 -64 6 -44" stroke={C.rim} strokeWidth={0.7} fill="none" opacity={0.35 * rim} />,
-    <rect key="chimney" x={-14} y={-56} width={7} height={18} fill={C.sil} {...rs(C, rim, 0.4)} />,
-    <rect key="chimney-cap" x={-16} y={-58} width={11} height={2.5} fill={C.silSoft} />,
-    <ellipse key="foundation" cx={-24} cy={1} rx={28} ry={2.5} fill={C.silSoft} opacity={0.95} />,
+    <path key="eave-fill" d="M -52 -18 L 10 -18 L 10 -14 L -52 -14 Z" fill={roof} opacity={0.92} />,
+    <rect key="chimney" x={-14} y={-58} width={7} height={20} fill={roof} {...rs(C, rim, 0.35)} />,
+    <rect key="chimney-cap" x={-16} y={-60} width={11} height={2.5} fill={C.rim} opacity={0.7} />,
+    <rect key="sill" x={-48} y={-1} width={46} height={2} fill={C.rim} opacity={0.35} />,
   ]
 }
 
@@ -53,22 +66,25 @@ export function shedForFacing(
 
   const rim = rimStrength
   const out: ReactNode[] = []
+  const wall = C.silSoft
+  const roof = C.sil
 
   switch (facing) {
     case 'front':
-      out.push(<path key="wall" d="M -38 0 L -38 -36 L 38 -36 L 38 0 Z" fill={C.sil} {...rs(C, rim, 0.45)} />)
-      out.push(<path key="thatch" d="M -50 -32 Q 0 -80 50 -32 Q 0 -56 -50 -32 Z" fill={C.sil} {...rs(C, rim, 0.5)} />)
-      out.push(<path key="door" d="M -12 0 L -12 -24 Q 0 -34 12 -24 L 12 0 Z" fill={C.silSoft} {...rs(C, rim, 0.3)} />)
+      out.push(<ellipse key="gsh" cx={0} cy={2.6} rx={38} ry={3.2} fill={C.bank} opacity={0.5} />)
+      out.push(<path key="wall" d="M -38 0 L -38 -36 L 38 -36 L 38 0 Z" fill={wall} {...rs(C, rim, 0.3)} />)
+      out.push(<path key="thatch" d="M -50 -32 Q 0 -80 50 -32 Q 0 -56 -50 -32 Z" fill={roof} {...rs(C, rim, 0.45)} />)
+      out.push(<path key="door" d="M -12 0 L -12 -24 Q 0 -34 12 -24 L 12 0 Z" fill={C.bank} opacity={0.85} {...rs(C, rim, 0.25)} />)
       out.push(<circle key="knob" cx={7} cy={-13} r={1.2} fill={C.glow} opacity={0.9} />)
-      out.push(<rect key="swin" x={20} y={-28} width={13} height={11} fill={C.glow} opacity={0.85} {...rs(C, rim, 0.4)} />)
-      out.push(<circle key="rwin" cx={0} cy={-50} r={6.5} fill={C.glow} opacity={0.8} {...rs(C, rim, 0.5)} />)
+      out.push(<rect key="swin" x={20} y={-28} width={13} height={11} fill={C.glow} opacity={0.9} {...rs(C, rim, 0.35)} />)
+      out.push(<circle key="rwin" cx={0} cy={-50} r={6.5} fill={C.glow} opacity={0.82} {...rs(C, rim, 0.45)} />)
       break
     case 'back':
-      out.push(<path key="wall" d="M -36 0 L -36 -34 L 36 -34 L 36 0 Z" fill={C.sil} {...rs(C, rim, 0.4)} />)
-      out.push(<path key="thatch" d="M -46 -28 Q 0 -74 46 -28 Q 0 -50 -46 -28 Z" fill={C.silSoft} {...rs(C, rim, 0.42)} />)
-      out.push(<rect key="chimney" x={20} y={-56} width={8} height={20} fill={C.sil} {...rs(C, rim, 0.45)} />)
-      out.push(<rect key="backwin" x={-7} y={-26} width={14} height={10} fill={C.glow} opacity={0.55} {...rs(C, rim, 0.35)} />)
-      out.push(<ellipse key="step" cx={0} cy={2} rx={22} ry={2.4} fill={C.silSoft} opacity={0.9} />)
+      out.push(<ellipse key="gsh" cx={0} cy={2.4} rx={36} ry={3} fill={C.bank} opacity={0.5} />)
+      out.push(<path key="wall" d="M -36 0 L -36 -34 L 36 -34 L 36 0 Z" fill={wall} {...rs(C, rim, 0.28)} />)
+      out.push(<path key="thatch" d="M -46 -28 Q 0 -74 46 -28 Q 0 -50 -46 -28 Z" fill={roof} {...rs(C, rim, 0.4)} />)
+      out.push(<rect key="chimney" x={20} y={-56} width={8} height={20} fill={roof} {...rs(C, rim, 0.4)} />)
+      out.push(<rect key="backwin" x={-7} y={-26} width={14} height={10} fill={C.glow} opacity={0.62} {...rs(C, rim, 0.3)} />)
       break
     case 'left':
       out.push(...sideElevation(C, rim))

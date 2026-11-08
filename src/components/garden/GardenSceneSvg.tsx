@@ -9,6 +9,17 @@ import type { Candle, GardenLandscapeView, GardenStarterDecor, PlantedHybrid, Sh
 import { buildStarterWorldPlants, sortWorldLayer } from '@/components/garden/garden-world-plants'
 import { buildWorldSceneryItems } from '@/components/garden/garden-world-scenery'
 import { VIEW_FRAME, projectWorldToSky } from '@/lib/garden/landscape-world'
+import {
+  HILL_FLOOR_Y,
+  HILL_OVERSCAN_L,
+  HILL_OVERSCAN_R,
+  farHillPathD,
+  hillPanX,
+  hillUnderscanRectY,
+  hillWorldShift,
+  midHillPathD,
+  nearHillPathD,
+} from '@/lib/garden/landscape-hills'
 import { WORLD_SUN } from '@/lib/garden/landscape-world-layout'
 import {
   getPondGeometry,
@@ -443,31 +454,43 @@ interface GardenLandProps {
 }
 
 function FarLandContent({ palette: C, landscapeView }: GardenLandProps & { landscapeView: GardenLandscapeView }) {
-  const pan = VIEW_FRAME[landscapeView].panX * 0.35
+  const pan = hillPanX(landscapeView)
+  const shift = hillWorldShift(landscapeView)
+  const underY = hillUnderscanRectY()
   return (
     <g transform={pan ? `translate(${pan} 0)` : undefined}>
-      <rect x={-280} y={358} width={SCENE_W + 560} height={120} fill={C.hills[0]} />
-      <path
-        d="M -280 402 Q 170 362 330 388 T 640 372 Q 810 352 960 384 T 1480 376 L 1480 472 L -280 472 Z"
+      <rect
+        x={HILL_OVERSCAN_L}
+        y={underY}
+        width={HILL_OVERSCAN_R - HILL_OVERSCAN_L}
+        height={HILL_FLOOR_Y - underY + 2}
         fill={C.hills[0]}
       />
+      <path d={farHillPathD(shift)} fill={C.hills[0]} />
     </g>
   )
 }
 
-function MidHillTerrainShapes({ palette: C }: { palette: ScenePalette }) {
+function MidHillTerrainShapes({
+  palette: C,
+  landscapeView,
+}: {
+  palette: ScenePalette
+  landscapeView: GardenLandscapeView
+}) {
+  const shift = hillWorldShift(landscapeView)
+  const underY = hillUnderscanRectY()
   return (
     <>
-      <rect x={-280} y={396} width={SCENE_W + 560} height={80} fill={C.hills[1]} />
-      <path
-        d="M -280 436 Q 200 404 380 424 T 720 414 Q 900 400 1040 426 T 1480 420 L 1480 472 L -280 472 Z"
+      <rect
+        x={HILL_OVERSCAN_L}
+        y={underY}
+        width={HILL_OVERSCAN_R - HILL_OVERSCAN_L}
+        height={HILL_FLOOR_Y - underY + 2}
         fill={C.hills[1]}
       />
-      <rect x={-280} y={446} width={SCENE_W + 560} height={30} fill={C.hills[2]} />
-      <path
-        d="M -280 468 Q 90 442 210 452 Q 340 462 470 456 Q 620 448 760 460 Q 920 470 1030 458 Q 1120 450 1480 462 L 1480 472 L -280 472 Z"
-        fill={C.hills[2]}
-      />
+      <path d={midHillPathD(shift)} fill={C.hills[1]} />
+      <path d={nearHillPathD(shift)} fill={C.hills[2]} />
     </>
   )
 }
@@ -518,7 +541,7 @@ function ReflectLandContent({
   return (
     <>
       <FarLandContent palette={C} gardenSeed={seed} rimStrength={rim} motion={motion} landscapeView={landscapeView} />
-      <MidHillTerrainShapes palette={C} />
+      <MidHillTerrainShapes palette={C} landscapeView={landscapeView} />
       <MidHillPlants palette={C} gardenSeed={seed} rimStrength={rim} motion={motion} />
       <PlantedHybridsContent palette={C} rimStrength={rim} motion={motion} planted={planted} />
     </>
@@ -579,8 +602,8 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
   return (
     <g ref={ref} data-layer="mid" data-landscape-view={landscapeView}>
       <SceneGroundPlane palette={C} sceneKey={k} view={landscapeView} />
-      <g transform={`translate(${VIEW_FRAME[landscapeView].panX * 0.35} 0)`}>
-        <MidHillTerrainShapes palette={C} />
+      <g transform={`translate(${hillPanX(landscapeView)} 0)`}>
+        <MidHillTerrainShapes palette={C} landscapeView={landscapeView} />
       </g>
       <PlantedHybridsContent palette={C} rimStrength={rim} motion={motion} planted={planted} />
       <g data-layer="world-scenery">{worldLayer}</g>
