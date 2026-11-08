@@ -106,8 +106,8 @@ export function shedForFacing(
         <path key="roof-shade" d="M 2 -68 L 48 -36 L 50 -36 L 0 -72 Z" fill={roofDark} opacity={0.28} />,
         <path key="eave" d="M -54 -36 L 54 -36 L 52 -30 L -52 -30 Z" fill={roofLight} opacity={0.96} />,
         <path key="eave-shadow" d="M -52 -30 L 52 -30 L 50 -26 L -50 -26 Z" fill={roofDark} opacity={0.3} />,
-        <rect key="chimney" x={22} y={-64} width={8} height={22} fill={roofDark} />,
-        <rect key="chimney-cap" x={20} y={-66} width={12} height={2.5} fill={C.rim} opacity={0.7} />,
+        <rect key="chimney" x={22} y={-58} width={8} height={22} fill={roofDark} />,
+        <rect key="chimney-cap" x={20} y={-60} width={12} height={2.5} fill={C.rim} opacity={0.7} />,
         <path
           key="door"
           d="M -11 0 L -11 -23 Q 0 -32 11 -23 L 11 0 Z"
@@ -134,8 +134,8 @@ export function shedForFacing(
         <path key="roof-lit" d="M -44 -36 L 0 -66 L -2 -34 Z" fill={C.hills[1]} opacity={0.22} />,
         <path key="eave" d="M -50 -34 L 50 -34 L 48 -28 L -48 -28 Z" fill={roofLight} opacity={0.94} />,
         <path key="eave-shadow" d="M -48 -28 L 48 -28 L 46 -24 L -46 -24 Z" fill={roofDark} opacity={0.22} />,
-        <rect key="chimney" x={20} y={-62} width={8} height={20} fill={roofDark} />,
-        <rect key="chimney-cap" x={18} y={-64} width={12} height={2.5} fill={C.rim} opacity={0.65} />,
+        <rect key="chimney" x={20} y={-56} width={8} height={20} fill={roofDark} />,
+        <rect key="chimney-cap" x={18} y={-58} width={12} height={2.5} fill={C.rim} opacity={0.65} />,
         <g key="back-window">{warmWindowGlow(-8, -26, 16, 10, C)}</g>,
         <path
           key="door-hint"
