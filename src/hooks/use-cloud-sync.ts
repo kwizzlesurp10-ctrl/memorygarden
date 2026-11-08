@@ -9,7 +9,13 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Memory, UserPreferences } from '@/lib/types'
-import { isSyncAvailable, pullDocument, pushDocument, mergePulledMemories } from '@/lib/cloud-sync'
+import {
+  isSyncAvailable,
+  pullDocument,
+  pushDocument,
+  mergePulledMemories,
+  mergePulledStorageShed,
+} from '@/lib/cloud-sync'
 
 export type SyncStatus =
   | { kind: 'disabled' }
@@ -61,6 +67,7 @@ export function useCloudSync(opts: Options): SyncStatus {
         if (cancelled) return
         if (doc) {
           const merged = mergePulledMemories(memoriesRef.current, doc.memories)
+          mergePulledStorageShed(userId, doc.storageShed)
           onPulled(merged, doc.preferences)
         }
         pullDoneRef.current = true

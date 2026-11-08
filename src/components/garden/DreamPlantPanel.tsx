@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { HybridGenome } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { dreamPlant } from '@/lib/garden/dream-plant'
+import { getPlantOfWeek } from '@/lib/garden/plant-of-week'
 import { HybridGrowthStrip } from '@/components/plants/hybrid-builder'
 
 interface DreamPlantPanelProps {
@@ -9,14 +10,27 @@ interface DreamPlantPanelProps {
   rimStrength: number
   motion: boolean
   onPlant: (genome: HybridGenome, idea: string) => void
+  onAddWeeklyToShed?: (genome: HybridGenome, idea: string, isoWeek: string) => boolean
+  weeklyAlreadySaved?: boolean
   onClose?: () => void
 }
 
-export function DreamPlantPanel({ palette, rimStrength, motion, onPlant, onClose }: DreamPlantPanelProps) {
+export function DreamPlantPanel({
+  palette,
+  rimStrength,
+  motion,
+  onPlant,
+  onAddWeeklyToShed,
+  weeklyAlreadySaved = false,
+  onClose,
+}: DreamPlantPanelProps) {
   const [idea, setIdea] = useState('')
   const [dreaming, setDreaming] = useState(false)
   const [genome, setGenome] = useState<HybridGenome | null>(null)
   const [source, setSource] = useState<'ai' | 'local'>('ai')
+
+  const weekly = useMemo(() => getPlantOfWeek(), [])
+  const weeklySaved = weeklyAlreadySaved
 
   const handleDream = async () => {
     const trimmed = idea.trim()
@@ -42,6 +56,29 @@ export function DreamPlantPanel({ palette, rimStrength, motion, onPlant, onClose
           </button>
         )}
       </div>
+
+      <div className="rounded-xl border border-[#d4c4ff]/25 bg-[#d4c4ff]/[0.06] p-3 space-y-2">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-[#d4c4ff]">Plant of the week</span>
+          <span className="text-xs opacity-55">{weekly.daysLeft} day{weekly.daysLeft === 1 ? '' : 's'} left</span>
+        </div>
+        <p className="text-sm font-semibold">{weekly.genome.name}</p>
+        <p className="text-xs italic opacity-75">{weekly.genome.essence}</p>
+        {weekly.evolvedFromName && (
+          <p className="text-[11px] opacity-50">Evolved from {weekly.evolvedFromName}</p>
+        )}
+        <p className="text-[11px] opacity-45 font-mono">theme: {weekly.theme}</p>
+        <HybridGrowthStrip genome={weekly.genome} palette={palette} rimStrength={rimStrength} motion={motion} />
+        <button
+          type="button"
+          disabled={weeklySaved}
+          onClick={() => onAddWeeklyToShed?.(weekly.genome, weekly.theme, weekly.isoWeek)}
+          className="rounded-lg border border-[#d4c4ff]/35 bg-[#d4c4ff]/10 px-4 py-1.5 text-xs tracking-wide text-[#ece4ff] disabled:opacity-40"
+        >
+          {weeklySaved ? 'Already in your shed this week' : 'Add to my shed'}
+        </button>
+      </div>
+
       <div className="flex gap-2">
         <input
           type="text"

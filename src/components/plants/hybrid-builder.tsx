@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { HybridGenome } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
-import { mergedPal } from '@/lib/garden/hybrid'
+import { hybridPlantPalette, mergedPal } from '@/lib/garden/hybrid'
 import { gardenRng } from '@/lib/garden/prng'
 import { buildSeededPlant, type HybridPlantPalette } from './seeded-builders'
 
@@ -17,24 +17,33 @@ const Hm: Record<string, number> = {
   lotus: 18,
 }
 
-const MOTIF_SIZES = [0, 0, 0, 0, 7, 10.5, 12.5, 14]
+const MOTIF_SIZES = [0, 0, 0, 0, 10, 14, 18, 24]
 
 export function buildMotifNode(m: HybridGenome['motif'], size: number, C: HybridPlantPalette): ReactNode {
   const map: Record<string, string> = { sil: C.sil, rim: C.rim, glow: C.glow, accent: C.accent, none: 'none' }
+  const outline = Math.max(0.85, 1.25 * (size / 16))
   return (
     <g transform={`scale(${size / 24}) translate(-12 -12)`}>
-      <circle cx={12} cy={12} r={13} fill={C.glow} opacity={0.18} style={{ filter: 'blur(3px)' }} />
-      {m.paths.map((p, i) => (
-        <path
-          key={i}
-          d={p.d}
-          fill={map[p.fill] ?? C.glow}
-          stroke={p.stroke && p.stroke !== 'none' ? (map[p.stroke] ?? 'none') : 'none'}
-          strokeWidth={p.sw || 0}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      ))}
+      <circle cx={12} cy={12} r={12.5} fill={C.glow} opacity={0.35} />
+      <circle cx={12} cy={12} r={10.5} fill={C.accent} opacity={0.2} />
+      {m.paths.map((p, i) => {
+        const fill = map[p.fill] === C.sil || p.fill === 'sil' ? C.glow : (map[p.fill] ?? C.glow)
+        const stroke =
+          p.stroke && p.stroke !== 'none' ? (map[p.stroke] ?? 'none') : p.fill !== 'none' ? C.sil : 'none'
+        const sw = p.stroke && p.stroke !== 'none' ? p.sw || outline : stroke !== 'none' ? outline : 0
+        return (
+          <path
+            key={i}
+            d={p.d}
+            fill={p.fill === 'none' ? 'none' : fill}
+            stroke={stroke}
+            strokeWidth={sw}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            paintOrder="stroke fill"
+          />
+        )
+      })}
     </g>
   )
 }
@@ -47,7 +56,9 @@ export function buildHybrid(
   g: HybridGenome,
 ): ReactNode[] {
   const out: ReactNode[] = []
-  const hh = (Hm[g.base] || 50) * (0.35 + 0.65 * s / 7)
+  const baseH = Hm[g.base] || 50
+  const graftScale = g.base === 'tree' || g.base === 'vine' ? 0.62 : 0.58
+  const hh = baseH * (0.38 + 0.62 * s / 7)
   const gi = g.glowIntensity ?? 0.5
 
   if (gi > 0.35 && s >= 4) {
@@ -65,17 +76,44 @@ export function buildHybrid(
     )
   }
 
+  const plantRim = Math.min(1, rimv + (gi - 0.4) * 0.45)
+
   out.push(
     <g key="base">
-      {buildSeededPlant(g.base, s, gardenRng(g.seed * 17 + s * 3), C, rimv, motion)}
+      {buildSeededPlant(g.base, s, gardenRng(g.seed * 17 + s * 3), C, plantRim, motion)}
     </g>,
   )
 
-  if (s >= 3 && g.graft) {
-    const off = g.base === 'tree' ? 11 : 8
+  if (s >= 4) {
     out.push(
-      <g key="graft" transform={`translate(${off} 0) scale(0.55)`}>
-        {buildSeededPlant(g.graft, Math.min(s - 1, 7), gardenRng(g.seed * 31 + s * 7), C, rimv, motion)}
+      <ellipse
+        key="crown-tint"
+        cx={0}
+        cy={-hh * 0.78}
+        rx={hh * 0.22}
+        ry={hh * 0.14}
+        fill={C.glow}
+        opacity={0.12 + gi * 0.22}
+      />,
+    )
+    out.push(
+      <ellipse
+        key="foliage-tint"
+        cx={0}
+        cy={-hh * 0.42}
+        rx={hh * 0.34}
+        ry={hh * 0.38}
+        fill={C.rim}
+        opacity={0.06 + gi * 0.12}
+      />,
+    )
+  }
+
+  if (s >= 3 && g.graft) {
+    const off = g.base === 'tree' ? 12 : g.base === 'mushroom' ? 7 : 9
+    out.push(
+      <g key="graft" transform={`translate(${off} 0) scale(${graftScale})`} opacity={0.92}>
+        {buildSeededPlant(g.graft, Math.min(s, 7), gardenRng(g.seed * 31 + s * 7), C, plantRim * 0.92, motion)}
       </g>,
     )
   }
@@ -147,7 +185,7 @@ export function buildHybrid(
 
   if (g.motif && g.motif.paths && g.motif.paths.length && s >= 4) {
     const msize = MOTIF_SIZES[s] ?? 0
-    const my = g.base === 'tree' ? -hh + 2 : -hh - 4
+    const my = g.base === 'tree' ? -hh + 1 : g.base === 'mushroom' ? -hh - 2 : -hh - 5
     const bobStyle: CSSProperties | undefined = motion
       ? { animation: 'mgBob 3.2s ease-in-out infinite alternate' }
       : undefined
@@ -187,24 +225,41 @@ export function buildMiniHybrid(
   C: ScenePalette,
   rimv: number,
   motion: boolean,
+  plantScale = 1.15,
 ): ReactNode {
-  const CH = mergedPal(C, g)
+  const CH = hybridPlantPalette(g, C)
+  const growStyle: CSSProperties | undefined = motion
+    ? {
+        animation: `mgGrow 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.07}s backwards`,
+        transformBox: 'fill-box',
+        transformOrigin: '50% 100%',
+      }
+    : undefined
   return (
     <>
       <ellipse cx={66} cy={136} rx={30} ry={5} fill={C.hills[2]} opacity={0.85} />
-      <g transform="translate(66 134) scale(1.15)">
-        <g
-          style={{
-            animation: `mgGrow 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.07}s backwards`,
-            transformBox: 'fill-box',
-            transformOrigin: '50% 100%',
-          }}
-        >
-          {buildHybrid(i, CH, rimv, motion, g)}
-        </g>
+      <g transform={`translate(66 134) scale(${plantScale})`}>
+        <g style={growStyle}>{buildHybrid(i, CH, rimv, motion, g)}</g>
       </g>
     </>
   )
+}
+
+/** Flat SVG children for server-side contact sheets (no React fragment). */
+export function buildDreamHybridPreview(
+  g: HybridGenome,
+  C: ScenePalette,
+  stage = 7,
+  rimv = 0.92,
+  plantScale = 1.28,
+): ReactNode[] {
+  const CH = hybridPlantPalette(g, C)
+  return [
+    <ellipse key="ground" cx={66} cy={136} rx={30} ry={5} fill={C.hills[2]} opacity={0.85} />,
+    <g key="plant" transform={`translate(66 134) scale(${plantScale})`}>
+      {buildHybrid(stage, CH, rimv, false, g)}
+    </g>,
+  ]
 }
 
 export interface HybridPlantSvgProps {
@@ -230,7 +285,7 @@ export function HybridPlantSvg({
   scale = 1,
   swayIndex = 0,
 }: HybridPlantSvgProps) {
-  const CH = mergedPal(palette, genome)
+  const CH = hybridPlantPalette(genome, palette)
   const swayStyle: CSSProperties | undefined = motion
     ? {
         animation: `mgSwayB ${4 + (swayIndex % 5) * 0.6}s ease-in-out ${swayIndex * 0.4}s infinite alternate`,
