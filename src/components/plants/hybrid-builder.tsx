@@ -17,13 +17,14 @@ const Hm: Record<string, number> = {
   lotus: 18,
 }
 
-const MOTIF_SIZES = [0, 0, 0, 0, 7, 10.5, 12.5, 14]
+const MOTIF_SIZES = [0, 0, 0, 0, 8, 11.5, 14, 16.5]
 
 export function buildMotifNode(m: HybridGenome['motif'], size: number, C: HybridPlantPalette): ReactNode {
   const map: Record<string, string> = { sil: C.sil, rim: C.rim, glow: C.glow, accent: C.accent, none: 'none' }
   return (
     <g transform={`scale(${size / 24}) translate(-12 -12)`}>
-      <circle cx={12} cy={12} r={13} fill={C.glow} opacity={0.18} style={{ filter: 'blur(3px)' }} />
+      <circle cx={12} cy={12} r={11.5} fill={C.accent} opacity={0.22} />
+      <circle cx={12} cy={12} r={13} fill={C.glow} opacity={0.28} style={{ filter: 'blur(2px)' }} />
       {m.paths.map((p, i) => (
         <path
           key={i}
@@ -47,7 +48,9 @@ export function buildHybrid(
   g: HybridGenome,
 ): ReactNode[] {
   const out: ReactNode[] = []
-  const hh = (Hm[g.base] || 50) * (0.35 + 0.65 * s / 7)
+  const baseH = Hm[g.base] || 50
+  const graftScale = g.base === 'tree' || g.base === 'vine' ? 0.62 : 0.58
+  const hh = baseH * (0.38 + 0.62 * s / 7)
   const gi = g.glowIntensity ?? 0.5
 
   if (gi > 0.35 && s >= 4) {
@@ -72,10 +75,10 @@ export function buildHybrid(
   )
 
   if (s >= 3 && g.graft) {
-    const off = g.base === 'tree' ? 11 : 8
+    const off = g.base === 'tree' ? 12 : g.base === 'mushroom' ? 7 : 9
     out.push(
-      <g key="graft" transform={`translate(${off} 0) scale(0.55)`}>
-        {buildSeededPlant(g.graft, Math.min(s - 1, 7), gardenRng(g.seed * 31 + s * 7), C, rimv, motion)}
+      <g key="graft" transform={`translate(${off} 0) scale(${graftScale})`} opacity={0.92}>
+        {buildSeededPlant(g.graft, Math.min(s, 7), gardenRng(g.seed * 31 + s * 7), C, rimv * 0.95, motion)}
       </g>,
     )
   }
@@ -147,7 +150,7 @@ export function buildHybrid(
 
   if (g.motif && g.motif.paths && g.motif.paths.length && s >= 4) {
     const msize = MOTIF_SIZES[s] ?? 0
-    const my = g.base === 'tree' ? -hh + 2 : -hh - 4
+    const my = g.base === 'tree' ? -hh + 1 : g.base === 'mushroom' ? -hh - 2 : -hh - 5
     const bobStyle: CSSProperties | undefined = motion
       ? { animation: 'mgBob 3.2s ease-in-out infinite alternate' }
       : undefined
