@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { GardenLandscapeView, GardenStarterDecor } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
-import { projectWorldToScene } from '@/lib/garden/landscape-world'
+import { projectWorldToScene, type WorldLayer } from '@/lib/garden/landscape-world'
 import { SeededPlantSvg } from '@/components/plants/SeededPlantSvg'
 
 export interface WorldPlantRenderItem {
@@ -42,7 +42,8 @@ export function buildStarterWorldPlants(
   })
 
   for (const shroom of decor.mushrooms) {
-    const proj = projectWorldToScene({ wx: shroom.wx, wz: shroom.wz }, view)
+    const layer: WorldLayer = shroom.wz < 0.26 ? 'far' : shroom.wz > 0.44 ? 'near' : 'mid'
+    const proj = projectWorldToScene({ wx: shroom.wx, wz: shroom.wz }, view, { layer })
     items.push({
       key: shroom.id,
       depth: proj.depth,

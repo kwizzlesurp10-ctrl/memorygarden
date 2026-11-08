@@ -5,10 +5,10 @@ import type { PlantFacing } from '@/lib/garden/landscape-world'
 import { shed } from './scenery'
 
 const SHED_FACING_SCALE: Record<PlantFacing, number> = {
-  front: 1.32,
-  back: 1.12,
-  left: 1.28,
-  right: 1.28,
+  front: 1.16,
+  back: 1.02,
+  left: 1.12,
+  right: 1.12,
 }
 
 export function shedDrawScale(facing: PlantFacing): number {
@@ -16,7 +16,37 @@ export function shedDrawScale(facing: PlantFacing): number {
 }
 
 function groundShadow(): ReactNode {
-  return <ellipse key="gsh" cx={0} cy={2.8} rx={36} ry={3.6} fill="currentColor" opacity={0.45} />
+  return (
+    <>
+      <ellipse key="gsh" cx={0} cy={3.2} rx={40} ry={4.2} fill="currentColor" opacity={0.5} />
+      <ellipse key="gsh-soft" cx={4} cy={3.6} rx={28} ry={2.4} fill="currentColor" opacity={0.28} />
+    </>
+  )
+}
+
+function shedBaseGrass(C: ScenePalette): ReactNode[] {
+  const stroke = C.hills[2]
+  const offsets = [-22, -8, 6, 18, 30]
+  return offsets.map((x, i) => (
+    <path
+      key={`sgr${i}`}
+      d={`M ${x} 0.5 Q ${x - 2} -5 ${x + 1} -10`}
+      stroke={stroke}
+      strokeWidth={1.1}
+      fill="none"
+      strokeLinecap="round"
+      opacity={0.55 + (i % 2) * 0.12}
+    />
+  ))
+}
+
+function warmWindowGlow(x: number, y: number, w: number, h: number, C: ScenePalette): ReactNode {
+  return (
+    <>
+      <rect x={x - 2} y={y - 2} width={w + 4} height={h + 4} fill={C.fire} opacity={0.32} rx={2} style={{ filter: 'blur(3px)' }} />
+      <rect x={x} y={y} width={w} height={h} fill={C.glow} opacity={0.95} />
+    </>
+  )
 }
 
 function plankWall(
@@ -69,9 +99,12 @@ export function shedForFacing(
         <g key="gshadow" color={C.bank}>
           {groundShadow()}
         </g>,
+        ...shedBaseGrass(C),
         ...plankWall(-38, -36, 76, 36, C),
         <path key="roof" d="M -50 -36 L 0 -72 L 50 -36 Z" fill={roof} stroke={C.rim} strokeWidth={0.7} strokeOpacity={0.35} />,
-        <path key="eave" d="M -52 -36 L 52 -36 L 50 -32 L -50 -32 Z" fill={roof} opacity={0.95} />,
+        <path key="roof-shade" d="M 2 -68 L 48 -36 L 50 -36 L 0 -72 Z" fill={C.sil} opacity={0.25} />,
+        <path key="eave" d="M -54 -36 L 54 -36 L 52 -30 L -52 -30 Z" fill={roof} opacity={0.96} />,
+        <path key="eave-shadow" d="M -52 -30 L 52 -30 L 50 -26 L -50 -26 Z" fill={C.sil} opacity={0.3} />,
         <rect key="chimney" x={22} y={-64} width={8} height={22} fill={roof} />,
         <rect key="chimney-cap" x={20} y={-66} width={12} height={2.5} fill={C.rim} opacity={0.7} />,
         <path
@@ -84,7 +117,7 @@ export function shedForFacing(
           strokeOpacity={0.3}
         />,
         <circle key="knob" cx={8} cy={-12} r={1.3} fill={C.fire} />,
-        <rect key="win" x={16} y={-28} width={14} height={11} fill={C.glow} opacity={0.95} />,
+        warmWindowGlow(16, -28, 14, 11, C),
       )
       break
     case 'back':
@@ -92,11 +125,12 @@ export function shedForFacing(
         <g key="gshadow" color={C.bank}>
           {groundShadow()}
         </g>,
+        ...shedBaseGrass(C),
         ...plankWall(-36, -34, 72, 34, C),
         <path key="roof" d="M -46 -34 L 0 -68 L 46 -34 Z" fill={roof} stroke={C.rim} strokeWidth={0.65} strokeOpacity={0.3} />,
-        <path key="eave" d="M -48 -34 L 48 -34 L 46 -30 L -46 -30 Z" fill={roof} opacity={0.92} />,
+        <path key="eave" d="M -50 -34 L 50 -34 L 48 -28 L -48 -28 Z" fill={roof} opacity={0.92} />,
         <rect key="chimney" x={20} y={-62} width={8} height={20} fill={roof} />,
-        <rect key="backwin" x={-8} y={-26} width={16} height={10} fill={C.glow} opacity={0.72} />,
+        <rect key="backwin" x={-8} y={-26} width={16} height={10} fill={C.glow} opacity={0.62} />,
       )
       break
     case 'left':
@@ -123,10 +157,12 @@ function sideElevation(C: ScenePalette): ReactNode {
   return (
     <g key="side">
       <g color={C.bank}>{groundShadow()}</g>
+      {shedBaseGrass(C)}
       {plankWall(-44, -36, 44, 36, C)}
       <path key="roof-slope" d="M -46 -36 L 6 -58 L 6 -20 L -46 -20 Z" fill={roof} stroke={C.rim} strokeWidth={0.65} strokeOpacity={0.32} />
-      <path key="eave" d="M -48 -20 L 8 -20 L 8 -16 L -48 -16 Z" fill={roof} opacity={0.94} />
-      <rect key="win" x={-36} y={-28} width={12} height={10} fill={C.glow} opacity={0.9} />
+      <path key="roof-shade" d="M -4 -52 L 6 -58 L 6 -20 L -20 -20 Z" fill={C.sil} opacity={0.22} />
+      <path key="eave" d="M -50 -20 L 10 -20 L 10 -14 L -50 -14 Z" fill={roof} opacity={0.94} />
+      {warmWindowGlow(-36, -28, 12, 10, C)}
       <rect key="chimney" x={-12} y={-56} width={7} height={18} fill={roof} />
       <rect key="chimney-cap" x={-14} y={-58} width={11} height={2.5} fill={C.rim} opacity={0.65} />
       <rect key="sill" x={-45} y={-1} width={48} height={2} fill={C.rim} opacity={0.3} />

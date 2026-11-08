@@ -42,19 +42,27 @@ export function SceneGroundPlane({ palette: C, sceneKey: key, view }: SceneGroun
           y2={SCENE_H}
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset={0} stopColor={C.hills[2]} stopOpacity={1} />
-          <stop offset={0.35} stopColor={C.hills[2]} stopOpacity={0.97} />
-          <stop offset={0.72} stopColor={C.bank} stopOpacity={0.96} />
+          <stop offset={0} stopColor={C.hills[2]} stopOpacity={0.92} />
+          <stop offset={0.22} stopColor={C.hills[1]} stopOpacity={0.95} />
+          <stop offset={0.5} stopColor={C.hills[2]} stopOpacity={0.98} />
+          <stop offset={0.78} stopColor={C.bank} stopOpacity={0.97} />
           <stop offset={1} stopColor={C.bank} stopOpacity={1} />
         </linearGradient>
       </defs>
       <path d={groundPlanePathD()} fill={`url(#groundGrad${key})`} />
       <path
-        d={`M -8 ${LANDSCAPE_HORIZON_Y + 28} Q 360 ${LANDSCAPE_HORIZON_Y + 18} 720 ${LANDSCAPE_HORIZON_Y + 24} T ${SCENE_W + 8} ${LANDSCAPE_HORIZON_Y + 20}`}
-        stroke={C.rim}
-        strokeWidth={0.5}
+        d={`M -8 ${LANDSCAPE_HORIZON_Y + 32} Q 280 ${LANDSCAPE_HORIZON_Y + 22} 560 ${LANDSCAPE_HORIZON_Y + 26} T ${SCENE_W + 8} ${LANDSCAPE_HORIZON_Y + 22}`}
+        stroke={C.hills[1]}
+        strokeWidth={0.65}
         fill="none"
-        opacity={0.06}
+        opacity={0.08}
+      />
+      <path
+        d={`M 0 ${LANDSCAPE_HORIZON_Y + 52} Q 420 ${LANDSCAPE_HORIZON_Y + 46} 820 ${LANDSCAPE_HORIZON_Y + 50} T ${SCENE_W} ${LANDSCAPE_HORIZON_Y + 48}`}
+        stroke={C.rim}
+        strokeWidth={0.45}
+        fill="none"
+        opacity={0.05}
       />
       {view === 'garden_path' ? (
         <>
@@ -96,12 +104,12 @@ export function AtmosphericGroundDetail({
   const r = gardenRng(seed + 2400)
 
   const tufts: ReactNode[] = []
-  const count = view === 'meadow' ? 14 : view === 'garden_path' ? 16 : 11
+  const count = view === 'meadow' ? 18 : view === 'garden_path' ? 20 : 14
   for (let i = 0; i < count; i++) {
     const t = i / Math.max(1, count - 1)
-    const ty = shoreY - 28 + t * (SCENE_H - shoreY - 36) + (r() - 0.5) * 12
+    const ty = shoreY - 32 + t * (SCENE_H - shoreY - 40) + (r() - 0.5) * 18
     const tx = 60 + r() * (SCENE_W - 120)
-    const sc = 0.55 + t * 0.65
+    const sc = 0.48 + t * 0.72
     if (!geom.bandWater || ty < shoreY - 6) {
       tufts.push(
         <g key={`ag-${i}`} transform={`translate(${tx} ${ty}) scale(${sc})`}>
@@ -125,14 +133,23 @@ export function AtmosphericGroundDetail({
   }
 
   const flowers: ReactNode[] = []
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 10; i++) {
     const t = r()
     const fx = 120 + r() * 960
-    const fy = shoreY - 20 + t * (SCENE_H - shoreY - 80)
+    const fy = shoreY - 24 + t * (SCENE_H - shoreY - 76)
     if (fy >= shoreY - 8 && geom.bandWater) continue
+    const clover = r() > 0.55
     flowers.push(
-      <g key={`fl-${i}`} transform={`translate(${fx} ${fy})`}>
-        <circle cx={0} cy={0} r={0.9 + t * 0.4} fill={r() > 0.5 ? C.glow : C.accent} opacity={0.75} />
+      <g key={`fl-${i}`} transform={`translate(${fx} ${fy}) scale(${0.7 + t * 0.5})`}>
+        {clover ? (
+          <>
+            <circle cx={-1.2} cy={0} r={0.85} fill={C.glow} opacity={0.7} />
+            <circle cx={1.2} cy={0} r={0.85} fill={C.glow} opacity={0.7} />
+            <circle cx={0} cy={-1.1} r={0.85} fill={C.accent} opacity={0.65} />
+          </>
+        ) : (
+          <circle cx={0} cy={0} r={0.9 + t * 0.35} fill={r() > 0.5 ? C.glow : C.accent} opacity={0.72} />
+        )}
       </g>,
     )
   }
@@ -154,10 +171,26 @@ interface PondShoreRimProps {
 
 export function PondShoreRim({ palette: C, view, rimStrength: rim }: PondShoreRimProps): ReactNode {
   const geom = getPondGeometry(view)
+  if (!geom.bandWater) {
+    return (
+      <g data-shore-rim>
+        <path d={geom.shoreLineD} stroke={C.hills[2]} strokeWidth={4} fill="none" strokeLinecap="round" opacity={0.85} />
+      </g>
+    )
+  }
   return (
     <g data-shore-rim>
-      <path d={geom.shoreLineD} stroke={C.hills[2]} strokeWidth={5} fill="none" strokeLinecap="round" opacity={0.88} />
-      <path d={geom.shoreLineD} stroke={C.rim} strokeWidth={0.9} fill="none" opacity={0.18 * rim} />
+      <path
+        d={geom.shoreLineD}
+        stroke={C.hills[1]}
+        strokeWidth={14}
+        fill="none"
+        strokeLinecap="round"
+        opacity={0.22}
+        transform="translate(0 5)"
+      />
+      <path d={geom.shoreLineD} stroke={C.hills[2]} strokeWidth={5} fill="none" strokeLinecap="round" opacity={0.9} />
+      <path d={geom.shoreLineD} stroke={C.rim} strokeWidth={1} fill="none" opacity={0.2 * rim} />
     </g>
   )
 }
@@ -197,14 +230,14 @@ export function ForegroundBanks({
         </linearGradient>
       </defs>
       <path
-        d="M 0 700 L 0 606 Q 140 594 262 632 Q 384 668 522 692 L 522 700 Z"
+        d="M 0 700 L 0 608 Q 88 598 168 612 Q 248 628 318 658 Q 402 682 468 694 L 468 700 Z"
         fill={`url(#fgBank${key})`}
-        opacity={0.92}
+        opacity={0.9}
       />
       <path
-        d="M 1200 700 L 1200 618 Q 1076 604 976 640 Q 898 668 818 694 L 818 700 Z"
+        d="M 1200 700 L 1200 622 Q 1124 608 1048 622 Q 972 642 902 668 Q 848 688 782 698 L 782 700 Z"
         fill={`url(#fgBank${key})`}
-        opacity={0.92}
+        opacity={0.9}
       />
       {tufts}
       {view !== 'garden_path'
