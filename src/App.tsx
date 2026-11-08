@@ -53,7 +53,7 @@ import { skuForFertilizerLevel } from '@/lib/payments/catalog'
 import { applyCosmeticPackToUnlockState } from '@/lib/payments/entitlements'
 import { redirectToCheckout } from '@/lib/payments/client'
 import { resolvePaidCheckoutSession } from '@/lib/payments/apply-return'
-import { NeonAuthPanel } from '@/components/auth/NeonAuthPanel'
+const NeonAuthPanel = lazy(() => import('@/components/auth/NeonAuthPanel').then((m) => ({ default: m.NeonAuthPanel })))
 import { isNeonAuthConfigured } from '@/lib/auth/config'
 import { getAuthClient } from '@/lib/auth/neon-auth-client'
 import { completeSignInLinking } from '@/lib/auth/complete-sign-in'
@@ -1706,12 +1706,14 @@ function App() {
           }}
         />
 
-        {neonAuthAvailable && (
-          <NeonAuthPanel
-            open={neonAuthOpen}
-            onOpenChange={setNeonAuthOpen}
-            onSignedIn={() => void handleNeonSignInComplete()}
-          />
+        {neonAuthAvailable && neonAuthOpen && (
+          <Suspense fallback={null}>
+            <NeonAuthPanel
+              open={neonAuthOpen}
+              onOpenChange={setNeonAuthOpen}
+              onSignedIn={() => void handleNeonSignInComplete()}
+            />
+          </Suspense>
         )}
 
         {/* Feature 2: Collaborative Garden Dialogs */}
