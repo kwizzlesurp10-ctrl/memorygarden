@@ -19,15 +19,22 @@ export function createGardenStarterDecor(gardenSeed: number): GardenStarterDecor
   const r = gardenRng(gardenSeed * 9137 + 41)
   const targetTotal = MUSHROOM_COUNT_MIN + Math.floor(r() * (MUSHROOM_COUNT_MAX - MUSHROOM_COUNT_MIN + 1))
 
+  const wzTiers = [0.54, 0.46, 0.39, 0.32, 0.25]
+  /** Far caps sit higher on side views (larger wx); near caps lower on the lawn. */
+  const wxTiers = [0.32, 0.42, 0.54, 0.74, 0.88]
   const groups: MushroomGroup[] = [
-    { wx: ELDER_TREE.wx + 0.05, wz: ELDER_TREE.wz + 0.085, size: 2 },
-    { wx: ELDER_TREE.wx - 0.07, wz: ELDER_TREE.wz + 0.055, size: 2 },
-    { wx: 0.48, wz: 0.3, size: 2 },
-    { wx: 0.68, wz: 0.42, size: 1 },
-    { wx: 0.26, wz: 0.46, size: 2 },
+    { wx: ELDER_TREE.wx + 0.04, wz: wzTiers[0], size: 2 },
+    { wx: ELDER_TREE.wx - 0.02, wz: wzTiers[1], size: 2 },
+    { wx: wxTiers[2], wz: wzTiers[2], size: 2 },
+    { wx: wxTiers[3], wz: wzTiers[3], size: 1 },
+    { wx: wxTiers[4], wz: wzTiers[4], size: 2 },
   ]
   const groupCount = 3 + Math.floor(r() * 3)
-  const activeGroups = groups.slice(0, groupCount)
+  const activeGroups = groups.slice(0, groupCount).map((g, i) => ({
+    wx: i === 0 ? ELDER_TREE.wx + 0.04 : i === 1 ? ELDER_TREE.wx - 0.02 : wxTiers[Math.min(i, wxTiers.length - 1)] ?? g.wx,
+    wz: wzTiers[Math.min(i, wzTiers.length - 1)] ?? g.wz,
+    size: g.size,
+  }))
 
   const mushrooms: WorldDecorMushroom[] = []
   const placed: WorldCoord[] = [ELDER_TREE]
@@ -38,18 +45,16 @@ export function createGardenStarterDecor(gardenSeed: number): GardenStarterDecor
     for (let g = 0; g < inGroup; g++) {
       let placedOne = false
       for (let attempt = 0; attempt < 32 && !placedOne; attempt++) {
-        const spread = 0.028 + r() * 0.038
+        const spread = 0.022 + r() * 0.03
         const angle = r() * Math.PI * 2
         const candidate: WorldCoord = {
           wx: group.wx + Math.cos(angle) * spread,
-          wz: group.wz + Math.sin(angle) * spread * 1.25,
+          wz: group.wz + Math.sin(angle) * spread * 0.35,
         }
         if (!isWorldOffShoreGrass(candidate)) continue
         if (!fitsClearance(candidate, placed, MUSHROOM_RADIUS_W)) continue
 
-        const depthT = Math.max(0, Math.min(1, (candidate.wz - 0.12) / 0.5))
-        const nearBoost = 1.05 + depthT * 0.95
-        const scale = nearBoost * (0.98 + r() * 0.12)
+        const scale = 1
 
         mushrooms.push({
           id: `m-${mushrooms.length}`,
@@ -67,19 +72,21 @@ export function createGardenStarterDecor(gardenSeed: number): GardenStarterDecor
   let attempts = 0
   while (mushrooms.length < targetTotal && attempts < 120) {
     attempts += 1
+    const tierIdx = Math.floor(r() * wzTiers.length)
+    const tierPick = wzTiers[tierIdx] ?? 0.36
+    const wxPick = wxTiers[tierIdx] ?? 0.54
     const candidate: WorldCoord = {
-      wx: 0.16 + r() * 0.68,
-      wz: 0.14 + r() * 0.48,
+      wx: wxPick + (r() - 0.5) * 0.05,
+      wz: tierPick + (r() - 0.5) * 0.03,
     }
     if (!isWorldOffShoreGrass(candidate)) continue
     if (!fitsClearance(candidate, placed, MUSHROOM_RADIUS_W)) continue
-    const depthT = Math.max(0, Math.min(1, (candidate.wz - 0.12) / 0.5))
     mushrooms.push({
       id: `m-${mushrooms.length}`,
       wx: roundCoord(candidate.wx),
       wz: roundCoord(candidate.wz),
       geneticsSeed: `starter-mushroom-${gardenSeed}-${mushrooms.length}`,
-      scale: (0.95 + depthT * 0.85) * (0.96 + r() * 0.1),
+      scale: 1,
     })
     placed.push(candidate)
   }

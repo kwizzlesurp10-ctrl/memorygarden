@@ -1,45 +1,71 @@
+import { createElement as h } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import { GardenSceneSvg } from '@/components/garden/GardenSceneSvg'
 import { GARDEN_LANDSCAPE_VIEWS } from '@/lib/garden/landscape-view'
+import { todPalette } from '@/lib/garden/day-night'
 import { createGardenStarterDecor } from '@/lib/garden/garden-starter-decor'
+import { projectWorldToScene } from '@/lib/garden/landscape-world'
 import {
-  projectedStarterMushroomCapWidthPx,
-  starterMushroomDepthT,
   STARTER_CAP_PX_FAR_MAX,
   STARTER_CAP_PX_FAR_MIN,
   STARTER_CAP_PX_NEAR_MAX,
   STARTER_CAP_PX_NEAR_MIN,
-  starterMushroomWzBounds,
+  starterMushroomLayer,
+  STARTER_MUSHROOM_PRESENTATION_SCALE,
 } from '@/lib/garden/starter-mushroom-scale'
+import { measureStarterMushroomCapWidthsFromSvg } from '@/lib/garden/starter-mushroom-measure'
 
-describe('starter mushroom cap width in scene px', () => {
-  const decor = createGardenStarterDecor(7)
-  const bounds = starterMushroomWzBounds(decor.mushrooms)
+const GARDEN_SEED = 4242
+const PIXEL_TOLERANCE = 1.25
 
-  it('maps depth linearly from far to near wz band', () => {
-    expect(starterMushroomDepthT(bounds.wzMin, bounds.wzMin, bounds.wzMax)).toBe(0)
-    expect(starterMushroomDepthT(bounds.wzMax, bounds.wzMin, bounds.wzMax)).toBe(1)
-    const mid = (bounds.wzMin + bounds.wzMax) / 2
-    expect(starterMushroomDepthT(mid, bounds.wzMin, bounds.wzMax)).toBeCloseTo(0.5, 2)
-  })
+function renderStarterSvg(view: (typeof GARDEN_LANDSCAPE_VIEWS)[number], decor = createGardenStarterDecor(GARDEN_SEED)): string {
+  const palette = todPalette(14, 'summer')
+  return renderToStaticMarkup(
+    h(GardenSceneSvg, {
+      palette,
+      sceneKey: `measure-${view}`,
+      gardenSeed: 7,
+      rimStrength: 0.6,
+      motion: false,
+      landscapeView: view,
+      shedStyle: 'storybook',
+      planted: [],
+      candles: [],
+      memoryPlants: [],
+      starterDecor: decor,
+    }),
+  )
+}
+
+describe('starter mushroom rendered cap widths', () => {
+  const decor = createGardenStarterDecor(GARDEN_SEED)
 
   for (const view of GARDEN_LANDSCAPE_VIEWS) {
-    it(`hits pixel targets on ${view}`, () => {
-      const widths = decor.mushrooms.map((m) =>
-        projectedStarterMushroomCapWidthPx(
-          m.wx,
-          m.wz,
-          view,
-          m.scale,
-          bounds.wzMin,
-          bounds.wzMax,
-        ),
-      )
+    it(`caps measure ${STARTER_CAP_PX_FAR_MIN}–${STARTER_CAP_PX_FAR_MAX}px far and ${STARTER_CAP_PX_NEAR_MIN}–${STARTER_CAP_PX_NEAR_MAX}px near on ${view}`, () => {
+      const widths = measureStarterMushroomCapWidthsFromSvg(renderStarterSvg(view))
+      expect(widths.length).toBeGreaterThanOrEqual(6)
       const minW = Math.min(...widths)
       const maxW = Math.max(...widths)
-      expect(minW).toBeGreaterThanOrEqual(STARTER_CAP_PX_FAR_MIN - 0.75)
-      expect(minW).toBeLessThanOrEqual(STARTER_CAP_PX_FAR_MAX + 0.75)
-      expect(maxW).toBeGreaterThanOrEqual(STARTER_CAP_PX_NEAR_MIN - 0.75)
-      expect(maxW).toBeLessThanOrEqual(STARTER_CAP_PX_NEAR_MAX + 0.75)
+      const farMax = STARTER_CAP_PX_FAR_MAX * STARTER_MUSHROOM_PRESENTATION_SCALE
+      const farMin = STARTER_CAP_PX_FAR_MIN * STARTER_MUSHROOM_PRESENTATION_SCALE
+      const nearMax = STARTER_CAP_PX_NEAR_MAX * STARTER_MUSHROOM_PRESENTATION_SCALE
+      const nearMin = STARTER_CAP_PX_NEAR_MIN * STARTER_MUSHROOM_PRESENTATION_SCALE
+      expect(minW).toBeGreaterThanOrEqual(farMin - PIXEL_TOLERANCE)
+      expect(minW).toBeLessThanOrEqual(farMax + PIXEL_TOLERANCE)
+      expect(maxW).toBeGreaterThanOrEqual(nearMin - PIXEL_TOLERANCE)
+      expect(maxW).toBeLessThanOrEqual(nearMax + PIXEL_TOLERANCE)
     })
   }
+
+  it('lakeside and meadow spread mushrooms ≥60px on screen Y', () => {
+    for (const view of ['lakeside', 'meadow'] as const) {
+      const ys = decor.mushrooms.map((m) => {
+        const layer = starterMushroomLayer(m.wz)
+        return projectWorldToScene({ wx: m.wx, wz: m.wz }, view, { layer }).y
+      })
+      const spread = Math.max(...ys) - Math.min(...ys)
+      expect(spread).toBeGreaterThanOrEqual(60)
+    }
+  })
 })
