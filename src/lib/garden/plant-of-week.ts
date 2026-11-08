@@ -1,6 +1,12 @@
 import type { HybridBaseVariety, HybridGenome } from '@/lib/types'
 import { lerpHex } from './color'
 import { hybridVarieties, semanticLocalGenome } from './hybrid'
+import { motifFromKey } from './hybrid-motifs'
+import { paletteDominantHue } from './hybrid-semantic'
+import {
+  weeklyPaletteForSpec,
+  weeklySpecForIndex,
+} from './plant-of-week-specs'
 import { WEEKLY_PLANT_THEMES } from './plant-of-week-themes'
 
 export { WEEKLY_PLANT_THEMES } from './plant-of-week-themes'
@@ -70,6 +76,19 @@ function themeForWeekKey(key: string): string {
   return WEEKLY_PLANT_THEMES[weekIndexFromKey(key) % WEEKLY_PLANT_THEMES.length]!
 }
 
+function weeklySeedGenome(theme: string, isoWeek: string): HybridGenome {
+  const themeIdx = WEEKLY_PLANT_THEMES.indexOf(theme as (typeof WEEKLY_PLANT_THEMES)[number])
+  const idx = themeIdx >= 0 ? themeIdx : weekIndexFromKey(isoWeek)
+  const spec = weeklySpecForIndex(idx)
+  const base = semanticLocalGenome(theme, hybridVarieties())
+  return {
+    ...base,
+    palette: weeklyPaletteForSpec(spec),
+    motif: motifFromKey(spec.motifKey),
+    glowIntensity: Math.min(0.92, base.glowIntensity + 0.12),
+  }
+}
+
 function mutateWeeklyGenome(prev: HybridGenome, next: HybridGenome, evolvedFromName: string): HybridGenome {
   const graft =
     prev.graft === next.graft
@@ -87,10 +106,10 @@ function mutateWeeklyGenome(prev: HybridGenome, next: HybridGenome, evolvedFromN
     graft,
     adornment,
     palette: {
-      sil: lerpHex(prev.palette.sil, next.palette.sil, 0.38),
-      rim: lerpHex(prev.palette.rim, next.palette.rim, 0.62),
-      glow: lerpHex(prev.palette.glow, next.palette.glow, 0.65),
-      accent: lerpHex(prev.palette.accent, next.palette.accent, 0.58),
+      sil: lerpHex(prev.palette.sil, next.palette.sil, 0.22),
+      rim: lerpHex(prev.palette.rim, next.palette.rim, 0.78),
+      glow: lerpHex(prev.palette.glow, next.palette.glow, 0.8),
+      accent: lerpHex(prev.palette.accent, next.palette.accent, 0.76),
     },
     glowIntensity: Math.max(0.35, Math.min(1, (prev.glowIntensity + next.glowIntensity) / 2 + 0.06)),
     seed: ((prev.seed + next.seed) % 9998) + 1,
@@ -99,7 +118,7 @@ function mutateWeeklyGenome(prev: HybridGenome, next: HybridGenome, evolvedFromN
 }
 
 export function buildWeeklyGenome(isoWeek: string, theme: string, prev: HybridGenome | null): HybridGenome {
-  const fresh = semanticLocalGenome(theme, hybridVarieties())
+  const fresh = weeklySeedGenome(theme, isoWeek)
   fresh.essence = `This week's shared garden dream: ${fresh.essence}`.slice(0, 180)
   if (!prev) return fresh
   return mutateWeeklyGenome(prev, fresh, prev.name)
@@ -111,7 +130,7 @@ export function weeklyGenomeForIsoWeek(isoWeek: string): HybridGenome {
     return buildWeeklyGenome(isoWeek, themeForWeekKey(isoWeek), null)
   }
   let cursor = WEEKLY_ANCHOR
-  let genome = semanticLocalGenome(themeForWeekKey(cursor), hybridVarieties())
+  let genome = weeklySeedGenome(themeForWeekKey(cursor), cursor)
   let guard = 0
   while (cursor !== isoWeek && guard < 520) {
     guard++
@@ -153,4 +172,19 @@ export function hasWeeklySeedForWeek(
   isoWeek: string,
 ): boolean {
   return seeds.some((s) => s.weeklyIsoWeek === isoWeek)
+}
+
+/** Hue buckets for weekly variety tests (coarse, ~8 bands). */
+export function dominantHueBucket(hue: number): number {
+  return Math.floor(((hue % 360) + 360) % 360 / 45)
+}
+
+export function weeklyHueSpreadOverWeeks(startIsoWeek: string, count: number): number[] {
+  const hues: number[] = []
+  let cursor = startIsoWeek
+  for (let i = 0; i < count; i++) {
+    hues.push(paletteDominantHue(weeklyGenomeForIsoWeek(cursor).palette))
+    cursor = shiftIsoWeekKey(cursor, 1)
+  }
+  return hues
 }

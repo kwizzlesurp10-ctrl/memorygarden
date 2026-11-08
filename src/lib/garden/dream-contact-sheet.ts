@@ -1,8 +1,10 @@
 import { createElement as h, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import type { HybridGenome } from '@/lib/types'
+import type { HybridBaseVariety, HybridGenome } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { buildDreamHybridPreview } from '@/components/plants/hybrid-builder'
+import { localGenome } from '@/lib/garden/hybrid'
+import { MOTIF_GLYPHS, motifFromKey } from '@/lib/garden/hybrid-motifs'
 
 export interface DreamContactSheetOptions {
   samples: string[]
@@ -86,4 +88,40 @@ export function buildDreamContactSheetSvg(opts: DreamContactSheetOptions): strin
     : ''
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${bg}${title}${cells}</svg>`
+}
+
+function motifPreviewGenome(motifKey: string): HybridGenome {
+  const g = localGenome(`${motifKey} on a tree`)
+  return {
+    ...g,
+    base: 'tree' as HybridBaseVariety,
+    graft: 'fern',
+    adornment: 'none',
+    motif: motifFromKey(motifKey),
+    name: motifKey,
+  }
+}
+
+export function buildMotifGridContactSheetSvg(palette: ScenePalette, background = '#e9f3e5'): string {
+  const keys = Object.keys(MOTIF_GLYPHS).sort((a, b) => a.localeCompare(b))
+  const cols = 8
+  const cellW = 120
+  const cellH = 138
+  const rows = Math.ceil(keys.length / cols)
+  const width = cols * cellW
+  const padTop = 22
+  const height = rows * cellH + padTop
+  const genomes = keys.map((k) => motifPreviewGenome(k))
+
+  return buildDreamContactSheetSvg({
+    samples: keys,
+    genomes,
+    palette,
+    cols,
+    cellW,
+    cellH,
+    labelH: 28,
+    title: `Motif grid (${keys.length} glyphs)`,
+    background,
+  })
 }

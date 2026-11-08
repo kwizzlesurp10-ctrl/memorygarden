@@ -77,36 +77,51 @@ export function buildHybrid(
   }
 
   const plantRim = Math.min(1, rimv + (gi - 0.4) * 0.45)
+  const treeScale = g.base === 'tree' ? 0.8 : 1
 
   out.push(
-    <g key="base">
+    <g key="base" transform={treeScale < 1 ? `scale(${treeScale})` : undefined}>
       {buildSeededPlant(g.base, s, gardenRng(g.seed * 17 + s * 3), C, plantRim, motion)}
     </g>,
   )
 
   if (s >= 4) {
+    const canopyCy = g.base === 'tree' ? -hh * treeScale * 0.92 : -hh * 0.78
     out.push(
       <ellipse
         key="crown-tint"
         cx={0}
-        cy={-hh * 0.78}
-        rx={hh * 0.22}
-        ry={hh * 0.14}
+        cy={canopyCy}
+        rx={hh * (g.base === 'tree' ? 0.28 : 0.22)}
+        ry={hh * (g.base === 'tree' ? 0.22 : 0.14)}
         fill={C.glow}
-        opacity={0.12 + gi * 0.22}
+        opacity={g.base === 'tree' ? 0.22 + gi * 0.28 : 0.12 + gi * 0.22}
       />,
     )
     out.push(
       <ellipse
         key="foliage-tint"
         cx={0}
-        cy={-hh * 0.42}
-        rx={hh * 0.34}
-        ry={hh * 0.38}
-        fill={C.rim}
-        opacity={0.06 + gi * 0.12}
+        cy={g.base === 'tree' ? -hh * treeScale * 0.55 : -hh * 0.42}
+        rx={hh * (g.base === 'tree' ? 0.4 : 0.34)}
+        ry={hh * (g.base === 'tree' ? 0.34 : 0.38)}
+        fill={g.base === 'tree' ? C.accent : C.rim}
+        opacity={g.base === 'tree' ? 0.14 + gi * 0.18 : 0.06 + gi * 0.12}
       />,
     )
+    if (g.base === 'tree') {
+      out.push(
+        <ellipse
+          key="tree-canopy-wash"
+          cx={0}
+          cy={-hh * treeScale * 0.88}
+          rx={hh * 0.46}
+          ry={hh * 0.32}
+          fill={C.silSoft}
+          opacity={0.2 + gi * 0.15}
+        />,
+      )
+    }
   }
 
   if (s >= 3 && g.graft) {
@@ -184,8 +199,13 @@ export function buildHybrid(
   }
 
   if (g.motif && g.motif.paths && g.motif.paths.length && s >= 4) {
-    const msize = MOTIF_SIZES[s] ?? 0
-    const my = g.base === 'tree' ? -hh + 1 : g.base === 'mushroom' ? -hh - 2 : -hh - 5
+    const msize = (MOTIF_SIZES[s] ?? 0) + (g.base === 'tree' ? 5 : 0)
+    const my =
+      g.base === 'tree'
+        ? -hh * treeScale - 30
+        : g.base === 'mushroom'
+          ? -hh - 2
+          : -hh - 5
     const bobStyle: CSSProperties | undefined = motion
       ? { animation: 'mgBob 3.2s ease-in-out infinite alternate' }
       : undefined
