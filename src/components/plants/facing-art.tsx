@@ -749,6 +749,8 @@ function oneMushroom(
     // domed cap
     e('path', {
       key: 'cap',
+      'data-mush-cap': '1',
+      'data-cap-half-w': String(capHW),
       d: `M ${-capHW} ${capY} C ${-capHW} ${capY - rise * 1.05} ${capHW} ${capY - rise * 1.05} ${capHW} ${capY} Q 0 ${capY + rise * 0.12} ${-capHW} ${capY} Z`,
       fill: col.cap,
     }),

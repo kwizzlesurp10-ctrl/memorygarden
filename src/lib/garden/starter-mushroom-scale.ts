@@ -23,7 +23,7 @@ export function targetStarterMushroomCapWidthPx(depthT: number): number {
 }
 
 export function starterMushroomLayer(wz: number): WorldLayer {
-  return wz < 0.26 ? 'far' : wz > 0.44 ? 'near' : 'mid'
+  return wz < 0.23 ? 'far' : wz > 0.46 ? 'near' : 'mid'
 }
 
 /** World `scale()` multiplier so cap width hits pixel targets on the 1200×700 scene. */
@@ -36,7 +36,9 @@ export function starterMushroomWorldDrawScale(
 ): number {
   const depthT = starterMushroomDepthT(wz, wzMin, wzMax)
   const targetPx = targetStarterMushroomCapWidthPx(depthT)
-  const base = STARTER_MUSHROOM_CAP_WIDTH_UNITS * Math.max(0.01, projScale * decorScale)
+  const base =
+    STARTER_MUSHROOM_CAP_WIDTH_UNITS *
+    Math.max(0.01, projScale * decorScale * STARTER_MUSHROOM_PRESENTATION_SCALE)
   return targetPx / base
 }
 
@@ -52,6 +54,13 @@ export function projectedStarterMushroomCapWidthPx(
   const proj = projectWorldToScene({ wx, wz }, view, { layer })
   const draw = starterMushroomWorldDrawScale(wz, proj.scale, decorScale, wzMin, wzMax)
   return STARTER_MUSHROOM_CAP_WIDTH_UNITS * proj.scale * decorScale * draw
+}
+
+/** Expected cap width after full transform chain (includes memory presentation ~1.04 on mature mushrooms). */
+export const STARTER_MUSHROOM_PRESENTATION_SCALE = 1.04
+
+export function expectedStarterMushroomCapWidthPx(depthT: number): number {
+  return targetStarterMushroomCapWidthPx(depthT) * STARTER_MUSHROOM_PRESENTATION_SCALE
 }
 
 export function starterMushroomWzBounds(mushrooms: ReadonlyArray<{ wz: number }>): { wzMin: number; wzMax: number } {
