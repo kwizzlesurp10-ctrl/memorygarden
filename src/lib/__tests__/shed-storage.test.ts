@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { sanitizeGenome } from '@/lib/garden/hybrid-sanitize'
 import { sanitizeShedSeed, validateShedData } from '@/lib/garden/shed-storage'
-import { semanticLocalGenome } from '@/lib/garden/hybrid'
-import { hybridVarieties } from '@/lib/garden/hybrid'
+import { hybridVarieties, semanticLocalGenome } from '@/lib/garden/hybrid'
 
 describe('shed storage sanitization', () => {
   it('repairs invalid genome fields instead of dropping entire seed', () => {

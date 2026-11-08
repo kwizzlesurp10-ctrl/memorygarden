@@ -6,8 +6,7 @@ import {
   isoWeekKey,
   weeklyGenomeForIsoWeek,
 } from '@/lib/garden/plant-of-week'
-import { semanticLocalGenome } from '@/lib/garden/hybrid'
-import { hybridVarieties } from '@/lib/garden/hybrid'
+import { hybridVarieties, semanticLocalGenome } from '@/lib/garden/hybrid'
 
 describe('plant of the week', () => {
   it('returns the same genome for the same ISO week worldwide', () => {

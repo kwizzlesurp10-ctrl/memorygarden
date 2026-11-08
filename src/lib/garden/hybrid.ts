@@ -34,11 +34,12 @@ export function mergedPal(C: ScenePalette, g: HybridGenome): ScenePalette {
 }
 
 /** Genome-forward plant colors so dream hues read on blooms and foliage (still silhouette-first). */
-export function hybridPlantPalette(g: HybridGenome): import('@/components/plants/seeded-builders').HybridPlantPalette {
+export function hybridPlantPalette(g: HybridGenome, C: ScenePalette): ScenePalette {
   const p = g.palette
   const gi = g.glowIntensity ?? 0.55
   const vivid = Math.min(1, gi + 0.28)
   return {
+    ...mergedPal(C, g),
     sil: lerpHex(p.sil, p.rim, 0.32 + vivid * 0.28),
     silSoft: lerpHex(p.sil, p.glow, 0.46 + vivid * 0.22),
     rim: p.rim,

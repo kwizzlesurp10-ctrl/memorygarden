@@ -1,5 +1,4 @@
-import type { HybridAdornment, HybridBaseVariety, HybridGenome, HybridMotif, HybridPalette } from '@/lib/types'
-import type { HybridBaseVariety as Base } from '@/lib/types'
+import type { HybridAdornment, HybridBaseVariety, HybridBaseVariety as Base, HybridGenome, HybridMotif, HybridPalette } from '@/lib/types'
 import { MOTIF_PHRASES, motifFromKey, resolveMotifKey } from './hybrid-motifs'
 
 export interface IdeaSemantics {
@@ -202,7 +201,7 @@ export function hexToHue(hex: string): number {
   const min = Math.min(r, g, b)
   if (max === min) return 0
   const d = max - min
-  let h = 0
+  let h: number
   if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) * 60
   else if (max === g) h = ((b - r) / d + 2) * 60
   else h = ((r - g) / d + 4) * 60

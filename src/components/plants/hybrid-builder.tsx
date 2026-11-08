@@ -227,7 +227,7 @@ export function buildMiniHybrid(
   motion: boolean,
   plantScale = 1.15,
 ): ReactNode {
-  const CH = hybridPlantPalette(g)
+  const CH = hybridPlantPalette(g, C)
   const growStyle: CSSProperties | undefined = motion
     ? {
         animation: `mgGrow 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.07}s backwards`,
@@ -253,7 +253,7 @@ export function buildDreamHybridPreview(
   rimv = 0.92,
   plantScale = 1.28,
 ): ReactNode[] {
-  const CH = hybridPlantPalette(g)
+  const CH = hybridPlantPalette(g, C)
   return [
     <ellipse key="ground" cx={66} cy={136} rx={30} ry={5} fill={C.hills[2]} opacity={0.85} />,
     <g key="plant" transform={`translate(66 134) scale(${plantScale})`}>
@@ -285,7 +285,7 @@ export function HybridPlantSvg({
   scale = 1,
   swayIndex = 0,
 }: HybridPlantSvgProps) {
-  const CH = hybridPlantPalette(genome)
+  const CH = hybridPlantPalette(genome, palette)
   const swayStyle: CSSProperties | undefined = motion
     ? {
         animation: `mgSwayB ${4 + (swayIndex % 5) * 0.6}s ease-in-out ${swayIndex * 0.4}s infinite alternate`,
