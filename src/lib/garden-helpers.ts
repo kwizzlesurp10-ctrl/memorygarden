@@ -1,4 +1,5 @@
 import type { Memory, EmotionalTone, PlantStage, PlantVariety, GrowthMetrics, GardenMood, WeatherType, SearchFilters, Season, ArtStyle, PlantTraits } from './types'
+import { maxPlantStage } from '@/lib/garden/stage'
 import { getLLMProvider } from './llm-client'
 import { withRetry } from './retry'
 
@@ -71,7 +72,18 @@ export function calculateGrowthMetrics(memory: Memory, nearbyMemories: Memory[])
   }
 }
 
-function getPlantStageFromMetrics(metrics: GrowthMetrics): PlantStage {
+export const PLANT_STAGE_VITALITY_FLOOR: Record<PlantStage, number> = {
+  seed: 0,
+  sprout: 10,
+  seedling: 22,
+  young: 36,
+  bud: 50,
+  bloom: 64,
+  mature: 78,
+  elder: 90,
+}
+
+export function getPlantStageFromMetrics(metrics: GrowthMetrics): PlantStage {
   if (metrics.vitality < 10) return 'seed'
   if (metrics.vitality < 22) return 'sprout'
   if (metrics.vitality < 36) return 'seedling'
@@ -80,6 +92,31 @@ function getPlantStageFromMetrics(metrics: GrowthMetrics): PlantStage {
   if (metrics.vitality < 78) return 'bloom'
   if (metrics.vitality < 90) return 'mature'
   return 'elder'
+}
+
+/** After growth events, never regress below a manually chosen stage. */
+export function plantStageAfterGrowth(memory: Memory, growthMetrics: GrowthMetrics): PlantStage {
+  const fromMetrics = getPlantStageFromMetrics(growthMetrics)
+  return maxPlantStage(fromMetrics, memory.plantStage)
+}
+
+export function applyManualPlantStage(memory: Memory, stage: PlantStage, nearbyMemories: Memory[] = []): Memory {
+  const floor = PLANT_STAGE_VITALITY_FLOOR[stage]
+  const baseMetrics = calculateGrowthMetrics(memory, nearbyMemories)
+  const vitality = Math.max(baseMetrics.vitality, floor + 1)
+  const growthMetrics: GrowthMetrics = {
+    ...baseMetrics,
+    vitality,
+    height: Math.floor(38 + vitality * 1.2),
+    width: Math.floor(32 + vitality * 0.8),
+    bloomCount: Math.max(baseMetrics.bloomCount, Math.floor(vitality / 18)),
+    foliageDensity: Math.max(baseMetrics.foliageDensity, vitality),
+  }
+  return {
+    ...memory,
+    plantStage: stage,
+    growthMetrics,
+  }
 }
 
 export function getPlantStage(memory: Memory): PlantStage {
@@ -186,10 +223,19 @@ export async function generateAIReflection(memory: Memory, nearbyMemories: Memor
     return 'AI reflection is not available in this environment.'
   }
 
+  const memoryText = memory.text?.trim()
+  if (!memoryText) {
+    return memory.linkUrl?.trim()
+      ? 'This memory is held in a link you saved — visiting it in quiet moments can be its own reflection.'
+      : 'This memory is held in an image — let it speak without words for a while.'
+  }
+
   try {
-    const prompt = llm.prompt`Memory text: "${memory.text}"
+    const prompt = llm.prompt`Memory text: "${memoryText}"
 Emotional tone: ${memory.emotionalTone}
-${nearbyMemories.length > 0 ? `Nearby memories: ${nearbyMemories.map((m: Memory) => m.text.slice(0, 50)).join('; ')}` : ''}
+${nearbyMemories.length > 0
+      ? `Nearby memories: ${nearbyMemories.map((m: Memory) => (m.text?.trim() || m.linkUrl || 'A quiet memory').slice(0, 50)).join('; ')}`
+      : ''}
 
 Write a brief, poetic reflection (2-3 sentences) that honors this memory and offers gentle insight.
 - Offer perspective without being prescriptive

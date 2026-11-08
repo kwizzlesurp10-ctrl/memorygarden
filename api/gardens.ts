@@ -24,6 +24,7 @@ import {
   type CommunityPrivacyMode,
   type RawGardenMemoryRow,
 } from './gardens/lib/community-memory-privacy'
+import { parseHttpHttpsLinkUrl } from '../src/lib/memory-link'
 
 export const config = { runtime: 'edge' }
 
@@ -282,12 +283,13 @@ export default async function handler(req: Request): Promise<Response> {
         positionY: number
         emotionalTone: string
         plantVariety: string
+        linkUrl?: string
       }
       
       const {
         gardenId, contributorId, contributorName, contributorAvatar,
         photoUrl, text, memoryDate, location, positionX, positionY,
-        emotionalTone, plantVariety
+        emotionalTone, plantVariety, linkUrl: bodyLinkUrl,
       } = body
 
       if (!isValidUuid(gardenId) || !isValidUserId(contributorId)) {
@@ -304,6 +306,12 @@ export default async function handler(req: Request): Promise<Response> {
       const deniedPlant = await gateUserId(contributorId)
       if (deniedPlant) return deniedPlant
 
+      if (bodyLinkUrl !== undefined && bodyLinkUrl !== null && String(bodyLinkUrl).trim() !== '') {
+        const parsed = parseHttpHttpsLinkUrl(String(bodyLinkUrl))
+        if (!parsed.valid) {
+          return jsonResponse(400, { error: parsed.error ?? 'Invalid linkUrl' })
+        }
+      }
       const geneticsSeed = `${gardenId}-${Date.now()}-${Math.random().toString(36).slice(2)}`
       
       const result = await sql`

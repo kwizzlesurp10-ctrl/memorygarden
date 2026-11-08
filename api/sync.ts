@@ -28,6 +28,7 @@
 import { isValidUserId } from './lib/api-ids'
 import { assertLocalUserIdAllowed, resolveRequestAuth } from './lib/auth-guard'
 import { getNeonSql } from './lib/db'
+import { sanitizeSyncDocument } from '../src/lib/sync-document'
 
 export const config = { runtime: 'edge' }
 
@@ -130,8 +131,9 @@ export default async function handler(req: Request): Promise<Response> {
     if (!body.document || typeof body.document !== 'object') {
       return jsonResponse(400, { error: 'Document required' })
     }
+    const sanitized = sanitizeSyncDocument(body.document as Record<string, unknown>)
     const updatedAt = new Date().toISOString()
-    const payload = { ...(body.document as Record<string, unknown>), updatedAt }
+    const payload = { ...sanitized, updatedAt }
     const serialized = JSON.stringify(payload)
     if (serialized.length > 1_000_000) {
       return jsonResponse(413, { error: 'Document too large' })

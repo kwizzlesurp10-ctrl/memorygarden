@@ -15,7 +15,8 @@ import { KeyboardShortcutsPanel } from '@/components/KeyboardShortcutsPanel'
 import { AppHeader, type ViewMode } from '@/components/AppHeader'
 import { GardenBackupDialog } from '@/components/GardenBackupDialog'
 import { useKeyboardShortcuts, APP_SHORTCUTS } from '@/lib/keyboard-shortcuts'
-import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits, PlantVariety, HybridGenome } from '@/lib/types'
+import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits, PlantVariety, HybridGenome, GardenLandscapeView } from '@/lib/types'
+import { EditPlantDialog, type EditPlantPayload } from '@/components/EditPlantDialog'
 
 // ── Lazy-loaded non-critical components (modals, dialogs, secondary views) ──
 const ExportGarden = lazy(() => import('@/components/ExportGarden').then(m => ({ default: m.ExportGarden })))
@@ -36,7 +37,8 @@ const ActivityFeed = lazy(() => import('@/components/ActivityFeed').then(m => ({
 const ContributorLeaderboard = lazy(() => import('@/components/ContributorLeaderboard').then(m => ({ default: m.ContributorLeaderboard })))
 const OpenWorldGarden = lazy(() => import('@/components/open-world/OpenWorldGarden').then(m => ({ default: m.OpenWorldGarden })))
 import { countUnreadActivity, deriveActivityFromMemories } from '@/lib/activity-helpers'
-import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod, generateHybridTraits } from '@/lib/garden-helpers'
+import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod, generateHybridTraits, plantStageAfterGrowth, applyManualPlantStage } from '@/lib/garden-helpers'
+import { memoryPrimaryLabel } from '@/lib/memory-display'
 import { realClockTod, todToDayPeriod } from '@/lib/garden/day-night'
 import { ensureUnlockState, generatePlantGenetics, awardForReflection, awardForRevisit, awardForClusterTending, awardForPlanting, applyAward, evaluateUnlocks, applyNewUnlocks, evaluateAchievements, deductRerollCost, canAffordReroll, UNLOCKABLE_ITEMS } from '@/lib/unlock-system'
 import { generateGeneticsSeed, computeUnlocks } from '@/lib/trait-system'
@@ -178,6 +180,7 @@ function App() {
 
   // Feature 5: AI Plant Style state
   const [isStyleCustomizerOpen, setIsStyleCustomizerOpen] = useState(false)
+  const [isEditPlantOpen, setIsEditPlantOpen] = useState(false)
 
   // Constraint / Unlock system state
   const [isUnlocksOpen, setIsUnlocksOpen] = useState(false)
@@ -359,116 +362,156 @@ function App() {
     return () => clearInterval(id)
   }, [])
 
-  const handleCompleteOnboarding = () => {
+  const handleCompleteOnboarding = (landscapeView?: GardenLandscapeView) => {
     setPreferences((current) => ({
       soundEnabled: current?.soundEnabled || false,
       lastVisit: current?.lastVisit || new Date().toISOString(),
       hasCompletedOnboarding: true,
+      ...(landscapeView ? { gardenLandscapeView: landscapeView } : {}),
     }))
     setIsPlantModalOpen(true)
   }
 
+  const handleLandscapeViewChange = useCallback((view: GardenLandscapeView) => {
+    setPreferences((current) => ({
+      ...(current ?? fallbackPreferences),
+      gardenLandscapeView: view,
+    }))
+  }, [setPreferences, fallbackPreferences])
+
+  const handleEditPlantSave = useCallback((memoryId: string, payload: EditPlantPayload) => {
+    setMemories((currentMemories) => {
+      const next = (currentMemories || []).map((m) => {
+        if (m.id !== memoryId) return m
+        const nearby = (currentMemories || []).filter(
+          (nm) =>
+            nm.id !== memoryId &&
+            Math.abs(nm.position.x - m.position.x) < 300 &&
+            Math.abs(nm.position.y - m.position.y) < 300,
+        )
+        const withFields: Memory = {
+          ...m,
+          text: payload.text,
+          linkUrl: payload.linkUrl,
+          plantVariety: payload.plantVariety,
+          traits: payload.traits,
+        }
+        return applyManualPlantStage({ ...withFields, plantStage: payload.plantStage }, payload.plantStage, nearby)
+      })
+      const edited = next.find((m) => m.id === memoryId)
+      if (edited) setSelectedMemory(edited)
+      return next
+    })
+    setIsEditPlantOpen(false)
+    toast.success('Plant updated')
+  }, [setMemories])
+
   const handlePlantMemory = async (data: {
-    photoFile: File
+    photoFile?: File
     text: string
     date: string
     location?: string
+    linkUrl?: string
     audioRecordings: AudioRecording[]
     plantVariety: PlantVariety
   }) => {
+    const finishPlanting = async (photoUrl: string) => {
+      const toneSource = data.text.trim() || data.linkUrl?.trim() || ''
+      const emotionalTone = await classifyEmotionalTone(toneSource)
+
+      let finalTraits: PlantTraits = {}
+      let finalVariety = data.plantVariety ?? selectPlantVariety(emotionalTone, data.text)
+      let finalGeneticsSeed = generateGeneticsSeed()
+      let isHybrid = false
+      let parentMemories: string[] | undefined = undefined
+
+      if (hybridParents) {
+        const hybridData = generateHybridTraits(hybridParents[0], hybridParents[1])
+        finalTraits = hybridData.traits
+        finalGeneticsSeed = hybridData.geneticsSeed
+        finalVariety = hybridData.variety
+        isHybrid = true
+        parentMemories = [hybridParents[0].id, hybridParents[1].id]
+        setHybridParents(null)
+      }
+
+      const newMemory: Memory = {
+        id: `memory-${Date.now()}`,
+        photoUrl,
+        text: data.text,
+        date: data.date,
+        location: data.location,
+        linkUrl: data.linkUrl,
+        plantedAt: new Date().toISOString(),
+        position: {
+          x: 180 + Math.random() * 840,
+          y: 430 + Math.random() * 35,
+        },
+        emotionalTone,
+        plantVariety: finalVariety,
+        plantStage: 'seed',
+        visitCount: 0,
+        reflections: [],
+        audioRecordings: data.audioRecordings,
+        geneticsSeed: finalGeneticsSeed,
+        traits: finalTraits,
+        unlocks: [],
+        genetics: generatePlantGenetics(`${Date.now()}-${Math.random().toString(36).substring(2)}`),
+        plantedBy: user
+          ? { id: user.id, login: user.login, avatarUrl: user.avatarUrl }
+          : undefined,
+        isHybrid,
+        parentMemories,
+      }
+
+      setMemories((currentMemories) => [...(currentMemories || []), newMemory])
+
+      const currentSeason = getSeason()
+      const seasonKey = `${currentSeason}-${new Date().getFullYear()}`
+      updateUnlockState((state) => {
+        const award = awardForPlanting()
+        return {
+          ...state,
+          wallet: applyAward(state.wallet, award),
+          counters: {
+            ...state.counters,
+            totalMemoriesPlanted: state.counters.totalMemoriesPlanted + 1,
+            seasonalPlantings: {
+              ...state.counters.seasonalPlantings,
+              [seasonKey]: (state.counters.seasonalPlantings[seasonKey] || 0) + 1,
+            },
+          },
+        }
+      })
+
+      setGrowingMemories((prev) => new Set(prev).add(newMemory.id))
+      setTimeout(() => {
+        setGrowingMemories((prev) => {
+          const next = new Set(prev)
+          next.delete(newMemory.id)
+          return next
+        })
+      }, 3000) // matches PLANTING_CELEBRATION_MS in PlantMemoryModal
+    }
+
+    if (!data.photoFile) {
+      await finishPlanting('')
+      return
+    }
+
     const reader = new FileReader()
     reader.readAsDataURL(data.photoFile)
-    
+
     return new Promise<void>((resolve, reject) => {
       reader.onload = async () => {
         try {
-          const photoUrl = reader.result as string
-          
-          const emotionalTone = await classifyEmotionalTone(data.text)
-          const plantVariety = data.plantVariety ?? selectPlantVariety(emotionalTone, data.text)
-          
-          let finalTraits: PlantTraits = {}
-          let finalVariety = data.plantVariety ?? selectPlantVariety(emotionalTone, data.text)
-          let finalGeneticsSeed = generateGeneticsSeed()
-          let isHybrid = false
-          let parentMemories: string[] | undefined = undefined
-
-          if (hybridParents) {
-             const hybridData = generateHybridTraits(hybridParents[0], hybridParents[1])
-             finalTraits = hybridData.traits
-             finalGeneticsSeed = hybridData.geneticsSeed
-             // Let the hybrid logic override the variety
-             finalVariety = hybridData.variety
-             isHybrid = true
-             parentMemories = [hybridParents[0].id, hybridParents[1].id]
-             setHybridParents(null)
-          }
-
-          const newMemory: Memory = {
-            id: `memory-${Date.now()}`,
-            photoUrl,
-            text: data.text,
-            date: data.date,
-            location: data.location,
-            plantedAt: new Date().toISOString(),
-            position: {
-              x: 180 + Math.random() * 840,
-              y: 430 + Math.random() * 35,
-            },
-            emotionalTone,
-            plantVariety: finalVariety,
-            plantStage: 'seed',
-            visitCount: 0,
-            reflections: [],
-            audioRecordings: data.audioRecordings,
-            geneticsSeed: finalGeneticsSeed,
-            traits: finalTraits,
-            unlocks: [],
-            genetics: generatePlantGenetics(`${Date.now()}-${Math.random().toString(36).substring(2)}`),
-            plantedBy: user
-              ? { id: user.id, login: user.login, avatarUrl: user.avatarUrl }
-              : undefined,
-            isHybrid,
-            parentMemories,
-          }
-
-          setMemories((currentMemories) => [...(currentMemories || []), newMemory])
-
-          // Award currency and update counters for planting
-          const currentSeason = getSeason()
-          const seasonKey = `${currentSeason}-${new Date().getFullYear()}`
-          updateUnlockState((state) => {
-            const award = awardForPlanting()
-            return {
-              ...state,
-              wallet: applyAward(state.wallet, award),
-              counters: {
-                ...state.counters,
-                totalMemoriesPlanted: state.counters.totalMemoriesPlanted + 1,
-                seasonalPlantings: {
-                  ...state.counters.seasonalPlantings,
-                  [seasonKey]: (state.counters.seasonalPlantings[seasonKey] || 0) + 1,
-                },
-              },
-            }
-          })
-
-          // Trigger sprouting particle animation on the canvas when seed first appears
-          setGrowingMemories((prev) => new Set(prev).add(newMemory.id))
-          setTimeout(() => {
-            setGrowingMemories((prev) => {
-              const next = new Set(prev)
-              next.delete(newMemory.id)
-              return next
-            })
-          }, 3000) // matches PLANTING_CELEBRATION_MS in PlantMemoryModal
-
+          await finishPlanting(reader.result as string)
           resolve()
         } catch (error) {
           reject(error)
         }
       }
-      
+
       reader.onerror = () => reject(new Error('Failed to read file'))
     })
   }
@@ -538,7 +581,7 @@ function App() {
           const updatedWithStage = {
             ...updatedMemory,
             growthMetrics,
-            plantStage: getPlantStage(updatedMemory),
+            plantStage: plantStageAfterGrowth(updatedMemory, growthMetrics),
           }
           return {
             ...updatedWithStage,
@@ -701,7 +744,7 @@ function App() {
           const updatedWithStage = {
             ...updatedMemory,
             growthMetrics,
-            plantStage: getPlantStage(updatedMemory),
+            plantStage: plantStageAfterGrowth(updatedMemory, growthMetrics),
           }
           return {
             ...updatedWithStage,
@@ -791,6 +834,7 @@ function App() {
       text: memory.text,
       date: memory.date,
       location: memory.location,
+      linkUrl: memory.linkUrl,
       plantedAt: memory.plantedAt,
       emotionalTone: memory.emotionalTone,
       plantStage: memory.plantStage,
@@ -866,7 +910,7 @@ function App() {
           return {
             ...updatedMemory,
             growthMetrics,
-            plantStage: getPlantStage(updatedMemory),
+            plantStage: plantStageAfterGrowth(updatedMemory, growthMetrics),
           }
         })
       })
@@ -1401,6 +1445,8 @@ function App() {
                       mood={gardenMood}
                       onPlantHybrid={handlePlantHybrid}
                       onEnterWalk={handleEnterWalk}
+                      landscapeView={safePreferences.gardenLandscapeView}
+                      onLandscapeViewChange={handleLandscapeViewChange}
                     />
                   </SectionErrorBoundary>
                 )}
@@ -1467,11 +1513,17 @@ function App() {
                           onClick={() => handleMemoryClick(memory)}
                           className="flex gap-4 p-4 bg-card rounded-lg border border-border cursor-pointer hover:border-primary/50 transition-colors"
                         >
-                          <img
-                            src={memory.photoUrl}
-                            alt="Memory"
-                            className="w-20 h-20 md:w-32 md:h-32 object-cover rounded-md flex-shrink-0"
-                          />
+                          {memory.photoUrl?.trim() ? (
+                            <img
+                              src={memory.photoUrl}
+                              alt="Memory"
+                              className="w-20 h-20 md:w-32 md:h-32 object-cover rounded-md flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-20 h-20 md:w-32 md:h-32 rounded-md flex-shrink-0 bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                              No photo
+                            </div>
+                          )}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-muted-foreground mb-2">
                               {new Date(memory.date).toLocaleDateString('en-US', {
@@ -1480,7 +1532,7 @@ function App() {
                                 day: 'numeric',
                               })}
                             </p>
-                            <p className="line-clamp-2">{memory.text}</p>
+                            <p className="line-clamp-2">{memoryPrimaryLabel(memory)}</p>
                           </div>
                         </motion.div>
                       ))
@@ -1604,6 +1656,7 @@ function App() {
         onBoost={handleOpenBoost}
         onUpdateTraits={handleUpdateTraits}
         onCustomize={selectedMemory ? () => handleOpenCosmeticsEditor(selectedMemory) : undefined}
+        onEditPlant={selectedMemory ? () => setIsEditPlantOpen(true) : undefined}
         onCrossPollinate={handleCrossPollinateInit}
         aiReflection={aiReflection}
         isLoadingAI={isLoadingAI}
@@ -1718,7 +1771,17 @@ function App() {
           open={isStyleCustomizerOpen}
           onClose={() => setIsStyleCustomizerOpen(false)}
           currentStyle={safePreferences.plantStylePreference}
+          landscapeView={safePreferences.gardenLandscapeView}
+          onLandscapeViewChange={handleLandscapeViewChange}
           onSave={handleSavePlantStyle}
+        />
+
+        <EditPlantDialog
+          open={isEditPlantOpen && selectedMemory !== null}
+          memory={selectedMemory}
+          unlockState={safePreferences.unlockState}
+          onClose={() => setIsEditPlantOpen(false)}
+          onSave={handleEditPlantSave}
         />
 
         {/* Constraint System: Unlocks & Cosmetics */}

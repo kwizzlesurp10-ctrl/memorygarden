@@ -6,6 +6,7 @@
  * Callers should never receive raw exceptions from these helpers.
  */
 
+import { parseHttpHttpsLinkUrl, MAX_MEMORY_LINK_URL_LENGTH } from './memory-link'
 import type {
   Memory,
   EmotionalTone,
@@ -286,6 +287,32 @@ export function validatePlantTraits(
   return errors
 }
 
+function validateMemoryPhotoUrl(value: unknown, field = 'photoUrl'): ValidationError[] {
+  if (value === undefined || value === null || value === '') return []
+  if (typeof value !== 'string') {
+    return [fieldError(field, 'photoUrl must be a string')]
+  }
+  if (value.startsWith('idb://') || value.startsWith('http://') || value.startsWith('https://')) {
+    return []
+  }
+  return validateDataUrl(value, field, MAX_PHOTO_SIZE_BYTES, true)
+}
+
+function validateMemoryLinkUrl(value: unknown, field = 'linkUrl'): ValidationError[] {
+  if (value === undefined || value === null || value === '') return []
+  if (typeof value !== 'string') {
+    return [fieldError(field, 'linkUrl must be a string')]
+  }
+  const parsed = parseHttpHttpsLinkUrl(value)
+  if (!parsed.valid) {
+    return [fieldError(field, parsed.error ?? 'invalid link URL')]
+  }
+  if (parsed.normalized.length > MAX_MEMORY_LINK_URL_LENGTH) {
+    return [fieldError(field, `linkUrl must be at most ${MAX_MEMORY_LINK_URL_LENGTH} characters`)]
+  }
+  return []
+}
+
 /**
  * Validate a full `Memory` object.
  * Returns `ok` with the typed memory on success, or `fail` with a list of errors.
@@ -302,11 +329,11 @@ export function validateMemory(input: unknown): ValidationResult<Memory> {
     errors.push(fieldError('id', 'id is required'))
   }
 
-  // Photo (required, data URL)
-  errors.push(...validateDataUrl(m.photoUrl, 'photoUrl'))
+  errors.push(...validateMemoryPhotoUrl(m.photoUrl))
 
-  // Memory text
-  errors.push(...validateText(m.text, 'text', MAX_MEMORY_TEXT_LENGTH))
+  errors.push(...validateText(m.text, 'text', MAX_MEMORY_TEXT_LENGTH, false))
+
+  errors.push(...validateMemoryLinkUrl(m.linkUrl))
 
   // Date
   errors.push(...validateDateString(m.date, 'date'))
@@ -369,7 +396,16 @@ export function validateMemory(input: unknown): ValidationResult<Memory> {
   }
 
   if (errors.length > 0) return fail(errors)
-  return ok(m as Memory)
+
+  const linkUrl = typeof m.linkUrl === 'string' ? m.linkUrl : ''
+  const normalizedLink = linkUrl.trim() ? parseHttpHttpsLinkUrl(linkUrl).normalized : undefined
+  const text = typeof m.text === 'string' ? m.text : ''
+  return ok({
+    ...(m as Memory),
+    text: text.trim(),
+    photoUrl: typeof m.photoUrl === 'string' ? m.photoUrl : '',
+    linkUrl: normalizedLink || undefined,
+  })
 }
 
 /**
@@ -520,6 +556,13 @@ export function validateUserPreferences(input: unknown): ValidationResult<Partia
   }
   if (p.lastVisit !== undefined) {
     errors.push(...validateDateString(p.lastVisit, 'lastVisit'))
+  }
+
+  if (p.gardenLandscapeView !== undefined) {
+    const validViews = new Set(['pond', 'lakeside', 'meadow', 'garden_path'])
+    if (!validViews.has(p.gardenLandscapeView)) {
+      errors.push(fieldError('gardenLandscapeView', 'must be pond, lakeside, meadow, or garden_path'))
+    }
   }
 
   if (errors.length > 0) return fail(errors)

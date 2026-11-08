@@ -318,6 +318,25 @@ describe('validateMemory', () => {
     expect(result.ok).toBe(false)
   })
 
+  it('allows empty text when a photo or link is present', () => {
+    expect(
+      validateMemory(makeMinimalMemory({ text: '', linkUrl: 'https://example.com/page' })).ok,
+    ).toBe(true)
+    expect(validateMemory(makeMinimalMemory({ text: '' })).ok).toBe(true)
+  })
+
+  it('allows legacy memories with empty text when photo is present', () => {
+    const result = validateMemory(makeMinimalMemory({ text: '' }))
+    expect(result.ok).toBe(true)
+  })
+
+  it('rejects invalid linkUrl schemes', () => {
+    const result = validateMemory(
+      makeMinimalMemory({ linkUrl: 'javascript:alert(1)' }),
+    )
+    expect(result.ok).toBe(false)
+  })
+
   it('fails for invalid emotional tone', () => {
     const result = validateMemory(makeMinimalMemory({ emotionalTone: 'angry' as 'peaceful' }))
     expect(result.ok).toBe(false)

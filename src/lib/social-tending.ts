@@ -188,7 +188,12 @@ export function recordReciprocalWatering(
   }
   addOrUpdateBond(updatedBond)
 
-  const notificationMessage = `🌱 ${visitorUser.login} watered '${memory.text.slice(0, 32)}...'! Their care nourished a fresh bloom.`
+  const memoryLabel = memory.text?.trim()
+    ? `${memory.text.slice(0, 32)}${memory.text.length > 32 ? '...' : ''}`
+    : memory.linkUrl
+      ? 'your linked memory'
+      : 'your memory'
+  const notificationMessage = `🌱 ${visitorUser.login} watered '${memoryLabel}'! Their care nourished a fresh bloom.`
 
   return {
     memory: updatedMemory,
