@@ -1,5 +1,6 @@
 import type { PlantStage, PlantVariety, Season } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
+import type { PlantFacing } from '@/lib/garden/landscape-world'
 
 export interface PlantProps {
   stage: PlantStage
@@ -15,6 +16,9 @@ export interface SeededPlantContext {
   rimStrength: number
   motion: boolean
   rng: () => number
+  facing?: PlantFacing
+  rimFromLeft?: boolean
+  geneticsSeed?: string
 }
 
 export type SeededVariety = Extract<

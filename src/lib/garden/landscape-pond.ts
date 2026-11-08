@@ -1,6 +1,9 @@
 import type { GardenLandscapeView } from '@/lib/types'
 import { SCENE_H, SCENE_W } from '@/lib/garden/scene-constants'
 
+export const WATER_OVERSCAN_L = -340
+export const WATER_OVERSCAN_R = SCENE_W + 340
+
 /** Classic horizon / back of near hill — unchanged across views. */
 export const LANDSCAPE_HORIZON_Y = 470
 
@@ -9,8 +12,8 @@ export const POND_FULL_DEPTH = SCENE_H - LANDSCAPE_HORIZON_Y
 /** Fraction of pond depth still visible (1 = full pond like default). */
 const VISIBLE_POND_FRACTION: Record<GardenLandscapeView, number> = {
   pond: 1,
-  lakeside: 0.55,
-  meadow: 0.25,
+  lakeside: 0.42,
+  meadow: 0.22,
   garden_path: 0,
 }
 
@@ -38,19 +41,46 @@ function wavyShorePoints(waterTopY: number): { left: number; mid: number; right:
 export function bandWaterPathD(waterTopY: number): string {
   const s = wavyShorePoints(waterTopY)
   return [
-    `M -12 ${s.left}`,
+    `M ${WATER_OVERSCAN_L} ${s.left}`,
     `Q 220 ${s.mid} 480 ${waterTopY - 2}`,
     `Q 760 ${waterTopY + 1} 1040 ${s.right}`,
-    `Q 1220 ${waterTopY - 3} 1212 ${waterTopY + 4}`,
-    `L 1212 ${SCENE_H + 12}`,
-    `L -12 ${SCENE_H + 12}`,
+    `Q 1320 ${waterTopY - 3} 1380 ${waterTopY + 4}`,
+    `Q 1460 ${waterTopY + 2} ${WATER_OVERSCAN_R} ${waterTopY + 6}`,
+    `L ${WATER_OVERSCAN_R} ${SCENE_H + 16}`,
+    `L ${WATER_OVERSCAN_L} ${SCENE_H + 16}`,
     'Z',
   ].join(' ')
 }
 
 export function bandShoreLineD(waterTopY: number): string {
   const s = wavyShorePoints(waterTopY)
-  return `M -12 ${s.left} Q 220 ${s.mid} 480 ${waterTopY - 2} Q 760 ${waterTopY + 1} 1040 ${s.right} Q 1220 ${waterTopY - 3} 1212 ${waterTopY + 4}`
+  return [
+    `M ${WATER_OVERSCAN_L} ${s.left}`,
+    `Q 220 ${s.mid} 480 ${waterTopY - 2}`,
+    `Q 760 ${waterTopY + 1} 1040 ${s.right}`,
+    `Q 1320 ${waterTopY - 3} 1380 ${waterTopY + 4}`,
+    `Q 1460 ${waterTopY + 2} ${WATER_OVERSCAN_R} ${waterTopY + 6}`,
+  ].join(' ')
+}
+
+/** Shallow horizontal wave strokes — must span full scene width (no ripple 1040 cap). */
+export function bandWaterShimmerLinesD(waterTopY: number): string[] {
+  const depth = SCENE_H - waterTopY
+  const bandCount = Math.min(7, Math.max(4, Math.floor(depth / 38)))
+  const lines: string[] = []
+  for (let i = 0; i < bandCount; i++) {
+    const y = waterTopY + 22 + i * (depth / (bandCount + 0.5))
+    const wobble = (i % 2 === 0 ? -2.5 : 2) + (i % 3) * 0.4
+    lines.push(
+      [
+        `M ${WATER_OVERSCAN_L} ${y.toFixed(1)}`,
+        `Q ${220 + i * 48} ${(y + wobble).toFixed(1)} ${520 + i * 12} ${(y - wobble * 0.6).toFixed(1)}`,
+        `Q ${860 - i * 8} ${(y + wobble * 0.5).toFixed(1)} ${SCENE_W * 0.72 + i * 6} ${y.toFixed(1)}`,
+        `T ${WATER_OVERSCAN_R} ${(y + wobble * 0.3).toFixed(1)}`,
+      ].join(' '),
+    )
+  }
+  return lines
 }
 
 /** Garden path: same pond cropped to ~10% of frame at bottom-left. */
@@ -100,7 +130,7 @@ export function getPondGeometry(view: GardenLandscapeView): PondGeometry {
 
 /** Ground plane — always covers horizon to bottom (full bleed). */
 export function groundPlanePathD(): string {
-  return `M -12 ${LANDSCAPE_HORIZON_Y} L ${SCENE_W + 12} ${LANDSCAPE_HORIZON_Y} L ${SCENE_W + 12} ${SCENE_H + 8} L -12 ${SCENE_H + 8} Z`
+  return `M -280 ${LANDSCAPE_HORIZON_Y} L ${SCENE_W + 280} ${LANDSCAPE_HORIZON_Y} L ${SCENE_W + 280} ${SCENE_H + 8} L -280 ${SCENE_H + 8} Z`
 }
 
 /** Earthen garden path (filled), wide at foreground, narrow toward horizon. */
@@ -140,7 +170,7 @@ export function pointInWaterBand(
     return px <= 320 && py >= 595 && py <= SCENE_H + 4
   }
   if (!geom.bandWater) return false
-  return py >= geom.waterTopY - 4 && py <= SCENE_H + 4 && px >= -12 && px <= SCENE_W + 12
+  return py >= geom.waterTopY - 4 && py <= SCENE_H + 4 && px >= WATER_OVERSCAN_L && px <= WATER_OVERSCAN_R
 }
 
 export function waterReflectionCenterY(geom: PondGeometry): number {

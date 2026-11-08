@@ -1,5 +1,6 @@
 import { createElement as h } from 'react'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs'
+import { Resvg } from '@resvg/resvg-js'
 import { resolve } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, it } from 'vitest'
@@ -9,11 +10,22 @@ import { buildSeededPlant } from '@/components/plants/seeded-builders'
 import { gardenRng } from '@/lib/garden/prng'
 import { indexToPlantStage } from '@/lib/garden/stage'
 import { PLANT_STAGES_ORDER } from '@/lib/garden/plant-stages'
-import { GARDEN_LANDSCAPE_VIEWS, projectMemoryToScene } from '@/lib/garden/landscape-view'
+import { GARDEN_LANDSCAPE_VIEWS } from '@/lib/garden/landscape-view'
+import { projectMemoryToSceneWorld } from '@/lib/garden/landscape-world'
+import { createGardenStarterDecor } from '@/lib/garden/garden-starter-decor'
 import type { SeededVariety } from '@/components/plants/types'
 import { SeededPlantSvg } from '@/components/plants/SeededPlantSvg'
 
 const outDir = process.env.ARTIFACT_DIR || '/opt/cursor/artifacts'
+
+function writeSvgAndPng(fileStem: string, svg: string): void {
+  const svgPath = resolve(outDir, `${fileStem}.svg`)
+  writeFileSync(svgPath, svg, 'utf8')
+  const png = new Resvg(readFileSync(svgPath, 'utf8'), {
+    fitTo: { mode: 'width', value: 1200 },
+  }).render().asPng()
+  writeFileSync(resolve(outDir, `${fileStem}.png`), png)
+}
 
 const STAGE_CELL_W = 118
 
@@ -56,7 +68,7 @@ function stageCell(
 }
 
 describe('garden visual artifacts', () => {
-  it('writes landscape views and stage row SVGs when ARTIFACT_CAPTURE=1', () => {
+  it('writes landscape views and stage row SVGs when ARTIFACT_CAPTURE=1', { timeout: 120_000 }, () => {
     if (process.env.ARTIFACT_CAPTURE !== '1') return
 
     mkdirSync(outDir, { recursive: true })
@@ -68,10 +80,81 @@ describe('garden visual artifacts', () => {
       { id: 'm3', x: 780, y: 455 },
       { id: 'm4', x: 980, y: 442 },
     ]
+    const starterDecor = createGardenStarterDecor(4242)
+
+    const renderScene = (
+      view: (typeof GARDEN_LANDSCAPE_VIEWS)[number],
+      memoryPlants: ReturnType<typeof h>[],
+      starter = starterDecor,
+      fileStem: string,
+    ) => {
+      const body = renderToStaticMarkup(
+        h(GardenSceneSvg, {
+          palette,
+          sceneKey: view[0],
+          gardenSeed: 7,
+          rimStrength: 0.6,
+          motion: false,
+          landscapeView: view,
+          shedStyle: 'storybook',
+          planted: [],
+          candles: [],
+          memoryPlants,
+          starterDecor: starter,
+        }),
+      )
+      const wrapped = body.includes('xmlns=') ? body : body.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')
+      writeSvgAndPng(`${fileStem}-${view}`, wrapped)
+    }
+
+    for (const view of GARDEN_LANDSCAPE_VIEWS) {
+      renderScene(view, [], starterDecor, 'garden-starter')
+    }
+
+    const nightPalette = todPalette(22.5, 'summer')
+    const nightBody = renderToStaticMarkup(
+      h(GardenSceneSvg, {
+        palette: nightPalette,
+        sceneKey: 'pond-night',
+        gardenSeed: 7,
+        rimStrength: 0.85,
+        motion: false,
+        landscapeView: 'pond',
+        shedStyle: 'storybook',
+        planted: [],
+        candles: [],
+        memoryPlants: [],
+        starterDecor,
+      }),
+    )
+    const nightWrapped = nightBody.includes('xmlns=')
+      ? nightBody
+      : nightBody.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')
+    writeSvgAndPng('garden-starter-pond-night', nightWrapped)
+
+    const lakesideNightBody = renderToStaticMarkup(
+      h(GardenSceneSvg, {
+        palette: nightPalette,
+        sceneKey: 'lakeside-night',
+        gardenSeed: 7,
+        rimStrength: 0.85,
+        motion: false,
+        landscapeView: 'lakeside',
+        shedStyle: 'storybook',
+        planted: [],
+        candles: [],
+        memoryPlants: [],
+        starterDecor,
+      }),
+    )
+    const lakesideNightWrapped = lakesideNightBody.includes('xmlns=')
+      ? lakesideNightBody
+      : lakesideNightBody.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')
+    writeSvgAndPng('garden-starter-lakeside-night', lakesideNightWrapped)
 
     for (const view of GARDEN_LANDSCAPE_VIEWS) {
       const memoryPlants = samplePositions.map((mem, i) => {
-        const pos = projectMemoryToScene(mem, view)
+        const pos = projectMemoryToSceneWorld(mem, view)
         const varieties: SeededVariety[] = ['flower', 'tree', 'herb', 'wildflower']
         const variety = varieties[i]
         return h(
@@ -85,25 +168,12 @@ describe('garden visual artifacts', () => {
             rimStrength: 0.6,
             motion: false,
             scale: 0.85 + i * 0.05,
+            facing: pos.facing,
           }),
         )
       })
 
-      const body = renderToStaticMarkup(
-        h(GardenSceneSvg, {
-          palette,
-          sceneKey: view[0],
-          gardenSeed: 7,
-          rimStrength: 0.6,
-          motion: false,
-          landscapeView: view,
-          shedStyle: 'storybook',
-          planted: [],
-          candles: [],
-          memoryPlants,
-        }),
-      )
-      writeFileSync(resolve(outDir, `garden-view-${view}.svg`), body, 'utf8')
+      renderScene(view, memoryPlants, undefined, 'garden-memories')
     }
 
     const flowerLayout = VARIETY_STAGE_LAYOUT.flower

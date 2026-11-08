@@ -340,6 +340,26 @@ export interface GentleWhisper {
 
 export type GardenLandscapeView = 'pond' | 'lakeside' | 'meadow' | 'garden_path'
 
+export interface WorldDecorMushroom {
+  id: string
+  wx: number
+  wz: number
+  geneticsSeed: string
+  scale: number
+}
+
+export interface GardenStarterDecor {
+  v: 1
+  gardenSeed: number
+  elderTree: {
+    wx: number
+    wz: number
+    geneticsSeed: string
+    scale: number
+  }
+  mushrooms: WorldDecorMushroom[]
+}
+
 export interface UserPreferences {
   hasCompletedOnboarding: boolean
   soundEnabled: boolean
@@ -349,6 +369,8 @@ export interface UserPreferences {
   gardenDefaults?: GardenDefaults
   /** 2D garden camera; omitted = pond (legacy default). */
   gardenLandscapeView?: GardenLandscapeView
+  /** Persistent starter scenery for empty gardens (not memories). */
+  gardenStarterDecor?: GardenStarterDecor
   cloudSyncEnabled?: boolean
 }
 

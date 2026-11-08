@@ -20,12 +20,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const appPath = path.join(root, 'App.tsx')
 const canvasPath = path.join(root, 'components/GardenCanvas.tsx')
 
-function gardenFalseBranch(source: string): string {
+function gardenViewBranch(source: string): string {
   const match = source.match(
-    /\{safeMemories\.length === 0 \? \(\s*<EmptyGarden[\s\S]*?\) : \(([\s\S]*?)\)\s*\}/,
+    /<SectionErrorBoundary label="garden view">([\s\S]*?)<\/SectionErrorBoundary>/,
   )
   if (!match) {
-    throw new Error('Could not locate garden empty/canvas ternary in App.tsx')
+    throw new Error('Could not locate garden view SectionErrorBoundary in App.tsx')
   }
   return match[1]
 }
@@ -58,16 +58,11 @@ describe('production parse path for garden view (App + GardenCanvas)', () => {
 
   it('uses a single SectionErrorBoundary root with onPlantHybrid on GardenCanvas', async () => {
     const source = await assertTransforms(appPath)
-    const falseBranch = gardenFalseBranch(source)
+    const gardenBranch = gardenViewBranch(source)
 
-    expect(falseBranch.trimStart().startsWith('<SectionErrorBoundary')).toBe(true)
-    expect(falseBranch).toContain('label="garden view"')
-    expect(falseBranch).toContain('<GardenCanvas')
-    expect(falseBranch).toContain('onPlantHybrid={handlePlantHybrid}')
-    expect(falseBranch).toContain('</SectionErrorBoundary>')
-    expect(falseBranch).not.toMatch(
-      /<GardenCanvas[\s\S]*?\/>\s*<SectionErrorBoundary/,
-    )
+    expect(gardenBranch).toContain('<GardenCanvas')
+    expect(gardenBranch).toContain('onPlantHybrid={handlePlantHybrid}')
+    expect(gardenBranch).toContain('starterDecor={safePreferences.gardenStarterDecor}')
 
     // No duplicate garden-helpers import block
     const helperImports = source.match(
