@@ -56,9 +56,9 @@ function plankWall(
   h: number,
   C: ScenePalette,
 ): ReactNode[] {
-  const wall = C.glow
+  const wall = C.hills[1]
   const planks: ReactNode[] = [
-    <rect key="wall" x={x} y={y} width={w} height={h} fill={wall} opacity={0.42} stroke={C.rim} strokeWidth={0.6} strokeOpacity={0.25} />,
+    <rect key="wall" x={x} y={y} width={w} height={h} fill={wall} opacity={0.72} stroke={C.rim} strokeWidth={0.55} strokeOpacity={0.28} />,
   ]
   for (let i = 1; i < 4; i++) {
     planks.push(
@@ -128,9 +128,20 @@ export function shedForFacing(
         ...shedBaseGrass(C),
         ...plankWall(-36, -34, 72, 34, C),
         <path key="roof" d="M -46 -34 L 0 -68 L 46 -34 Z" fill={roof} stroke={C.rim} strokeWidth={0.65} strokeOpacity={0.3} />,
+        <path key="roof-shade" d="M 2 -64 L 44 -34 L 46 -34 L 0 -68 Z" fill={C.sil} opacity={0.22} />,
         <path key="eave" d="M -50 -34 L 50 -34 L 48 -28 L -48 -28 Z" fill={roof} opacity={0.92} />,
+        <path key="eave-shadow" d="M -48 -28 L 48 -28 L 46 -24 L -46 -24 Z" fill={C.sil} opacity={0.28} />,
         <rect key="chimney" x={20} y={-62} width={8} height={20} fill={roof} />,
-        <rect key="backwin" x={-8} y={-26} width={16} height={10} fill={C.glow} opacity={0.62} />,
+        warmWindowGlow(-8, -26, 16, 10, C),
+        <path
+          key="door-hint"
+          d="M -9 0 L -9 -20 Q 0 -26 9 -20 L 9 0"
+          fill={C.bank}
+          opacity={0.7}
+          stroke={C.rim}
+          strokeWidth={0.45}
+          strokeOpacity={0.25}
+        />,
       )
       break
     case 'left':
@@ -160,7 +171,8 @@ function sideElevation(C: ScenePalette): ReactNode {
       {shedBaseGrass(C)}
       {plankWall(-44, -36, 44, 36, C)}
       <path key="roof-slope" d="M -46 -36 L 6 -58 L 6 -20 L -46 -20 Z" fill={roof} stroke={C.rim} strokeWidth={0.65} strokeOpacity={0.32} />
-      <path key="roof-shade" d="M -4 -52 L 6 -58 L 6 -20 L -20 -20 Z" fill={C.sil} opacity={0.22} />
+      <path key="roof-shade" d="M -4 -52 L 6 -58 L 6 -20 L -20 -20 Z" fill={C.sil} opacity={0.18} />
+      <path key="wall-edge-lit" d="M -44 -36 L -44 -1 L -38 -1 L -38 -36 Z" fill={C.glow} opacity={0.28} />
       <path key="eave" d="M -50 -20 L 10 -20 L 10 -14 L -50 -14 Z" fill={roof} opacity={0.94} />
       {warmWindowGlow(-36, -28, 12, 10, C)}
       <rect key="chimney" x={-12} y={-56} width={7} height={18} fill={roof} />

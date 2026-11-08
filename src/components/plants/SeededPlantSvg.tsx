@@ -34,7 +34,7 @@ export function SeededPlantSvg({
   const seedN = seedFromGenetics(geneticsSeed, `${variety}-${stage}`)
   const rng = gardenRng(seedN)
   const stageIndex = plantStageToIndex(stage)
-  const ctx = { stageIndex, palette, rimStrength, motion, rng, facing, rimFromLeft }
+  const ctx = { stageIndex, palette, rimStrength, motion, rng, facing, rimFromLeft, geneticsSeed }
   const nodes = buildSeededPlant(variety, ctx)
   const swayStyle = getSwayStyle(seedN, motion, variety === 'tree')
 

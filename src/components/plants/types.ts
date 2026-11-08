@@ -18,6 +18,7 @@ export interface SeededPlantContext {
   rng: () => number
   facing?: PlantFacing
   rimFromLeft?: boolean
+  geneticsSeed?: string
 }
 
 export type SeededVariety = Extract<

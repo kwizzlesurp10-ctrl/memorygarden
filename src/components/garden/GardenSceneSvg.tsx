@@ -577,7 +577,9 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
   const worldLayer = useMemo(() => {
     const items = [
       ...buildStarterWorldPlants(starterDecor, landscapeView, C, rim, motion),
-      ...buildWorldSceneryItems(landscapeView, C, rim, motion, seed, shedStyle, onShedClick),
+      ...buildWorldSceneryItems(landscapeView, C, rim, motion, seed, shedStyle, onShedClick, {
+        includeDistantTrees: !starterDecor,
+      }),
     ].sort((a, b) => a.depth - b.depth)
     return sortWorldLayer(items)
   }, [starterDecor, landscapeView, C, rim, motion, seed, shedStyle, onShedClick])

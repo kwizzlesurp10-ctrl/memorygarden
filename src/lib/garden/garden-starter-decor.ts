@@ -76,6 +76,17 @@ export function createGardenStarterDecor(gardenSeed: number): GardenStarterDecor
     }
   }
 
+  const neutralCaps = ['cream', 'tan', 'ochre'] as const
+  const redCapCount = Math.min(mushrooms.length, 1 + Math.floor(r() * 2))
+  const redSlots = new Set<number>()
+  while (redSlots.size < redCapCount) {
+    redSlots.add(Math.floor(r() * mushrooms.length))
+  }
+  const cappedMushrooms = mushrooms.map((m, idx) => ({
+    ...m,
+    geneticsSeed: `${m.geneticsSeed}-${redSlots.has(idx) ? 'red-brown' : neutralCaps[idx % neutralCaps.length]}`,
+  }))
+
   return {
     v: 1,
     gardenSeed,
@@ -85,7 +96,7 @@ export function createGardenStarterDecor(gardenSeed: number): GardenStarterDecor
       geneticsSeed: `starter-elder-${gardenSeed}`,
       scale: 2.05,
     },
-    mushrooms,
+    mushrooms: cappedMushrooms,
   }
 }
 

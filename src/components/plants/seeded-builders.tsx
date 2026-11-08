@@ -526,6 +526,7 @@ export function buildSeededPlant(
       ctx.rimStrength,
       ctx.stageIndex,
       ctx.rimFromLeft ?? true,
+      ctx.geneticsSeed,
     )
   }
   return BUILDERS[variety](ctxOrS, r!, C!, rim!, motion!)

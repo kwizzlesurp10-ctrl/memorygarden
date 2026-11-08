@@ -11,6 +11,7 @@ export function applyPlantFacing(
   rim: number,
   stageIndex: number,
   rimFromLeft = true,
+  geneticsSeed?: string,
 ): ReactNode[] {
   if (variety === 'tree' && stageIndex >= 7) {
     return [e('g', { key: 'elder-facing' }, buildElderTreeFacing(facing, C, rim, 1, rimFromLeft))]
@@ -19,7 +20,7 @@ export function applyPlantFacing(
     return [e('g', { key: 'tree-facing' }, buildElderTreeFacing(facing, C, rim * 0.85, 0.88, rimFromLeft))]
   }
   if (variety === 'mushroom' && stageIndex >= 3) {
-    return [e('g', { key: 'mush-cluster' }, buildReadableMushroomCluster(facing, C, rim, stageIndex))]
+    return [e('g', { key: 'mush-cluster' }, buildReadableMushroomCluster(facing, C, rim, stageIndex, geneticsSeed))]
   }
   const lit = rimFromLeft ? 1 : -1
   const accents = memoryFacingAccents(variety, facing, C, rim, stageIndex, lit)
@@ -84,18 +85,32 @@ function canopyFill(tone: CanopyTone, C: HybridPlantPalette): string {
   }
 }
 
-/** Irregular scalloped blob — many small bumps instead of one smooth ellipse. */
-function foliageBlobPath(cx: number, cy: number, rx: number, ry: number, lobes: number, phase: number): string {
-  const steps = lobes * 2
-  let d = ''
-  for (let i = 0; i <= steps; i++) {
-    const a = (i / steps) * Math.PI * 2
-    const wobble = 0.9 + 0.1 * Math.cos(a * lobes + phase)
-    const px = cx + Math.cos(a) * rx * wobble
-    const py = cy + Math.sin(a) * ry * wobble
-    d += `${i === 0 ? 'M' : 'L'} ${px.toFixed(1)} ${py.toFixed(1)} `
+/** Soft cloud silhouette from smooth cubic bezier segments (no hard polygon edges). */
+function smoothFoliagePath(cx: number, cy: number, rx: number, ry: number, phase: number): string {
+  const segments = 14
+  const points: Array<[number, number]> = []
+  for (let i = 0; i < segments; i++) {
+    const t = (i / segments) * Math.PI * 2
+    const bump =
+      0.84 +
+      0.1 * Math.sin(t * 2.4 + phase) +
+      0.06 * Math.cos(t * 4.1 - phase * 0.65) +
+      0.04 * Math.sin(t * 6.2 + phase * 1.3)
+    points.push([cx + Math.cos(t) * rx * bump, cy + Math.sin(t) * ry * bump])
   }
-  return `${d}Z`
+  let d = `M ${points[0][0].toFixed(1)} ${points[0][1].toFixed(1)}`
+  for (let i = 0; i < segments; i++) {
+    const [x1, y1] = points[i]
+    const [x2, y2] = points[(i + 1) % segments]
+    const [x0, y0] = points[(i - 1 + segments) % segments]
+    const [x3, y3] = points[(i + 2) % segments]
+    const c1x = x1 + (x2 - x0) / 6
+    const c1y = y1 + (y2 - y0) / 6
+    const c2x = x2 - (x3 - x1) / 6
+    const c2y = y2 - (y3 - y1) / 6
+    d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`
+  }
+  return `${d} Z`
 }
 
 function foliageClump(
@@ -106,17 +121,15 @@ function foliageClump(
   ry: number,
   tone: CanopyTone,
   C: HybridPlantPalette,
-  rim: number,
+  _rim: number,
   phase: number,
 ): ReactNode {
+  void _rim
   return e('path', {
     key,
-    d: foliageBlobPath(cx, cy, rx, ry, 4, phase),
+    d: smoothFoliagePath(cx, cy, rx, ry, phase),
     fill: canopyFill(tone, C),
-    stroke: C.sil,
-    strokeOpacity: 0.04 * rim,
-    strokeWidth: 0.25,
-    strokeLinejoin: 'round',
+    stroke: 'none',
   })
 }
 
@@ -148,13 +161,19 @@ function elderCrownBranches(C: HybridPlantPalette, flip: number): ReactNode[] {
 
 function elderCrownMass(facing: 'front' | 'back' | 'side', C: HybridPlantPalette, flip: number): ReactNode {
   const f = flip
-  const d =
+  const mass =
     facing === 'front'
-      ? `M ${-46 * f} -56 Q ${-58 * f} -96 ${-32 * f} -112 Q ${-4 * f} -120 ${24 * f} -108 Q ${52 * f} -92 ${54 * f} -68 Q ${50 * f} -48 ${26 * f} -40 Q ${-2 * f} -36 ${-30 * f} -44 Q ${-52 * f} -52 ${-46 * f} -56 Z`
+      ? { cx: 4 * f, cy: -78, rx: 52, ry: 38, phase: 0.15 }
       : facing === 'back'
-        ? `M ${40 * f} -58 Q ${56 * f} -94 ${28 * f} -110 Q ${0} -116 ${-26 * f} -102 Q ${-50 * f} -88 ${-48 * f} -64 Q ${-42 * f} -46 ${-16 * f} -40 Q ${12 * f} -38 ${38 * f} -48 Q ${54 * f} -54 ${40 * f} -58 Z`
-        : `M ${36 * f} -52 Q ${52 * f} -88 ${26 * f} -106 Q ${0 * f} -110 ${-22 * f} -96 Q ${-44 * f} -80 ${-40 * f} -58 Q ${-34 * f} -42 ${-8 * f} -38 Q ${18 * f} -36 ${36 * f} -52 Z`
-  return e('path', { key: 'crown-mass', d, fill: C.sil, opacity: 0.94 })
+        ? { cx: -2 * f, cy: -76, rx: 50, ry: 36, phase: 0.9 }
+        : { cx: 6 * f, cy: -74, rx: 48, ry: 34, phase: 0.55 }
+  return e('path', {
+    key: 'crown-mass',
+    d: smoothFoliagePath(mass.cx, mass.cy, mass.rx, mass.ry, mass.phase),
+    fill: C.sil,
+    opacity: 0.92,
+    stroke: 'none',
+  })
 }
 
 /** Broad old-tree crown: many small clumps, value steps, deliberate gaps for sky. */
@@ -211,17 +230,10 @@ function elderOrganicCanopy(
 
   const highlights: ClumpSpec[] =
     facing === 'front'
-      ? [
-          ['h0', 14 * sun * f, -108, 11, 8, 'highlight', 0.4],
-          ['h1', -8 * sun * f, -114, 10, 7, 'highlight', 1.6],
-          ['h2', 34 * sun * f, -86, 9, 7, 'highlight', 2.2],
-        ]
+      ? [['h0', 10 * sun * f, -112, 7, 5, 'highlight', 0.4]]
       : facing === 'back'
-        ? [['h0', -10 * sun * f, -106, 10, 7, 'highlight', 0.5]]
-        : [
-            ['h0', 20 * sun * f, -96, 10, 7, 'highlight', 0.8],
-            ['h1', -6 * sun * f, -102, 9, 6, 'highlight', 1.9],
-          ]
+        ? [['h0', -8 * sun * f, -108, 7, 5, 'highlight', 0.5]]
+        : [['h0', 16 * sun * f, -100, 7, 5, 'highlight', 0.8]]
 
   const toneOrder: Record<CanopyTone, number> = {
     deep: 0,
@@ -324,62 +336,72 @@ function buildElderTreeFacing(
   const litSide = rimFromLeft ? 1 : -1
   const out: ReactNode[] = []
 
+  const L = litSide
   const trunkCore = [
     e('path', {
       key: 'trunk',
-      d: 'M -16 2 C -19 0 -17 -2 -13 0 L -11 -42 C -9 -72 -6 -88 -3 -96 L 6 -96 C 9 -86 11 -68 13 -42 L 15 0 C 19 -2 17 1 13 2 Z',
+      d: 'M -20 2 C -24 0 -22 -3 -16 0 L -13 -40 C -11 -62 -8 -82 -5 -94 C -2 -98 4 -98 6 -94 C 8 -82 10 -62 12 -40 L 17 0 C 22 -3 20 2 15 2 Z',
       fill: bark,
       stroke: C.rim,
-      strokeOpacity: 0.35 * rim,
-      strokeWidth: 0.7,
+      strokeOpacity: 0.3 * rim,
+      strokeWidth: 0.65,
     }),
     e('path', {
-      key: 'trunk-lit',
-      d: 'M 7 -18 C 10 -46 9 -72 6 -90',
-      stroke: barkMid,
-      strokeWidth: 2,
-      fill: 'none',
-      opacity: 0.42,
-      strokeLinecap: 'round',
+      key: 'bark-lit-band',
+      d: `M ${9 * L} 0 C ${11 * L} -30 ${10 * L} -58 ${7 * L} -88 L ${4 * L} -88 C ${6 * L} -56 ${7 * L} -28 ${6 * L} 0 Z`,
+      fill: barkMid,
+      opacity: 0.44,
     }),
     e('path', {
-      key: 'trunk-shade',
-      d: 'M -9 -16 C -12 -44 -11 -70 -8 -88',
+      key: 'bark-line-1',
+      d: `M ${3.5 * L} -6 L ${4.5 * L} -78`,
       stroke: C.sil,
-      strokeWidth: 1.6,
+      strokeWidth: 0.55,
       fill: 'none',
-      opacity: 0.28,
+      opacity: 0.24,
       strokeLinecap: 'round',
     }),
+    e('path', {
+      key: 'bark-line-2',
+      d: `M ${7.5 * L} -12 L ${8.5 * L} -66`,
+      stroke: C.sil,
+      strokeWidth: 0.42,
+      fill: 'none',
+      opacity: 0.18,
+      strokeLinecap: 'round',
+    }),
+    e('circle', { key: 'joint-l', cx: -2, cy: -54, r: 4.4, fill: bark }),
     e('path', {
       key: 'limb-l',
       d: 'M -2 -54 C -12 -50 -22 -44 -28 -36',
       stroke: bark,
-      strokeWidth: 4.4,
+      strokeWidth: 5.6,
       fill: 'none',
       strokeLinecap: 'round',
     }),
+    e('circle', { key: 'joint-r', cx: 4, cy: -64, r: 3.6, fill: limbWood }),
     e('path', {
       key: 'limb-r',
       d: 'M 4 -64 C 10 -70 18 -68 22 -58',
       stroke: limbWood,
-      strokeWidth: 3.2,
+      strokeWidth: 4.2,
       fill: 'none',
       strokeLinecap: 'round',
     }),
+    e('circle', { key: 'joint-up', cx: 0, cy: -78, r: 3.2, fill: bark }),
     e('path', {
       key: 'limb-up',
       d: 'M 0 -78 C 6 -88 2 -96 -4 -100',
       stroke: bark,
-      strokeWidth: 3,
+      strokeWidth: 4,
       fill: 'none',
       strokeLinecap: 'round',
     }),
     e('path', {
       key: 'roots',
-      d: 'M -12 2 Q -26 10 -20 15 M -2 2 Q -14 11 -8 15 M 10 2 Q 22 9 24 12',
+      d: 'M -14 2 Q -30 11 -22 16 M -2 2 Q -16 12 -9 16 M 12 2 Q 26 10 28 14',
       stroke: bark,
-      strokeWidth: 2.5,
+      strokeWidth: 2.8,
       fill: 'none',
       strokeLinecap: 'round',
     }),
@@ -551,7 +573,7 @@ function oneMushroom(
   const L = litSide
   return e(
     'g',
-    { key, transform: `rotate(${tiltDeg * 0.5})` },
+    { key, transform: `rotate(${tiltDeg * 0.65})` },
     ...mushroomForegroundGrass(C, stemW, litSide),
     e('ellipse', { key: 'sh', cx: -L * stemW * 0.25, cy: 0.6, rx: capHW * 0.8, ry: stemW * 0.18, fill: MUSHROOM_SHADOW, opacity: 0.45 }),
     // stem: slightly flared base, narrower under the cap
@@ -560,11 +582,11 @@ function oneMushroom(
       d: `M ${-sw} 0 Q ${-sw * 0.7} ${capY * 0.5} ${-sw * 0.72} ${capY} L ${sw * 0.72} ${capY} Q ${sw * 0.7} ${capY * 0.5} ${sw} 0 Z`,
       fill: MUSHROOM_STEM,
     }),
-    // shaded side of the stem, away from the light
     e('path', {
       key: 'stem-shade',
-      d: `M ${-L * sw} 0 Q ${-L * sw * 0.7} ${capY * 0.5} ${-L * sw * 0.72} ${capY} L ${-L * sw * 0.15} ${capY} Q ${-L * sw * 0.2} ${capY * 0.5} ${-L * sw * 0.3} 0 Z`,
+      d: `M ${L * sw * 0.15} 0 Q ${L * sw * 0.55} ${capY * 0.45} ${L * sw * 0.75} ${capY * 0.92} L ${L * sw * 0.38} ${capY * 0.95} Q ${L * sw * 0.28} ${capY * 0.5} ${L * sw * 0.22} 0 Z`,
       fill: MUSHROOM_STEM_SHADE,
+      opacity: 0.72,
     }),
     // gill underside
     e('ellipse', { key: 'gills', cx: 0, cy: capY, rx: capHW * 0.92, ry: rise * 0.16, fill: MUSHROOM_GILLS }),
@@ -602,33 +624,46 @@ function oneMushroom(
   )
 }
 
+type MushroomCapKind = (typeof MUSHROOM_CAP)[number]
+
+function capKindFromGenetics(geneticsSeed?: string): { kind: MushroomCapKind; spots: boolean } {
+  if (!geneticsSeed) return { kind: 'tan', spots: false }
+  const match = geneticsSeed.match(/-(cream|tan|ochre|red-brown)$/)
+  if (!match) return { kind: 'tan', spots: false }
+  const kind = match[1] as MushroomCapKind
+  return { kind, spots: kind === 'red-brown' }
+}
+
 export function buildReadableMushroomCluster(
   facing: PlantFacing,
   C: HybridPlantPalette,
   rim: number,
   stage: number,
+  geneticsSeed?: string,
 ): ReactNode[] {
   const lit = facing === 'right' || facing === 'back' ? -1 : 1
+  const primary = capKindFromGenetics(geneticsSeed)
+  const secondaryKinds: MushroomCapKind[] = ['cream', 'tan', 'ochre']
   const out: ReactNode[] = []
 
-  const specs: [number, number, number, number, number, boolean][] =
-    stage >= 6
-      ? [
-          [0, -2, 1.05, 0, -5, false],
-          [-12, 3.2, 0.78, 1, 7, false],
-          [11, 1.8, 0.88, 2, -9, false],
-          [-18, 5, 0.55, 3, 11, true],
-          [16, 4.5, 0.62, 0, -8, false],
-        ]
-      : [
-          [0, -1, 1, 0, -4, false],
-          [-9, 2.4, 0.72, 1, 6, false],
-          [8, 3, 0.65, 2, -7, false],
-        ]
+  const memberCount = geneticsSeed?.includes('starter-mushroom')
+    ? 1 + (geneticsSeed.charCodeAt(geneticsSeed.length - 3) % 2)
+    : stage >= 6
+      ? 4
+      : 2
 
-  specs.forEach(([mx, my, sc, capIx, tilt, spots], i) => {
+  const layouts = [
+    { mx: 0, my: -2, sc: 1, tilt: -7 },
+    { mx: -11, my: 2.8, sc: 0.78, tilt: 11 },
+    { mx: 10, my: 2, sc: 0.72, tilt: -12 },
+    { mx: -16, my: 4.5, sc: 0.58, tilt: 8 },
+  ]
+
+  for (let i = 0; i < memberCount; i++) {
+    const { mx, my, sc, tilt } = layouts[i] ?? layouts[layouts.length - 1]
+    const capKind = i === 0 ? primary.kind : secondaryKinds[i % secondaryKinds.length]
+    const spots = i === 0 ? primary.spots : false
     const stemW = (7.5 + stage * 0.35) * sc
-    const capKind = MUSHROOM_CAP[capIx % MUSHROOM_CAP.length]
     out.push(
       e(
         'g',
@@ -636,7 +671,7 @@ export function buildReadableMushroomCluster(
         oneMushroom(`m${i}`, stemW, capKind, rim, C, lit, spots, tilt),
       ),
     )
-  })
+  }
 
   return out
 }

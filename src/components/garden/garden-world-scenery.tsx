@@ -14,6 +14,11 @@ import { cattail, grassTuft, rock } from '@/components/garden/scenery'
 import { gardenRng } from '@/lib/garden/prng'
 import type { WorldPlantRenderItem } from '@/components/garden/garden-world-plants'
 
+export interface WorldSceneryOptions {
+  /** False for new-garden starter scenes: only elder + mushrooms (no distant trees). */
+  includeDistantTrees?: boolean
+}
+
 export function buildWorldSceneryItems(
   view: GardenLandscapeView,
   palette: ScenePalette,
@@ -22,10 +27,12 @@ export function buildWorldSceneryItems(
   gardenSeed: number,
   shedStyle: ShedStyle,
   onShedClick?: () => void,
+  options?: WorldSceneryOptions,
 ): WorldPlantRenderItem[] {
   const items: WorldPlantRenderItem[] = []
+  const includeDistantTrees = options?.includeDistantTrees ?? true
 
-  for (const tree of WORLD_DISTANT_TREES) {
+  for (const tree of includeDistantTrees ? WORLD_DISTANT_TREES : []) {
     const proj = projectWorldToScene(tree, view, { objectYaw: tree.yaw, layer: 'far' })
     items.push({
       key: tree.id,
@@ -47,7 +54,10 @@ export function buildWorldSceneryItems(
     })
   }
 
-  for (const prop of WORLD_PROPS) {
+  const props =
+    includeDistantTrees ? WORLD_PROPS : WORLD_PROPS.filter((p) => p.kind === 'cattail' || p.kind === 'rock')
+
+  for (const prop of props) {
     const proj = projectWorldToScene(prop, view, { layer: 'near' })
     let inner: ReactNode
     if (prop.kind === 'rock') {
@@ -74,7 +84,7 @@ export function buildWorldSceneryItems(
     objectYaw: WORLD_COTTAGE.yaw,
     layer: 'near',
   })
-  const shedY = shedProj.y + Math.min(6, shedProj.scale * 4)
+  const shedY = shedProj.y + Math.min(10, shedProj.scale * 5.5)
   items.push({
     key: WORLD_COTTAGE.id,
     depth: shedProj.depth + 2,
