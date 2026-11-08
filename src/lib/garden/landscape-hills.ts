@@ -64,7 +64,3 @@ export function nearHillPathD(shift: number): string {
   ].join(' ')
 }
 
-/** Low band under the curved silhouette — catches pan gaps without flattening crests. */
-export function hillUnderscanRectY(): number {
-  return 448
-}

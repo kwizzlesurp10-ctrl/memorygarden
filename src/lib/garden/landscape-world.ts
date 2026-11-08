@@ -78,7 +78,13 @@ function plantBand(view: GardenLandscapeView): {
   const landY = geom.bandWater ? geom.waterTopY - 6 : LANDSCAPE_HORIZON_Y + 40
   switch (view) {
     case 'pond':
-      return { xMin: 100, xMax: SCENE_W - 100, yMin: 432, yMax: 466, landSurfaceY: Math.min(466, landY) }
+      return {
+        xMin: 100,
+        xMax: SCENE_W - 100,
+        yMin: 424,
+        yMax: 456,
+        landSurfaceY: Math.min(456, landY - 10),
+      }
     case 'lakeside':
       return { xMin: 90, xMax: SCENE_W - 90, yMin: 428, yMax: landY - 2, landSurfaceY: landY }
     case 'meadow':

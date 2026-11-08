@@ -10,12 +10,8 @@ import { buildStarterWorldPlants, sortWorldLayer } from '@/components/garden/gar
 import { buildWorldSceneryItems } from '@/components/garden/garden-world-scenery'
 import { VIEW_FRAME, projectWorldToSky } from '@/lib/garden/landscape-world'
 import {
-  HILL_FLOOR_Y,
-  HILL_OVERSCAN_L,
-  HILL_OVERSCAN_R,
   farHillPathD,
   hillPanX,
-  hillUnderscanRectY,
   hillWorldShift,
   midHillPathD,
   nearHillPathD,
@@ -456,16 +452,8 @@ interface GardenLandProps {
 function FarLandContent({ palette: C, landscapeView }: GardenLandProps & { landscapeView: GardenLandscapeView }) {
   const pan = hillPanX(landscapeView)
   const shift = hillWorldShift(landscapeView)
-  const underY = hillUnderscanRectY()
   return (
     <g transform={pan ? `translate(${pan} 0)` : undefined}>
-      <rect
-        x={HILL_OVERSCAN_L}
-        y={underY}
-        width={HILL_OVERSCAN_R - HILL_OVERSCAN_L}
-        height={HILL_FLOOR_Y - underY + 2}
-        fill={C.hills[0]}
-      />
       <path d={farHillPathD(shift)} fill={C.hills[0]} />
     </g>
   )
@@ -479,16 +467,8 @@ function MidHillTerrainShapes({
   landscapeView: GardenLandscapeView
 }) {
   const shift = hillWorldShift(landscapeView)
-  const underY = hillUnderscanRectY()
   return (
     <>
-      <rect
-        x={HILL_OVERSCAN_L}
-        y={underY}
-        width={HILL_OVERSCAN_R - HILL_OVERSCAN_L}
-        height={HILL_FLOOR_Y - underY + 2}
-        fill={C.hills[1]}
-      />
       <path d={midHillPathD(shift)} fill={C.hills[1]} />
       <path d={nearHillPathD(shift)} fill={C.hills[2]} />
     </>

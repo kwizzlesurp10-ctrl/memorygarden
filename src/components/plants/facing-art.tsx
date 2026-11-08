@@ -62,63 +62,73 @@ function withMemoryPresentation(
 
 type CanopyTone = 'shadow' | 'mid' | 'light'
 
-function leafClump(
+function foliageLobe(
   key: string,
   cx: number,
   cy: number,
-  sx: number,
-  sy: number,
+  rx: number,
+  ry: number,
   tone: CanopyTone,
   C: HybridPlantPalette,
   rim: number,
-  flip = 1,
 ): ReactNode {
-  const fill = tone === 'shadow' ? C.sil : C.silSoft
-  const w = 26 * sx
-  const h = 20 * sy
-  const f = flip
-  const d = `M ${cx - w * f} ${cy} Q ${cx - w * 0.55 * f} ${cy - h * 1.35} ${cx - w * 0.15 * f} ${cy - h} Q ${cx + w * 0.35 * f} ${cy - h * 1.2} ${cx + w * 0.7 * f} ${cy - h * 0.55} Q ${cx + w * 0.45 * f} ${cy - h * 0.15} ${cx + w * f} ${cy + h * 0.12} Q ${cx + w * 0.1 * f} ${cy + h * 0.35} ${cx - w * f} ${cy} Z`
-  return e('path', {
+  const fill = tone === 'shadow' ? C.sil : tone === 'mid' ? C.silSoft : C.glow
+  return e('ellipse', {
     key,
-    d,
+    cx,
+    cy,
+    rx,
+    ry,
     fill,
-    opacity: tone === 'light' ? 0.72 : tone === 'mid' ? 0.9 : 1,
+    opacity: tone === 'light' ? 0.38 : tone === 'mid' ? 0.92 : 1,
     stroke: C.rim,
-    strokeOpacity: 0.1 * rim,
-    strokeWidth: 0.45,
+    strokeOpacity: 0.08 * rim,
+    strokeWidth: 0.4,
   })
 }
 
-function elderCanopy(facing: 'front' | 'back' | 'side', C: HybridPlantPalette, rim: number, flip = 1): ReactNode[] {
+/** Wide, rounded crown — overlapping ellipses (no flat shelves). */
+function elderCloudCanopy(
+  facing: 'front' | 'back' | 'side',
+  C: HybridPlantPalette,
+  rim: number,
+  flip = 1,
+): ReactNode[] {
   const f = flip
-  type Clump = [string, number, number, number, number, CanopyTone]
-  const clumps: Clump[] =
+  const crownW = 88
+  type Lobe = [string, number, number, number, number, CanopyTone]
+  const lobes: Lobe[] =
     facing === 'front'
       ? [
-          ['c0', -28 * f, -76, 1.15, 1.05, 'shadow'],
-          ['c1', 16 * f, -82, 1.05, 0.95, 'shadow'],
-          ['c2', -8 * f, -98, 1.35, 1.1, 'mid'],
-          ['c3', 12 * f, -92, 0.95, 0.85, 'mid'],
-          ['c4', -22 * f, -88, 0.82, 0.78, 'light'],
-          ['c5', 4 * f, -78, 0.75, 0.72, 'light'],
-          ['c6', -4 * f, -108, 1.1, 0.95, 'mid'],
+          ['u0', -crownW * 0.38 * f, -92, crownW * 0.42, crownW * 0.3, 'shadow'],
+          ['u1', crownW * 0.32 * f, -88, crownW * 0.38, crownW * 0.28, 'shadow'],
+          ['u2', -crownW * 0.1 * f, -104, crownW * 0.48, crownW * 0.34, 'mid'],
+          ['u3', crownW * 0.12 * f, -98, crownW * 0.4, crownW * 0.3, 'mid'],
+          ['u4', -crownW * 0.5 * f, -78, crownW * 0.34, crownW * 0.26, 'mid'],
+          ['u5', crownW * 0.45 * f, -74, crownW * 0.32, crownW * 0.24, 'shadow'],
+          ['u6', -crownW * 0.22 * f, -112, crownW * 0.36, crownW * 0.28, 'light'],
+          ['u7', crownW * 0.08 * f, -82, crownW * 0.3, crownW * 0.22, 'light'],
+          ['u8', crownW * 0.28 * f, -108, crownW * 0.34, crownW * 0.26, 'light'],
         ]
       : facing === 'back'
         ? [
-            ['c0', 8 * f, -94, 1.1, 1, 'shadow'],
-            ['c1', -14 * f, -80, 0.95, 0.88, 'mid'],
-            ['c2', 2 * f, -104, 1.05, 0.92, 'mid'],
-            ['c3', -6 * f, -96, 0.78, 0.8, 'light'],
+            ['u0', crownW * 0.2 * f, -96, crownW * 0.44, crownW * 0.32, 'shadow'],
+            ['u1', -crownW * 0.28 * f, -84, crownW * 0.36, crownW * 0.26, 'mid'],
+            ['u2', 0, -108, crownW * 0.5, crownW * 0.34, 'mid'],
+            ['u3', -crownW * 0.12 * f, -100, crownW * 0.38, crownW * 0.28, 'light'],
+            ['u4', crownW * 0.36 * f, -88, crownW * 0.3, crownW * 0.22, 'shadow'],
+            ['u5', -crownW * 0.42 * f, -94, crownW * 0.32, crownW * 0.24, 'mid'],
           ]
         : [
-            ['c0', 12 * f, -86, 1.08, 0.98, 'shadow'],
-            ['c1', -16 * f, -78, 0.9, 0.82, 'mid'],
-            ['c2', 2 * f, -102, 1.05, 0.95, 'mid'],
-            ['c3', 18 * f, -74, 0.72, 0.68, 'light'],
-            ['c4', -6 * f, -92, 0.85, 0.8, 'mid'],
-            ['c5', 8 * f, -96, 0.7, 0.65, 'light'],
+            ['u0', crownW * 0.3 * f, -90, crownW * 0.4, crownW * 0.3, 'shadow'],
+            ['u1', -crownW * 0.35 * f, -82, crownW * 0.34, crownW * 0.26, 'mid'],
+            ['u2', crownW * 0.05 * f, -106, crownW * 0.46, crownW * 0.32, 'mid'],
+            ['u3', crownW * 0.42 * f, -76, crownW * 0.3, crownW * 0.22, 'light'],
+            ['u4', -crownW * 0.08 * f, -94, crownW * 0.36, crownW * 0.28, 'shadow'],
+            ['u5', -crownW * 0.2 * f, -72, crownW * 0.28, crownW * 0.2, 'light'],
+            ['u6', crownW * 0.18 * f, -100, crownW * 0.32, crownW * 0.24, 'mid'],
           ]
-  return clumps.map(([key, cx, cy, sx, sy, tone]) => leafClump(key, cx, cy, sx, sy, tone, C, rim, f))
+  return lobes.map(([key, cx, cy, rx, ry, tone]) => foliageLobe(key, cx, cy, rx, ry, tone, C, rim))
 }
 
 function buildElderTreeFacing(
@@ -127,9 +137,9 @@ function buildElderTreeFacing(
   rim: number,
   scale = 1,
 ): ReactNode[] {
-  const bark = C.sil
-  const moss = C.silSoft
-  const lightBark = C.silSoft
+  const bark = C.bank
+  const barkMid = C.silSoft
+  const limbWood = C.sil
   const out: ReactNode[] = []
 
   const trunkFront = () => [
@@ -144,7 +154,7 @@ function buildElderTreeFacing(
     e('path', {
       key: 'trunk-lit',
       d: 'M 6 -20 C 9 -48 8 -74 6 -92',
-      stroke: lightBark,
+      stroke: barkMid,
       strokeWidth: 2.2,
       fill: 'none',
       opacity: 0.45,
@@ -161,7 +171,7 @@ function buildElderTreeFacing(
     e('path', {
       key: 'limb-r',
       d: 'M 4 -64 C 14 -72 26 -68 30 -56',
-      stroke: moss,
+      stroke: limbWood,
       strokeWidth: 3.8,
       fill: 'none',
       strokeLinecap: 'round',
@@ -177,7 +187,7 @@ function buildElderTreeFacing(
     e('path', {
       key: 'low-limb',
       d: 'M -2 -50 Q -30 -44 -42 -28 Q -24 -40 -2 -46',
-      stroke: moss,
+      stroke: limbWood,
       strokeWidth: 4.6,
       fill: 'none',
       strokeLinecap: 'round',
@@ -211,7 +221,7 @@ function buildElderTreeFacing(
 
   switch (facing) {
     case 'front':
-      out.push(...trunkFront(), ...elderCanopy('front', C, rim))
+      out.push(...trunkFront(), ...elderCloudCanopy('front', C, rim))
       break
     case 'back':
       out.push(
@@ -236,7 +246,7 @@ function buildElderTreeFacing(
           fill: 'none',
           strokeLinecap: 'round',
         }),
-        ...elderCanopy('back', C, rim),
+        ...elderCloudCanopy('back', C, rim),
       )
       break
     case 'left':
@@ -249,7 +259,7 @@ function buildElderTreeFacing(
         e('path', {
           key: 'limb-out',
           d: 'M -6 -40 C 10 -32 26 -22 34 -10',
-          stroke: moss,
+          stroke: limbWood,
           strokeWidth: 4.4,
           fill: 'none',
           strokeLinecap: 'round',
@@ -262,7 +272,7 @@ function buildElderTreeFacing(
           fill: 'none',
           strokeLinecap: 'round',
         }),
-        ...elderCanopy('side', C, rim, 1),
+        ...elderCloudCanopy('side', C, rim, 1),
       )
       break
     case 'right':
@@ -275,7 +285,7 @@ function buildElderTreeFacing(
         e('path', {
           key: 'limb-low',
           d: 'M 6 -54 C -12 -48 -28 -36 -34 -24',
-          stroke: moss,
+          stroke: limbWood,
           strokeWidth: 4.2,
           fill: 'none',
           strokeLinecap: 'round',
@@ -285,12 +295,12 @@ function buildElderTreeFacing(
           cx: 6,
           cy: -30,
           r: 3.4,
-          fill: C.silSoft,
+          fill: barkMid,
           stroke: C.rim,
           strokeWidth: 0.6,
           strokeOpacity: 0.5 * rim,
         }),
-        ...elderCanopy('side', C, rim, -1),
+        ...elderCloudCanopy('side', C, rim, -1),
       )
       break
     default: {
@@ -307,73 +317,98 @@ function buildElderTreeFacing(
   return out
 }
 
-function mushroomCapColors(C: HybridPlantPalette): readonly [string, string, string, string] {
-  return [C.glow, C.silSoft, C.accent, C.sil]
+/** Warm earth tones only — no leaf greens on mushrooms. */
+const MUSHROOM_CAP: readonly ['cream', 'tan', 'ochre', 'red-brown'] = [
+  'cream',
+  'tan',
+  'ochre',
+  'red-brown',
+]
+
+function capFillFor(kind: (typeof MUSHROOM_CAP)[number], C: HybridPlantPalette): string {
+  switch (kind) {
+    case 'cream':
+      return C.glow
+    case 'tan':
+      return C.rim
+    case 'ochre':
+      return C.accent
+    case 'red-brown':
+      return C.fire
+    default: {
+      const _exhaustive: never = kind
+      return _exhaustive
+    }
+  }
 }
 
 function oneMushroom(
   key: string,
-  w: number,
-  capFill: string,
+  stemW: number,
+  capKind: (typeof MUSHROOM_CAP)[number],
   rim: number,
   C: HybridPlantPalette,
   litSide: number,
   spots: boolean,
   tiltDeg: number,
-  showGill: boolean,
 ): ReactNode {
-  const domeH = w * 0.62
-  const capW = w * 1.15
-  const stemW = w * 0.24
-  const stemH = w * 0.95
+  const capW = stemW * 2.2
+  const domeRise = capW * 0.55
+  const stemH = stemW * 3.4
   const baseY = 0
-  const gillY = -stemH + 1.5
+  const capFill = capFillFor(capKind, C)
+  const gillTone = capKind === 'red-brown' ? C.accent : C.fire
   return e(
     'g',
     { key, transform: `rotate(${tiltDeg})` },
-    e('ellipse', { key: 'sh', cx: litSide * 1.5, cy: baseY + 2.8, rx: capW * 0.95, ry: w * 0.14, fill: C.rim, opacity: 0.26 }),
-    e('rect', {
-      key: 'stem',
-      x: -stemW * 0.5,
-      y: -stemH,
-      width: stemW,
-      height: stemH,
-      rx: stemW * 0.4,
-      fill: C.glow,
-      opacity: 0.88,
+    e('ellipse', {
+      key: 'sh',
+      cx: litSide * 1.2,
+      cy: baseY + 2.6,
+      rx: capW * 0.75,
+      ry: stemW * 0.35,
+      fill: C.bank,
+      opacity: 0.35,
     }),
-    showGill
-      ? e('path', {
-          key: 'gill-band',
-          d: `M ${-capW * 0.55} ${gillY} Q 0 ${gillY + domeH * 0.12} ${capW * 0.55} ${gillY}`,
-          stroke: C.sil,
-          strokeWidth: Math.max(0.35, w * 0.045),
-          fill: 'none',
-          opacity: 0.42,
-          strokeLinecap: 'round',
-        })
-      : null,
+    e('path', {
+      key: 'stem',
+      d: `M ${-stemW * 0.42} ${baseY} L ${-stemW * 0.52} ${-stemH} Q 0 ${-stemH - stemW * 0.2} ${stemW * 0.52} ${-stemH} L ${stemW * 0.42} ${baseY} Z`,
+      fill: C.glow,
+      opacity: 0.92,
+    }),
     e('path', {
       key: 'cap',
-      d: `M ${-capW} ${baseY} Q ${-capW * 0.55} ${-domeH * 1.85} 0 ${-domeH * 1.55} Q ${capW * 0.55} ${-domeH * 1.85} ${capW} ${baseY} Z`,
+      d: `M ${-capW} ${baseY} A ${capW} ${domeRise} 0 0 1 ${capW} ${baseY} Z`,
       fill: capFill,
-      stroke: C.rim,
-      strokeOpacity: 0.35 * rim,
-      strokeWidth: 0.5,
+      stroke: C.accent,
+      strokeOpacity: 0.22 * rim,
+      strokeWidth: 0.45,
+    }),
+    e('path', {
+      key: 'gill-band',
+      d: `M ${-capW * 0.62} ${baseY - 0.5} Q 0 ${baseY + domeRise * 0.14} ${capW * 0.62} ${baseY - 0.5}`,
+      stroke: gillTone,
+      strokeWidth: Math.max(0.32, stemW * 0.12),
+      fill: 'none',
+      opacity: 0.55,
+      strokeLinecap: 'round',
     }),
     e('path', {
       key: 'cap-lit',
-      d: `M ${litSide * capW * 0.1} ${-domeH * 0.55} Q ${litSide * capW * 0.35} ${-domeH * 1.2} ${litSide * capW * 0.55} ${-domeH * 0.75}`,
+      d: `M ${litSide * capW * 0.15} ${baseY - domeRise * 0.35} Q ${litSide * capW * 0.42} ${baseY - domeRise * 0.92} ${litSide * capW * 0.58} ${baseY - domeRise * 0.55}`,
       stroke: C.glow,
-      strokeWidth: 0.65,
+      strokeWidth: 0.75,
       fill: 'none',
-      opacity: 0.45,
+      opacity: 0.55,
       strokeLinecap: 'round',
     }),
     spots
       ? [
-          e('circle', { key: 's1', cx: capW * 0.22, cy: -domeH * 1.1, r: w * 0.09, fill: C.glow, opacity: 0.92 }),
-          e('circle', { key: 's2', cx: -capW * 0.18, cy: -domeH * 0.85, r: w * 0.07, fill: C.glow, opacity: 0.88 }),
+          e('circle', { key: 's1', cx: capW * 0.2, cy: baseY - domeRise * 0.62, r: stemW * 0.22, fill: C.glow, opacity: 0.95 }),
+          e('circle', { key: 's2', cx: -capW * 0.12, cy: baseY - domeRise * 0.48, r: stemW * 0.16, fill: C.glow, opacity: 0.9 }),
+          capKind === 'red-brown'
+            ? e('circle', { key: 's3', cx: capW * 0.05, cy: baseY - domeRise * 0.78, r: stemW * 0.12, fill: C.glow, opacity: 0.88 })
+            : null,
         ]
       : null,
   )
@@ -385,32 +420,30 @@ export function buildReadableMushroomCluster(
   rim: number,
   stage: number,
 ): ReactNode[] {
-  const palette = mushroomCapColors(C)
   const lit = facing === 'right' || facing === 'back' ? -1 : 1
-  const showGill = facing === 'left' || facing === 'right' || facing === 'back'
   const out: ReactNode[] = []
 
   const specs: [number, number, number, number, number, boolean][] =
     stage >= 6
       ? [
-          [0, 0, 1.12, 0, -4, false],
-          [-12, 1.5, 0.76, 1, 6, false],
-          [11, 0.8, 0.9, 2, -8, false],
-          [-17, 2.2, 0.55, 3, 10, true],
+          [0, 0, 1.05, 0, -5, false],
+          [-11, 1.4, 0.82, 1, 7, false],
+          [10, 0.6, 0.92, 2, -9, false],
+          [-16, 2, 0.58, 3, 11, true],
         ]
       : [
-          [0, 0, 1, 0, -3, false],
-          [-9, 1.2, 0.72, 1, 5, false],
+          [0, 0, 1, 0, -4, false],
+          [-8, 1.1, 0.75, 1, 6, false],
         ]
 
   specs.forEach(([mx, my, sc, capIx, tilt, spots], i) => {
-    const w = (7 + stage * 0.7) * sc
-    const capFill = palette[capIx % palette.length]
+    const stemW = (3.2 + stage * 0.22) * sc
+    const capKind = MUSHROOM_CAP[capIx % MUSHROOM_CAP.length]
     out.push(
       e(
         'g',
         { key: `mc${i}`, transform: `translate(${mx} ${my})` },
-        oneMushroom(`m${i}`, w, capFill, rim, C, lit, spots, tilt, showGill),
+        oneMushroom(`m${i}`, stemW, capKind, rim, C, lit, spots, tilt),
       ),
     )
   })

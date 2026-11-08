@@ -6,7 +6,7 @@ const MUSHROOM_COUNT_MIN = 5
 const MUSHROOM_COUNT_MAX = 8
 const TREE_RADIUS_W = 0.12
 const MUSHROOM_RADIUS_W = 0.035
-const ELDER_TREE: WorldCoord = { wx: 0.31, wz: 0.4 }
+const ELDER_TREE: WorldCoord = { wx: 0.31, wz: 0.28 }
 
 export function createGardenStarterDecor(gardenSeed: number): GardenStarterDecor {
   const r = gardenRng(gardenSeed * 9137 + 41)

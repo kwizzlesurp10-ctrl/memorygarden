@@ -5,7 +5,7 @@ import { cx3 } from '@/lib/garden/bezier'
 import { applyPlantFacing } from './facing-art'
 import type { SeededPlantContext, SeededVariety } from './types'
 
-export type HybridPlantPalette = Pick<ScenePalette, 'sil' | 'silSoft' | 'rim' | 'glow' | 'accent'>
+export type HybridPlantPalette = Pick<ScenePalette, 'sil' | 'silSoft' | 'rim' | 'glow' | 'accent' | 'bank' | 'fire'>
 
 const rimStroke = (C: HybridPlantPalette, rim: number) => ({
   stroke: C.rim,
