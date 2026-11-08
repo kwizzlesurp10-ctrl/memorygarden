@@ -329,90 +329,83 @@ const MUSHROOM_CAP: readonly ['cream', 'tan', 'ochre', 'red-brown'] = [
   'red-brown',
 ]
 
-function capFillFor(kind: (typeof MUSHROOM_CAP)[number], C: HybridPlantPalette): string {
-  switch (kind) {
-    case 'cream':
-      return C.rim
-    case 'tan':
-      return C.accent
-    case 'ochre':
-      return C.fire
-    case 'red-brown':
-      return C.bank
-    default: {
-      const _exhaustive: never = kind
-      return _exhaustive
-    }
-  }
+/** Fixed, natural mushroom palette (not theme-derived, so caps never read as glowing yellow blobs). */
+const MUSHROOM_COLORS: Record<(typeof MUSHROOM_CAP)[number], { cap: string; capDark: string; capLight: string }> = {
+  cream: { cap: '#D8C7A4', capDark: '#A8916A', capLight: '#F1E6CC' },
+  tan: { cap: '#B98A5A', capDark: '#87603A', capLight: '#D9B184' },
+  ochre: { cap: '#B7853A', capDark: '#86602A', capLight: '#D8AA5E' },
+  'red-brown': { cap: '#9E4B32', capDark: '#6E3022', capLight: '#C27355' },
 }
+const MUSHROOM_STEM = '#EDE3CF'
+const MUSHROOM_STEM_SHADE = '#BFB194'
+const MUSHROOM_GILLS = '#6B5440'
+const MUSHROOM_SHADOW = '#1E3A2C'
 
 function oneMushroom(
   key: string,
   stemW: number,
   capKind: (typeof MUSHROOM_CAP)[number],
-  rim: number,
-  C: HybridPlantPalette,
+  _rim: number,
+  _C: HybridPlantPalette,
   litSide: number,
   spots: boolean,
   tiltDeg: number,
 ): ReactNode {
-  const capW = stemW * 2.45
-  const domeRise = capW * 0.52
-  const stemH = stemW * 1.85
-  const baseY = 0
-  const capFill = capFillFor(capKind, C)
-  const gillTone = capKind === 'red-brown' ? C.accent : C.fire
+  const col = MUSHROOM_COLORS[capKind]
+  const sw = stemW * 0.36 // half stem width at the base
+  const stemH = stemW * 1.55
+  const capHW = stemW * 1.05 // half cap width
+  const rise = capHW * 0.78
+  const capY = -stemH // cap underside sits on top of the stem
+  const L = litSide
   return e(
     'g',
-    { key, transform: `rotate(${tiltDeg})` },
-    e('ellipse', {
-      key: 'sh',
-      cx: litSide * 0.8,
-      cy: baseY + 3.2,
-      rx: capW * 0.82,
-      ry: stemW * 0.42,
-      fill: C.sil,
-      opacity: 0.32,
-    }),
+    { key, transform: `rotate(${tiltDeg * 0.5})` },
+    // contact shadow on the grass
+    e('ellipse', { key: 'sh', cx: -L * stemW * 0.25, cy: 0.6, rx: capHW * 0.8, ry: stemW * 0.18, fill: MUSHROOM_SHADOW, opacity: 0.45 }),
+    // stem: slightly flared base, narrower under the cap
     e('path', {
       key: 'stem',
-      d: `M ${-stemW * 0.38} ${baseY} L ${-stemW * 0.44} ${-stemH} Q 0 ${-stemH - stemW * 0.12} ${stemW * 0.44} ${-stemH} L ${stemW * 0.38} ${baseY} Z`,
-      fill: C.glow,
-      opacity: 0.78,
+      d: `M ${-sw} 0 Q ${-sw * 0.7} ${capY * 0.5} ${-sw * 0.72} ${capY} L ${sw * 0.72} ${capY} Q ${sw * 0.7} ${capY * 0.5} ${sw} 0 Z`,
+      fill: MUSHROOM_STEM,
     }),
+    // shaded side of the stem, away from the light
+    e('path', {
+      key: 'stem-shade',
+      d: `M ${-L * sw} 0 Q ${-L * sw * 0.7} ${capY * 0.5} ${-L * sw * 0.72} ${capY} L ${-L * sw * 0.15} ${capY} Q ${-L * sw * 0.2} ${capY * 0.5} ${-L * sw * 0.3} 0 Z`,
+      fill: MUSHROOM_STEM_SHADE,
+    }),
+    // gill underside
+    e('ellipse', { key: 'gills', cx: 0, cy: capY, rx: capHW * 0.92, ry: rise * 0.16, fill: MUSHROOM_GILLS }),
+    // domed cap
     e('path', {
       key: 'cap',
-      d: `M ${-capW} ${baseY} A ${capW} ${domeRise} 0 0 1 ${capW} ${baseY} Z`,
-      fill: capFill,
-      stroke: C.accent,
-      strokeOpacity: 0.22 * rim,
-      strokeWidth: 0.45,
+      d: `M ${-capHW} ${capY} C ${-capHW} ${capY - rise * 1.05} ${capHW} ${capY - rise * 1.05} ${capHW} ${capY} Q 0 ${capY + rise * 0.12} ${-capHW} ${capY} Z`,
+      fill: col.cap,
     }),
+    // shadow half of the cap
     e('path', {
-      key: 'gill-band',
-      d: `M ${-capW * 0.62} ${baseY - 0.5} Q 0 ${baseY + domeRise * 0.14} ${capW * 0.62} ${baseY - 0.5}`,
-      stroke: gillTone,
-      strokeWidth: Math.max(0.32, stemW * 0.12),
-      fill: 'none',
+      key: 'cap-shade',
+      d: `M ${-L * capHW} ${capY} C ${-L * capHW} ${capY - rise * 1.05} ${-L * capHW * 0.1} ${capY - rise * 0.8} ${-L * capHW * 0.05} ${capY - rise * 0.79} Q ${-L * capHW * 0.35} ${capY - rise * 0.3} ${-L * capHW * 0.4} ${capY + rise * 0.05} Z`,
+      fill: col.capDark,
       opacity: 0.55,
-      strokeLinecap: 'round',
     }),
-    e('path', {
+    // soft highlight on the lit shoulder
+    e('ellipse', {
       key: 'cap-lit',
-      d: `M ${litSide * capW * 0.15} ${baseY - domeRise * 0.35} Q ${litSide * capW * 0.42} ${baseY - domeRise * 0.92} ${litSide * capW * 0.58} ${baseY - domeRise * 0.55}`,
-      stroke: C.glow,
-      strokeWidth: 0.75,
-      fill: 'none',
-      opacity: 0.55,
-      strokeLinecap: 'round',
+      cx: L * capHW * 0.38,
+      cy: capY - rise * 0.58,
+      rx: capHW * 0.26,
+      ry: rise * 0.16,
+      fill: col.capLight,
+      opacity: 0.8,
+      transform: `rotate(${-L * 22} ${L * capHW * 0.38} ${capY - rise * 0.58})`,
     }),
     spots
       ? [
-          e('circle', { key: 's1', cx: capW * 0.2, cy: baseY - domeRise * 0.62, r: stemW * 0.22, fill: C.glow, opacity: 0.95 }),
-          e('circle', { key: 's2', cx: -capW * 0.12, cy: baseY - domeRise * 0.48, r: stemW * 0.16, fill: C.glow, opacity: 0.9 }),
-          capKind === 'red-brown'
-            ? e('circle', { key: 's3', cx: capW * 0.05, cy: baseY - domeRise * 0.78, r: stemW * 0.12, fill: C.glow, opacity: 0.88 })
-            : null,
+          e('ellipse', { key: 's1', cx: capHW * 0.18, cy: capY - rise * 0.62, rx: stemW * 0.14, ry: stemW * 0.1, fill: '#F6EEDD', opacity: 0.92 }),
+          e('ellipse', { key: 's2', cx: -capHW * 0.4, cy: capY - rise * 0.38, rx: stemW * 0.11, ry: stemW * 0.08, fill: '#F6EEDD', opacity: 0.88 }),
+          e('ellipse', { key: 's3', cx: capHW * 0.55, cy: capY - rise * 0.3, rx: stemW * 0.09, ry: stemW * 0.07, fill: '#F6EEDD', opacity: 0.85 }),
         ]
       : null,
   )

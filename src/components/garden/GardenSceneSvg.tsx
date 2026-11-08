@@ -316,6 +316,10 @@ export const GardenSkyLayer = forwardRef<SVGGElement, GardenSkyLayerProps>(funct
         <clipPath id={`wm${k}`}>
           <path d={pondGeom.waterPathD} />
         </clipPath>
+        {/* Explicit full-scene region so the blurred reflection never clips into a vertical seam. */}
+        <filter id={`wrb${k}`} filterUnits="userSpaceOnUse" x={-400} y={-200} width={SCENE_W + 800} height={SCENE_H + 400}>
+          <feGaussianBlur stdDeviation={1.4} />
+        </filter>
         <linearGradient id={`bankDeep${k}`} x1={0} y1={bandTopY - 80} x2={0} y2={bandTopY + 40} gradientUnits="userSpaceOnUse">
           <stop offset={0} stopColor={C.hills[1]} stopOpacity={0.4} />
           <stop offset={1} stopColor={C.bank} stopOpacity={0.95} />
@@ -616,7 +620,7 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
         ))}
 
         {showReflection ? (
-          <g opacity={0.28} style={{ filter: 'blur(1.4px)' }}>
+          <g opacity={0.28} filter={`url(#wrb${k})`}>
             <g transform={`translate(0 ${waterTopY * 1.92}) scale(1 -0.92)`}>
               <ReflectLandContent
                 palette={C}

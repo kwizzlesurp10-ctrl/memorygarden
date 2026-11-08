@@ -28,7 +28,7 @@ export function createGardenStarterDecor(gardenSeed: number): GardenStarterDecor
       wx: roundCoord(candidate.wx),
       wz: roundCoord(candidate.wz),
       geneticsSeed: `starter-mushroom-${gardenSeed}-${mushrooms.length}`,
-      scale: 1.85 + r() * 0.55,
+      scale: 1.15 + r() * 0.45,
     })
     placed.push(candidate)
   }
