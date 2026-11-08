@@ -24,6 +24,7 @@ import {
   rippleIntersectsWater,
   resolveGardenLandscapeView,
 } from '@/lib/garden/landscape-view'
+import { bandWaterShimmerLinesD } from '@/lib/garden/landscape-pond'
 import {
   AtmosphericGroundDetail,
   ForegroundBanks,
@@ -176,10 +177,10 @@ function computeSceneRngData(
   }
 
   const ripples: SceneRngData['ripples'] = []
-  for (let i = 0; i < 11; i++) {
+  for (let i = 0; i < 16; i++) {
     const ry = 484 + r() * 190
-    const rx = 30 + r() * 1040
-    const rl = 26 + r() * 110
+    const rx = 20 + r() * (SCENE_W - 40)
+    const rl = 26 + r() * 130
     ripples.push({
       x1: rx,
       y1: ry,
@@ -297,7 +298,14 @@ export const GardenSkyLayer = forwardRef<SVGGElement, GardenSkyLayerProps>(funct
             <stop key={i} offset={i / (C.sky.length - 1)} stopColor={c} />
           ))}
         </linearGradient>
-        <linearGradient id={`wv${k}`} x1={0} y1={0} x2={0} y2={1}>
+        <linearGradient
+          id={`wv${k}`}
+          x1={0}
+          y1={bandTopY}
+          x2={0}
+          y2={SCENE_H}
+          gradientUnits="userSpaceOnUse"
+        >
           <stop offset={0} stopColor={C.waterTint[0]} stopOpacity={0.4} />
           <stop offset={0.3} stopColor={C.waterTint[1]} stopOpacity={0.1} />
           <stop offset={1} stopColor={C.waterTint[1]} stopOpacity={0.92} />
@@ -578,6 +586,7 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
   const sunSkyX = C.sun ? projectWorldToSky(WORLD_SUN, landscapeView).x : SCENE_W / 2
   const reflectY = getWaterReflectionCenterY(landscapeView, sunSkyX)
   const smallPool = landscapeView === 'garden_path'
+  const waterShimmers = pondGeom.bandWater ? bandWaterShimmerLinesD(waterTopY) : []
 
   return (
     <g ref={ref} data-layer="mid" data-landscape-view={landscapeView}>
@@ -593,6 +602,18 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
       <g clipPath={`url(#wm${k})`}>
         <path d={pondGeom.waterPathD} fill={C.waterTint[1]} />
         <path d={pondGeom.waterPathD} fill={`url(#wv${k})`} opacity={0.92} />
+
+        {waterShimmers.map((d, i) => (
+          <path
+            key={`wsh-${i}`}
+            d={d}
+            fill="none"
+            stroke={C.waterTint[0]}
+            strokeWidth={i % 2 === 0 ? 1.15 : 0.85}
+            strokeOpacity={0.11 + (i % 3) * 0.03}
+            strokeLinecap="round"
+          />
+        ))}
 
         {showReflection ? (
           <g opacity={0.28} style={{ filter: 'blur(1.4px)' }}>

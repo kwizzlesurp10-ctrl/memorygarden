@@ -3,7 +3,7 @@ import { gardenRng } from '@/lib/garden/prng'
 import { isWorldOffShoreGrass, type WorldCoord } from '@/lib/garden/landscape-world'
 
 const MUSHROOM_COUNT_MIN = 5
-const MUSHROOM_COUNT_MAX = 8
+const MUSHROOM_COUNT_MAX = 6
 const TREE_RADIUS_W = 0.12
 const MUSHROOM_RADIUS_W = 0.035
 const ELDER_TREE: WorldCoord = { wx: 0.31, wz: 0.28 }
@@ -28,7 +28,7 @@ export function createGardenStarterDecor(gardenSeed: number): GardenStarterDecor
       wx: roundCoord(candidate.wx),
       wz: roundCoord(candidate.wz),
       geneticsSeed: `starter-mushroom-${gardenSeed}-${mushrooms.length}`,
-      scale: 0.95 + r() * 0.45,
+      scale: 1.85 + r() * 0.55,
     })
     placed.push(candidate)
   }

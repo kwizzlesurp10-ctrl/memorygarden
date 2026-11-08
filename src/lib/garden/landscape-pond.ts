@@ -63,6 +63,26 @@ export function bandShoreLineD(waterTopY: number): string {
   ].join(' ')
 }
 
+/** Shallow horizontal wave strokes — must span full scene width (no ripple 1040 cap). */
+export function bandWaterShimmerLinesD(waterTopY: number): string[] {
+  const depth = SCENE_H - waterTopY
+  const bandCount = Math.min(7, Math.max(4, Math.floor(depth / 38)))
+  const lines: string[] = []
+  for (let i = 0; i < bandCount; i++) {
+    const y = waterTopY + 22 + i * (depth / (bandCount + 0.5))
+    const wobble = (i % 2 === 0 ? -2.5 : 2) + (i % 3) * 0.4
+    lines.push(
+      [
+        `M ${WATER_OVERSCAN_L} ${y.toFixed(1)}`,
+        `Q ${220 + i * 48} ${(y + wobble).toFixed(1)} ${520 + i * 12} ${(y - wobble * 0.6).toFixed(1)}`,
+        `Q ${860 - i * 8} ${(y + wobble * 0.5).toFixed(1)} ${SCENE_W * 0.72 + i * 6} ${y.toFixed(1)}`,
+        `T ${WATER_OVERSCAN_R} ${(y + wobble * 0.3).toFixed(1)}`,
+      ].join(' '),
+    )
+  }
+  return lines
+}
+
 /** Garden path: same pond cropped to ~10% of frame at bottom-left. */
 export function cornerPoolPathD(): string {
   return [

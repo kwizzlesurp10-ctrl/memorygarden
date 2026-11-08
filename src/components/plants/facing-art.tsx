@@ -62,6 +62,9 @@ function withMemoryPresentation(
 
 type CanopyTone = 'shadow' | 'mid' | 'light'
 
+/** Sunlit canopy — opaque greens harmonized with summer hills (#7FA05A family). */
+const ELDER_CANOPY_LIGHT = '#7FA05A'
+
 function foliageLobe(
   key: string,
   cx: number,
@@ -72,7 +75,8 @@ function foliageLobe(
   C: HybridPlantPalette,
   rim: number,
 ): ReactNode {
-  const fill = tone === 'shadow' ? C.sil : tone === 'mid' ? C.silSoft : C.glow
+  const fill =
+    tone === 'shadow' ? C.sil : tone === 'mid' ? C.silSoft : ELDER_CANOPY_LIGHT
   return e('ellipse', {
     key,
     cx,
@@ -80,7 +84,7 @@ function foliageLobe(
     rx,
     ry,
     fill,
-    opacity: tone === 'light' ? 0.38 : tone === 'mid' ? 0.92 : 1,
+    opacity: 1,
     stroke: C.rim,
     strokeOpacity: 0.08 * rim,
     strokeWidth: 0.4,
@@ -328,13 +332,13 @@ const MUSHROOM_CAP: readonly ['cream', 'tan', 'ochre', 'red-brown'] = [
 function capFillFor(kind: (typeof MUSHROOM_CAP)[number], C: HybridPlantPalette): string {
   switch (kind) {
     case 'cream':
-      return C.glow
-    case 'tan':
       return C.rim
-    case 'ochre':
+    case 'tan':
       return C.accent
-    case 'red-brown':
+    case 'ochre':
       return C.fire
+    case 'red-brown':
+      return C.bank
     default: {
       const _exhaustive: never = kind
       return _exhaustive
@@ -352,9 +356,9 @@ function oneMushroom(
   spots: boolean,
   tiltDeg: number,
 ): ReactNode {
-  const capW = stemW * 2.2
-  const domeRise = capW * 0.55
-  const stemH = stemW * 3.4
+  const capW = stemW * 2.45
+  const domeRise = capW * 0.52
+  const stemH = stemW * 1.85
   const baseY = 0
   const capFill = capFillFor(capKind, C)
   const gillTone = capKind === 'red-brown' ? C.accent : C.fire
@@ -363,18 +367,18 @@ function oneMushroom(
     { key, transform: `rotate(${tiltDeg})` },
     e('ellipse', {
       key: 'sh',
-      cx: litSide * 1.2,
-      cy: baseY + 2.6,
-      rx: capW * 0.75,
-      ry: stemW * 0.35,
-      fill: C.bank,
-      opacity: 0.35,
+      cx: litSide * 0.8,
+      cy: baseY + 3.2,
+      rx: capW * 0.82,
+      ry: stemW * 0.42,
+      fill: C.sil,
+      opacity: 0.32,
     }),
     e('path', {
       key: 'stem',
-      d: `M ${-stemW * 0.42} ${baseY} L ${-stemW * 0.52} ${-stemH} Q 0 ${-stemH - stemW * 0.2} ${stemW * 0.52} ${-stemH} L ${stemW * 0.42} ${baseY} Z`,
+      d: `M ${-stemW * 0.38} ${baseY} L ${-stemW * 0.44} ${-stemH} Q 0 ${-stemH - stemW * 0.12} ${stemW * 0.44} ${-stemH} L ${stemW * 0.38} ${baseY} Z`,
       fill: C.glow,
-      opacity: 0.92,
+      opacity: 0.78,
     }),
     e('path', {
       key: 'cap',
@@ -437,7 +441,7 @@ export function buildReadableMushroomCluster(
         ]
 
   specs.forEach(([mx, my, sc, capIx, tilt, spots], i) => {
-    const stemW = (3.2 + stage * 0.22) * sc
+    const stemW = (7.5 + stage * 0.35) * sc
     const capKind = MUSHROOM_CAP[capIx % MUSHROOM_CAP.length]
     out.push(
       e(
