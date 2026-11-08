@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { GARDEN_LANDSCAPE_VIEWS } from '@/lib/garden/landscape-view'
 import {
   CAMERA_YAW,
+  isWorldOffShoreGrass,
   isWorldOnLand,
   projectMemoryToSceneWorld,
   projectWorldToScene,
   resolvePlantFacing,
 } from '@/lib/garden/landscape-world'
 import { createGardenStarterDecor as buildStarter } from '@/lib/garden/garden-starter-decor'
+import { WORLD_COTTAGE } from '@/lib/garden/landscape-world-layout'
 
 describe('world camera projection', () => {
   const world = { wx: 0.42, wz: 0.48 }
@@ -34,6 +36,11 @@ describe('world camera projection', () => {
     const pond = projectMemoryToSceneWorld(base, 'pond')
     const lake = projectMemoryToSceneWorld(base, 'lakeside')
     expect(pond.facing).not.toBe(lake.facing)
+  })
+
+  it('moves the cottage across the frame between views', () => {
+    const positions = GARDEN_LANDSCAPE_VIEWS.map((view) => projectWorldToScene(WORLD_COTTAGE, view, { objectYaw: WORLD_COTTAGE.yaw, layer: 'near' }).x)
+    expect(new Set(positions.map((x) => Math.round(x))).size).toBeGreaterThanOrEqual(3)
   })
 
   it('exposes camera yaws in quarter-turn steps', () => {

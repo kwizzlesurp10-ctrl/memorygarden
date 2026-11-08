@@ -1,12 +1,12 @@
 import type { GardenStarterDecor, WorldDecorMushroom } from '@/lib/types'
 import { gardenRng } from '@/lib/garden/prng'
-import { isWorldOnLand, type WorldCoord } from '@/lib/garden/landscape-world'
+import { isWorldOffShoreGrass, type WorldCoord } from '@/lib/garden/landscape-world'
 
 const MUSHROOM_COUNT_MIN = 5
 const MUSHROOM_COUNT_MAX = 8
 const TREE_RADIUS_W = 0.12
 const MUSHROOM_RADIUS_W = 0.035
-const ELDER_TREE: WorldCoord = { wx: 0.38, wz: 0.52 }
+const ELDER_TREE: WorldCoord = { wx: 0.36, wz: 0.48 }
 
 export function createGardenStarterDecor(gardenSeed: number): GardenStarterDecor {
   const r = gardenRng(gardenSeed * 9137 + 41)
@@ -18,17 +18,17 @@ export function createGardenStarterDecor(gardenSeed: number): GardenStarterDecor
   while (mushrooms.length < count && attempts < count * 40) {
     attempts += 1
     const candidate: WorldCoord = {
-      wx: 0.14 + r() * 0.72,
-      wz: 0.22 + r() * 0.58,
+      wx: 0.12 + r() * 0.76,
+      wz: 0.18 + r() * 0.4,
     }
-    if (!isWorldOnLand(candidate)) continue
+    if (!isWorldOffShoreGrass(candidate)) continue
     if (!fitsClearance(candidate, placed, MUSHROOM_RADIUS_W)) continue
     mushrooms.push({
       id: `m-${mushrooms.length}`,
       wx: roundCoord(candidate.wx),
       wz: roundCoord(candidate.wz),
       geneticsSeed: `starter-mushroom-${gardenSeed}-${mushrooms.length}`,
-      scale: 0.55 + r() * 0.35,
+      scale: 0.95 + r() * 0.45,
     })
     placed.push(candidate)
   }
@@ -40,7 +40,7 @@ export function createGardenStarterDecor(gardenSeed: number): GardenStarterDecor
       wx: ELDER_TREE.wx,
       wz: ELDER_TREE.wz,
       geneticsSeed: `starter-elder-${gardenSeed}`,
-      scale: 1.55,
+      scale: 1.65,
     },
     mushrooms,
   }

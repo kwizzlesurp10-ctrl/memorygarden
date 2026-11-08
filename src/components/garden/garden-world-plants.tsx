@@ -25,7 +25,7 @@ export function buildStarterWorldPlants(
     key: 'starter-elder',
     depth: elder.depth,
     node: (
-      <g transform={`translate(${elder.x} ${elder.y})`}>
+      <g transform={`translate(${elder.x} ${elder.y}) scale(${elder.scale})`}>
         <SeededPlantSvg
           variety="tree"
           stage="elder"
@@ -35,6 +35,7 @@ export function buildStarterWorldPlants(
           motion={motion}
           scale={decor.elderTree.scale}
           facing={elder.facing}
+          rimFromLeft={elder.rimFromLeft}
         />
       </g>
     ),
@@ -46,7 +47,7 @@ export function buildStarterWorldPlants(
       key: shroom.id,
       depth: proj.depth,
       node: (
-        <g transform={`translate(${proj.x} ${proj.y})`}>
+        <g transform={`translate(${proj.x} ${proj.y}) scale(${proj.scale})`}>
           <SeededPlantSvg
             variety="mushroom"
             stage="mature"
@@ -56,6 +57,7 @@ export function buildStarterWorldPlants(
             motion={motion}
             scale={shroom.scale}
             facing={proj.facing}
+            rimFromLeft={proj.rimFromLeft}
           />
         </g>
       ),

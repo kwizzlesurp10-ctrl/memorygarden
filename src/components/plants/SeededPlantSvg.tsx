@@ -15,6 +15,7 @@ export interface SeededPlantSvgProps {
   motion: boolean
   scale?: number
   facing?: PlantFacing
+  rimFromLeft?: boolean
   className?: string
 }
 
@@ -27,12 +28,13 @@ export function SeededPlantSvg({
   motion,
   scale = 1,
   facing = 'front',
+  rimFromLeft = true,
   className,
 }: SeededPlantSvgProps) {
   const seedN = seedFromGenetics(geneticsSeed, `${variety}-${stage}`)
   const rng = gardenRng(seedN)
   const stageIndex = plantStageToIndex(stage)
-  const ctx = { stageIndex, palette, rimStrength, motion, rng, facing }
+  const ctx = { stageIndex, palette, rimStrength, motion, rng, facing, rimFromLeft }
   const nodes = buildSeededPlant(variety, ctx)
   const swayStyle = getSwayStyle(seedN, motion, variety === 'tree')
 

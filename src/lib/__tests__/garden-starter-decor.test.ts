@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createGardenStarterDecor } from '@/lib/garden/garden-starter-decor'
-import { isWorldOnLand } from '@/lib/garden/landscape-world'
+import { isWorldOffShoreGrass, isWorldOnLand } from '@/lib/garden/landscape-world'
 
 describe('garden starter decor', () => {
   it('includes one elder tree and several mushrooms without overlap', () => {
@@ -9,8 +9,9 @@ describe('garden starter decor', () => {
       { wx: decor.elderTree.wx, wz: decor.elderTree.wz },
       ...decor.mushrooms.map((m) => ({ wx: m.wx, wz: m.wz })),
     ]
-    for (const p of points) {
-      expect(isWorldOnLand(p)).toBe(true)
+    expect(isWorldOnLand({ wx: decor.elderTree.wx, wz: decor.elderTree.wz })).toBe(true)
+    for (const m of decor.mushrooms) {
+      expect(isWorldOffShoreGrass({ wx: m.wx, wz: m.wz })).toBe(true)
     }
     for (let i = 0; i < points.length; i++) {
       for (let j = i + 1; j < points.length; j++) {

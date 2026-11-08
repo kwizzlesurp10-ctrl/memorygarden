@@ -9,8 +9,8 @@ export const POND_FULL_DEPTH = SCENE_H - LANDSCAPE_HORIZON_Y
 /** Fraction of pond depth still visible (1 = full pond like default). */
 const VISIBLE_POND_FRACTION: Record<GardenLandscapeView, number> = {
   pond: 1,
-  lakeside: 0.55,
-  meadow: 0.25,
+  lakeside: 0.42,
+  meadow: 0.22,
   garden_path: 0,
 }
 

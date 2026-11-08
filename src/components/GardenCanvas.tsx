@@ -176,7 +176,8 @@ export function GardenCanvas({
       const isDimmed = highlightedMemoryIds !== null && !highlightedMemoryIds.has(memory.id)
       const isGrowing = growingMemories.has(memory.id)
       const size = getPlantSize(memory.plantStage) as number
-      const sc = Math.max(0.55, Math.min(1.4, size / 90))
+      const baseSc = Math.max(0.55, Math.min(1.4, size / 90))
+      const sc = baseSc * pos.scale
 
       return {
         depth: pos.depth,
@@ -217,6 +218,7 @@ export function GardenCanvas({
                   rimStrength={RIM_STRENGTH}
                   motion={motion}
                   facing={pos.facing}
+                  rimFromLeft={pos.rimFromLeft}
                 />
               )}
             </g>

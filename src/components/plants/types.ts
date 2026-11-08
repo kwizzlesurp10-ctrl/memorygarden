@@ -17,6 +17,7 @@ export interface SeededPlantContext {
   motion: boolean
   rng: () => number
   facing?: PlantFacing
+  rimFromLeft?: boolean
 }
 
 export type SeededVariety = Extract<

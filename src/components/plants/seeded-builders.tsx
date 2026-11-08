@@ -518,7 +518,15 @@ export function buildSeededPlant(
     const ctx = ctxOrS
     const base = BUILDERS[variety](ctx.stageIndex, ctx.rng, ctx.palette, ctx.rimStrength, ctx.motion)
     const facing = ctx.facing ?? 'front'
-    return applyPlantFacing(variety, facing, base, ctx.palette, ctx.rimStrength, ctx.stageIndex)
+    return applyPlantFacing(
+      variety,
+      facing,
+      base,
+      ctx.palette,
+      ctx.rimStrength,
+      ctx.stageIndex,
+      ctx.rimFromLeft ?? true,
+    )
   }
   return BUILDERS[variety](ctxOrS, r!, C!, rim!, motion!)
 }
