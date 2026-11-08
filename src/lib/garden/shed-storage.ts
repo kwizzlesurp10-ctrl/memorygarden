@@ -1,5 +1,5 @@
-import { readRaw, StorageQuotaExceededError, writeRaw } from '@/lib/storage'
-import type { Candle, PlantedHybrid, ShedSeed, ShedStyle, StorageShedData } from '@/lib/types'
+import { readRaw, StorageQuotaExceededError, writeRaw } from '../storage'
+import type { Candle, PlantedHybrid, ShedSeed, ShedStyle, StorageShedData } from '../types'
 import { sanitizeGenome } from './hybrid-sanitize'
 
 const SHED_STYLES: ShedStyle[] = ['antique', 'storybook', 'glass', 'modern']
@@ -7,7 +7,7 @@ const MAX_SEEDS = 60
 const MAX_NOTE = 400
 const MAX_IDEA = 240
 
-export { StorageQuotaExceededError } from '@/lib/storage'
+export { StorageQuotaExceededError } from '../storage'
 
 export type SaveShedResult = { ok: true } | { ok: false; error: 'quota' }
 
