@@ -52,6 +52,36 @@ const PLANT_PHRASES: Record<string, HybridBaseVariety> = {
   'cherry blossom': 'tree',
 }
 
+const PLANT_RANK: Record<string, number> = {
+  sunflower: 12,
+  mushroom: 12,
+  toadstool: 12,
+  rose: 11,
+  lotus: 11,
+  cactus: 10,
+  aloe: 10,
+  fern: 10,
+  moss: 10,
+  tulip: 10,
+  lily: 10,
+  daisy: 9,
+  wildflower: 8,
+  ivy: 8,
+  vine: 8,
+  mint: 8,
+  lavender: 8,
+  oak: 7,
+  pine: 7,
+  willow: 7,
+  maple: 7,
+  birch: 7,
+  tree: 5,
+  flower: 5,
+  herb: 5,
+  succulent: 5,
+  blossom: 6,
+}
+
 const PLANT_WORDS: Record<string, HybridBaseVariety> = {
   rose: 'flower',
   tulip: 'flower',
@@ -155,11 +185,11 @@ export function paletteFromHue(hue: number, mood: string[]): HybridPalette {
   const angry = mood.includes('angry')
   const spooky = mood.includes('spooky')
 
-  const sat = angry ? 0.72 : sad ? 0.38 : joyful ? 0.78 : calm ? 0.45 : 0.62
-  const sil = spooky ? '#0a0610' : '#120818'
-  const rim = hslToHex(hue, sat, angry ? 0.58 : 0.68)
-  const glow = hslToHex((hue + 12) % 360, sat * 0.9, joyful ? 0.78 : 0.72)
-  const accent = hslToHex((hue + 28) % 360, Math.min(0.85, sat + 0.1), angry ? 0.52 : 0.62)
+  const sat = angry ? 0.82 : sad ? 0.52 : joyful ? 0.88 : calm ? 0.58 : 0.74
+  const sil = hslToHex(hue, sat * 0.62, spooky ? 0.12 : 0.17)
+  const rim = hslToHex(hue, Math.min(0.95, sat + 0.08), angry ? 0.56 : joyful ? 0.64 : 0.6)
+  const glow = hslToHex((hue + 10) % 360, Math.min(0.92, sat), joyful ? 0.76 : 0.7)
+  const accent = hslToHex((hue + 26) % 360, Math.min(0.98, sat + 0.12), angry ? 0.5 : 0.58)
   return { sil, rim, glow, accent }
 }
 
@@ -222,11 +252,15 @@ export function analyzeIdea(idea: string): IdeaSemantics {
     plantWord = Object.keys(PLANT_PHRASES).find((k) => text.includes(k)) ?? 'blossom'
   }
   if (!plantBase) {
+    let bestRank = -1
     for (const w of scanWords(text)) {
       if (w in PLANT_WORDS) {
-        plantBase = PLANT_WORDS[w]!
-        plantWord = w
-        break
+        const rank = PLANT_RANK[w] ?? 6
+        if (rank >= bestRank) {
+          bestRank = rank
+          plantBase = PLANT_WORDS[w]!
+          plantWord = w
+        }
       }
     }
   }
@@ -241,11 +275,29 @@ export function analyzeIdea(idea: string): IdeaSemantics {
       }
     }
   }
+
+  if (!plantBase) {
+    plantBase = inferThematicBase(text, motifKey)
+    if (plantBase) plantWord = plantBase
+  }
+
   // Explicit plant "rose" can double as motif when no other object matched
+  if (!motifKey && /\b(rain|rainy|storm|drizzle)\b/.test(text)) motifKey = 'rain'
   if (!motifKey && plantWord === 'rose') motifKey = 'rose'
+  if (!motifKey && plantWord === 'sunflower') motifKey = 'flower'
   if (!motifKey && plantWord === 'flower') motifKey = 'flower'
 
   return { colorHue, colorWord, plantBase, plantWord, motifKey, moods }
+}
+
+function inferThematicBase(text: string, motifKey: string | null): HybridBaseVariety | null {
+  if (/\b(ocean|wave|waves|sea|water|river|lake)\b/.test(text)) return 'lotus'
+  if (/\b(rain|rainy|storm|drizzle|wet)\b/.test(text)) return 'fern'
+  if (/\b(forest|woods|grove)\b/.test(text)) return 'tree'
+  if (motifKey === 'wave') return 'lotus'
+  if (motifKey === 'rain') return 'fern'
+  if (motifKey === 'moon') return 'lotus'
+  return null
 }
 
 function moodAdornment(moods: string[]): HybridAdornment {
@@ -289,7 +341,10 @@ export function semanticLocalGenome(idea: string, varieties: Base[]): HybridGeno
   const hasSemantic =
     sem.colorHue !== null || sem.plantBase !== null || sem.motifKey !== null || sem.moods.length > 0
 
-  const base = sem.plantBase ?? varieties[h % varieties.length]!
+  const base =
+    sem.plantBase ??
+    inferThematicBase(normalizeForScan(trimmed), sem.motifKey) ??
+    varieties[h % varieties.length]!
   let graft = sem.plantBase ? GRAFT_PAIR[sem.plantBase] : varieties[(h >>> 4) % varieties.length]!
   if (graft === base) graft = varieties[((varieties.indexOf(base) + 4) % varieties.length)]!
 
@@ -350,9 +405,11 @@ export function applyIdeaFidelity(idea: string, genome: HybridGenome): HybridGen
     }
   }
 
-  if (sem.plantBase && next.base !== sem.plantBase) {
-    next.base = sem.plantBase
-    if (next.graft === next.base) next.graft = GRAFT_PAIR[sem.plantBase]
+  const thematic = inferThematicBase(normalizeForScan(idea), sem.motifKey)
+  const enforcedBase = sem.plantBase ?? thematic
+  if (enforcedBase && next.base !== enforcedBase) {
+    next.base = enforcedBase
+    if (next.graft === next.base) next.graft = GRAFT_PAIR[enforcedBase]
   }
 
   const motifBroken = !next.motif.paths.length || next.motif.paths.every((p) => !p.d?.trim())

@@ -11,12 +11,14 @@
  */
 
 import { authFetch } from '@/lib/auth/auth-fetch'
-import type { Memory, UserPreferences } from '@/lib/types'
+import { loadShed, mergeStorageShed, sanitizeShedForSync, saveShed } from '@/lib/garden/shed-storage'
+import type { Memory, StorageShedData, UserPreferences } from '@/lib/types'
 
 interface SyncDocument {
   memories: SyncMemory[]
   preferences: UserPreferences
   updatedAt?: string
+  storageShed?: StorageShedData
 }
 
 type SyncMemory = Omit<Memory, 'photoUrl' | 'audioRecordings'> & {
@@ -64,9 +66,11 @@ export async function pushDocument(
   memories: Memory[],
   preferences: UserPreferences,
 ): Promise<string | null> {
+  const storageShed = sanitizeShedForSync(loadShed(userId)) ?? undefined
   const document: SyncDocument = {
     memories: stripBlobs(memories),
     preferences,
+    storageShed,
   }
   const res = await authFetch('/api/sync', {
     method: 'POST',
@@ -84,6 +88,12 @@ export async function pushDocument(
  * audio (which never made the trip to the cloud) are re-attached by
  * memory id. New memories from the cloud get empty photoUrl/audio.
  */
+export function mergePulledStorageShed(userId: string, remote: StorageShedData | undefined): void {
+  if (!remote) return
+  const merged = mergeStorageShed(loadShed(userId), remote)
+  saveShed(userId, merged)
+}
+
 export function mergePulledMemories(local: Memory[], pulled: SyncMemory[]): Memory[] {
   const localById = new Map(local.map((m) => [m.id, m]))
   return pulled.map((p) => {

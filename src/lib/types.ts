@@ -65,12 +65,21 @@ export interface HybridGenome {
   motif: HybridMotif
 }
 
+export interface ShedSeedLineage {
+  evolvedFromName?: string
+  parentWeek?: string
+}
+
 export interface ShedSeed {
   id: string
   idea: string
   note: string
   when: number
   g: HybridGenome
+  /** Original prompt for re-dreaming later */
+  source?: 'dream' | 'weekly'
+  weeklyIsoWeek?: string
+  lineage?: ShedSeedLineage
 }
 
 export interface PlantedHybrid {

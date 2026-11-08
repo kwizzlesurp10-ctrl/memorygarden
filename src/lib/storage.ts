@@ -31,11 +31,24 @@ export function readRaw<T>(key: string): T | null {
 /**
  * Direct (non-React) write to the backing store.
  */
+export class StorageQuotaExceededError extends Error {
+  constructor() {
+    super('Storage quota exceeded')
+    this.name = 'StorageQuotaExceededError'
+  }
+}
+
 export function writeRaw<T>(key: string, value: T): void {
   try {
     localStorage.setItem(`${STORAGE_PREFIX}:${key}`, JSON.stringify(value))
-  } catch {
-    // quota / private-browsing — silently drop
+  } catch (err) {
+    if (
+      err instanceof DOMException &&
+      (err.name === 'QuotaExceededError' || err.code === 22 || err.code === 1014)
+    ) {
+      throw new StorageQuotaExceededError()
+    }
+    throw err
   }
 }
 

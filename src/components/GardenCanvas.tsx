@@ -26,8 +26,10 @@ import { HybridPlantSvg } from '@/components/plants/hybrid-builder'
 import type { SeededVariety } from '@/components/plants/types'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { useParallaxCursor } from '@/hooks/useParallaxCursor'
+import { getPlantOfWeek, hasWeeklySeedForWeek } from '@/lib/garden/plant-of-week'
 import { loadShed, saveShed } from '@/lib/garden/shed-storage'
 import { getLocalUser } from '@/lib/local-user'
+import { toast } from 'sonner'
 
 const RIM_STRENGTH = 0.6
 const GARDEN_SEED = 7
@@ -132,8 +134,18 @@ export function GardenCanvas({
     return () => clearInterval(tick)
   }, [playing])
 
+  const quotaWarnedRef = useRef(false)
+
   useEffect(() => {
-    saveShed(userId, shedData)
+    const result = saveShed(userId, shedData)
+    if (!result.ok && result.error === 'quota') {
+      if (!quotaWarnedRef.current) {
+        quotaWarnedRef.current = true
+        toast.error('Your storage shed is full — free some browser space or remove older seeds.')
+      }
+    } else if (result.ok) {
+      quotaWarnedRef.current = false
+    }
   }, [shedData, userId])
 
   const persistShed = useCallback((patch: Partial<StorageShedData> | ((d: StorageShedData) => StorageShedData)) => {
@@ -154,6 +166,12 @@ export function GardenCanvas({
     }
   }, [onPlantHybrid, persistShed])
 
+  const weekly = useMemo(() => getPlantOfWeek(), [])
+  const weeklyAlreadySaved = useMemo(
+    () => hasWeeklySeedForWeek(shedData.seeds, weekly.isoWeek),
+    [shedData.seeds, weekly.isoWeek],
+  )
+
   const handleDreamPlant = useCallback((genome: import('@/lib/types').HybridGenome, idea: string) => {
     const seed: ShedSeed = {
       id: `${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
@@ -161,10 +179,35 @@ export function GardenCanvas({
       note: '',
       when: Date.now(),
       g: genome,
+      source: 'dream',
     }
     persistShed((d) => ({ ...d, seeds: [seed, ...d.seeds].slice(0, 60) }))
     handlePlantFromShed(seed)
   }, [handlePlantFromShed, persistShed])
+
+  const handleAddWeeklyToShed = useCallback(
+    (genome: import('@/lib/types').HybridGenome, idea: string, isoWeek: string): boolean => {
+      if (hasWeeklySeedForWeek(shedData.seeds, isoWeek)) return false
+      const potw = getPlantOfWeek()
+      const seed: ShedSeed = {
+        id: `weekly-${isoWeek}`,
+        idea,
+        note: '',
+        when: Date.now(),
+        g: genome,
+        source: 'weekly',
+        weeklyIsoWeek: isoWeek,
+        lineage: {
+          evolvedFromName: potw.evolvedFromName ?? undefined,
+          parentWeek: potw.parentWeek ?? undefined,
+        },
+      }
+      persistShed((d) => ({ ...d, seeds: [seed, ...d.seeds].filter((s) => s.weeklyIsoWeek !== isoWeek).slice(0, 60) }))
+      toast.success('Plant of the Week tucked into your shed.')
+      return true
+    },
+    [persistShed, shedData.seeds],
+  )
 
   const memoryPlants = useMemo(() => (
     memories.map((memory) => {
@@ -255,6 +298,8 @@ export function GardenCanvas({
         motion={motion}
         candles={shedData.candles}
         onPlant={handleDreamPlant}
+        onAddWeeklyToShed={handleAddWeeklyToShed}
+        weeklyAlreadySaved={weeklyAlreadySaved}
         onLightCandle={(c) => persistShed((d) => ({
           ...d,
           candles: [...d.candles, { ...c, id: `${Date.now()}-${Math.random()}` }].slice(0, 40),

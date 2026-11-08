@@ -1,4 +1,5 @@
 import { parseHttpHttpsLinkUrl } from './memory-link'
+import { sanitizeShedForSync } from './garden/shed-storage'
 
 /**
  * Cloud sync must stay backward compatible with memories written under older
@@ -31,11 +32,14 @@ export function sanitizeMemoryLinkUrlFields(memories: unknown): unknown {
 }
 
 export function sanitizeSyncDocument(document: Record<string, unknown>): Record<string, unknown> {
-  if (!Array.isArray(document.memories)) {
-    return document
+  const next: Record<string, unknown> = { ...document }
+  if (Array.isArray(document.memories)) {
+    next.memories = sanitizeMemoryLinkUrlFields(document.memories)
   }
-  return {
-    ...document,
-    memories: sanitizeMemoryLinkUrlFields(document.memories),
+  if ('storageShed' in document) {
+    const shed = sanitizeShedForSync(document.storageShed)
+    if (shed) next.storageShed = shed
+    else delete next.storageShed
   }
+  return next
 }

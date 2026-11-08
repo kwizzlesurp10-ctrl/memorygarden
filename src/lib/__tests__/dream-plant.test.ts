@@ -1,7 +1,5 @@
-import { createElement as h } from 'react'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { dreamPlant } from '@/lib/garden/dream-plant'
 import {
@@ -11,11 +9,29 @@ import {
   parseGenome,
   paletteDominantHue,
 } from '@/lib/garden/hybrid'
-import { buildMiniHybrid } from '@/components/plants/hybrid-builder'
 import { todPalette } from '@/lib/garden/day-night'
+import { buildDreamContactSheetSvg, renderDreamPlantCellSvg } from '@/lib/garden/dream-contact-sheet'
+import { getPlantOfWeek, getUpcomingWeeklyPlants } from '@/lib/garden/plant-of-week'
 import { getLLMProvider, resetLLMProvider, setLLMProvider, type LLMProvider } from '@/lib/llm-client'
 
 const outDir = process.env.ARTIFACT_DIR || '/opt/cursor/artifacts'
+
+const CAT_MOTIF_FRAG = 'M8 10 L6 5 L10 8'
+
+function parseHexChannel(hex: string, channel: 'r' | 'g' | 'b'): number {
+  const n = parseInt(hex.slice(1), 16)
+  if (channel === 'r') return (n >>> 16) & 255
+  if (channel === 'g') return (n >>> 8) & 255
+  return n & 255
+}
+
+function svgHasRedBloom(svg: string, glowHex: string): boolean {
+  expect(svg.includes(glowHex)).toBe(true)
+  const r = parseHexChannel(glowHex, 'r')
+  const g = parseHexChannel(glowHex, 'g')
+  const b = parseHexChannel(glowHex, 'b')
+  return r > 140 && r > g + 25 && r > b + 25
+}
 
 describe('dream plant semantic fallback', () => {
   it('maps red rose to red palette, flower base, and rose/flower motif', () => {
@@ -31,9 +47,10 @@ describe('dream plant semantic fallback', () => {
     expect(g.motif.label).toBe('cat')
   })
 
-  it('maps blue ocean waves to blue palette and wave motif', () => {
+  it('maps blue ocean waves to blue palette, wave motif, and lotus base', () => {
     const g = localGenome('blue ocean waves')
     expect(g.motif.label).toBe('wave')
+    expect(g.base).toBe('lotus')
     expect(huesNear(paletteDominantHue(g.palette), 215, 45)).toBe(true)
   })
 
@@ -42,10 +59,48 @@ describe('dream plant semantic fallback', () => {
     expect(g.motif.label).toBe('coffee cup')
   })
 
+  it('maps spooky purple mushroom to mushroom base', () => {
+    const g = localGenome('spooky purple mushroom')
+    expect(g.base).toBe('mushroom')
+    expect(huesNear(paletteDominantHue(g.palette), 275, 45)).toBe(true)
+  })
+
+  it('maps sad rainy day to fern base and rain motif', () => {
+    const g = localGenome('sad rainy day')
+    expect(g.base).toBe('fern')
+    expect(g.motif.label).toBe('rain')
+  })
+
+  it('maps joyful golden sunflower to wildflower with gold palette', () => {
+    const g = localGenome('joyful golden sunflower')
+    expect(g.base).toBe('wildflower')
+    expect(huesNear(paletteDominantHue(g.palette), 42, 40)).toBe(true)
+  })
+
+  it('maps calm lavender mint with lavender-purple palette', () => {
+    const g = localGenome('calm lavender mint')
+    expect(['herb', 'wildflower']).toContain(g.base)
+    expect(huesNear(paletteDominantHue(g.palette), 285, 40)).toBe(true)
+  })
+
   it('is deterministic for the same input', () => {
     const a = localGenome('spooky purple mushroom')
     const b = localGenome('spooky purple mushroom')
     expect(a).toEqual(b)
+  })
+
+  it('rendered red rose svg includes a red-hue bloom fill', () => {
+    const g = localGenome('red rose')
+    const palette = todPalette(12, 'summer')
+    const svg = renderDreamPlantCellSvg(g, palette)
+    expect(svgHasRedBloom(svg, g.palette.glow)).toBe(true)
+  })
+
+  it('rendered my cat Luna svg includes the cat motif path', () => {
+    const g = localGenome('my cat Luna')
+    const palette = todPalette(12, 'summer')
+    const svg = renderDreamPlantCellSvg(g, palette)
+    expect(svg).toContain(CAT_MOTIF_FRAG)
   })
 
   it('rejects unsafe motif path data and falls back safely', () => {
@@ -133,6 +188,7 @@ describe('dreamPlant with mocked LLM', () => {
     const { genome, source } = await dreamPlant('blue ocean waves')
     expect(source).toBe('ai')
     expect(genome.motif.label).toBe('wave')
+    expect(genome.base).toBe('lotus')
     expect(huesNear(paletteDominantHue(genome.palette), 215, 45)).toBe(true)
   })
 
@@ -167,29 +223,57 @@ describe('dream plant contact sheet artifact', () => {
     'emerald fern forest',
   ]
 
-  it('writes dream contact sheet SVG when ARTIFACT_CAPTURE=1', () => {
+  it('writes dream contact sheet SVG + PNG when ARTIFACT_CAPTURE=1', async () => {
     if (process.env.ARTIFACT_CAPTURE !== '1') return
 
     mkdirSync(outDir, { recursive: true })
-    const palette = todPalette(14, 'summer')
-    const cols = 4
-    const cellW = 140
-    const cellH = 168
-    const rows = Math.ceil(samples.length / cols)
+    const genomes = samples.map((idea) => localGenome(idea))
+    const dayPalette = todPalette(12, 'summer')
+    const nightPalette = todPalette(21, 'summer')
 
-    const cells = samples
-      .map((idea, i) => {
-        const g = localGenome(idea)
-        const col = i % cols
-        const row = Math.floor(i / cols)
-        const inner = renderToStaticMarkup(
-          h('g', { transform: `translate(${cellW * 0.5} ${cellH - 18})` }, buildMiniHybrid(7, g, palette, 0.65, false)),
-        )
-        return `<g transform="translate(${col * cellW} ${row * cellH})">${inner}<text x="6" y="14" font-size="9" fill="#2d2418" font-family="system-ui,sans-serif">${idea.replace(/&/g, '&amp;')}</text><text x="6" y="26" font-size="8" fill="#6a5a48" font-family="system-ui,sans-serif">${g.name.replace(/&/g, '&amp;')}</text></g>`
+    const daySvg = buildDreamContactSheetSvg({
+      samples,
+      genomes,
+      palette: dayPalette,
+      title: 'Dream plants — day',
+      background: '#e9f3e5',
+    })
+    const nightSvg = buildDreamContactSheetSvg({
+      samples,
+      genomes,
+      palette: nightPalette,
+      title: 'Dream plants — night',
+      background: '#0d0a14',
+    })
+
+    writeFileSync(resolve(outDir, 'dream-plant-contact-sheet-day.svg'), daySvg, 'utf8')
+    writeFileSync(resolve(outDir, 'dream-plant-contact-sheet-night.svg'), nightSvg, 'utf8')
+
+    const { Resvg } = await import('@resvg/resvg-js')
+    const renderPng = (svg: string, name: string) => {
+      const resvg = new Resvg(svg, {
+        fitTo: { mode: 'width', value: 736 },
+        background: name.includes('night') ? '#0d0a14' : '#e9f3e5',
       })
-      .join('')
+      const data = resvg.render()
+      writeFileSync(resolve(outDir, name), data.asPng())
+    }
 
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${cols * cellW}" height="${rows * cellH}" viewBox="0 0 ${cols * cellW} ${rows * cellH}">${cells}</svg>`
-    writeFileSync(resolve(outDir, 'dream-plant-contact-sheet.svg'), svg, 'utf8')
+    renderPng(daySvg, 'dream-plant-contact-sheet-day.png')
+    renderPng(nightSvg, 'dream-plant-contact-sheet-night.png')
+
+    const weekly = getUpcomingWeeklyPlants(4)
+    const weeklySamples = weekly.map((w) => `PoW ${w.isoWeek}: ${w.theme}`)
+    const weeklyGenomes = weekly.map((w) => w.genome)
+    const weeklyDaySvg = buildDreamContactSheetSvg({
+      samples: weeklySamples,
+      genomes: weeklyGenomes,
+      palette: dayPalette,
+      cols: 2,
+      title: 'Plants of the week (current + next 3)',
+      background: '#e9f3e5',
+    })
+    writeFileSync(resolve(outDir, 'dream-plant-weekly-contact-sheet-day.svg'), weeklyDaySvg, 'utf8')
+    renderPng(weeklyDaySvg, 'dream-plant-weekly-contact-sheet-day.png')
   })
 })

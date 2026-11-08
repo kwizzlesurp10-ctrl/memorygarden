@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import type { Memory, UserPreferences } from '@/lib/types'
+import { validateShedData } from '@/lib/garden/shed-storage'
+import type { Memory, StorageShedData, UserPreferences } from '@/lib/types'
 import { isBlobRef } from '@/lib/blob-store'
 
 export const GARDEN_BACKUP_VERSION = 1 as const
@@ -14,6 +15,7 @@ export const gardenBackupSchema = z.object({
   preferences: z.custom<UserPreferences>((v) => typeof v === 'object' && v !== null),
   media: z.record(z.string(), z.string()).optional(),
   cloudSyncExcludesMedia: z.literal(true).optional(),
+  storageShed: z.custom<StorageShedData>((v) => validateShedData(v)).optional(),
 })
 
 export type GardenBackupDocument = z.infer<typeof gardenBackupSchema>
@@ -36,8 +38,9 @@ export function buildGardenBackupDocument(params: {
   memories: Memory[]
   preferences: UserPreferences
   media?: Record<string, string>
+  storageShed?: StorageShedData
 }): GardenBackupDocument {
-  return {
+  const doc: GardenBackupDocument = {
     version: GARDEN_BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     localUserId: params.localUserId,
@@ -46,6 +49,10 @@ export function buildGardenBackupDocument(params: {
     media: params.media,
     cloudSyncExcludesMedia: true,
   }
+  if (params.storageShed) {
+    return { ...doc, storageShed: validateShedData(params.storageShed) }
+  }
+  return doc
 }
 
 export function parseGardenBackup(raw: unknown): GardenBackupDocument {

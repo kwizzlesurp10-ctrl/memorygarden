@@ -16,6 +16,7 @@ import {
   mergeGardenBackupImport,
   parseGardenBackup,
 } from '@/lib/garden-backup'
+import { loadShed, mergeStorageShed, saveShed } from '@/lib/garden/shed-storage'
 import { getBlob, isBlobRef } from '@/lib/blob-store'
 
 interface GardenBackupDialogProps {
@@ -59,6 +60,7 @@ export function GardenBackupDialog({
         memories,
         preferences,
         media,
+        storageShed: loadShed(localUserId),
       })
       const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
@@ -87,6 +89,11 @@ export function GardenBackupDialog({
       const doc = parseGardenBackup(JSON.parse(text) as unknown)
       const result = mergeGardenBackupImport(memories, preferences, doc, { preserveExisting: true })
       onImport(result.memories, result.preferences)
+      if (doc.storageShed) {
+        const merged = mergeStorageShed(loadShed(localUserId), doc.storageShed)
+        saveShed(localUserId, merged)
+        toast.message('Storage shed seeds from backup were merged into this device.')
+      }
       result.warnings.forEach((w) => toast.warning(w))
       toast.success(`Imported ${result.importedCount} new memories (${result.skippedCount} skipped).`)
       onClose()

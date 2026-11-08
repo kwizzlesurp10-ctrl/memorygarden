@@ -12,6 +12,8 @@ interface GardenLayoutToolDockProps {
   motion: boolean
   candles: Candle[]
   onPlant: (genome: HybridGenome, idea: string) => void
+  onAddWeeklyToShed?: (genome: HybridGenome, idea: string, isoWeek: string) => boolean
+  weeklyAlreadySaved?: boolean
   onLightCandle: (candle: Omit<Candle, 'id'>) => void
   onExtinguishCandle: (id: string) => void
 }
@@ -25,6 +27,8 @@ export function GardenLayoutToolDock({
   motion,
   candles,
   onPlant,
+  onAddWeeklyToShed,
+  weeklyAlreadySaved,
   onLightCandle,
   onExtinguishCandle,
 }: GardenLayoutToolDockProps) {
@@ -68,6 +72,8 @@ export function GardenLayoutToolDock({
               rimStrength={rimStrength}
               motion={motion}
               onPlant={onPlant}
+              onAddWeeklyToShed={onAddWeeklyToShed}
+              weeklyAlreadySaved={weeklyAlreadySaved}
               onClose={close}
             />
           </div>
