@@ -24,13 +24,21 @@ export const GARDEN_LANDSCAPE_VIEW_META: readonly GardenLandscapeViewMeta[] = [
   { id: 'garden_path', label: 'Garden path', description: 'Winding path; water glimpsed at the edge' },
 ]
 
+export interface WaterRect {
+  x: number
+  y: number
+  width: number
+  height: number
+  rx?: number
+}
+
 export interface ViewWaterLayout {
   /** Top edge of main water body (SVG y, increases downward). */
   waterTopY: number
   /** Full-scene water band height; 0 when only a corner patch is used. */
   bandHeight: number
-  /** Optional corner pond (garden path). */
-  corner?: { x: number; y: number; width: number; height: number }
+  /** Optional corner pond (garden path) — visible sliver at frame edge. */
+  corner?: WaterRect
 }
 
 export interface ViewPlantBand {
@@ -84,7 +92,7 @@ export function getViewWaterLayout(view: GardenLandscapeView): ViewWaterLayout {
       return {
         waterTopY: SCENE_H,
         bandHeight: 0,
-        corner: { x: 0, y: 628, width: 220, height: SCENE_H - 628 },
+        corner: { x: 0, y: 598, width: 340, height: 102, rx: 14 },
       }
     default: {
       const _exhaustive: never = view
@@ -111,16 +119,47 @@ export function getViewPlantBand(view: GardenLandscapeView): ViewPlantBand {
 }
 
 /** True when a scene y coordinate is on land (not standing in open water). */
+function pointInRect(px: number, py: number, rect: WaterRect): boolean {
+  return px >= rect.x && px <= rect.x + rect.width && py >= rect.y && py <= rect.y + rect.height
+}
+
+export function getWaterMaskClipRects(layout: ViewWaterLayout): WaterRect[] {
+  const rects: WaterRect[] = []
+  if (layout.bandHeight > 0) {
+    rects.push({ x: 0, y: layout.waterTopY, width: SCENE_W, height: layout.bandHeight })
+  }
+  if (layout.corner) {
+    rects.push(layout.corner)
+  }
+  return rects
+}
+
+export function rippleIntersectsWater(
+  x: number,
+  y: number,
+  layout: ViewWaterLayout,
+): boolean {
+  const rects = getWaterMaskClipRects(layout)
+  return rects.some((rect) => pointInRect(x, y, rect))
+}
+
+/** Y anchor for sun/moon column reflections on the water surface. */
+export function getWaterReflectionCenterY(layout: ViewWaterLayout, fallbackSunX?: number): number {
+  void fallbackSunX
+  if (layout.bandHeight > 0) {
+    return layout.waterTopY + Math.min(72, layout.bandHeight * 0.45)
+  }
+  if (layout.corner) {
+    return layout.corner.y + layout.corner.height * 0.38
+  }
+  return SCENE_H - 40
+}
+
 export function isSceneYOnLand(y: number, view: GardenLandscapeView): boolean {
   const layout = getViewWaterLayout(view)
-  if (layout.corner) {
-    const { x: _x, y: cy, width: cw, height: ch } = layout.corner
-    void _x
-    void cw
-    if (y >= cy && y <= cy + ch) return false
-    return true
-  }
-  return y < layout.waterTopY - 6
+  const rects = getWaterMaskClipRects(layout)
+  if (rects.length === 0) return true
+  return !rects.some((rect) => y >= rect.y - 2 && y <= rect.y + rect.height + 2)
 }
 
 export function projectMemoryToScene(

@@ -119,37 +119,62 @@ function buildFlower(s: number, r: () => number, C: HybridPlantPalette, rim: num
       out.push(e('path', { key: 'sp1', d: `M ${tipX - 4} ${tipY + 1} Q ${tipX - 6} ${tipY - 3}, ${tipX - 4.5} ${tipY - 6}`, stroke: C.sil, strokeWidth: 1.1, fill: 'none', strokeLinecap: 'round' }));
       out.push(e('path', { key: 'sp2', d: `M ${tipX + 4} ${tipY + 1} Q ${tipX + 6} ${tipY - 3}, ${tipX + 4.5} ${tipY - 6}`, stroke: C.sil, strokeWidth: 1.1, fill: 'none', strokeLinecap: 'round' }));
     }
-    if (s >= 5) {
-      const n = [0, 0, 0, 0, 0, 6, 9, 12][s];
-      const pr = [0, 0, 0, 0, 0, 7, 8.5, 9.5][s];
-      out.push(e('circle', { key: 'hg', cx: tipX, cy: tipY, r: pr * 1.7, fill: C.glow, opacity: 0.15, style: { filter: 'blur(4px)' } }));
-      for (let i = 0; i < n; i++) {
-        const a = i * 360 / n + (r() - 0.5) * 12;
-        out.push(e('g', { key: 'p' + i, transform: `translate(${tipX} ${tipY}) rotate(${a})` },
-          e('path', { d: `M 0 0 Q ${-pr * 0.34} ${-pr * 0.55}, 0 ${-pr} Q ${pr * 0.34} ${-pr * 0.55}, 0 0 Z`, fill: C.sil, stroke: C.rim, strokeOpacity: 0.5 * rim, strokeWidth: 0.5 })));
+    if (s === 5) {
+      const pr = 7.5
+      out.push(e('circle', { key: 'hg', cx: tipX, cy: tipY, r: pr * 1.6, fill: C.glow, opacity: 0.15, style: { filter: 'blur(4px)' } }));
+      for (let i = 0; i < 6; i++) {
+        const a = i * 60 + (r() - 0.5) * 10
+        out.push(e('g', { key: 'bp' + i, transform: `translate(${tipX} ${tipY}) rotate(${a})` },
+          e('path', {
+            d: `M 0 0 Q ${-pr * 0.42} ${-pr * 0.62}, 0 ${-pr} Q ${pr * 0.42} ${-pr * 0.62}, 0 0 Z`,
+            fill: C.sil,
+            stroke: C.rim,
+            strokeOpacity: 0.55 * rim,
+            strokeWidth: 0.5,
+            transform: 'rotate(-8)',
+          })));
       }
-      out.push(e('circle', { key: 'cc', cx: tipX, cy: tipY, r: 2.4 + s * 0.2, fill: C.glow, opacity: 0.95 }));
-      out.push(e('circle', { key: 'ci', cx: tipX, cy: tipY, r: 1.1, fill: '#ffffff', opacity: 0.8 }));
+      out.push(e('circle', { key: 'cc', cx: tipX, cy: tipY, r: 2.8, fill: C.glow, opacity: 0.95 }));
+      out.push(e('circle', { key: 'ci', cx: tipX, cy: tipY, r: 1.15, fill: '#ffffff', opacity: 0.85 }));
     }
-    if (s >= 6) {
-      const bx = lean * 0.5 + 14, by = -H * 0.62;
+    if (s === 6) {
+      const n = 11
+      const pr = 9
+      out.push(e('circle', { key: 'hg', cx: tipX, cy: tipY, r: pr * 1.8, fill: C.glow, opacity: 0.17, style: { filter: 'blur(4px)' } }));
+      for (let i = 0; i < n; i++) {
+        const a = i * 360 / n + (r() - 0.5) * 8
+        out.push(e('g', { key: 'mp' + i, transform: `translate(${tipX} ${tipY}) rotate(${a})` },
+          e('path', { d: `M 0 0 Q ${-pr * 0.36} ${-pr * 0.58}, 0 ${-pr} Q ${pr * 0.36} ${-pr * 0.58}, 0 0 Z`, fill: C.sil, stroke: C.rim, strokeOpacity: 0.5 * rim, strokeWidth: 0.5 })));
+      }
+      out.push(e('circle', { key: 'cc', cx: tipX, cy: tipY, r: 3.1, fill: C.glow, opacity: 0.95 }));
+      const bx = lean * 0.5 + 14
+      const by = -H * 0.62
       out.push(e('path', { key: 'sbs', d: `M ${lean * 0.55} ${-H * 0.5} Q ${bx - 4} ${by + 8}, ${bx} ${by}`, stroke: C.sil, strokeWidth: 1, fill: 'none', strokeLinecap: 'round' }));
       out.push(e('path', { key: 'sbb', d: `M ${bx} ${by + 1.5} C ${bx - 3} ${by - 0.5}, ${bx - 2.4} ${by - 5.5}, ${bx} ${by - 7} C ${bx + 2.4} ${by - 5.5}, ${bx + 3} ${by - 0.5}, ${bx} ${by + 1.5} Z`, fill: C.sil, stroke: C.rim, strokeOpacity: 0.5 * rim, strokeWidth: 0.5 }));
-      out.push(e('circle', { key: 'sbg', cx: bx, cy: by - 6, r: 0.8, fill: C.glow, opacity: 0.8 }));
     }
     if (s === 7) {
+      const n = 12
+      const pr = 9.2
+      for (let i = 0; i < n; i++) {
+        const a = i * 360 / n + (r() - 0.5) * 10
+        const droop = i % 2 === 0 ? 1.12 : 0.92
+        out.push(e('g', { key: 'ep' + i, transform: `translate(${tipX} ${tipY - 2}) rotate(${a}) scale(1 ${droop})` },
+          e('path', { d: `M 0 0 Q ${-pr * 0.34} ${-pr * 0.55}, 0 ${-pr * 0.95} Q ${pr * 0.34} ${-pr * 0.5}, 0 0 Z`, fill: C.silSoft, stroke: C.rim, strokeOpacity: 0.42 * rim, strokeWidth: 0.45, transform: 'rotate(6)' })));
+      }
+      out.push(e('circle', { key: 'cc', cx: tipX, cy: tipY - 1, r: 2.6, fill: C.glow, opacity: 0.85 }));
+      for (let i = 0; i < 4; i++) {
+        const sx = tipX + (i - 1.5) * 5.5
+        const sy = tipY - pr - 4 - i * 1.2
+        out.push(e('ellipse', { key: 'sd' + i, cx: sx, cy: sy, rx: 1.3, ry: 2.2, fill: C.silSoft, opacity: 0.9 }));
+      }
       [[-1, 0.55], [1, 0.42]].forEach(([sd, f], j) => {
-        const bx = tipX + sd * 17, by = -H * f - 8;
+        const bx = tipX + sd * 17
+        const by = -H * f - 8
         out.push(e('path', { key: 'e' + j + 's', d: `M ${lean * 0.4 * f} ${-H * f} Q ${bx - sd * 6} ${by + 12}, ${bx} ${by}`, stroke: C.sil, strokeWidth: 1.1, fill: 'none', strokeLinecap: 'round' }));
-        out.push(e('circle', { key: 'e' + j + 'g', cx: bx, cy: by, r: 7, fill: C.glow, opacity: 0.13, style: { filter: 'blur(3px)' } }));
-        for (let i = 0; i < 6; i++) {
-          out.push(e('g', { key: 'e' + j + 'p' + i, transform: `translate(${bx} ${by}) rotate(${i * 60 + j * 25})` },
-            e('path', { d: 'M 0 0 Q -1.6 -2.6, 0 -4.8 Q 1.6 -2.6, 0 0 Z', fill: C.sil, stroke: C.rim, strokeOpacity: 0.45 * rim, strokeWidth: 0.4 })));
-        }
-        out.push(e('circle', { key: 'e' + j + 'c', cx: bx, cy: by, r: 1.5, fill: C.glow, opacity: 0.9 }));
-      });
+        out.push(e('circle', { key: 'e' + j + 'c', cx: bx, cy: by, r: 1.5, fill: C.glow, opacity: 0.75 }));
+      })
       if (motion) for (let i = 0; i < 3; i++) {
-        out.push(e('circle', { key: 'mt' + i, cx: tipX - 8 + i * 8, cy: tipY - 12 - i * 3, r: 0.9, fill: C.glow, opacity: 0.7, style: { animation: `mgMote ${3 + r() * 2}s ease-in-out ${r() * 2.5}s infinite` } }));
+        out.push(e('circle', { key: 'mt' + i, cx: tipX - 8 + i * 8, cy: tipY - 14 - i * 3, r: 0.9, fill: C.glow, opacity: 0.7, style: { animation: `mgMote ${3 + r() * 2}s ease-in-out ${r() * 2.5}s infinite` } }));
       }
     }
     return out;
@@ -182,7 +207,8 @@ function buildTree(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
       out.push(e('path', { key: 'b' + i, d: `M 0 ${y0} Q ${side * len * 0.55} ${y0 - len * 0.4}, ${side * len} ${y0 - len * 0.72}`, stroke: C.sil, strokeWidth: Math.max(0.7, 2.4 - i * 0.25), fill: 'none', strokeLinecap: 'round' }));
     }
     if (s >= 2) {
-      const cw = 7 + s * 4.2, ch = 5 + s * 3;
+      const bloomScale = s === 5 ? 0.88 : s === 6 ? 1.05 : s === 7 ? 1.12 : 1;
+      const cw = (7 + s * 4.2) * bloomScale, ch = (5 + s * 3) * bloomScale;
       const blobs = 3 + s * 2;
       out.push(e('ellipse', { key: 'cb', cx: 0, cy: -H - ch * 0.35, rx: cw, ry: ch * 0.85, fill: C.sil }));
       for (let j = 0; j < blobs; j++) {
