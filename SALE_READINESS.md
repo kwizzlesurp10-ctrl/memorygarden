@@ -17,7 +17,7 @@ Commands run on Ubuntu, Node v22.x, `pnpm install --frozen-lockfile`:
 | `pnpm run build` | Pass | Pass (agent) |
 | `pnpm run typecheck` | Pass | Pass (agent) |
 | `pnpm run lint` | 0 errors | 0 errors (agent) |
-| `pnpm test` | **667 pass** | **680 pass** (+13 regression tests) |
+| `pnpm test` | **691 pass** (post #193 main) | **691 pass** (includes auth/linking/restore tests) |
 | `pnpm audit` | **44** (5 low / 19 moderate / 20 high) | **17** (1 low / 4 moderate / 12 high) after Vite 8.3.6, Vitest 4.1.12, `undici>=8.10.2` override |
 
 CI (`.github/workflows/ci.yml`) uses **pnpm** and **Node 22** per PR #192. Vercel install/build commands use pnpm frozen lockfile (`vercel.json`).
@@ -30,10 +30,23 @@ CI (`.github/workflows/ci.yml`) uses **pnpm** and **Node 22** per PR #192. Verce
 |----------|---------|
 | `ANTHROPIC_API_KEY` | `/api/llm` proxy |
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Sync, entitlements, Stripe idempotency, LLM rate limit |
-| `DATABASE_URL` | Community gardens (Neon) |
+| `DATABASE_URL` | Community gardens (Neon) + account linking tables |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Checkout + webhooks |
 | `STRIPE_PRICE_*` (per SKU) | See `PAYMENTS.md` |
+| `NEON_AUTH_BASE_URL` | Managed Better Auth issuer + JWKS (Vercel server / Edge) |
+| `NEON_AUTH_JWKS_URL` | Optional override; default `${NEON_AUTH_BASE_URL}/.well-known/jwks.json` |
+| `VITE_NEON_AUTH_URL` | Public Auth URL for the Vite client (`@neondatabase/auth`) |
 | `KV_*` / Stripe | Required together for paid feature fulfillment |
+
+### Owner setup — Neon Auth (optional sign-in)
+
+1. **Neon Console:** open the MemoryGarden Postgres project → enable **Auth** (Managed Better Auth) on the production branch (AWS region; not compatible with IP Allow / Private Networking on same project). Note the branch **Auth URL** (includes path).
+2. **Trusted domains:** add `https://memorygarden.vercel.app`, preview URLs, and local dev origins (`https://neon.com/docs/auth/guides/configure-domains.md`).
+3. **SQL migration (owner runs once):** execute `db/migrations/001_mg_neon_account_linking.sql` in the Neon SQL editor (additive tables only).
+4. **Vercel → Environment variables:** set `NEON_AUTH_BASE_URL` (server), `VITE_NEON_AUTH_URL` (build-time client — same Auth URL), keep existing `DATABASE_URL`. Redeploy so the client bundle receives `VITE_*`.
+5. **Verify:** menu → **Sign in (optional)** appears only when `VITE_NEON_AUTH_URL` is set; sign in → **Link this browser & restore purchases**; cloud sync / payments send `Authorization` when session active; signed-out users unchanged.
+
+CI/agents do **not** run the migration or toggle Neon Auth in production.
 
 ---
 
@@ -77,7 +90,7 @@ Format: `src/lib/garden-backup.ts` — `version: 1` JSON schema with optional `m
 | # | Status | Notes |
 |---|--------|-------|
 | 1 Quality gates | **Changed** | Tests pass (658); TSC/lint failed, now addressed. Worker `webidl` issue **not reproduced**. CI Node 20 vs tooling ≥22 — **align CI**. |
-| 2 Local ids / API trust | **Changed** | Still browser-local ids; **strict id validation** (`api/lib/api-ids.ts`) on sync/gardens/payments. No cryptographic identity — documented. |
+| 2 Local ids / API trust | **Changed** | Local ids by default; **optional Neon Auth** with JWT verification + `mg_local_identity_link` when configured; **legacy unauthenticated** API path preserved. |
 | 3 Community visibility | **Confirmed → fixed** | Filtering used `visibility` but SQL omitted column — **added**; logic extracted to `api/gardens/lib/community-memory-privacy.ts` + tests. |
 | 4 LLM auth / rate limit | **Changed** | Still no user auth; **KV rate limit** added when KV configured (`api/llm-rate-limit.ts`). |
 | 5 Stripe | **Changed** | Webhook unchanged; entitlements GET keeps optional `sessionId` filter (client polls with session on return); consume accepts optional `stripeSessionId` (enforced when sent — compatible with main JS). |
@@ -90,7 +103,7 @@ Format: `src/lib/garden-backup.ts` — `version: 1` JSON schema with optional `m
 
 ## Owner decisions (not implemented — would need identity, spend, or breaking changes)
 
-1. **Authentication** (OAuth, passkeys, email magic link) tying KV/entitlements to verified users.
+1. **Retire legacy API mode** — require JWT on sync/payments after cutover; keep Neon Auth email verification / custom SMTP for production.
 2. **Server-side garden membership proofs** on plant/water/reflect (parsers + helpers exist; not wired to avoid breaking link-join / remote water without `garden_members` rows).
 3. **Encrypt** KV/DB at rest or per-user encryption keys.
 4. **Production Stripe** live mode confirmation, MRR/churn export, tax/VAT, refund policy.

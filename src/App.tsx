@@ -53,6 +53,11 @@ import { skuForFertilizerLevel } from '@/lib/payments/catalog'
 import { applyCosmeticPackToUnlockState } from '@/lib/payments/entitlements'
 import { redirectToCheckout } from '@/lib/payments/client'
 import { resolvePaidCheckoutSession } from '@/lib/payments/apply-return'
+const NeonAuthPanel = lazy(() => import('@/components/auth/NeonAuthPanel').then((m) => ({ default: m.NeonAuthPanel })))
+import { isNeonAuthConfigured } from '@/lib/auth/config'
+import { getAuthClient } from '@/lib/auth/neon-auth-client'
+import { completeSignInLinking } from '@/lib/auth/complete-sign-in'
+import { applyRestoredEntitlementsToUnlockState } from '@/lib/auth/restore-purchases'
 
 function describeSyncStatus(status: SyncStatus): string | null {
   switch (status.kind) {
@@ -119,6 +124,10 @@ function App() {
       setPreferences(p => ({ ...p, hasCompletedOnboarding: true }))
     }
   }, [preferences, memories])
+
+  const neonAuthAvailable = isNeonAuthConfigured()
+  const [neonAuthOpen, setNeonAuthOpen] = useState(false)
+  const [accountEmail, setAccountEmail] = useState<string | null>(null)
 
   const [viewMode, setViewMode] = useState<ViewMode>('garden')
   const [visitingGardenId, setVisitingGardenId] = useState<string | null>(null)
@@ -283,6 +292,43 @@ function App() {
       return { ...base, unlockState: processed }
     })
   }, [setPreferences, processUnlockUpdates])
+
+  const refreshAccountEmail = useCallback(async () => {
+    if (!neonAuthAvailable) return
+    const client = getAuthClient()
+    if (!client) return
+    try {
+      const { data } = await client.getSession()
+      const email =
+        data && 'user' in data && data.user && typeof data.user.email === 'string'
+          ? data.user.email
+          : null
+      setAccountEmail(email)
+    } catch {
+      setAccountEmail(null)
+    }
+  }, [neonAuthAvailable])
+
+  const handleNeonSignInComplete = useCallback(async () => {
+    try {
+      const entitlements = await completeSignInLinking(localUser.id)
+      updateUnlockState((state) => applyRestoredEntitlementsToUnlockState(state, entitlements))
+      await refreshAccountEmail()
+      toast.success('Signed in — browser profile linked; purchase unlocks restored where available.')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not link account'
+      toast.error(message)
+    }
+  }, [localUser.id, refreshAccountEmail, updateUnlockState])
+
+  const handleNeonSignOut = useCallback(async () => {
+    const client = getAuthClient()
+    if (client) {
+      await client.signOut()
+    }
+    setAccountEmail(null)
+    toast.message('Signed out — your local garden is unchanged.')
+  }, [])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -1337,6 +1383,13 @@ function App() {
           onInviteToGarden={handleInviteToGarden}
           onOpenShortcuts={() => setIsShortcutsPanelOpen(true)}
           onOpenProtocolTest={() => window.open('/protocol-test.html', '_blank')}
+          neonAuthAvailable={neonAuthAvailable}
+          accountEmail={accountEmail}
+          onOpenSignIn={() => {
+            setNeonAuthOpen(true)
+            void refreshAccountEmail()
+          }}
+          onSignOut={() => void handleNeonSignOut()}
           onToggleActivityPanel={() => setShowActivityPanel((v) => !v)}
           isActivityPanelOpen={showActivityPanel}
           activityCount={unreadActivityCount}
@@ -1652,6 +1705,16 @@ function App() {
             setPreferences(nextPreferences)
           }}
         />
+
+        {neonAuthAvailable && neonAuthOpen && (
+          <Suspense fallback={null}>
+            <NeonAuthPanel
+              open={neonAuthOpen}
+              onOpenChange={setNeonAuthOpen}
+              onSignedIn={() => void handleNeonSignInComplete()}
+            />
+          </Suspense>
+        )}
 
         {/* Feature 2: Collaborative Garden Dialogs */}
         <CreateGardenDialog

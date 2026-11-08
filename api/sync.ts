@@ -26,6 +26,8 @@
  */
 
 import { isValidUserId } from './lib/api-ids'
+import { assertLocalUserIdAllowed, resolveRequestAuth } from './lib/auth-guard'
+import { getNeonSql } from './lib/db'
 import { sanitizeSyncDocument } from '../src/lib/sync-document'
 
 export const config = { runtime: 'edge' }
@@ -45,7 +47,11 @@ function getEnv(): SyncEnv | null {
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json; charset=utf-8' },
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
   })
 }
 
@@ -72,10 +78,26 @@ async function kvSet(env: SyncEnv, key: string, value: string): Promise<boolean>
 }
 
 export default async function handler(req: Request): Promise<Response> {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    })
+  }
+
   const env = getEnv()
   if (!env) {
     return jsonResponse(503, { error: 'Cloud sync not configured' })
   }
+
+  const sql = getNeonSql()
+  const authResult = await resolveRequestAuth(req, sql)
+  if ('error' in authResult) return authResult.error
+  const auth = authResult
 
   if (req.method === 'GET') {
     const url = new URL(req.url)
@@ -83,6 +105,8 @@ export default async function handler(req: Request): Promise<Response> {
     if (!isValidUserId(userId)) {
       return jsonResponse(400, { error: 'Invalid userId' })
     }
+    const gate = await assertLocalUserIdAllowed(auth, userId, sql)
+    if (!gate.ok) return jsonResponse(gate.status, { error: gate.error })
     const raw = await kvGet(env, userKey(userId))
     if (!raw) return jsonResponse(404, { error: 'No document' })
     try {
@@ -102,6 +126,8 @@ export default async function handler(req: Request): Promise<Response> {
     if (!isValidUserId(body.userId)) {
       return jsonResponse(400, { error: 'Invalid userId' })
     }
+    const gate = await assertLocalUserIdAllowed(auth, body.userId, sql)
+    if (!gate.ok) return jsonResponse(gate.status, { error: gate.error })
     if (!body.document || typeof body.document !== 'object') {
       return jsonResponse(400, { error: 'Document required' })
     }

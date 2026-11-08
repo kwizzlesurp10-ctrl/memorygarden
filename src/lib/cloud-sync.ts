@@ -10,6 +10,7 @@
  * holds memory text, reflections, position, traits, etc.
  */
 
+import { authFetch } from '@/lib/auth/auth-fetch'
 import type { Memory, UserPreferences } from '@/lib/types'
 
 interface SyncDocument {
@@ -35,7 +36,7 @@ export function isSyncAvailable(): Promise<boolean> {
   _availabilityProbe = (async () => {
     if (typeof fetch === 'undefined') return false
     try {
-      const res = await fetch('/api/sync?userId=__probe__', { method: 'GET' })
+      const res = await authFetch('/api/sync?userId=__probe__', { method: 'GET' })
       // 400 (invalid id) means the route exists and KV is configured.
       // 503 means env vars missing. 404 wouldn't happen for the probe id.
       return res.status !== 503 && res.status !== 404
@@ -51,7 +52,7 @@ function stripBlobs(memories: Memory[]): SyncMemory[] {
 }
 
 export async function pullDocument(userId: string): Promise<SyncDocument | null> {
-  const res = await fetch(`/api/sync?userId=${encodeURIComponent(userId)}`)
+  const res = await authFetch(`/api/sync?userId=${encodeURIComponent(userId)}`)
   if (res.status === 404 || res.status === 503) return null
   if (!res.ok) throw new Error(`Pull failed: ${res.status}`)
   const data = (await res.json()) as { document?: SyncDocument }
@@ -67,7 +68,7 @@ export async function pushDocument(
     memories: stripBlobs(memories),
     preferences,
   }
-  const res = await fetch('/api/sync', {
+  const res = await authFetch('/api/sync', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ userId, document }),
