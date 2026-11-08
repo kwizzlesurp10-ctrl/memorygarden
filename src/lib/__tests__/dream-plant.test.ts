@@ -10,7 +10,12 @@ import {
   paletteDominantHue,
 } from '@/lib/garden/hybrid'
 import { todPalette } from '@/lib/garden/day-night'
-import { buildDreamContactSheetSvg, renderDreamPlantCellSvg } from '@/lib/garden/dream-contact-sheet'
+import {
+  buildDreamContactSheetSvg,
+  buildMotifGridContactSheetSvg,
+  renderDreamPlantCellSvg,
+} from '@/lib/garden/dream-contact-sheet'
+import { MOTIF_GLYPHS } from '@/lib/garden/hybrid-motifs'
 import { getPlantOfWeek, getUpcomingWeeklyPlants } from '@/lib/garden/plant-of-week'
 import { getLLMProvider, resetLLMProvider, setLLMProvider, type LLMProvider } from '@/lib/llm-client'
 
@@ -262,18 +267,23 @@ describe('dream plant contact sheet artifact', () => {
     renderPng(daySvg, 'dream-plant-contact-sheet-day.png')
     renderPng(nightSvg, 'dream-plant-contact-sheet-night.png')
 
-    const weekly = getUpcomingWeeklyPlants(4)
+    const weekly = getUpcomingWeeklyPlants(8)
     const weeklySamples = weekly.map((w) => `PoW ${w.isoWeek}: ${w.theme}`)
     const weeklyGenomes = weekly.map((w) => w.genome)
     const weeklyDaySvg = buildDreamContactSheetSvg({
       samples: weeklySamples,
       genomes: weeklyGenomes,
       palette: dayPalette,
-      cols: 2,
-      title: 'Plants of the week (current + next 3)',
+      cols: 4,
+      title: 'Plants of the week (current + next 7)',
       background: '#e9f3e5',
     })
     writeFileSync(resolve(outDir, 'dream-plant-weekly-contact-sheet-day.svg'), weeklyDaySvg, 'utf8')
     renderPng(weeklyDaySvg, 'dream-plant-weekly-contact-sheet-day.png')
+
+    const motifSvg = buildMotifGridContactSheetSvg(dayPalette)
+    writeFileSync(resolve(outDir, 'dream-motif-grid.svg'), motifSvg, 'utf8')
+    renderPng(motifSvg, 'dream-motif-grid.png')
+    expect(Object.keys(MOTIF_GLYPHS).length).toBeGreaterThanOrEqual(47)
   })
 })
