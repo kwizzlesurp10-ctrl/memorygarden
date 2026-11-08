@@ -69,7 +69,11 @@ export function todPalette(t: number, season: Season): ScenePalette {
 
   if (t >= 18.8 || t <= 5.8) {
     const pn = t >= 18.8 ? (t - 18.8) / 11 : (t + 5.2) / 11
-    palette.moon = { x: 110 + pn * 980, y: 455 - Math.sin(pn * Math.PI) * 330, r: 30 }
+    palette.moon = {
+      x: 110 + pn * 980 + 155,
+      y: 455 - Math.sin(pn * Math.PI) * 330 - 72,
+      r: 30,
+    }
   }
 
   return palette

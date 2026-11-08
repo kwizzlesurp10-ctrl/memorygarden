@@ -2,6 +2,7 @@ import { createElement as e, type ReactNode, type CSSProperties } from 'react'
 import type { PlantFacing } from '@/lib/garden/landscape-world'
 import type { HybridPlantPalette } from './seeded-builders'
 import type { SeededVariety } from './types'
+import { lerpHex } from '@/lib/garden/color'
 
 export function applyPlantFacing(
   variety: SeededVariety,
@@ -63,21 +64,29 @@ function withMemoryPresentation(
 
 type CanopyTone = 'deep' | 'shadow' | 'mid' | 'light' | 'highlight'
 
-const ELDER_CANOPY_LIGHT = '#7FA05A'
-const ELDER_CANOPY_HIGHLIGHT = '#95B86A'
+/** 0 = bright day hills, 1 = deep night (cool/dim like terrain). */
+function plantNightBlend(C: HybridPlantPalette): number {
+  const hill = C.hills[0]
+  const r = parseInt(hill.slice(1, 3), 16)
+  const g = parseInt(hill.slice(3, 5), 16)
+  const b = parseInt(hill.slice(5, 7), 16)
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+  return Math.max(0, Math.min(1, (0.44 - lum) / 0.26))
+}
 
 function canopyFill(tone: CanopyTone, C: HybridPlantPalette): string {
+  const night = plantNightBlend(C)
   switch (tone) {
     case 'deep':
       return C.sil
     case 'shadow':
       return C.silSoft
     case 'mid':
-      return ELDER_CANOPY_LIGHT
+      return lerpHex(C.hills[1], C.silSoft, night * 0.55)
     case 'light':
-      return '#88A862'
+      return lerpHex(C.hills[0], C.silSoft, night * 0.65)
     case 'highlight':
-      return ELDER_CANOPY_HIGHLIGHT
+      return lerpHex(C.hills[0], C.glow, (1 - night) * 0.22 + night * 0.08)
     default: {
       const _exhaustive: never = tone
       return _exhaustive
@@ -244,19 +253,18 @@ function elderOrganicCanopy(
   }
   const sorted = [...base, ...highlights].sort((a, b) => toneOrder[a[5]] - toneOrder[b[5]])
 
-  const gapBranches = elderCanopyGapBranches(facing, C, f)
   const underbelly = elderCanopyUnderbelly(facing, C, f)
   const edgeTexture = elderCanopyEdgeBumps(facing, C, litSide, f)
+  const gapTwigs = elderUnderCanopyGapTwigs(facing, C, f)
 
   return [
     elderCrownMass(facing, C, f),
     underbelly,
-    ...elderCrownBranches(C, f),
+    ...gapTwigs,
     ...sorted.map(([key, cx, cy, rx, ry, tone, phase]) =>
       foliageClump(key, cx * f, cy, rx, ry, tone, C, rim, phase),
     ),
     ...edgeTexture,
-    ...gapBranches,
   ]
 }
 
@@ -281,39 +289,37 @@ function elderCanopyUnderbelly(
   })
 }
 
-function elderCanopyGapBranches(
+/** Thin twigs only in shaded under-canopy / sky-gap slots — never over lit clumps. */
+function elderUnderCanopyGapTwigs(
   facing: 'front' | 'back' | 'side',
   C: HybridPlantPalette,
   flip: number,
 ): ReactNode[] {
   const f = flip
-  const gaps: Array<[number, number]> =
+  const trunk = C.bank
+  const specs: Array<[string, string]> =
     facing === 'front'
-      ? [[-18 * f, -94], [22 * f, -102], [6 * f, -108]]
+      ? [
+          ['gap0', `M ${-12 * f} -62 L ${-10 * f} -68 L ${-7 * f} -66`],
+          ['gap1', `M ${4 * f} -64 L ${6 * f} -70 L ${9 * f} -67`],
+        ]
       : facing === 'back'
-        ? [[12 * f, -96], [-20 * f, -100]]
-        : [[14 * f, -92], [-8 * f, -98]]
-  return gaps.map(([gx, gy], i) =>
-    e('g', { key: `gap-br-${i}` }, [
-      e('path', {
-        key: 'gb',
-        d: `M ${gx} ${gy} C ${gx - 6 * f} ${gy - 10} ${gx + 4 * f} ${gy - 16} ${gx + 8 * f} ${gy - 22}`,
-        stroke: C.bank,
-        strokeWidth: 2.2,
-        fill: 'none',
-        strokeLinecap: 'round',
-        opacity: 0.75,
-      }),
-      e('path', {
-        key: 'gt',
-        d: `M ${gx + 2 * f} ${gy - 2} C ${gx + 8 * f} ${gy - 8} ${gx + 12 * f} ${gy - 6} ${gx + 10 * f} ${gy - 14}`,
-        stroke: C.sil,
-        strokeWidth: 1.6,
-        fill: 'none',
-        strokeLinecap: 'round',
-        opacity: 0.55,
-      }),
-    ]),
+        ? [['gap0', `M ${8 * f} -60 L ${10 * f} -66 L ${13 * f} -63`]]
+        : [
+            ['gap0', `M ${2 * f} -61 L ${4 * f} -67 L ${7 * f} -64`],
+            ['gap1', `M ${-16 * f} -58 L ${-14 * f} -64 L ${-11 * f} -61`],
+          ]
+  return specs.map(([key, d]) =>
+    e('path', {
+      key,
+      d,
+      stroke: trunk,
+      strokeWidth: 1.35,
+      fill: 'none',
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round',
+      opacity: 0.48,
+    }),
   )
 }
 
@@ -636,10 +642,30 @@ const MUSHROOM_COLORS: Record<(typeof MUSHROOM_CAP)[number], { cap: string; capD
   ochre: { cap: '#B7853A', capDark: '#86602A', capLight: '#D8AA5E' },
   'red-brown': { cap: '#9E4B32', capDark: '#6E3022', capLight: '#C27355' },
 }
-const MUSHROOM_STEM = '#EDE3CF'
-const MUSHROOM_STEM_SHADE = '#BFB194'
-const MUSHROOM_GILLS = '#6B5440'
-const MUSHROOM_SHADOW = '#1E3A2C'
+const MUSHROOM_GILLS_DAY = '#6B5440'
+
+function mushroomStemColors(C: HybridPlantPalette): { stem: string; stemShade: string; shadow: string; gills: string } {
+  const night = plantNightBlend(C)
+  return {
+    stem: lerpHex('#EDE3CF', C.silSoft, night * 0.82),
+    stemShade: lerpHex('#BFB194', C.bank, night * 0.88),
+    shadow: lerpHex('#1E3A2C', C.bank, night * 0.75),
+    gills: lerpHex(MUSHROOM_GILLS_DAY, C.bank, night * 0.7),
+  }
+}
+
+function mushroomCapColors(
+  kind: (typeof MUSHROOM_CAP)[number],
+  C: HybridPlantPalette,
+): { cap: string; capDark: string; capLight: string } {
+  const base = MUSHROOM_COLORS[kind]
+  const night = plantNightBlend(C)
+  return {
+    cap: lerpHex(base.cap, C.hills[1], night * 0.5),
+    capDark: lerpHex(base.capDark, C.bank, night * 0.72),
+    capLight: lerpHex(base.capLight, C.silSoft, night * 0.55),
+  }
+}
 
 function mushroomForegroundGrass(C: HybridPlantPalette, stemW: number, litSide: number): ReactNode[] {
   const blades: ReactNode[] = []
@@ -671,10 +697,11 @@ function oneMushroom(
   tiltDeg: number,
 ): ReactNode {
   void _rim
-  const col = MUSHROOM_COLORS[capKind]
-  const sw = stemW * 0.36 // half stem width at the base
-  const stemH = stemW * 1.55
-  const capHW = stemW * 1.05 // half cap width
+  const col = mushroomCapColors(capKind, C)
+  const stem = mushroomStemColors(C)
+  const capHW = stemW * 0.95 // half cap width
+  const sw = capHW * 0.35 // half stem width (~35% of cap width)
+  const stemH = stemW * 1.45
   const rise = capHW * 0.78
   const capY = -stemH // cap underside sits on top of the stem
   const L = litSide
@@ -682,21 +709,21 @@ function oneMushroom(
     'g',
     { key, transform: `rotate(${tiltDeg * 0.65})` },
     ...mushroomForegroundGrass(C, stemW, litSide),
-    e('ellipse', { key: 'sh', cx: -L * stemW * 0.25, cy: 0.6, rx: capHW * 0.8, ry: stemW * 0.18, fill: MUSHROOM_SHADOW, opacity: 0.45 }),
+    e('ellipse', { key: 'sh', cx: -L * stemW * 0.25, cy: 0.6, rx: capHW * 0.8, ry: stemW * 0.18, fill: stem.shadow, opacity: 0.45 }),
     // stem: slightly flared base, narrower under the cap
     e('path', {
       key: 'stem',
       d: `M ${-sw} 0 Q ${-sw * 0.7} ${capY * 0.5} ${-sw * 0.72} ${capY} L ${sw * 0.72} ${capY} Q ${sw * 0.7} ${capY * 0.5} ${sw} 0 Z`,
-      fill: MUSHROOM_STEM,
+      fill: stem.stem,
     }),
     e('path', {
       key: 'stem-shade',
       d: `M ${L * sw * 0.15} 0 Q ${L * sw * 0.55} ${capY * 0.45} ${L * sw * 0.75} ${capY * 0.92} L ${L * sw * 0.38} ${capY * 0.95} Q ${L * sw * 0.28} ${capY * 0.5} ${L * sw * 0.22} 0 Z`,
-      fill: MUSHROOM_STEM_SHADE,
+      fill: stem.stemShade,
       opacity: 0.72,
     }),
     // gill underside
-    e('ellipse', { key: 'gills', cx: 0, cy: capY, rx: capHW * 0.92, ry: rise * 0.16, fill: MUSHROOM_GILLS }),
+    e('ellipse', { key: 'gills', cx: 0, cy: capY, rx: capHW * 0.92, ry: rise * 0.16, fill: stem.gills }),
     // domed cap
     e('path', {
       key: 'cap',
@@ -723,9 +750,33 @@ function oneMushroom(
     }),
     spots
       ? [
-          e('ellipse', { key: 's1', cx: capHW * 0.18, cy: capY - rise * 0.62, rx: stemW * 0.14, ry: stemW * 0.1, fill: '#F6EEDD', opacity: 0.92 }),
-          e('ellipse', { key: 's2', cx: -capHW * 0.4, cy: capY - rise * 0.38, rx: stemW * 0.11, ry: stemW * 0.08, fill: '#F6EEDD', opacity: 0.88 }),
-          e('ellipse', { key: 's3', cx: capHW * 0.55, cy: capY - rise * 0.3, rx: stemW * 0.09, ry: stemW * 0.07, fill: '#F6EEDD', opacity: 0.85 }),
+          e('ellipse', {
+            key: 's1',
+            cx: capHW * 0.18,
+            cy: capY - rise * 0.62,
+            rx: stemW * 0.14,
+            ry: stemW * 0.1,
+            fill: stem.stem,
+            opacity: 0.92,
+          }),
+          e('ellipse', {
+            key: 's2',
+            cx: -capHW * 0.4,
+            cy: capY - rise * 0.38,
+            rx: stemW * 0.11,
+            ry: stemW * 0.08,
+            fill: stem.stem,
+            opacity: 0.88,
+          }),
+          e('ellipse', {
+            key: 's3',
+            cx: capHW * 0.55,
+            cy: capY - rise * 0.3,
+            rx: stemW * 0.09,
+            ry: stemW * 0.07,
+            fill: stem.stem,
+            opacity: 0.85,
+          }),
         ]
       : null,
   )
@@ -770,7 +821,8 @@ export function buildReadableMushroomCluster(
     const { mx, my, sc, tilt } = layouts[i] ?? layouts[layouts.length - 1]
     const capKind = i === 0 ? primary.kind : secondaryKinds[i % secondaryKinds.length]
     const spots = i === 0 ? primary.spots : false
-    const stemW = (7.5 + stage * 0.35) * sc
+    const starter = geneticsSeed?.includes('starter-mushroom')
+    const stemW = (starter ? 5.6 : 7.5 + stage * 0.35) * sc
     out.push(
       e(
         'g',

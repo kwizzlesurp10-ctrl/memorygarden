@@ -132,6 +132,26 @@ describe('garden visual artifacts', () => {
       : nightBody.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')
     writeSvgAndPng('garden-starter-pond-night', nightWrapped)
 
+    const lakesideNightBody = renderToStaticMarkup(
+      h(GardenSceneSvg, {
+        palette: nightPalette,
+        sceneKey: 'lakeside-night',
+        gardenSeed: 7,
+        rimStrength: 0.85,
+        motion: false,
+        landscapeView: 'lakeside',
+        shedStyle: 'storybook',
+        planted: [],
+        candles: [],
+        memoryPlants: [],
+        starterDecor,
+      }),
+    )
+    const lakesideNightWrapped = lakesideNightBody.includes('xmlns=')
+      ? lakesideNightBody
+      : lakesideNightBody.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')
+    writeSvgAndPng('garden-starter-lakeside-night', lakesideNightWrapped)
+
     for (const view of GARDEN_LANDSCAPE_VIEWS) {
       const memoryPlants = samplePositions.map((mem, i) => {
         const pos = projectMemoryToSceneWorld(mem, view)
