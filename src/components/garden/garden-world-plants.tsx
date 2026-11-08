@@ -48,7 +48,7 @@ export function buildStarterWorldPlants(
       key: shroom.id,
       depth: proj.depth,
       node: (
-        <g transform={`translate(${proj.x} ${proj.y}) scale(${proj.scale})`}>
+        <g transform={`translate(${proj.x} ${proj.y}) scale(${proj.scale * shroom.scale * 1.62})`}>
           <SeededPlantSvg
             variety="mushroom"
             stage="mature"
@@ -56,7 +56,7 @@ export function buildStarterWorldPlants(
             palette={palette}
             rimStrength={rim}
             motion={motion}
-            scale={shroom.scale}
+            scale={1.12}
             facing={proj.facing}
             rimFromLeft={proj.rimFromLeft}
           />

@@ -84,7 +84,7 @@ export function buildWorldSceneryItems(
     objectYaw: WORLD_COTTAGE.yaw,
     layer: 'near',
   })
-  const shedY = shedProj.y + Math.min(10, shedProj.scale * 5.5)
+  const shedY = shedProj.y
   items.push({
     key: WORLD_COTTAGE.id,
     depth: shedProj.depth + 2,

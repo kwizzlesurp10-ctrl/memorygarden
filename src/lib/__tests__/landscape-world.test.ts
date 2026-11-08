@@ -55,7 +55,8 @@ describe('starter decor generation', () => {
   it('places exactly one elder tree and mushrooms on land only', () => {
     const decor = buildStarter(12345)
     expect(decor.elderTree).toBeDefined()
-    expect(decor.mushrooms.length).toBeGreaterThanOrEqual(5)
+    expect(decor.mushrooms.length).toBeGreaterThanOrEqual(6)
+    expect(decor.mushrooms.length).toBeLessThanOrEqual(9)
     expect(isWorldOnLand({ wx: decor.elderTree.wx, wz: decor.elderTree.wz })).toBe(true)
     for (const shroom of decor.mushrooms) {
       expect(isWorldOnLand({ wx: shroom.wx, wz: shroom.wz })).toBe(true)

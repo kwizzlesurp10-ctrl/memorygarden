@@ -244,13 +244,120 @@ function elderOrganicCanopy(
   }
   const sorted = [...base, ...highlights].sort((a, b) => toneOrder[a[5]] - toneOrder[b[5]])
 
+  const gapBranches = elderCanopyGapBranches(facing, C, f)
+  const underbelly = elderCanopyUnderbelly(facing, C, f)
+  const edgeTexture = elderCanopyEdgeBumps(facing, C, litSide, f)
+
   return [
     elderCrownMass(facing, C, f),
+    underbelly,
     ...elderCrownBranches(C, f),
     ...sorted.map(([key, cx, cy, rx, ry, tone, phase]) =>
       foliageClump(key, cx * f, cy, rx, ry, tone, C, rim, phase),
     ),
+    ...edgeTexture,
+    ...gapBranches,
   ]
+}
+
+function elderCanopyUnderbelly(
+  facing: 'front' | 'back' | 'side',
+  C: HybridPlantPalette,
+  flip: number,
+): ReactNode {
+  const f = flip
+  const band =
+    facing === 'front'
+      ? `M ${-50 * f} -58 Q ${-8 * f} -48 ${36 * f} -52 Q ${54 * f} -54 ${50 * f} -64 Q ${20 * f} -72 ${-36 * f} -68 Q ${-54 * f} -66 ${-50 * f} -58 Z`
+      : facing === 'back'
+        ? `M ${46 * f} -56 Q ${6 * f} -46 ${-34 * f} -50 Q ${-52 * f} -52 ${-48 * f} -62 Q ${-18 * f} -70 ${36 * f} -66 Q ${52 * f} -64 ${46 * f} -56 Z`
+        : `M ${42 * f} -54 Q ${4 * f} -44 ${-30 * f} -48 Q ${-46 * f} -50 ${-42 * f} -60 Q ${-14 * f} -68 ${32 * f} -64 Q ${46 * f} -62 ${42 * f} -54 Z`
+  return e('path', {
+    key: 'canopy-under',
+    d: band,
+    fill: C.sil,
+    opacity: 0.88,
+    stroke: 'none',
+  })
+}
+
+function elderCanopyGapBranches(
+  facing: 'front' | 'back' | 'side',
+  C: HybridPlantPalette,
+  flip: number,
+): ReactNode[] {
+  const f = flip
+  const gaps: Array<[number, number]> =
+    facing === 'front'
+      ? [[-18 * f, -94], [22 * f, -102], [6 * f, -108]]
+      : facing === 'back'
+        ? [[12 * f, -96], [-20 * f, -100]]
+        : [[14 * f, -92], [-8 * f, -98]]
+  return gaps.map(([gx, gy], i) =>
+    e('g', { key: `gap-br-${i}` }, [
+      e('path', {
+        key: 'gb',
+        d: `M ${gx} ${gy} C ${gx - 6 * f} ${gy - 10} ${gx + 4 * f} ${gy - 16} ${gx + 8 * f} ${gy - 22}`,
+        stroke: C.bank,
+        strokeWidth: 2.2,
+        fill: 'none',
+        strokeLinecap: 'round',
+        opacity: 0.75,
+      }),
+      e('path', {
+        key: 'gt',
+        d: `M ${gx + 2 * f} ${gy - 2} C ${gx + 8 * f} ${gy - 8} ${gx + 12 * f} ${gy - 6} ${gx + 10 * f} ${gy - 14}`,
+        stroke: C.sil,
+        strokeWidth: 1.6,
+        fill: 'none',
+        strokeLinecap: 'round',
+        opacity: 0.55,
+      }),
+    ]),
+  )
+}
+
+function elderCanopyEdgeBumps(
+  facing: 'front' | 'back' | 'side',
+  C: HybridPlantPalette,
+  litSide: number,
+  flip: number,
+): ReactNode[] {
+  const f = flip
+  const sun = litSide > 0 ? 1 : -1
+  const seeds: Array<[number, number, number]> =
+    facing === 'front'
+      ? [
+          [-38 * f, -72, 0.2],
+          [30 * f, -78, 1.1],
+          [-10 * f, -116, 0.7],
+          [20 * f, -110, 1.8],
+          [-44 * f, -88, 2.4],
+        ]
+      : facing === 'back'
+        ? [
+            [28 * f, -76, 0.5],
+            [-24 * f, -82, 1.3],
+            [4 * f, -112, 0.9],
+          ]
+        : [
+            [32 * f, -74, 0.6],
+            [-26 * f, -80, 1.2],
+            [8 * f, -104, 1.9],
+          ]
+  return seeds.map(([cx, cy, phase], i) =>
+    foliageClump(
+      `edge-${i}`,
+      cx,
+      cy,
+      5.5 + (i % 2) * 1.2,
+      4 + (i % 3) * 0.6,
+      i % 2 === 0 ? 'mid' : sun > 0 ? 'light' : 'shadow',
+      C,
+      0.6,
+      phase + 0.8,
+    ),
+  )
 }
 
 function cameraFacingBarkDetail(
@@ -647,7 +754,7 @@ export function buildReadableMushroomCluster(
   const out: ReactNode[] = []
 
   const memberCount = geneticsSeed?.includes('starter-mushroom')
-    ? 1 + (geneticsSeed.charCodeAt(geneticsSeed.length - 3) % 2)
+    ? 1
     : stage >= 6
       ? 4
       : 2

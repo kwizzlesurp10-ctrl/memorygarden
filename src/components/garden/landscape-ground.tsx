@@ -30,6 +30,7 @@ export function SceneGroundPlane({ palette: C, sceneKey: key, view }: SceneGroun
   const geom = getPondGeometry(view)
   const earth = C.hills[0]
   const earthSoft = C.hills[1]
+  const liftMid = view === 'lakeside' || view === 'meadow'
 
   return (
     <g data-ground-plane={view}>
@@ -42,14 +43,36 @@ export function SceneGroundPlane({ palette: C, sceneKey: key, view }: SceneGroun
           y2={SCENE_H}
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset={0} stopColor={C.hills[2]} stopOpacity={0.92} />
-          <stop offset={0.22} stopColor={C.hills[1]} stopOpacity={0.95} />
-          <stop offset={0.5} stopColor={C.hills[2]} stopOpacity={0.98} />
-          <stop offset={0.78} stopColor={C.bank} stopOpacity={0.97} />
+          <stop
+            offset={0}
+            stopColor={liftMid ? C.hills[1] : C.hills[2]}
+            stopOpacity={liftMid ? 0.9 : 0.92}
+          />
+          <stop offset={0.18} stopColor={C.hills[2]} stopOpacity={liftMid ? 0.94 : 0.95} />
+          <stop offset={0.42} stopColor={liftMid ? C.hills[2] : C.hills[1]} stopOpacity={0.96} />
+          <stop offset={0.68} stopColor={C.hills[2]} stopOpacity={0.98} />
+          <stop offset={0.84} stopColor={C.bank} stopOpacity={0.96} />
           <stop offset={1} stopColor={C.bank} stopOpacity={1} />
         </linearGradient>
+        {liftMid ? (
+          <linearGradient
+            id={`groundDepth${key}`}
+            x1={0}
+            y1={0}
+            x2={SCENE_W}
+            y2={0}
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop offset={0} stopColor={C.hills[2]} stopOpacity={0.24} />
+            <stop offset={0.48} stopColor={C.hills[2]} stopOpacity={0.1} />
+            <stop offset={1} stopColor={C.bank} stopOpacity={0.05} />
+          </linearGradient>
+        ) : null}
       </defs>
       <path d={groundPlanePathD()} fill={`url(#groundGrad${key})`} />
+      {liftMid ? (
+        <path d={groundPlanePathD()} fill={`url(#groundDepth${key})`} />
+      ) : null}
       <path
         d={`M -8 ${LANDSCAPE_HORIZON_Y + 32} Q 280 ${LANDSCAPE_HORIZON_Y + 22} 560 ${LANDSCAPE_HORIZON_Y + 26} T ${SCENE_W + 8} ${LANDSCAPE_HORIZON_Y + 22}`}
         stroke={C.hills[1]}
