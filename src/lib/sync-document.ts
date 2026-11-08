@@ -1,4 +1,4 @@
-import { parseHttpHttpsLinkUrl } from '@/lib/memory-link'
+import { parseHttpHttpsLinkUrl } from './memory-link'
 
 /**
  * Cloud sync must stay backward compatible with memories written under older
