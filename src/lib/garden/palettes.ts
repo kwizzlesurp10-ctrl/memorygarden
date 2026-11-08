@@ -32,6 +32,8 @@ export interface ScenePalette extends GardenPalette {
   sun?: { x: number; y: number; r: number; disk: string; glow: string } | null
   moon?: { x: number; y: number; r: number }
   venus?: { x: number; y: number }
+  /** 0 = full-saturation day plant art; 1 = fully night-dimmed plants. */
+  plantDimBlend?: number
 }
 
 export const EMBER_DUSK: ScenePalette = {

@@ -3,6 +3,7 @@ import type { PlantFacing } from '@/lib/garden/landscape-world'
 import type { HybridPlantPalette } from './seeded-builders'
 import type { SeededVariety } from './types'
 import { lerpHex } from '@/lib/garden/color'
+import { STARTER_MUSHROOM_STEM_W } from '@/lib/garden/starter-mushroom-scale'
 
 export function applyPlantFacing(
   variety: SeededVariety,
@@ -64,34 +65,41 @@ function withMemoryPresentation(
 
 type CanopyTone = 'deep' | 'shadow' | 'mid' | 'light' | 'highlight'
 
-/** 0 = bright day hills, 1 = deep night (cool/dim like terrain). */
-function plantNightBlend(C: HybridPlantPalette): number {
-  const hill = C.hills[0]
-  const r = parseInt(hill.slice(1, 3), 16)
-  const g = parseInt(hill.slice(3, 5), 16)
-  const b = parseInt(hill.slice(5, 7), 16)
-  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
-  return Math.max(0, Math.min(1, (0.44 - lum) / 0.26))
+function plantDimBlend(C: HybridPlantPalette): number {
+  return Math.max(0, Math.min(1, C.plantDimBlend ?? 0))
 }
 
-function canopyFill(tone: CanopyTone, C: HybridPlantPalette): string {
-  const night = plantNightBlend(C)
+const CANOPY_DAY: Record<CanopyTone, string> = {
+  deep: '#1F3D2C',
+  shadow: '#2A4534',
+  mid: '#3E6B3F',
+  light: '#7FA05A',
+  highlight: '#9DBE6E',
+}
+
+function canopyNightFill(tone: CanopyTone, C: HybridPlantPalette): string {
   switch (tone) {
     case 'deep':
       return C.sil
     case 'shadow':
       return C.silSoft
     case 'mid':
-      return lerpHex(C.hills[1], C.silSoft, night * 0.55)
+      return lerpHex(C.hills[1], C.silSoft, 0.55)
     case 'light':
-      return lerpHex(C.hills[0], C.silSoft, night * 0.65)
+      return lerpHex(C.hills[0], C.silSoft, 0.65)
     case 'highlight':
-      return lerpHex(C.hills[0], C.glow, (1 - night) * 0.22 + night * 0.08)
+      return lerpHex(C.hills[0], C.glow, 0.08)
     default: {
       const _exhaustive: never = tone
       return _exhaustive
     }
   }
+}
+
+function canopyFill(tone: CanopyTone, C: HybridPlantPalette): string {
+  const blend = plantDimBlend(C)
+  if (blend <= 0) return CANOPY_DAY[tone]
+  return lerpHex(CANOPY_DAY[tone], canopyNightFill(tone, C), blend)
 }
 
 /** Soft cloud silhouette from smooth cubic bezier segments (no hard polygon edges). */
@@ -644,13 +652,25 @@ const MUSHROOM_COLORS: Record<(typeof MUSHROOM_CAP)[number], { cap: string; capD
 }
 const MUSHROOM_GILLS_DAY = '#6B5440'
 
+const MUSHROOM_STEM_DAY = '#EDE3CF'
+const MUSHROOM_STEM_SHADE_DAY = '#BFB194'
+const MUSHROOM_SHADOW_DAY = '#1E3A2C'
+
 function mushroomStemColors(C: HybridPlantPalette): { stem: string; stemShade: string; shadow: string; gills: string } {
-  const night = plantNightBlend(C)
+  const blend = plantDimBlend(C)
+  if (blend <= 0) {
+    return {
+      stem: MUSHROOM_STEM_DAY,
+      stemShade: MUSHROOM_STEM_SHADE_DAY,
+      shadow: MUSHROOM_SHADOW_DAY,
+      gills: MUSHROOM_GILLS_DAY,
+    }
+  }
   return {
-    stem: lerpHex('#EDE3CF', C.silSoft, night * 0.82),
-    stemShade: lerpHex('#BFB194', C.bank, night * 0.88),
-    shadow: lerpHex('#1E3A2C', C.bank, night * 0.75),
-    gills: lerpHex(MUSHROOM_GILLS_DAY, C.bank, night * 0.7),
+    stem: lerpHex(MUSHROOM_STEM_DAY, C.silSoft, blend * 0.82),
+    stemShade: lerpHex(MUSHROOM_STEM_SHADE_DAY, C.bank, blend * 0.88),
+    shadow: lerpHex(MUSHROOM_SHADOW_DAY, C.bank, blend * 0.75),
+    gills: lerpHex(MUSHROOM_GILLS_DAY, C.bank, blend * 0.7),
   }
 }
 
@@ -659,11 +679,12 @@ function mushroomCapColors(
   C: HybridPlantPalette,
 ): { cap: string; capDark: string; capLight: string } {
   const base = MUSHROOM_COLORS[kind]
-  const night = plantNightBlend(C)
+  const blend = plantDimBlend(C)
+  if (blend <= 0) return base
   return {
-    cap: lerpHex(base.cap, C.hills[1], night * 0.5),
-    capDark: lerpHex(base.capDark, C.bank, night * 0.72),
-    capLight: lerpHex(base.capLight, C.silSoft, night * 0.55),
+    cap: lerpHex(base.cap, C.hills[1], blend * 0.5),
+    capDark: lerpHex(base.capDark, C.bank, blend * 0.72),
+    capLight: lerpHex(base.capLight, C.silSoft, blend * 0.55),
   }
 }
 
@@ -700,8 +721,9 @@ function oneMushroom(
   const col = mushroomCapColors(capKind, C)
   const stem = mushroomStemColors(C)
   const capHW = stemW * 0.95 // half cap width
+  const capW = capHW * 2
   const sw = capHW * 0.35 // half stem width (~35% of cap width)
-  const stemH = stemW * 1.45
+  const stemH = capW * 0.8
   const rise = capHW * 0.78
   const capY = -stemH // cap underside sits on top of the stem
   const L = litSide
@@ -822,7 +844,7 @@ export function buildReadableMushroomCluster(
     const capKind = i === 0 ? primary.kind : secondaryKinds[i % secondaryKinds.length]
     const spots = i === 0 ? primary.spots : false
     const starter = geneticsSeed?.includes('starter-mushroom')
-    const stemW = (starter ? 5.6 : 7.5 + stage * 0.35) * sc
+    const stemW = (starter ? STARTER_MUSHROOM_STEM_W : 7.5 + stage * 0.35) * sc
     out.push(
       e(
         'g',

@@ -1,7 +1,12 @@
 import type { ReactNode } from 'react'
 import type { GardenLandscapeView, GardenStarterDecor } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
-import { projectWorldToScene, type WorldLayer } from '@/lib/garden/landscape-world'
+import { projectWorldToScene } from '@/lib/garden/landscape-world'
+import {
+  starterMushroomLayer,
+  starterMushroomWorldDrawScale,
+  starterMushroomWzBounds,
+} from '@/lib/garden/starter-mushroom-scale'
 import { SeededPlantSvg } from '@/components/plants/SeededPlantSvg'
 
 export interface WorldPlantRenderItem {
@@ -41,14 +46,16 @@ export function buildStarterWorldPlants(
     ),
   })
 
+  const { wzMin, wzMax } = starterMushroomWzBounds(decor.mushrooms)
   for (const shroom of decor.mushrooms) {
-    const layer: WorldLayer = shroom.wz < 0.26 ? 'far' : shroom.wz > 0.44 ? 'near' : 'mid'
+    const layer = starterMushroomLayer(shroom.wz)
     const proj = projectWorldToScene({ wx: shroom.wx, wz: shroom.wz }, view, { layer })
+    const drawScale = starterMushroomWorldDrawScale(shroom.wz, proj.scale, shroom.scale, wzMin, wzMax)
     items.push({
       key: shroom.id,
       depth: proj.depth,
       node: (
-        <g transform={`translate(${proj.x} ${proj.y}) scale(${proj.scale * shroom.scale * 0.72})`}>
+        <g transform={`translate(${proj.x} ${proj.y}) scale(${drawScale})`}>
           <SeededPlantSvg
             variety="mushroom"
             stage="mature"
