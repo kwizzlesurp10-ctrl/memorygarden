@@ -9,7 +9,7 @@ import {
 } from '@/lib/garden/landscape-world-layout'
 import { indexToPlantStage } from '@/lib/garden/stage'
 import { SeededPlantSvg } from '@/components/plants/SeededPlantSvg'
-import { shedForFacing } from '@/components/garden/shed-facing'
+import { shedDrawScale, shedForFacing } from '@/components/garden/shed-facing'
 import { cattail, grassTuft, rock } from '@/components/garden/scenery'
 import { gardenRng } from '@/lib/garden/prng'
 import type { WorldPlantRenderItem } from '@/components/garden/garden-world-plants'
@@ -79,7 +79,7 @@ export function buildWorldSceneryItems(
     depth: shedProj.depth + 2,
     node: (
       <g
-        transform={`translate(${shedProj.x} ${shedProj.y}) scale(${shedProj.scale * 1.5})`}
+        transform={`translate(${shedProj.x} ${shedProj.y}) scale(${shedProj.scale * shedDrawScale(shedProj.facing)})`}
         style={{ cursor: onShedClick ? 'pointer' : undefined }}
         onClick={onShedClick}
         role={onShedClick ? 'button' : undefined}

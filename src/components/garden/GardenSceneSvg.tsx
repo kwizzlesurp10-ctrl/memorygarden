@@ -446,8 +446,9 @@ function FarLandContent({ palette: C, landscapeView }: GardenLandProps & { lands
   const pan = VIEW_FRAME[landscapeView].panX * 0.35
   return (
     <g transform={pan ? `translate(${pan} 0)` : undefined}>
+      <rect x={-280} y={358} width={SCENE_W + 560} height={120} fill={C.hills[0]} />
       <path
-        d="M -4 402 Q 170 362 330 388 T 640 372 Q 810 352 960 384 T 1204 376 L 1204 472 L -4 472 Z"
+        d="M -280 402 Q 170 362 330 388 T 640 372 Q 810 352 960 384 T 1480 376 L 1480 472 L -280 472 Z"
         fill={C.hills[0]}
       />
     </g>
@@ -457,12 +458,14 @@ function FarLandContent({ palette: C, landscapeView }: GardenLandProps & { lands
 function MidHillTerrainShapes({ palette: C }: { palette: ScenePalette }) {
   return (
     <>
+      <rect x={-280} y={396} width={SCENE_W + 560} height={80} fill={C.hills[1]} />
       <path
-        d="M -4 436 Q 200 404 380 424 T 720 414 Q 900 400 1040 426 T 1204 420 L 1204 472 L -4 472 Z"
+        d="M -280 436 Q 200 404 380 424 T 720 414 Q 900 400 1040 426 T 1480 420 L 1480 472 L -280 472 Z"
         fill={C.hills[1]}
       />
+      <rect x={-280} y={446} width={SCENE_W + 560} height={30} fill={C.hills[2]} />
       <path
-        d="M -4 468 Q 90 442 210 452 Q 340 462 470 456 Q 620 448 760 460 Q 920 470 1030 458 Q 1120 450 1204 462 L 1204 472 L -4 472 Z"
+        d="M -280 468 Q 90 442 210 452 Q 340 462 470 456 Q 620 448 760 460 Q 920 470 1030 458 Q 1120 450 1480 462 L 1480 472 L -280 472 Z"
         fill={C.hills[2]}
       />
     </>
@@ -576,7 +579,7 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
   return (
     <g ref={ref} data-layer="mid" data-landscape-view={landscapeView}>
       <SceneGroundPlane palette={C} sceneKey={k} view={landscapeView} />
-      <g transform={`translate(${VIEW_FRAME[landscapeView].panX * 0.25} 0)`}>
+      <g transform={`translate(${VIEW_FRAME[landscapeView].panX * 0.35} 0)`}>
         <MidHillTerrainShapes palette={C} />
       </g>
       <PlantedHybridsContent palette={C} rimStrength={rim} motion={motion} planted={planted} />

@@ -15,7 +15,7 @@ export const VIEW_FRAME: Record<
   { rxMul: number; rzMul: number; panX: number; skyPanX: number }
 > = {
   pond: { rxMul: 1, rzMul: 1, panX: 0, skyPanX: 0 },
-  lakeside: { rxMul: 1.18, rzMul: 0.88, panX: -72, skyPanX: -48 },
+  lakeside: { rxMul: 1.18, rzMul: 0.88, panX: -72, skyPanX: -28 },
   meadow: { rxMul: 1.08, rzMul: 1.22, panX: 28, skyPanX: 22 },
   garden_path: { rxMul: 1.14, rzMul: 1.28, panX: 96, skyPanX: 56 },
 }
@@ -182,7 +182,8 @@ export function projectWorldToSky(world: WorldCoord, view: GardenLandscapeView):
   const rx = (cx * Math.cos(yaw) - cz * Math.sin(yaw)) * frame.rxMul
   const x = SCENE_W / 2 + rx * SCENE_W * 0.82 + frame.skyPanX
   const y = 72 + (0.5 - cz) * 90
-  return { x: Math.max(48, Math.min(SCENE_W - 48, x)), y: Math.max(52, Math.min(200, y)) }
+  const sunMargin = 124
+  return { x: Math.max(sunMargin, Math.min(SCENE_W - sunMargin, x)), y: Math.max(52, Math.min(200, y)) }
 }
 
 export function viewRimLighting(view: GardenLandscapeView): { lightX: number; rimFromLeft: boolean } {

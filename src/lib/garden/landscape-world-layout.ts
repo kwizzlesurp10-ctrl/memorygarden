@@ -11,8 +11,8 @@ export interface WorldEntity {
 /** Storybook cottage — east bank, door faces west toward the grove. */
 export const WORLD_COTTAGE: WorldEntity = {
   id: 'cottage',
-  wx: 0.86,
-  wz: 0.56,
+  wx: 0.9,
+  wz: 0.7,
   yaw: Math.PI / 2,
 }
 

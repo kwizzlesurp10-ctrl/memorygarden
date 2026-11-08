@@ -100,7 +100,7 @@ export function getPondGeometry(view: GardenLandscapeView): PondGeometry {
 
 /** Ground plane — always covers horizon to bottom (full bleed). */
 export function groundPlanePathD(): string {
-  return `M -12 ${LANDSCAPE_HORIZON_Y} L ${SCENE_W + 12} ${LANDSCAPE_HORIZON_Y} L ${SCENE_W + 12} ${SCENE_H + 8} L -12 ${SCENE_H + 8} Z`
+  return `M -280 ${LANDSCAPE_HORIZON_Y} L ${SCENE_W + 280} ${LANDSCAPE_HORIZON_Y} L ${SCENE_W + 280} ${SCENE_H + 8} L -280 ${SCENE_H + 8} Z`
 }
 
 /** Earthen garden path (filled), wide at foreground, narrow toward horizon. */
