@@ -27,6 +27,8 @@ import {
   Globe,
   ChatCircleDots,
   PersonSimpleWalk,
+  UserCircle,
+  SignOut,
 } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
 import { SeasonIndicator } from '@/components/SeasonIndicator'
@@ -63,6 +65,10 @@ export interface AppHeaderProps {
   onToggleActivityPanel?: () => void
   isActivityPanelOpen?: boolean
   activityCount?: number
+  neonAuthAvailable?: boolean
+  accountEmail?: string | null
+  onOpenSignIn?: () => void
+  onSignOut?: () => void
 }
 
 export function AppHeader(props: AppHeaderProps) {
@@ -92,6 +98,10 @@ export function AppHeader(props: AppHeaderProps) {
     onToggleActivityPanel,
     isActivityPanelOpen,
     activityCount = 0,
+    neonAuthAvailable = false,
+    accountEmail = null,
+    onOpenSignIn,
+    onSignOut,
   } = props
 
   return (
@@ -206,6 +216,28 @@ export function AppHeader(props: AppHeaderProps) {
                 <UsersThree size={16} className="mr-2" />
                 Invite Members
               </DropdownMenuItem>
+            )}
+            {neonAuthAvailable && (
+              <>
+                <DropdownMenuSeparator />
+                {accountEmail ? (
+                  <>
+                    <DropdownMenuItem disabled className="text-xs text-muted-foreground">
+                      <UserCircle size={16} className="mr-2" />
+                      {accountEmail}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={onSignOut}>
+                      <SignOut size={16} className="mr-2" />
+                      Sign out
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <DropdownMenuItem onClick={onOpenSignIn}>
+                    <UserCircle size={16} className="mr-2" />
+                    Sign in (optional)
+                  </DropdownMenuItem>
+                )}
+              </>
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onOpenShortcuts}>

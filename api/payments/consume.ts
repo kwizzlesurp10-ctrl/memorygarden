@@ -4,6 +4,8 @@ import {
   markEntitlementConsumed,
   parseEntitlementList,
 } from './lib/entitlements'
+import { assertLocalUserIdAllowed, resolveRequestAuth } from '../lib/auth-guard'
+import { getNeonSql } from '../lib/db'
 import { isValidStripeCheckoutSessionId } from '../lib/api-ids'
 import { getKvEnv, isValidUserId, readEntitlementsRaw, writeEntitlementsRaw } from './lib/kv'
 
@@ -23,7 +25,7 @@ function jsonResponse(status: number, body: unknown): Response {
       'content-type': 'application/json; charset=utf-8',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   })
 }
@@ -35,7 +37,7 @@ export default async function handler(req: Request): Promise<Response> {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
     })
   }
@@ -60,6 +62,12 @@ export default async function handler(req: Request): Promise<Response> {
   if (!isValidUserId(parsed.userId)) {
     return jsonResponse(400, { error: 'Invalid userId' })
   }
+
+  const sql = getNeonSql()
+  const authResult = await resolveRequestAuth(req, sql)
+  if ('error' in authResult) return authResult.error
+  const gate = await assertLocalUserIdAllowed(authResult, parsed.userId, sql)
+  if (!gate.ok) return jsonResponse(gate.status, { error: gate.error })
   if (
     parsed.stripeSessionId != null &&
     !isValidStripeCheckoutSessionId(parsed.stripeSessionId)

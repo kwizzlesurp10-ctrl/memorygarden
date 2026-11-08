@@ -1,7 +1,9 @@
-interface SyncEnv {
+export interface KvEnv {
   url: string
   token: string
 }
+
+type SyncEnv = KvEnv
 
 export function getKvEnv(): SyncEnv | null {
   const url = process.env.KV_REST_API_URL

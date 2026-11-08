@@ -37,6 +37,9 @@ export default defineConfig({
             if (id.includes('@phosphor-icons') || id.includes('lucide-react')) {
               return 'vendor-icons'
             }
+            if ((id.includes('@neondatabase/auth') && !id.includes('@neondatabase/auth-ui')) || id.includes('better-auth') || id.includes('@better-fetch') || id.includes('@better-auth')) {
+              return 'vendor-auth'
+            }
             if (id.includes('three')) {
               return 'vendor-three'
             }

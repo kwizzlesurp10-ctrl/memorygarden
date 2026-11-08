@@ -1,3 +1,5 @@
+import { assertLocalUserIdAllowed, resolveRequestAuth } from '../lib/auth-guard'
+import { getNeonSql } from '../lib/db'
 import { createEmptyEntitlementList, parseEntitlementList } from './lib/entitlements'
 import { resolveEntitlementsForQuery } from './lib/entitlements-access'
 import { getKvEnv, readEntitlementsRaw } from './lib/kv'
@@ -10,6 +12,7 @@ function jsonResponse(status: number, body: unknown): Response {
     headers: {
       'content-type': 'application/json; charset=utf-8',
       'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Authorization',
     },
   })
 }
@@ -28,10 +31,17 @@ export default async function handler(req: Request): Promise<Response> {
   const userId = url.searchParams.get('userId')
   const sessionId = url.searchParams.get('sessionId')
 
+  const sql = getNeonSql()
+  const authResult = await resolveRequestAuth(req, sql)
+  if ('error' in authResult) return authResult.error
+
   const pre = resolveEntitlementsForQuery({ userId, sessionId }, createEmptyEntitlementList())
   if (!pre.ok) {
     return jsonResponse(pre.status, { error: pre.error })
   }
+
+  const gate = await assertLocalUserIdAllowed(authResult, userId as string, sql)
+  if (!gate.ok) return jsonResponse(gate.status, { error: gate.error })
 
   const raw = await readEntitlementsRaw(kv, userId as string)
   const list = raw ? parseEntitlementList(JSON.parse(raw)) : createEmptyEntitlementList()
