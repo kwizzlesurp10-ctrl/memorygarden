@@ -25,6 +25,7 @@ import {
   type RawGardenMemoryRow,
 } from './gardens/lib/community-memory-privacy'
 import { parseHttpHttpsLinkUrl } from '../src/lib/memory-link'
+import { resolveGardensPostAction } from './gardens/lib/route-action'
 
 export const config = { runtime: 'edge' }
 
@@ -65,8 +66,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const url = new URL(req.url)
-  const pathParts = url.pathname.split('/').filter(Boolean)
-  const action = pathParts[2] // e.g., 'join', 'leave', 'plant', etc.
+  let postBody: unknown = null
 
   try {
     const authResult = await resolveRequestAuth(req, sql)
@@ -79,8 +79,28 @@ export default async function handler(req: Request): Promise<Response> {
       return null
     }
 
+    if (req.method === 'POST') {
+      try {
+        postBody = await req.json()
+      } catch {
+        return jsonResponse(400, { error: 'Invalid JSON body' })
+      }
+    }
+
+    const pathAction = resolveGardensPostAction(url.pathname, url.searchParams, null)
+    const action =
+      req.method === 'POST'
+        ? resolveGardensPostAction(
+            url.pathname,
+            url.searchParams,
+            postBody && typeof postBody === 'object'
+              ? (postBody as { action?: unknown }).action
+              : undefined,
+          )
+        : pathAction
+
     // GET /api/gardens - List all public gardens
-    if (req.method === 'GET' && !action) {
+    if (req.method === 'GET' && !pathAction) {
       const gardenId = url.searchParams.get('id')
       
       if (gardenId) {
@@ -94,7 +114,19 @@ export default async function handler(req: Request): Promise<Response> {
         const privacyMode = (url.searchParams.get('privacyMode') ?? 'camouflage') as CommunityPrivacyMode
 
         // Get single garden with memories
-        const gardens = await sql`
+        const gardens = viewerId
+          ? await sql`
+          SELECT g.*, 
+            (SELECT COUNT(*) FROM garden_members WHERE garden_id = g.id) as member_count,
+            (SELECT COUNT(*) FROM garden_memories WHERE garden_id = g.id) as memory_count,
+            EXISTS(
+              SELECT 1 FROM garden_members 
+              WHERE garden_id = g.id AND user_id = ${viewerId}
+            ) as viewer_is_member
+          FROM gardens g 
+          WHERE g.id = ${gardenId}::uuid
+        `
+          : await sql`
           SELECT g.*, 
             (SELECT COUNT(*) FROM garden_members WHERE garden_id = g.id) as member_count,
             (SELECT COUNT(*) FROM garden_memories WHERE garden_id = g.id) as memory_count
@@ -176,8 +208,26 @@ export default async function handler(req: Request): Promise<Response> {
         })
       }
       
+      const listViewerId = url.searchParams.get('viewerId')
+      if (listViewerId && !isValidUserId(listViewerId)) {
+        return jsonResponse(400, { error: 'Invalid viewerId' })
+      }
+
       // List all public gardens
-      const gardens = await sql`
+      const gardens = listViewerId
+        ? await sql`
+        SELECT g.*, 
+          (SELECT COUNT(*) FROM garden_members WHERE garden_id = g.id) as member_count,
+          (SELECT COUNT(*) FROM garden_memories WHERE garden_id = g.id) as memory_count,
+          EXISTS(
+            SELECT 1 FROM garden_members 
+            WHERE garden_id = g.id AND user_id = ${listViewerId}
+          ) as viewer_is_member
+        FROM gardens g 
+        WHERE g.is_public = true
+        ORDER BY g.created_at DESC
+      `
+        : await sql`
         SELECT g.*, 
           (SELECT COUNT(*) FROM garden_members WHERE garden_id = g.id) as member_count,
           (SELECT COUNT(*) FROM garden_memories WHERE garden_id = g.id) as memory_count
@@ -205,7 +255,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     // POST /api/gardens/join
     if (req.method === 'POST' && action === 'join') {
-      const rawBody: unknown = await req.json()
+      const rawBody: unknown = postBody
       const parsed = parseGardenAccessBody(rawBody)
       if (!parsed.ok) {
         return jsonResponse(400, { error: parsed.error })
@@ -245,7 +295,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     // POST /api/gardens/leave
     if (req.method === 'POST' && action === 'leave') {
-      const rawBody: unknown = await req.json()
+      const rawBody: unknown = postBody
       const parsed = parseGardenLeaveBody(rawBody)
       if (!parsed.ok) {
         return jsonResponse(400, { error: parsed.error })
@@ -270,7 +320,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     // POST /api/gardens/plant
     if (req.method === 'POST' && action === 'plant') {
-      const body = await req.json() as {
+      const body = (postBody ?? {}) as {
         gardenId: string
         contributorId: string
         contributorName: string
@@ -284,12 +334,13 @@ export default async function handler(req: Request): Promise<Response> {
         emotionalTone: string
         plantVariety: string
         linkUrl?: string
+        visibility?: string
       }
       
       const {
         gardenId, contributorId, contributorName, contributorAvatar,
         photoUrl, text, memoryDate, location, positionX, positionY,
-        emotionalTone, plantVariety, linkUrl: bodyLinkUrl,
+        emotionalTone, plantVariety, linkUrl: bodyLinkUrl, visibility,
       } = body
 
       if (!isValidUuid(gardenId) || !isValidUserId(contributorId)) {
@@ -313,17 +364,19 @@ export default async function handler(req: Request): Promise<Response> {
         }
       }
       const geneticsSeed = `${gardenId}-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const memoryVisibility =
+        visibility === 'private' ? 'private' : 'public'
       
       const result = await sql`
         INSERT INTO garden_memories (
           garden_id, contributor_id, contributor_name, contributor_avatar_url,
           photo_url, text, memory_date, location, position_x, position_y,
-          emotional_tone, plant_variety, genetics_seed
+          emotional_tone, plant_variety, genetics_seed, visibility
         )
         VALUES (
           ${gardenId}::uuid, ${contributorId}, ${safeContributorName}, ${contributorAvatar || null},
           ${photoUrl}, ${text}, ${memoryDate || null}::date, ${location || null}, ${positionX}, ${positionY},
-          ${emotionalTone || 'peaceful'}, ${plantVariety || 'flower'}, ${geneticsSeed}
+          ${emotionalTone || 'peaceful'}, ${plantVariety || 'flower'}, ${geneticsSeed}, ${memoryVisibility}
         )
         RETURNING id
       `
@@ -339,7 +392,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     // POST /api/gardens/water
     if (req.method === 'POST' && action === 'water') {
-      const rawBody: unknown = await req.json()
+      const rawBody: unknown = postBody
       const parsed = parseMemoryActionBody(rawBody)
       if (!parsed.ok) {
         return jsonResponse(400, { error: parsed.error })
@@ -389,7 +442,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     // POST /api/gardens/reflect
     if (req.method === 'POST' && action === 'reflect') {
-      const rawBody: unknown = await req.json()
+      const rawBody: unknown = postBody
       const parsed = parseMemoryActionBody(rawBody)
       if (!parsed.ok) {
         return jsonResponse(400, { error: parsed.error })
@@ -438,6 +491,10 @@ export default async function handler(req: Request): Promise<Response> {
       `
       
       return jsonResponse(200, { message: 'Reflection added', reflection: newReflection })
+    }
+
+    if (req.method === 'POST' && !action) {
+      return jsonResponse(400, { error: 'Missing action' })
     }
 
     return jsonResponse(404, { error: 'Not found' })

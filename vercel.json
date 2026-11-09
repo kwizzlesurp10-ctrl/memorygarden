@@ -3,7 +3,11 @@
   "buildCommand": "pnpm run build",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/gardens/:action",
+      "destination": "/api/gardens?action=:action"
+    },
+    {
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],

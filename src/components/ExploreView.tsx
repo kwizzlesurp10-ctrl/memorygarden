@@ -4,160 +4,15 @@ import { Users, Heart, Tree, Sparkle, Eye, ArrowRight, Flower, Plant, CircleNotc
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-
-interface GardenMemorySample {
-  id: string
-  photo_url: string
-  text: string
-  contributor_name: string
-  plant_stage: string
-  plant_variety: string
-  emotional_tone: string
-}
-
-interface PublicGarden {
-  id: string
-  name: string
-  description: string
-  owner_name: string
-  owner_avatar_url: string
-  cover_image_url: string
-  member_count: number
-  memory_count: number
-  created_at: string
-  sample_memories: GardenMemorySample[]
-}
+import { fetchPublicGardens, joinCommunityGarden, type PublicGarden } from '@/lib/community-gardens-api'
+import { toast } from 'sonner'
 
 interface ExploreViewProps {
-  onVisitGarden: (gardenId: string) => void
-  onJoinGarden: (gardenId: string) => void
+  onVisitGarden: (gardenId: string, gardenName: string) => void
+  onJoinGarden: (gardenId: string, gardenName: string) => void
   userId?: string
   userName?: string
 }
-
-// Hardcoded beautiful community gardens seeded from the database
-const COMMUNITY_GARDENS: PublicGarden[] = [
-  {
-    id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-    name: 'Sakura Reflections',
-    description: 'A tranquil space celebrating Japanese aesthetics and mindful moments. Share memories of peace, nature, and quiet beauty.',
-    owner_name: 'Yuki Tanaka',
-    owner_avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Yuki',
-    cover_image_url: 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=800',
-    member_count: 12,
-    memory_count: 3,
-    created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    sample_memories: [
-      {
-        id: 'sakura-mem-1',
-        photo_url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=400',
-        text: 'Morning meditation under the cherry blossoms',
-        contributor_name: 'Yuki Tanaka',
-        plant_stage: 'bloom',
-        plant_variety: 'flower',
-        emotional_tone: 'peaceful'
-      },
-      {
-        id: 'sakura-mem-2',
-        photo_url: 'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=400',
-        text: 'Found this quiet temple garden on a rainy afternoon',
-        contributor_name: 'Kenji M.',
-        plant_stage: 'mature',
-        plant_variety: 'tree',
-        emotional_tone: 'contemplative'
-      },
-      {
-        id: 'sakura-mem-3',
-        photo_url: 'https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=400',
-        text: 'Tea ceremony with grandmother',
-        contributor_name: 'Sakura L.',
-        plant_stage: 'flowering',
-        plant_variety: 'flower',
-        emotional_tone: 'nostalgic'
-      }
-    ]
-  },
-  {
-    id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
-    name: 'Ocean Whispers',
-    description: 'For those who find solace by the sea. Plant memories of coastal adventures, sunset walks, and the rhythm of waves.',
-    owner_name: 'Marina Costa',
-    owner_avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marina',
-    cover_image_url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
-    member_count: 29,
-    memory_count: 4,
-    created_at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-    sample_memories: [
-      {
-        id: 'ocean-mem-1',
-        photo_url: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=400',
-        text: 'Sunrise surf session. Just me and the waves.',
-        contributor_name: 'Marina Costa',
-        plant_stage: 'bloom',
-        plant_variety: 'wildflower',
-        emotional_tone: 'joyful'
-      },
-      {
-        id: 'ocean-mem-2',
-        photo_url: 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=400',
-        text: 'Watching dolphins play from the pier at sunset',
-        contributor_name: 'Carlos R.',
-        plant_stage: 'mature',
-        plant_variety: 'flower',
-        emotional_tone: 'wonder'
-      },
-      {
-        id: 'ocean-mem-3',
-        photo_url: 'https://images.unsplash.com/photo-1471922694854-ff1b63b20054?w=400',
-        text: 'The day I proposed, right here on this beach',
-        contributor_name: 'James T.',
-        plant_stage: 'bloom',
-        plant_variety: 'flower',
-        emotional_tone: 'love'
-      }
-    ]
-  },
-  {
-    id: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
-    name: 'The Little Wild',
-    description: 'Celebrating childhood wonder and family adventures. A garden for precious moments with little ones and the magic of growing up.',
-    owner_name: 'Emma Wilde',
-    owner_avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emma',
-    cover_image_url: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=800',
-    member_count: 8,
-    memory_count: 4,
-    created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    sample_memories: [
-      {
-        id: 'wild-mem-1',
-        photo_url: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=400',
-        text: 'First day of kindergarten. She was so brave.',
-        contributor_name: 'Emma Wilde',
-        plant_stage: 'mature',
-        plant_variety: 'tree',
-        emotional_tone: 'bittersweet'
-      },
-      {
-        id: 'wild-mem-2',
-        photo_url: 'https://images.unsplash.com/photo-1472162072942-cd5147eb3902?w=400',
-        text: 'Teaching my son to ride a bike. Pure triumph!',
-        contributor_name: 'David P.',
-        plant_stage: 'bloom',
-        plant_variety: 'flower',
-        emotional_tone: 'proud'
-      },
-      {
-        id: 'wild-mem-3',
-        photo_url: 'https://images.unsplash.com/photo-1489710437720-ebb67ec84dd2?w=400',
-        text: 'Camping under the stars',
-        contributor_name: 'Sophie M.',
-        plant_stage: 'flowering',
-        plant_variety: 'wildflower',
-        emotional_tone: 'wonder'
-      }
-    ]
-  }
-]
 
 const EMOTIONAL_COLORS: Record<string, string> = {
   peaceful: 'from-emerald-500/20 to-teal-500/20',
@@ -172,27 +27,55 @@ const EMOTIONAL_COLORS: Record<string, string> = {
 }
 
 export function ExploreView({ onVisitGarden, onJoinGarden, userId, userName }: ExploreViewProps) {
-  const [gardens] = useState<PublicGarden[]>(COMMUNITY_GARDENS)
+  const [gardens, setGardens] = useState<PublicGarden[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [joiningGarden, setJoiningGarden] = useState<string | null>(null)
   const [joinedGardens, setJoinedGardens] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    // Simulate loading for a smooth experience
-    const timer = setTimeout(() => setLoading(false), 800)
-    return () => clearTimeout(timer)
-  }, [])
+  let cancelled = false
+  async function loadGardens() {
+    setLoading(true)
+    setError(null)
+    const result = await fetchPublicGardens(userId)
+    if (cancelled) return
+    if (!result.ok) {
+      setError(result.error)
+      setGardens([])
+    } else {
+      setGardens(result.value)
+      setJoinedGardens(
+        new Set(result.value.filter((g) => g.viewer_is_member).map((g) => g.id)),
+      )
+    }
+    setLoading(false)
+  }
+  void loadGardens()
+  return () => {
+    cancelled = true
+  }
+  }, [userId])
 
-  async function handleJoinGarden(gardenId: string) {
-    setJoiningGarden(gardenId)
-    
-    // Simulate joining (in production this would call the API)
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    setJoinedGardens(prev => new Set([...prev, gardenId]))
+  async function handleJoinGarden(garden: PublicGarden) {
+    if (!userId || !userName) {
+      toast.error('Sign in to join a community garden')
+      return
+    }
+    setJoiningGarden(garden.id)
+    const result = await joinCommunityGarden({
+      gardenId: garden.id,
+      userId,
+      userName,
+    })
     setJoiningGarden(null)
-    onJoinGarden(gardenId)
+    if (!result.ok) {
+      toast.error('Could not join garden', { description: result.error })
+      return
+    }
+    setJoinedGardens((prev) => new Set([...prev, garden.id]))
+    onJoinGarden(garden.id, garden.name)
   }
 
   const filteredGardens = gardens.filter(g => 
@@ -223,6 +106,50 @@ export function ExploreView({ onVisitGarden, onJoinGarden, userId, userName }: E
           <CircleNotch size={48} className="animate-spin text-primary mx-auto mb-4" />
           <p className="text-muted-foreground">Discovering gardens...</p>
         </motion.div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-background to-primary/5">
+        <div className="text-center max-w-md px-6">
+          <Tree size={56} className="text-muted-foreground/40 mx-auto mb-4" />
+          <p className="text-foreground font-medium mb-2">Could not load community gardens</p>
+          <p className="text-muted-foreground text-sm mb-6">{error}</p>
+          <Button
+            type="button"
+            onClick={() => {
+              setLoading(true)
+              setError(null)
+              void fetchPublicGardens(userId).then((result) => {
+                if (result.ok) {
+                  setGardens(result.value)
+                  setJoinedGardens(
+                    new Set(result.value.filter((g) => g.viewer_is_member).map((g) => g.id)),
+                  )
+                  setError(null)
+                } else {
+                  setError(result.error)
+                }
+                setLoading(false)
+              })
+            }}
+          >
+            Try again
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (gardens.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="text-center px-6">
+          <Tree size={64} className="text-muted-foreground/30 mx-auto mb-4" />
+          <p className="text-muted-foreground">No community gardens are public yet.</p>
+        </div>
       </div>
     )
   }
@@ -383,7 +310,7 @@ export function ExploreView({ onVisitGarden, onJoinGarden, userId, userName }: E
                               {garden.owner_avatar_url && (
                                 <img 
                                   src={garden.owner_avatar_url} 
-                                  alt={garden.owner_name}
+                                  alt={garden.owner_name ?? 'Garden owner'}
                                   className="w-5 h-5 rounded-full"
                                 />
                               )}
@@ -416,7 +343,7 @@ export function ExploreView({ onVisitGarden, onJoinGarden, userId, userName }: E
                             onClick={(e) => {
                               e.stopPropagation()
                               console.log("[v0] Visit button clicked for garden:", garden.id)
-                              onVisitGarden(garden.id)
+                              onVisitGarden(garden.id, garden.name)
                             }}
                           >
                             <Eye size={16} className="mr-2" />
@@ -428,7 +355,7 @@ export function ExploreView({ onVisitGarden, onJoinGarden, userId, userName }: E
                               "flex-1 transition-all",
                               isJoined && "bg-primary/20 text-primary hover:bg-primary/30"
                             )}
-                            onClick={() => handleJoinGarden(garden.id)}
+                            onClick={() => handleJoinGarden(garden)}
                             disabled={isJoining || isJoined}
                           >
                             {isJoining ? (
