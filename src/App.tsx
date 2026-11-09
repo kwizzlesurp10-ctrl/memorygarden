@@ -33,6 +33,9 @@ const PlantCosmeticsEditor = lazy(() => import('@/components/PlantCosmeticsEdito
 const BloomWall = lazy(() => import('@/components/BloomWall').then(m => ({ default: m.BloomWall })))
 const ExploreView = lazy(() => import('@/components/ExploreView').then(m => ({ default: m.ExploreView })))
 const CommunityGardenView = lazy(() => import('@/components/CommunityGardenView').then(m => ({ default: m.CommunityGardenView })))
+const PlantCommunityGardenModal = lazy(() =>
+  import('@/components/PlantCommunityGardenModal').then((m) => ({ default: m.PlantCommunityGardenModal })),
+)
 const GardenMembersPanel = lazy(() => import('@/components/GardenMembersPanel').then(m => ({ default: m.GardenMembersPanel })))
 const ActivityFeed = lazy(() => import('@/components/ActivityFeed').then(m => ({ default: m.ActivityFeed })))
 const ContributorLeaderboard = lazy(() => import('@/components/ContributorLeaderboard').then(m => ({ default: m.ContributorLeaderboard })))
@@ -139,6 +142,9 @@ function App() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('garden')
   const [visitingGardenId, setVisitingGardenId] = useState<string | null>(null)
+  const [visitingGardenName, setVisitingGardenName] = useState<string | null>(null)
+  const [communityPlantOpen, setCommunityPlantOpen] = useState(false)
+  const [communityGardenRefresh, setCommunityGardenRefresh] = useState(0)
   const [isPlantModalOpen, setIsPlantModalOpen] = useState(false)
   const [_activityEvents, _setActivityEvents] = useKV<ActivityEvent[]>(`${localUser.id}:activity-events`, [])
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
@@ -1573,29 +1579,31 @@ function App() {
                 <Suspense fallback={null}>
                   {visitingGardenId ? (
                     <CommunityGardenView
+                      key={`${visitingGardenId}-${communityGardenRefresh}`}
                       gardenId={visitingGardenId}
+                      gardenName={visitingGardenName ?? undefined}
                       userId={localUser.id}
                       userName={localUser.login || 'Anonymous Gardener'}
-                      onBack={() => setVisitingGardenId(null)}
-                      onPlantMemory={(gardenId) => {
-                        toast.info('Plant memory feature coming soon!', {
-                          description: `You'll be able to contribute to ${gardenId}`,
-                        })
+                      onBack={() => {
+                        setVisitingGardenId(null)
+                        setVisitingGardenName(null)
                       }}
+                      onPlantMemory={() => setCommunityPlantOpen(true)}
                     />
                   ) : (
                     <ExploreView
                       userId={localUser.id}
                       userName={localUser.login || 'Anonymous Gardener'}
-                      onVisitGarden={(gardenId) => {
-                        console.log("[v0] onVisitGarden called with:", gardenId)
+                      onVisitGarden={(gardenId, gardenName) => {
                         setVisitingGardenId(gardenId)
+                        setVisitingGardenName(gardenName)
                       }}
-                      onJoinGarden={(gardenId) => {
-                        toast.success('Welcome to the garden!', { 
-                          description: 'You can now water plants and add reflections',
+                      onJoinGarden={(gardenId, gardenName) => {
+                        toast.success(`Welcome to ${gardenName}!`, {
+                          description: 'You can water plants, reflect, and plant memories',
                         })
                         setVisitingGardenId(gardenId)
+                        setVisitingGardenName(gardenName)
                       }}
                     />
                   )}
@@ -1647,6 +1655,24 @@ function App() {
         onClose={() => setIsPlantModalOpen(false)}
         onPlant={handlePlantMemory}
       />
+
+      {visitingGardenId && visitingGardenName ? (
+        <Suspense fallback={null}>
+          <PlantCommunityGardenModal
+            open={communityPlantOpen}
+            gardenId={visitingGardenId}
+            gardenName={visitingGardenName}
+            userId={localUser.id}
+            userName={localUser.login || 'Anonymous Gardener'}
+            memories={safeMemories}
+            onClose={() => setCommunityPlantOpen(false)}
+            onPlanted={() => {
+              setCommunityPlantOpen(false)
+              setCommunityGardenRefresh((n) => n + 1)
+            }}
+          />
+        </Suspense>
+      ) : null}
 
       <MemoryCard
         memory={selectedMemory}

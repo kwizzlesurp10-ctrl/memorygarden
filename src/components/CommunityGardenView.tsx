@@ -7,310 +7,38 @@ import {
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-
-interface GardenMemory {
-  id: string
-  garden_id: string
-  contributor_id: string
-  contributor_name: string
-  contributor_avatar_url?: string
-  photo_url: string
-  text: string
-  memory_date?: string
-  location?: string
-  planted_at: string
-  position_x: number
-  position_y: number
-  emotional_tone: string
-  plant_stage: string
-  plant_variety: string
-  visit_count: number
-  reflections: Array<{
-    id: string
-    userId: string
-    userName: string
-    text: string
-    createdAt: string
-  }>
-}
-
-interface GardenActivity {
-  id: string
-  user_name: string
-  activity_type: 'plant' | 'water' | 'reflect' | 'join' | 'leave'
-  description: string
-  created_at: string
-}
+import {
+  fetchGardenDetail,
+  leaveCommunityGarden,
+  reflectOnGardenMemory,
+  waterGardenMemory,
+  type GardenActivity,
+  type GardenMemory,
+} from '@/lib/community-gardens-api'
+import type { CommunityPrivacyMode } from '../../api/gardens/lib/community-memory-privacy'
+import { toast } from 'sonner'
 
 interface Garden {
   id: string
   name: string
-  description: string
-  owner_name: string
-  owner_avatar_url?: string
-  cover_image_url?: string
-  member_count: number
-  memory_count: number
-  allow_reflections: boolean
+  description?: string | null
+  owner_name?: string | null
+  owner_avatar_url?: string | null
+  cover_image_url?: string | null
+  member_count?: number
+  memory_count?: number
+  allow_reflections?: boolean
+  viewer_is_member?: boolean
 }
 
 interface CommunityGardenViewProps {
   gardenId: string
+  gardenName?: string
   userId?: string
   userName?: string
+  privacyMode?: CommunityPrivacyMode
   onBack: () => void
-  onPlantMemory?: (gardenId: string) => void
-}
-
-// Hardcoded garden data matching the database
-const GARDEN_DATA: Record<string, { garden: Garden; memories: GardenMemory[]; activity: GardenActivity[] }> = {
-  'a1b2c3d4-e5f6-7890-abcd-ef1234567890': {
-    garden: {
-      id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-      name: 'Sakura Reflections',
-      description: 'A tranquil space celebrating Japanese aesthetics and mindful moments.',
-      owner_name: 'Yuki Tanaka',
-      owner_avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Yuki',
-      cover_image_url: 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=800',
-      member_count: 12,
-      memory_count: 3,
-      allow_reflections: true
-    },
-    memories: [
-      {
-        id: 'sakura-1',
-        garden_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-        contributor_id: 'system-sakura',
-        contributor_name: 'Yuki Tanaka',
-        photo_url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=400',
-        text: 'Morning meditation under the cherry blossoms. The petals fell like pink snow, each one a reminder to breathe and be present.',
-        location: 'Kyoto, Japan',
-        planted_at: new Date().toISOString(),
-        position_x: 300,
-        position_y: 400,
-        emotional_tone: 'peaceful',
-        plant_stage: 'bloom',
-        plant_variety: 'flower',
-        visit_count: 24,
-        reflections: []
-      },
-      {
-        id: 'sakura-2',
-        garden_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-        contributor_id: 'visitor-1',
-        contributor_name: 'Kenji M.',
-        photo_url: 'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=400',
-        text: 'Found this quiet temple garden on a rainy afternoon. The sound of water on stone was like music.',
-        location: 'Nara, Japan',
-        planted_at: new Date().toISOString(),
-        position_x: 550,
-        position_y: 350,
-        emotional_tone: 'contemplative',
-        plant_stage: 'mature',
-        plant_variety: 'tree',
-        visit_count: 18,
-        reflections: []
-      },
-      {
-        id: 'sakura-3',
-        garden_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-        contributor_id: 'visitor-2',
-        contributor_name: 'Sakura L.',
-        photo_url: 'https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=400',
-        text: 'Tea ceremony with grandmother. She taught me that every gesture has meaning, every moment is precious.',
-        location: 'Tokyo, Japan',
-        planted_at: new Date().toISOString(),
-        position_x: 450,
-        position_y: 520,
-        emotional_tone: 'nostalgic',
-        plant_stage: 'flowering',
-        plant_variety: 'flower',
-        visit_count: 31,
-        reflections: []
-      }
-    ],
-    activity: [
-      { id: '1', user_name: 'Sakura L.', activity_type: 'plant', description: 'Sakura L. planted a new memory', created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
-      { id: '2', user_name: 'Kenji M.', activity_type: 'water', description: 'Kenji M. watered a memory', created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() },
-      { id: '3', user_name: 'Yuki Tanaka', activity_type: 'join', description: 'Yuki Tanaka joined the garden', created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() }
-    ]
-  },
-  'b2c3d4e5-f6a7-8901-bcde-f12345678901': {
-    garden: {
-      id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
-      name: 'Ocean Whispers',
-      description: 'For those who find solace by the sea. Plant memories of coastal adventures.',
-      owner_name: 'Marina Costa',
-      owner_avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marina',
-      cover_image_url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
-      member_count: 29,
-      memory_count: 4,
-      allow_reflections: true
-    },
-    memories: [
-      {
-        id: 'ocean-1',
-        garden_id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
-        contributor_id: 'system-ocean',
-        contributor_name: 'Marina Costa',
-        photo_url: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=400',
-        text: 'Sunrise surf session. Just me and the waves, feeling completely alive and free.',
-        location: 'Malibu, California',
-        planted_at: new Date().toISOString(),
-        position_x: 280,
-        position_y: 380,
-        emotional_tone: 'joyful',
-        plant_stage: 'bloom',
-        plant_variety: 'wildflower',
-        visit_count: 42,
-        reflections: []
-      },
-      {
-        id: 'ocean-2',
-        garden_id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
-        contributor_id: 'visitor-3',
-        contributor_name: 'Carlos R.',
-        photo_url: 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=400',
-        text: "Watching dolphins play from the pier at sunset. Nature's reminder that magic is everywhere.",
-        location: 'Santa Monica, California',
-        planted_at: new Date().toISOString(),
-        position_x: 520,
-        position_y: 300,
-        emotional_tone: 'wonder',
-        plant_stage: 'mature',
-        plant_variety: 'flower',
-        visit_count: 28,
-        reflections: []
-      },
-      {
-        id: 'ocean-3',
-        garden_id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
-        contributor_id: 'visitor-4',
-        contributor_name: 'Lina W.',
-        photo_url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400',
-        text: 'Building sandcastles with my niece. She said we were making homes for mermaids.',
-        location: 'Cancun, Mexico',
-        planted_at: new Date().toISOString(),
-        position_x: 400,
-        position_y: 480,
-        emotional_tone: 'happy',
-        plant_stage: 'flowering',
-        plant_variety: 'herb',
-        visit_count: 15,
-        reflections: []
-      },
-      {
-        id: 'ocean-4',
-        garden_id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
-        contributor_id: 'visitor-5',
-        contributor_name: 'James T.',
-        photo_url: 'https://images.unsplash.com/photo-1471922694854-ff1b63b20054?w=400',
-        text: 'The day I proposed, right here on this beach. She said yes as the waves crashed behind us.',
-        location: 'Maui, Hawaii',
-        planted_at: new Date().toISOString(),
-        position_x: 620,
-        position_y: 420,
-        emotional_tone: 'love',
-        plant_stage: 'bloom',
-        plant_variety: 'flower',
-        visit_count: 56,
-        reflections: []
-      }
-    ],
-    activity: [
-      { id: '4', user_name: 'James T.', activity_type: 'plant', description: 'James T. planted a new memory', created_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() },
-      { id: '5', user_name: 'Lina W.', activity_type: 'reflect', description: 'Lina W. added a reflection', created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() },
-      { id: '6', user_name: 'Marina Costa', activity_type: 'water', description: 'Marina Costa watered a memory', created_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString() }
-    ]
-  },
-  'c3d4e5f6-a7b8-9012-cdef-123456789012': {
-    garden: {
-      id: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
-      name: 'The Little Wild',
-      description: 'Celebrating childhood wonder and family adventures.',
-      owner_name: 'Emma Wilde',
-      owner_avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emma',
-      cover_image_url: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=800',
-      member_count: 8,
-      memory_count: 4,
-      allow_reflections: true
-    },
-    memories: [
-      {
-        id: 'wild-1',
-        garden_id: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
-        contributor_id: 'system-wild',
-        contributor_name: 'Emma Wilde',
-        photo_url: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=400',
-        text: 'First day of kindergarten. She was so brave, waving goodbye with that huge backpack. I cried in the car.',
-        location: 'Portland, Oregon',
-        planted_at: new Date().toISOString(),
-        position_x: 350,
-        position_y: 360,
-        emotional_tone: 'bittersweet',
-        plant_stage: 'mature',
-        plant_variety: 'tree',
-        visit_count: 67,
-        reflections: []
-      },
-      {
-        id: 'wild-2',
-        garden_id: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
-        contributor_id: 'visitor-6',
-        contributor_name: 'David P.',
-        photo_url: 'https://images.unsplash.com/photo-1472162072942-cd5147eb3902?w=400',
-        text: 'Teaching my son to ride a bike. That moment when he finally got it - pure triumph on his face!',
-        location: 'Austin, Texas',
-        planted_at: new Date().toISOString(),
-        position_x: 500,
-        position_y: 450,
-        emotional_tone: 'proud',
-        plant_stage: 'bloom',
-        plant_variety: 'flower',
-        visit_count: 34,
-        reflections: []
-      },
-      {
-        id: 'wild-3',
-        garden_id: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
-        contributor_id: 'visitor-7',
-        contributor_name: 'Sophie M.',
-        photo_url: 'https://images.unsplash.com/photo-1489710437720-ebb67ec84dd2?w=400',
-        text: 'Camping under the stars. My daughter asked if we could catch a star and keep it as a nightlight.',
-        location: 'Yellowstone',
-        planted_at: new Date().toISOString(),
-        position_x: 280,
-        position_y: 520,
-        emotional_tone: 'wonder',
-        plant_stage: 'flowering',
-        plant_variety: 'wildflower',
-        visit_count: 23,
-        reflections: []
-      },
-      {
-        id: 'wild-4',
-        garden_id: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
-        contributor_id: 'visitor-8',
-        contributor_name: 'Michael K.',
-        photo_url: 'https://images.unsplash.com/photo-1476703993599-0035a21b17a9?w=400',
-        text: 'Snow day! We built the most lopsided snowman ever, but the kids thought it was perfect.',
-        location: 'Denver, Colorado',
-        planted_at: new Date().toISOString(),
-        position_x: 600,
-        position_y: 340,
-        emotional_tone: 'happy',
-        plant_stage: 'mature',
-        plant_variety: 'flower',
-        visit_count: 41,
-        reflections: []
-      }
-    ],
-    activity: [
-      { id: '7', user_name: 'Michael K.', activity_type: 'plant', description: 'Michael K. planted a new memory', created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString() },
-      { id: '8', user_name: 'Sophie M.', activity_type: 'water', description: 'Sophie M. watered a memory', created_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString() },
-      { id: '9', user_name: 'Emma Wilde', activity_type: 'reflect', description: 'Emma Wilde added a reflection', created_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString() }
-    ]
-  }
+  onPlantMemory?: (gardenName: string) => void
 }
 
 const STAGE_SIZES: Record<string, number> = {
@@ -337,9 +65,11 @@ const EMOTIONAL_COLORS: Record<string, { bg: string; accent: string }> = {
 }
 
 export function CommunityGardenView({ 
-  gardenId, 
+  gardenId,
+  gardenName: gardenNameProp,
   userId, 
-  userName, 
+  userName,
+  privacyMode = 'camouflage',
   onBack,
   onPlantMemory
 }: CommunityGardenViewProps) {
@@ -347,24 +77,34 @@ export function CommunityGardenView({
   const [memories, setMemories] = useState<GardenMemory[]>([])
   const [activity, setActivity] = useState<GardenActivity[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [isMember, setIsMember] = useState(false)
+  const [leaving, setLeaving] = useState(false)
   const [selectedMemory, setSelectedMemory] = useState<GardenMemory | null>(null)
   const [reflection, setReflection] = useState('')
   const [submittingReflection, setSubmittingReflection] = useState(false)
   const [wateringMemory, setWateringMemory] = useState<string | null>(null)
 
+  const displayGardenName = garden?.name ?? gardenNameProp ?? 'Community garden'
+
   const fetchGarden = useCallback(async () => {
     setLoading(true)
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 600))
-    
-    const data = GARDEN_DATA[gardenId]
-    if (data) {
-      setGarden(data.garden)
-      setMemories(data.memories)
-      setActivity(data.activity)
+    setLoadError(null)
+    const result = await fetchGardenDetail(gardenId, { viewerId: userId, privacyMode })
+    if (!result.ok) {
+      setGarden(null)
+      setMemories([])
+      setActivity([])
+      setLoadError(result.error)
+      setLoading(false)
+      return
     }
+    setGarden(result.value.garden as Garden)
+    setMemories(result.value.memories)
+    setActivity(result.value.activity)
+    setIsMember(Boolean(result.value.garden.viewer_is_member))
     setLoading(false)
-  }, [gardenId])
+  }, [gardenId, userId, privacyMode])
 
   useEffect(() => {
     // Loads synchronous mock garden data when the selected garden changes.
@@ -373,43 +113,74 @@ export function CommunityGardenView({
   }, [fetchGarden])
 
   async function handleWaterMemory(memoryId: string) {
-    if (!userId || !userName) return
+    if (!userId || !userName) {
+      toast.error('Sign in to water memories')
+      return
+    }
     
     setWateringMemory(memoryId)
-    
-    // Simulate watering
-    await new Promise(resolve => setTimeout(resolve, 500))
+    const result = await waterGardenMemory({ memoryId, userId, userName })
+    setWateringMemory(null)
+    if (!result.ok) {
+      toast.error('Could not water memory', { description: result.error })
+      return
+    }
     
     setMemories(prev => prev.map(m => 
       m.id === memoryId 
-        ? { ...m, visit_count: m.visit_count + 1 }
+        ? {
+            ...m,
+            visit_count: result.value.visitCount,
+            plant_stage: result.value.newStage ?? m.plant_stage,
+          }
         : m
     ))
     
     if (selectedMemory?.id === memoryId) {
       setSelectedMemory(prev => prev ? { 
         ...prev, 
-        visit_count: prev.visit_count + 1
+        visit_count: result.value.visitCount,
+        plant_stage: result.value.newStage ?? prev.plant_stage,
       } : null)
     }
-    
-    setWateringMemory(null)
+    void fetchGarden()
+  }
+
+  async function handleLeaveGarden() {
+    if (!userId || !userName || !isMember) return
+    setLeaving(true)
+    const result = await leaveCommunityGarden({ gardenId, userId, userName })
+    setLeaving(false)
+    if (!result.ok) {
+      toast.error('Could not leave garden', { description: result.error })
+      return
+    }
+    toast.success(`Left ${displayGardenName}`)
+    onBack()
   }
 
   async function handleAddReflection() {
     if (!selectedMemory || !reflection.trim() || !userId || !userName) return
     
     setSubmittingReflection(true)
-    
-    // Simulate adding reflection
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    const newReflection = {
-      id: `ref-${Date.now()}`,
+    const result = await reflectOnGardenMemory({
+      memoryId: selectedMemory.id,
       userId,
       userName,
-      text: reflection.trim(),
-      createdAt: new Date().toISOString()
+      reflection: reflection.trim(),
+    })
+    setSubmittingReflection(false)
+    if (!result.ok) {
+      toast.error('Could not add reflection', { description: result.error })
+      return
+    }
+    
+    const newReflection = {
+      id: result.value.reflection.id,
+      userId,
+      userName: result.value.reflection.userName ?? userName,
+      text: result.value.reflection.text,
+      createdAt: result.value.reflection.createdAt,
     }
     
     const newReflections = [...(selectedMemory.reflections || []), newReflection]
@@ -418,7 +189,7 @@ export function CommunityGardenView({
       m.id === selectedMemory.id ? { ...m, reflections: newReflections } : m
     ))
     setReflection('')
-    setSubmittingReflection(false)
+    void fetchGarden()
   }
 
   function formatTimeAgo(dateStr: string) {
@@ -454,9 +225,9 @@ export function CommunityGardenView({
   if (!garden) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md px-6">
           <Tree size={64} className="text-muted-foreground/30 mx-auto mb-4" />
-          <p className="text-muted-foreground">Garden not found</p>
+          <p className="text-muted-foreground">{loadError ?? 'Garden not found'}</p>
           <Button onClick={onBack} className="mt-4">Go Back</Button>
         </div>
       </div>
@@ -487,12 +258,19 @@ export function CommunityGardenView({
             </div>
           </div>
           
-          {onPlantMemory && (
-            <Button onClick={() => onPlantMemory(gardenId)} size="sm">
-              <Plus size={16} className="mr-2" />
-              Plant Memory
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {isMember && userId && (
+              <Button variant="outline" size="sm" onClick={() => void handleLeaveGarden()} disabled={leaving}>
+                {leaving ? <CircleNotch size={16} className="animate-spin" /> : 'Leave'}
+              </Button>
+            )}
+            {onPlantMemory && (
+              <Button onClick={() => onPlantMemory(displayGardenName)} size="sm">
+                <Plus size={16} className="mr-2" />
+                Plant Memory
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -662,11 +440,13 @@ export function CommunityGardenView({
                     />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                      <span className="text-sm font-medium">{selectedMemory.contributor_name[0]}</span>
+                      <span className="text-sm font-medium">
+                        {(selectedMemory.contributor_name ?? 'G')[0]}
+                      </span>
                     </div>
                   )}
                   <div>
-                    <p className="font-medium">{selectedMemory.contributor_name}</p>
+                    <p className="font-medium">{selectedMemory.contributor_name ?? 'A gardener'}</p>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       {selectedMemory.location && (
                         <span className="flex items-center gap-1">
