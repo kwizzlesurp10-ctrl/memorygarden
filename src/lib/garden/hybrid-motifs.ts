@@ -103,9 +103,12 @@ export const MOTIF_GLYPHS: Record<string, Glyph> = {
     { d: 'M7.5 17.5 A2.8 2.8 0 1 0 7.5 23 A2.8 2.8 0 1 0 7.5 17.5 M16.5 17.5 A2.8 2.8 0 1 0 16.5 23 A2.8 2.8 0 1 0 16.5 17.5', fill: 'rim', stroke: 'sil', sw: 0.7 },
   ]),
   plane: g('plane', [
-    { d: 'M12 3.5 L14.5 10.5 H20.5 L15.5 12.8 L18 19.5 L12 15.2 L6 19.5 L8.5 12.8 L3.5 10.5 H9.5 Z', fill: 'accent', stroke: 'rim', sw: 1.1 },
-    { d: 'M10.5 14.8 H13.5 V19.2', fill: 'rim', stroke: 'sil', sw: 0.6 },
-    { d: 'M12 10.5 V14', fill: 'none', stroke: 'glow', sw: 1.6 },
+    { d: 'M3 14.5 H19.5 V16.5 H3 Z', fill: 'accent', stroke: 'rim', sw: 0.9 },
+    { d: 'M4 14.5 L6 12.2 H17 L19 14.5', fill: 'glow', stroke: 'rim', sw: 0.7 },
+    { d: 'M5.5 12 H18.5 V14 H5.5 Z', fill: 'accent', stroke: 'sil', sw: 0.6 },
+    { d: 'M17.5 10.5 V14.8 H19.5 V17 H17.5 Z', fill: 'rim', stroke: 'accent', sw: 0.7 },
+    { d: 'M17.8 11.5 H18.6 V13.2 H17.8 Z', fill: 'glow', stroke: 'none', sw: 0 },
+    { d: 'M6.5 13 H9.5 V14.5 H6.5 Z', fill: 'sil', stroke: 'none', sw: 0 },
   ]),
   rocket: g('rocket', [
     { d: 'M12 2 C9 8 9 13 11 17 L12 19 L13 17 C15 13 15 8 12 2 Z', fill: 'glow', stroke: 'none', sw: 0 },

@@ -35,9 +35,9 @@ export function trunkGradientDef(gradId: string, C: HybridPlantPalette): ReactNo
 }
 
 /** Center vein on a simple leaf ellipse at (cx, cy). */
-export function leafVein(cx: number, cy: number, rx: number, ry: number, C: HybridPlantPalette, rim: number): ReactNode {
+export function leafVein(cx: number, cy: number, rx: number, ry: number, C: HybridPlantPalette, rim: number, key = 'vein'): ReactNode {
   return e('path', {
-    key: 'vein',
+    key,
     d: `M ${cx} ${cy + ry * 0.15} Q ${cx - rx * 0.1} ${cy - ry * 0.2}, ${cx} ${cy - ry * 0.85} M ${cx} ${cy - ry * 0.1} Q ${cx + rx * 0.35} ${cy - ry * 0.35}, ${cx + rx * 0.55} ${cy - ry * 0.05}`,
     stroke: C.rim,
     strokeOpacity: 0.35 * rim,

@@ -226,10 +226,22 @@ function buildTree(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
       const len = H * 0.36 * (1.15 - f * 0.55) * (0.8 + r() * 0.4);
       out.push(e('path', { key: 'b' + i, d: `M 0 ${y0} Q ${side * len * 0.55} ${y0 - len * 0.4}, ${side * len} ${y0 - len * 0.72}`, stroke: C.sil, strokeWidth: Math.max(0.7, 2.4 - i * 0.25), fill: 'none', strokeLinecap: 'round' }));
     }
-    if (s >= 2) {
-      const bloomScale = s === 5 ? 0.88 : s === 6 ? 1.05 : s === 7 ? 1.12 : 1;
-      const cw = (7 + s * 4.2) * bloomScale, ch = (5 + s * 3) * bloomScale;
-      const blobs = 3 + s * 2;
+    if (s === 2) {
+      const tips = [[-5, -H - 4], [4, -H - 6], [-1, -H - 9]];
+      tips.forEach(([tx, ty], j) => {
+        out.push(e('ellipse', { key: 'tlp' + j, cx: tx, cy: ty, rx: 4.2, ry: 2.6, fill: C.silSoft, stroke: C.sil, strokeWidth: 0.7, transform: `rotate(${j * 18 - 12})` }));
+      });
+    }
+    if (s === 3) {
+      const cw = 9, ch = 7;
+      out.push(e('ellipse', { key: 'cb', cx: 0, cy: -H - ch * 0.4, rx: cw, ry: ch, fill: C.sil, opacity: 0.92 }));
+      out.push(e('circle', { key: 'cn0', cx: -3, cy: -H - ch * 0.85, r: 3.5, fill: C.silSoft }));
+      out.push(e('circle', { key: 'cn1', cx: 4, cy: -H - ch * 0.75, r: 3, fill: C.silSoft }));
+    }
+    if (s >= 4) {
+      const growth = [0, 0, 0, 0, 0.72, 0.86, 1.02, 1.12][s];
+      const cw = (7 + s * 4.2) * growth, ch = (5 + s * 3) * growth;
+      const blobs = Math.min(3 + s, 2 + s * 2);
       out.push(e('ellipse', { key: 'cb', cx: 0, cy: -H - ch * 0.35, rx: cw, ry: ch * 0.85, fill: C.sil, style: canopyShimmerStyle(motion, s) }));
       for (let j = 0; j < blobs; j++) {
         const bx = (r() - 0.5) * cw * 1.7;
@@ -284,12 +296,13 @@ function buildSucculent(s: number, r: () => number, C: HybridPlantPalette, rim: 
 
 function buildVine(s: number, r: () => number, C: HybridPlantPalette, rim: number, motion: boolean): ReactNode[] {
   const out: ReactNode[] = []
+    const rimS = { stroke: C.rim, strokeOpacity: 0.55 * rim, strokeWidth: 0.65 }
     if (s === 0) {
       return seedInSoil(C, rim, r);
     }
     const H = [0, 12, 22, 34, 46, 56, 66, 74][s];
-    out.push(e('path', { key: 'stake', d: `M 2 0 L 4 ${-H * 0.92}`, stroke: C.silSoft, strokeWidth: 1.5, strokeLinecap: 'round' }));
-    if (s >= 4) out.push(e('path', { key: 'bar', d: `M ${4 - 7} ${-H * 0.6} L ${4 + 7} ${-H * 0.64}`, stroke: C.silSoft, strokeWidth: 1.1, strokeLinecap: 'round' }));
+    out.push(e('path', { key: 'stake', d: `M 2 0 L 4 ${-H * 0.92}`, stroke: C.rim, strokeOpacity: 0.35 * rim, strokeWidth: 2, strokeLinecap: 'round' }));
+    if (s >= 4) out.push(e('path', { key: 'bar', d: `M ${4 - 7} ${-H * 0.6} L ${4 + 7} ${-H * 0.64}`, stroke: C.sil, strokeWidth: 1.8, strokeLinecap: 'round' }));
     const segs = 5 + s;
     const ph = r() * 6;
     let d = 'M 0 0', px = 0, py = 0;
@@ -302,13 +315,14 @@ function buildVine(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
       pts.push([nx, ny]);
       px = nx; py = ny;
     }
-    out.push(e('path', { key: 'vine', d, stroke: C.sil, strokeWidth: 1.3, fill: 'none', strokeLinecap: 'round' }));
-    out.push(e('path', { key: 'viner', d, stroke: C.rim, strokeWidth: 0.4, fill: 'none', opacity: 0.4 * rim, transform: 'translate(0.5 0)' }));
+    out.push(e('path', { key: 'vine', d, stroke: C.sil, strokeWidth: 2.1, fill: 'none', strokeLinecap: 'round' }));
+    out.push(e('path', { key: 'viner', d, stroke: C.accent, strokeWidth: 0.8, fill: 'none', opacity: 0.35 * rim, transform: 'translate(0.6 0)' }));
     pts.forEach(([lx, ly], i) => {
       if (i % 2 === 0 && i < pts.length - 1) {
         const side = (i / 2) % 2 ? 1 : -1;
-        const ls = 3.4 + s * 0.5;
-        out.push(e('path', { key: 'lf' + i, d: `M ${lx} ${ly} Q ${lx + side * ls} ${ly - ls * 0.7}, ${lx + side * ls * 1.25} ${ly - ls * 0.1} Q ${lx + side * ls * 0.6} ${ly + ls * 0.45}, ${lx} ${ly} Z`, fill: C.sil, stroke: C.rim, strokeOpacity: 0.4 * rim, strokeWidth: 0.4 }));
+        const ls = 3.8 + s * 0.55;
+        out.push(e('path', { key: 'lf' + i, d: `M ${lx} ${ly} Q ${lx + side * ls} ${ly - ls * 0.7}, ${lx + side * ls * 1.25} ${ly - ls * 0.1} Q ${lx + side * ls * 0.6} ${ly + ls * 0.45}, ${lx} ${ly} Z`, fill: i % 4 ? C.silSoft : C.sil, ...rimS }));
+        out.push(leafVein(lx + side * ls * 0.45, ly - ls * 0.35, ls * 0.4, ls * 0.25, C, rim, `vine-v-${i}`))
       }
       if (s >= 5 && i % 3 === 1) {
         out.push(e('path', { key: 'fst' + i, d: `M ${lx} ${ly} q 0.5 2.5, 0 4.5`, stroke: C.sil, strokeWidth: 0.6, fill: 'none' }));
@@ -337,6 +351,7 @@ function buildVine(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
 
 function buildHerb(s: number, r: () => number, C: HybridPlantPalette, rim: number, motion: boolean): ReactNode[] {
   const out: ReactNode[] = []
+    const rimS = rimStroke(C, rim)
     if (s === 0) {
       return seedInSoil(C, rim, r);
     }
@@ -346,20 +361,32 @@ function buildHerb(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
       const hh = (10 + s * 6.5) * (0.72 + r() * 0.5);
       const tx = Math.sin(ang) * hh * 0.6;
       const d = `M 0 0 Q ${tx * 0.3} ${-hh * 0.55}, ${tx} ${-hh}`;
-      out.push(e('path', { key: 's' + i, d, stroke: C.sil, strokeWidth: 0.9, fill: 'none', strokeLinecap: 'round' }));
-      for (let j = 1; j <= 3; j++) {
-        const t = j / 4;
-        const lx = tx * t * 0.55, ly = -hh * t;
-        const ln = 2.4 * (1 - t * 0.4);
-        out.push(e('path', { key: 's' + i + 'l' + j, d: `M ${lx} ${ly} l ${-ln} ${-ln * 0.7} M ${lx} ${ly} l ${ln} ${-ln * 0.7}`, stroke: C.sil, strokeWidth: 0.55, fill: 'none', strokeLinecap: 'round' }));
+      out.push(e('path', { key: 's' + i, d, stroke: C.sil, strokeWidth: 1.35 + s * 0.12, fill: 'none', strokeLinecap: 'round' }));
+      const leafPairs = Math.min(4, 1 + Math.floor(s / 2));
+      for (let j = 1; j <= leafPairs; j++) {
+        const t = j / (leafPairs + 1);
+        const lx = tx * t * 0.95, ly = -hh * t;
+        const side = j % 2 ? 1 : -1;
+        const lw = 3.2 + s * 0.35, lh = 2.4 + s * 0.2;
+        out.push(e('path', {
+          key: 's' + i + 'l' + j,
+          d: `M ${lx} ${ly} Q ${lx + side * lw} ${ly - lh * 0.55}, ${lx + side * lw * 1.15} ${ly - lh * 0.05} Q ${lx + side * lw * 0.55} ${ly + lh * 0.35}, ${lx} ${ly} Z`,
+          fill: j % 2 ? C.sil : C.silSoft,
+          ...rimS,
+        }));
+        out.push(leafVein(lx + side * lw * 0.5, ly - lh * 0.25, lw * 0.45, lh * 0.35, C, rim, `herb-v-${i}-${j}`));
       }
-      if (s >= 5) {
-        for (let j = 0; j < 4; j++) {
-          out.push(e('circle', { key: 's' + i + 'h' + j, cx: tx + Math.cos(j * 1.7) * 1.8, cy: -hh - 1 + Math.sin(j * 1.9) * 1.8, r: 0.85, fill: C.silSoft }));
+      if (s >= 3) {
+        const flowerN = s >= 6 ? 5 : 3;
+        for (let j = 0; j < flowerN; j++) {
+          out.push(e('circle', { key: 's' + i + 'h' + j, cx: tx + Math.cos(j * 1.7) * 2, cy: -hh - 0.5 + Math.sin(j * 1.9) * 2, r: 1.05, fill: C.glow, stroke: C.rim, strokeOpacity: 0.45 * rim, strokeWidth: 0.45 }));
         }
-        out.push(e('circle', { key: 's' + i + 'hg', cx: tx, cy: -hh - 1, r: 0.7, fill: C.glow, opacity: 0.55 }));
+        out.push(e('circle', { key: 's' + i + 'hg', cx: tx, cy: -hh, r: 1.1, fill: C.accent, opacity: 0.9 }));
       }
     }
+  if (s >= 2) {
+    out.push(e('ellipse', { key: 'hb', cx: 0, cy: -2, rx: 5 + s, ry: 2.2, fill: C.silSoft, opacity: 0.45, ...rimS }));
+  }
     return out;
   return out
 }
@@ -404,19 +431,20 @@ function buildFern(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
       const dir = (F === 1 ? (r() > 0.5 ? 1 : -1) * 0.5 : -1 + 2 * f / (F - 1)) * 0.85;
       const len = (11 + s * 5.5) * (0.78 + r() * 0.42);
       if (s <= 1) {
-        out.push(e('path', { key: 'fh' + f + 's', d: `M 0 0 Q ${dir * 2} -5, ${dir * 3.2} -9`, stroke: C.sil, strokeWidth: 1.2, fill: 'none', strokeLinecap: 'round' }));
+        out.push(e('path', { key: 'fh' + f + 's', d: `M 0 0 Q ${dir * 2} -5, ${dir * 3.2} -9`, stroke: C.sil, strokeWidth: 1.6, fill: 'none', strokeLinecap: 'round' }));
         const cxx = dir * 3.8, cyy = -11.5;
         const sp: string[] = [];
         for (let a = -90; a <= 500; a += 26) {
           const rad = 3.1 * (1 - (a + 90) / 760);
           sp.push(`${cxx + rad * Math.cos(a * Math.PI / 180)} ${cyy + rad * Math.sin(a * Math.PI / 180)}`);
         }
-        out.push(e('path', { key: 'fh' + f, d: 'M ' + sp.join(' L '), stroke: C.sil, strokeWidth: 1.1, fill: 'none', strokeLinecap: 'round' }));
+        out.push(e('path', { key: 'fh' + f, d: 'M ' + sp.join(' L ') + ' Z', fill: C.silSoft, stroke: C.sil, strokeWidth: 1.15, strokeLinejoin: 'round', opacity: 0.92 }));
+        out.push(e('path', { key: 'fh' + f + 'm', d: 'M ' + sp.join(' L '), stroke: C.rim, strokeWidth: 0.55, strokeOpacity: 0.4 * rim, fill: 'none', strokeLinecap: 'round' }));
         continue;
       }
       const p1x = dir * len * 0.3, p1y = -len * 0.78;
       const p2x = dir * len, p2y = -len * 0.92;
-      out.push(e('path', { key: 'fr' + f, d: `M 0 0 Q ${p1x} ${p1y}, ${p2x} ${p2y}`, stroke: C.sil, strokeWidth: 0.9, fill: 'none', strokeLinecap: 'round' }));
+      out.push(e('path', { key: 'fr' + f, d: `M 0 0 Q ${p1x} ${p1y}, ${p2x} ${p2y}`, stroke: C.sil, strokeWidth: 1.35 + s * 0.08, fill: 'none', strokeLinecap: 'round' }));
       const nP = 9;
       for (let j = 2; j <= nP; j++) {
         const t = j / (nP + 1);
@@ -428,7 +456,15 @@ function buildFern(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
         const dl = Math.hypot(dxx, dyy) || 1;
         const nx = -dyy / dl, ny = dxx / dl;
         const pl = len * 0.26 * (1 - t * 0.85);
-        out.push(e('path', { key: 'fr' + f + 'p' + j, d: `M ${qx} ${qy} L ${qx + nx * pl - dxx / dl * pl * 0.3} ${qy + ny * pl - dyy / dl * pl * 0.3} M ${qx} ${qy} L ${qx - nx * pl - dxx / dl * pl * 0.3} ${qy - ny * pl - dyy / dl * pl * 0.3}`, stroke: C.sil, strokeWidth: 0.65, fill: 'none', strokeLinecap: 'round' }));
+        out.push(e('path', {
+          key: 'fr' + f + 'p' + j + 'f',
+          d: `M ${qx} ${qy} L ${qx + nx * pl - dxx / dl * pl * 0.3} ${qy + ny * pl - dyy / dl * pl * 0.3} L ${qx - nx * pl * 0.15} ${qy - ny * pl * 0.15} Z`,
+          fill: C.silSoft,
+          stroke: C.sil,
+          strokeWidth: 0.5,
+          strokeOpacity: 0.7,
+        }));
+        out.push(e('path', { key: 'fr' + f + 'p' + j, d: `M ${qx} ${qy} L ${qx + nx * pl - dxx / dl * pl * 0.3} ${qy + ny * pl - dyy / dl * pl * 0.3} M ${qx} ${qy} L ${qx - nx * pl - dxx / dl * pl * 0.3} ${qy - ny * pl - dyy / dl * pl * 0.3}`, stroke: C.accent, strokeWidth: 0.85, fill: 'none', strokeLinecap: 'round', strokeOpacity: 0.75 }));
       }
       if (s === 7 && f === Math.floor(F / 2)) {
         out.push(e('path', { key: 'crl', d: `M ${p2x} ${p2y} q ${dir * 2.4} -2.4, ${dir * 1.4} -4.2 q ${-dir * 1.6} -1.4, ${-dir * 2.2} 0.2`, stroke: C.rim, strokeWidth: 0.7, fill: 'none', opacity: 0.7 * rim }));

@@ -57,7 +57,7 @@ function stageCell(
   const nodes = buildSeededPlant(variety, {
     stageIndex,
     palette,
-    rimStrength: 0.65,
+    rimStrength: 0.82,
     motion: false,
     rng: gardenRng(99 + stageIndex * 17 + variety.length * 3),
   })

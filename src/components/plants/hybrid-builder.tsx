@@ -71,12 +71,18 @@ export function buildMotifNode(
   )
 }
 
+export type HybridRenderOpts = {
+  /** Tree motifs above the crown (default) or nested inside the canopy silhouette. */
+  motifAnchor?: 'default' | 'in-canopy'
+}
+
 export function buildHybrid(
   s: number,
   C: HybridPlantPalette,
   rimv: number,
   motion: boolean,
   g: HybridGenome,
+  renderOpts: HybridRenderOpts = {},
 ): ReactNode[] {
   const out: ReactNode[] = []
   const baseH = Hm[g.base] || 50
@@ -225,7 +231,9 @@ export function buildHybrid(
     const treeMotif = g.base === 'tree'
     const msize = (MOTIF_SIZES[s] ?? 0) + (treeMotif ? 14 : 0)
     const my = treeMotif
-      ? -hh * treeScale - 38
+      ? renderOpts.motifAnchor === 'in-canopy'
+        ? -hh * treeScale * 0.62
+        : -hh * treeScale - 38
       : g.base === 'mushroom'
         ? -hh - 2
         : -hh - 5
@@ -297,12 +305,14 @@ export function buildDreamHybridPreview(
   stage = 7,
   rimv = 0.92,
   plantScale = 1.28,
+  renderOpts: HybridRenderOpts = {},
 ): ReactNode[] {
   const CH = hybridPlantPalette(g, C)
+  const anchorY = renderOpts.motifAnchor === 'in-canopy' ? 138 : 134
   return [
     <ellipse key="ground" cx={66} cy={136} rx={30} ry={5} fill={C.hills[2]} opacity={0.85} />,
-    <g key="plant" transform={`translate(66 134) scale(${plantScale})`}>
-      {buildHybrid(stage, CH, rimv, false, g)}
+    <g key="plant" transform={`translate(66 ${anchorY}) scale(${plantScale})`}>
+      {buildHybrid(stage, CH, rimv, false, g, renderOpts)}
     </g>,
   ]
 }
