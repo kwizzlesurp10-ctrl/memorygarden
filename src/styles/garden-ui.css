@@ -7,6 +7,27 @@
     @apply rounded-xl border border-white/8 bg-background/40 shadow-inner;
   }
 
+  /** Dark translucent surfaces over the garden canvas (not light `card` tokens). */
+  .mg-garden-dock-panel {
+    @apply rounded-2xl border border-[#f0e7da]/22 bg-[#120e18]/94 text-[#f5efe6] shadow-[0_12px_40px_rgba(0,0,0,0.5)] backdrop-blur-md;
+  }
+
+  .mg-garden-dock-panel-inset {
+    @apply rounded-xl border border-[#d4c4ff]/35 bg-[#1a1428]/88 text-[#ebe4f8];
+  }
+
+  .mg-garden-dock-input {
+    @apply rounded-lg border border-[#f0e7da]/28 bg-[#0d0913]/85 px-3 py-2 text-sm text-[#f5efe6] placeholder:text-[#f0e7da]/60 outline-none focus-visible:ring-2 focus-visible:ring-[#ffb877]/70 focus-visible:ring-offset-1 focus-visible:ring-offset-[#120e18];
+  }
+
+  .mg-garden-dock-btn-primary {
+    @apply rounded-lg border border-[#ffb877]/55 bg-[#ffb877]/22 px-5 py-2 text-sm font-medium tracking-wide text-[#ffddb0] disabled:opacity-50 hover:bg-[#ffb877]/32;
+  }
+
+  .mg-garden-dock-btn-secondary {
+    @apply rounded-lg border border-[#d4c4ff]/45 bg-[#d4c4ff]/18 px-4 py-1.5 text-xs font-medium tracking-wide text-[#f0e8ff] disabled:opacity-45 hover:bg-[#d4c4ff]/28;
+  }
+
   .mg-section-label {
     @apply text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground;
   }
