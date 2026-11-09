@@ -361,14 +361,35 @@ export interface HybridGrowthStripProps {
   palette: ScenePalette
   rimStrength: number
   motion: boolean
+  /** Wider strip for dock panels — fills container width with taller stage cells. */
+  density?: 'default' | 'dock'
 }
 
-export function HybridGrowthStrip({ genome, palette, rimStrength, motion }: HybridGrowthStripProps) {
+export function HybridGrowthStrip({
+  genome,
+  palette,
+  rimStrength,
+  motion,
+  density = 'default',
+}: HybridGrowthStripProps) {
+  const dock = density === 'dock'
+  const plantScale = dock ? 1.38 : 1.15
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+    <div
+      className={dock ? 'flex w-full items-end justify-between gap-0.5 sm:gap-1' : undefined}
+      style={dock ? undefined : { display: 'flex', gap: 8, alignItems: 'flex-end' }}
+    >
       {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-        <svg key={i} width={132} height={150} viewBox="0 0 132 150" aria-hidden>
-          {buildMiniHybrid(i, genome, palette, rimStrength, motion)}
+        <svg
+          key={i}
+          viewBox="0 0 132 150"
+          aria-hidden
+          className={dock ? 'h-[92px] sm:h-[100px] min-w-0 flex-1' : undefined}
+          width={dock ? undefined : 132}
+          height={dock ? undefined : 150}
+          preserveAspectRatio="xMidYMax meet"
+        >
+          {buildMiniHybrid(i, genome, palette, rimStrength, motion, plantScale)}
         </svg>
       ))}
     </div>

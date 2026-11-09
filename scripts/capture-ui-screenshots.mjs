@@ -95,8 +95,6 @@ try {
     }
     await page.locator('[data-slot="dialog-overlay"]').waitFor({ state: 'hidden', timeout: 8000 }).catch(() => {})
     await page.waitForTimeout(600)
-    await page.screenshot({ path: resolve(outDir, `${prefix}-garden-home-${label}.png`) })
-
     await page.getByTitle('Explore Gardens', { exact: true }).click({ force: true })
     await page.getByText('Meadow Song Circle').waitFor({ state: 'visible', timeout: 15_000 })
     await page.waitForTimeout(800)
@@ -112,17 +110,6 @@ try {
     await page.getByRole('heading', { name: 'Dream a plant' }).waitFor({ state: 'visible' })
     await page.waitForTimeout(1200)
     await page.screenshot({ path: resolve(outDir, `${prefix}-dream-plant-panel-${label}.png`) })
-
-    const weekly = panel.getByText('Plant of the week', { exact: true })
-    await weekly.scrollIntoViewIfNeeded()
-    await page.waitForTimeout(400)
-    const box = await panel.boundingBox()
-    if (box) {
-      await page.screenshot({
-        path: resolve(outDir, `${prefix}-plant-of-the-week-${label}.png`),
-        clip: { x: box.x, y: box.y, width: box.width, height: Math.min(box.height, 320) },
-      })
-    }
 
     await page.close()
     await context.close()

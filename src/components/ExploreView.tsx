@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Heart, Tree, Sparkle, Eye, ArrowRight, Flower, Plant, CircleNotch, MagnifyingGlass, Clock } from '@phosphor-icons/react'
+import { Users, Tree, Sparkle, Eye, ArrowRight, Flower, Plant, CircleNotch, MagnifyingGlass, Clock } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -268,11 +268,12 @@ export function ExploreView({ onVisitGarden, onJoinGarden, userId, userName }: E
                         {/* Overlay gradient */}
                         <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
                         
-                        {/* Memory count badge */}
-                        <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-background/90 backdrop-blur-sm text-sm font-medium flex items-center gap-2 shadow-lg">
-                          <Heart size={14} weight="fill" className="text-rose-500" />
-                          <span>{garden.memory_count}</span>
-                        </div>
+                        {typeof garden.memory_count === 'number' && garden.memory_count > 0 && (
+                          <div className="absolute top-4 right-4 flex items-center gap-1.5 rounded-full bg-background/90 px-3 py-1.5 text-sm font-medium shadow-lg backdrop-blur-sm">
+                            <Plant size={14} weight="duotone" className="text-primary" aria-hidden />
+                            <span>{garden.memory_count} memories</span>
+                          </div>
+                        )}
 
                         {/* Sample memory photos */}
                         {garden.sample_memories && garden.sample_memories.length > 0 && (
