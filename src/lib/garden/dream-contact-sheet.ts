@@ -78,7 +78,7 @@ export function buildDreamContactSheetSvg(opts: DreamContactSheetOptions): strin
           ...(buildDreamHybridPreview(g, opts.palette, stage, rimStrength, 1.28) as ReactNode[]),
         ),
       )
-      return `<g transform="translate(${x} ${y})"><text x="8" y="14" font-size="10" fill="#2d2418" font-family="system-ui,sans-serif">${esc(idea)}</text><text x="8" y="27" font-size="8.5" fill="#6a5a48" font-family="system-ui,sans-serif">${esc(g.name)} · ${g.base}</text>${plantMarkup}</g>`
+      return `<g transform="translate(${x} ${y})"><text x="8" y="14" font-size="11" font-weight="600" fill="#2a2218" font-family="Georgia, 'Times New Roman', serif">${esc(idea)}</text><text x="8" y="27" font-size="9" fill="#5c4f3f" font-family="system-ui,sans-serif" letter-spacing="0.02em">${esc(g.name)} · ${g.base}</text>${plantMarkup}</g>`
     })
     .join('')
 

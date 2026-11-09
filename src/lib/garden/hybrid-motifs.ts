@@ -30,9 +30,11 @@ export const MOTIF_GLYPHS: Record<string, Glyph> = {
     { d: 'M14.5 6 H16 V4', fill: 'none', stroke: 'rim', sw: 0 },
   ]),
   guitar: g('guitar', [
-    { d: 'M13 3 H15 V5 L14 6 L13 3 Z M9 11 C6.5 11 5 13 5 15.5 C5 18.5 7 20.5 10 20.5 C12.5 20.5 14 18.5 14 16 L16 6 L14 4 L11 10 Z', fill: 'rim', stroke: 'none', sw: 0 },
-    { d: 'M9 15 A3.5 3.5 0 1 0 9 22 A3.5 3.5 0 1 0 9 15 Z', fill: 'accent', stroke: 'none', sw: 0 },
-    { d: 'M7 16 H13', fill: 'none', stroke: 'glow', sw: 1.2 },
+    { d: 'M11.5 3 H14.5 V6.5 L12 8 L11.5 3 Z', fill: 'rim', stroke: 'none', sw: 0 },
+    { d: 'M8.5 11.5 C5.5 11.5 3.5 13.8 3.5 16.5 C3.5 19.8 6 22 9.5 22 C12.2 22 14.2 20 14.8 17.2 L16.5 6.5 L14 3.8 L10.5 10.5 Z', fill: 'rim', stroke: 'sil', sw: 0.8 },
+    { d: 'M9.5 16.5 A4 4 0 1 0 9.5 24.5 A4 4 0 1 0 9.5 16.5 Z', fill: 'accent', stroke: 'sil', sw: 0.7 },
+    { d: 'M6.5 17.5 H12.5', fill: 'none', stroke: 'glow', sw: 1.8 },
+    { d: 'M11 5.5 V9', fill: 'none', stroke: 'glow', sw: 1.4 },
   ]),
   book: g('book', [{ d: 'M6 5 H14 C16 5 17 6 17 8 V19 H7 V6 C7 5.5 6.5 5 6 5 Z M7 19 H17 C18 19 19 18 19 17 V7', fill: 'rim', stroke: 'glow', sw: 0.8 }]),
   'coffee cup': g('coffee cup', [
@@ -95,13 +97,15 @@ export const MOTIF_GLYPHS: Record<string, Glyph> = {
     { d: 'M8 15 H16', fill: 'none', stroke: 'glow', sw: 1.2 },
   ]),
   car: g('car', [
-    { d: 'M4 14 H20 V17 H4 Z M6 14 L8 10 H16 L18 14', fill: 'glow', stroke: 'none', sw: 0 },
-    { d: 'M8 17 A2.2 2.2 0 1 1 8 21.4 A2.2 2.2 0 1 1 8 17 M16 17 A2.2 2.2 0 1 1 16 21.4 A2.2 2.2 0 1 1 16 17', fill: 'rim', stroke: 'none', sw: 0 },
-    { d: 'M10 12 H14', fill: 'none', stroke: 'accent', sw: 1.2 },
+    { d: 'M3.5 13.5 H20.5 V17.5 H3.5 Z', fill: 'glow', stroke: 'rim', sw: 0.9 },
+    { d: 'M5.5 13.5 L8 9 H16.5 L19 13.5', fill: 'accent', stroke: 'rim', sw: 0.8 },
+    { d: 'M8.5 12 H15.5', fill: 'none', stroke: 'sil', sw: 1.5 },
+    { d: 'M7.5 17.5 A2.8 2.8 0 1 0 7.5 23 A2.8 2.8 0 1 0 7.5 17.5 M16.5 17.5 A2.8 2.8 0 1 0 16.5 23 A2.8 2.8 0 1 0 16.5 17.5', fill: 'rim', stroke: 'sil', sw: 0.7 },
   ]),
   plane: g('plane', [
-    { d: 'M12 3 L14 10 H19 L16 12 L18 19 L12 15 L6 19 L8 12 L5 10 H10 Z', fill: 'accent', stroke: 'none', sw: 0 },
-    { d: 'M11 15 H13 V19', fill: 'rim', stroke: 'none', sw: 0 },
+    { d: 'M12 3.5 L14.5 10.5 H20.5 L15.5 12.8 L18 19.5 L12 15.2 L6 19.5 L8.5 12.8 L3.5 10.5 H9.5 Z', fill: 'accent', stroke: 'rim', sw: 1.1 },
+    { d: 'M10.5 14.8 H13.5 V19.2', fill: 'rim', stroke: 'sil', sw: 0.6 },
+    { d: 'M12 10.5 V14', fill: 'none', stroke: 'glow', sw: 1.6 },
   ]),
   rocket: g('rocket', [
     { d: 'M12 2 C9 8 9 13 11 17 L12 19 L13 17 C15 13 15 8 12 2 Z', fill: 'glow', stroke: 'none', sw: 0 },

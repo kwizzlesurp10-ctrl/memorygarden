@@ -4,6 +4,13 @@ import type { ScenePalette } from '@/lib/garden/palettes'
 import { cx3 } from '@/lib/garden/bezier'
 import { applyPlantFacing } from './facing-art'
 import type { SeededPlantContext, SeededVariety } from './types'
+import {
+  barkStriationPaths,
+  canopyShimmerStyle,
+  leafVein,
+  petalSheen,
+  trunkGradientDef,
+} from './plant-surface-detail'
 
 export type HybridPlantPalette = Pick<
   ScenePalette,
@@ -105,7 +112,12 @@ function buildFlower(s: number, r: () => number, C: HybridPlantPalette, rim: num
       const side = i % 2 ? 1 : -1;
       const px = cx3(lean * 0.2, lean, tipX, t), py = -H * t;
       const ll = (7 + s * 1.5) * (1 - t * 0.45) * (0.8 + r() * 0.4);
+      const lx = px + side * ll * 0.5
+      const ly = py - ll * 0.45
       out.push(e('path', { key: 'l' + i, d: `M ${px} ${py} Q ${px + side * ll * 0.55} ${py - ll * 0.5}, ${px + side * ll} ${py - ll * 0.28} Q ${px + side * ll * 0.5} ${py + ll * 0.08}, ${px} ${py} Z`, fill: C.sil, ...rimS }));
+      if (s >= 3) {
+        out.push(leafVein(lx, ly, ll * 0.35, ll * 0.22, C, rim))
+      }
     }
     if (s === 1) {
       out.push(...sproutPair(C, rim, tipY, tipX));
@@ -140,6 +152,7 @@ function buildFlower(s: number, r: () => number, C: HybridPlantPalette, rim: num
       }
       out.push(e('circle', { key: 'cc', cx: tipX, cy: tipY, r: 2.8, fill: C.glow, opacity: 0.95 }));
       out.push(e('circle', { key: 'ci', cx: tipX, cy: tipY, r: 1.15, fill: '#ffffff', opacity: 0.85 }));
+      out.push(petalSheen(tipX, tipY, pr, C));
     }
     if (s === 6) {
       const n = 11
@@ -197,7 +210,10 @@ function buildTree(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
     }
     const H = [0, 15, 28, 42, 56, 68, 80, 90][s];
     const bw = 1.6 + s * 1.0, tw = Math.max(0.7, bw * 0.3);
-    out.push(e('path', { key: 'tr', d: `M ${-bw} 0 C ${-bw * 0.7} ${-H * 0.4}, ${-tw * 1.4} ${-H * 0.72}, ${-tw} ${-H} L ${tw} ${-H} C ${tw * 1.4} ${-H * 0.72}, ${bw * 0.7} ${-H * 0.4}, ${bw} 0 Z`, fill: C.sil, stroke: C.rim, strokeOpacity: 0.4 * rim, strokeWidth: 0.6 }));
+    const gradId = `mg-trunk-${s}`
+    out.push(e('defs', { key: 'defs' }, trunkGradientDef(gradId, C)));
+    out.push(e('path', { key: 'tr', d: `M ${-bw} 0 C ${-bw * 0.7} ${-H * 0.4}, ${-tw * 1.4} ${-H * 0.72}, ${-tw} ${-H} L ${tw} ${-H} C ${tw * 1.4} ${-H * 0.72}, ${bw * 0.7} ${-H * 0.4}, ${bw} 0 Z`, fill: `url(#${gradId})`, stroke: C.rim, strokeOpacity: 0.4 * rim, strokeWidth: 0.6 }));
+    if (s >= 3) out.push(...barkStriationPaths(bw, H, s * 7 + Math.floor(r() * 9), C, rim));
     if (s >= 4) {
       out.push(e('path', { key: 'r1', d: `M ${-bw} 0 Q ${-bw - 3.5} -1.5, ${-bw - 6} 0`, stroke: C.sil, strokeWidth: 1.8, fill: 'none', strokeLinecap: 'round' }));
       out.push(e('path', { key: 'r2', d: `M ${bw} 0 Q ${bw + 3.5} -1.5, ${bw + 6} 0`, stroke: C.sil, strokeWidth: 1.8, fill: 'none', strokeLinecap: 'round' }));
@@ -214,12 +230,12 @@ function buildTree(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
       const bloomScale = s === 5 ? 0.88 : s === 6 ? 1.05 : s === 7 ? 1.12 : 1;
       const cw = (7 + s * 4.2) * bloomScale, ch = (5 + s * 3) * bloomScale;
       const blobs = 3 + s * 2;
-      out.push(e('ellipse', { key: 'cb', cx: 0, cy: -H - ch * 0.35, rx: cw, ry: ch * 0.85, fill: C.sil }));
+      out.push(e('ellipse', { key: 'cb', cx: 0, cy: -H - ch * 0.35, rx: cw, ry: ch * 0.85, fill: C.sil, style: canopyShimmerStyle(motion, s) }));
       for (let j = 0; j < blobs; j++) {
         const bx = (r() - 0.5) * cw * 1.7;
         const by = -H - r() * ch * 1.1 - 1;
         const rr = cw * 0.4 * (0.5 + r() * 0.8);
-        out.push(e('circle', { key: 'cn' + j, cx: bx, cy: by, r: rr, fill: C.silSoft, opacity: 0.9 }));
+        out.push(e('circle', { key: 'cn' + j, cx: bx, cy: by, r: rr, fill: C.silSoft, opacity: 0.9, style: j === 0 ? canopyShimmerStyle(motion, j + 2) : undefined }));
       }
       out.push(e('ellipse', { key: 'ch', cx: -cw * 0.3, cy: -H - ch * 0.75, rx: cw * 0.45, ry: ch * 0.3, fill: C.rim, opacity: 0.08 + 0.1 * rim }));
       out.push(e('path', { key: 'crim', d: `M ${-cw * 0.85} ${-H - ch * 0.2} Q ${-cw * 0.4} ${-H - ch * 1.15}, ${cw * 0.35} ${-H - ch * 0.95}`, stroke: C.rim, strokeOpacity: 0.35 * rim, strokeWidth: 1, fill: 'none', strokeLinecap: 'round' }));

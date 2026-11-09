@@ -2,6 +2,7 @@
 
 @import './styles/theme.css';
 @import './styles/garden-animations.css';
+@import './styles/garden-ui.css';
 @import './index.css';
 @import "tw-animate-css";
 /*

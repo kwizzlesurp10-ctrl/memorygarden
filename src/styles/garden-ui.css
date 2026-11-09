@@ -1,0 +1,29 @@
+@layer components {
+  .mg-glass-panel {
+    @apply rounded-2xl border border-white/10 bg-card/85 text-foreground shadow-[0_8px_32px_rgba(12,18,10,0.18)] backdrop-blur-md;
+  }
+
+  .mg-glass-panel-inset {
+    @apply rounded-xl border border-white/8 bg-background/40 shadow-inner;
+  }
+
+  .mg-section-label {
+    @apply text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground;
+  }
+
+  .mg-page-hero {
+    @apply bg-gradient-to-b from-background via-background to-primary/5;
+  }
+
+  .mg-focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .mg-empty-state {
+    @apply flex flex-col items-center justify-center gap-3 px-6 py-10 text-center text-muted-foreground;
+  }
+
+  .mg-skeleton {
+    @apply animate-pulse rounded-lg bg-muted/60;
+  }
+}

@@ -46,7 +46,7 @@ export function DreamPlantPanel({
   }
 
   return (
-    <div className="rounded-xl border border-white/8 bg-black/30 p-4 text-[#f0e7da] font-serif space-y-3">
+    <div className="mg-glass-panel p-4 text-[#f0e7da] font-serif space-y-3 shadow-lg">
       <div className="flex w-full items-center gap-2">
         <span className="rounded-md border border-[#ffb877]/35 bg-[#ffb877]/14 px-2 py-0.5 font-mono text-xs text-[#ffb877]">3a</span>
         <h3 className="text-lg font-semibold">Dream a plant</h3>
@@ -57,7 +57,7 @@ export function DreamPlantPanel({
         )}
       </div>
 
-      <div className="rounded-xl border border-[#d4c4ff]/25 bg-[#d4c4ff]/[0.06] p-3 space-y-2">
+      <div className="mg-glass-panel-inset border-[#d4c4ff]/25 bg-[#d4c4ff]/[0.06] p-3 space-y-2">
         <div className="flex flex-wrap items-baseline gap-2">
           <span className="font-mono text-[10px] uppercase tracking-widest text-[#d4c4ff]">Plant of the week</span>
           <span className="text-xs opacity-55">{weekly.daysLeft} day{weekly.daysLeft === 1 ? '' : 's'} left</span>

@@ -97,13 +97,15 @@ export function ExploreView({ onVisitGarden, onJoinGarden, userId, userName }: E
 
   if (loading) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-background to-primary/5">
+      <div className="mg-page-hero w-full h-full flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
+          className="mg-empty-state"
+          role="status"
+          aria-live="polite"
         >
-          <CircleNotch size={48} className="animate-spin text-primary mx-auto mb-4" />
+          <CircleNotch size={48} className="animate-spin text-primary" aria-hidden />
           <p className="text-muted-foreground">Discovering gardens...</p>
         </motion.div>
       </div>
@@ -112,9 +114,9 @@ export function ExploreView({ onVisitGarden, onJoinGarden, userId, userName }: E
 
   if (error) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-background to-primary/5">
-        <div className="text-center max-w-md px-6">
-          <Tree size={56} className="text-muted-foreground/40 mx-auto mb-4" />
+      <div className="mg-page-hero w-full h-full flex items-center justify-center">
+        <div className="mg-empty-state max-w-md">
+          <Tree size={56} className="text-muted-foreground/50" aria-hidden />
           <p className="text-foreground font-medium mb-2">Could not load community gardens</p>
           <p className="text-muted-foreground text-sm mb-6">{error}</p>
           <Button
@@ -155,7 +157,7 @@ export function ExploreView({ onVisitGarden, onJoinGarden, userId, userName }: E
   }
 
   return (
-    <div className="w-full h-full overflow-y-auto bg-gradient-to-b from-background via-background to-primary/5">
+    <div className="mg-page-hero w-full h-full overflow-y-auto">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
