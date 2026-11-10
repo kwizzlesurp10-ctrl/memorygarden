@@ -31,7 +31,7 @@ import { getPlantOfWeek, hasWeeklySeedForWeek } from '@/lib/garden/plant-of-week
 import { loadShed, saveShed } from '@/lib/garden/shed-storage'
 import { getLocalUser } from '@/lib/local-user'
 import { toast } from 'sonner'
-import { memoryPlantAriaLabel } from '@/lib/garden/plant-a11y-label'
+import { memoryPlantA11yLabel } from '@/lib/garden-helpers'
 
 const RIM_STRENGTH = 0.6
 const GARDEN_SEED = 7
@@ -258,7 +258,7 @@ export function GardenCanvas({
           key={memory.id}
           role="button"
           tabIndex={isDimmed ? -1 : 0}
-          aria-label={memoryPlantAriaLabel(memory)}
+          aria-label={`Memory: ${memoryPlantA11yLabel(memory)}`}
           aria-disabled={isDimmed || undefined}
           transform={`translate(${pos.x} ${pos.y})`}
           opacity={isDimmed ? 0.15 : 1}
@@ -360,7 +360,7 @@ export function GardenCanvas({
 
       {onLandscapeViewChange ? (
         <GardenViewPicker
-          className="absolute left-3 top-3 z-40 max-w-[min(100%,calc(100%-4.5rem))] sm:max-w-[min(100%,420px)]"
+          className="absolute left-3 top-3 z-40 max-w-[min(100%,calc(100%-5.5rem))] sm:max-w-[min(100%,420px)]"
           value={landscapeView}
           onChange={onLandscapeViewChange}
         />

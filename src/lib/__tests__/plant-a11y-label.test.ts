@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { memoryPlantAriaLabel, memoryPlantA11yLabel } from '@/lib/garden/plant-a11y-label'
+import { memoryPlantA11yLabel } from '@/lib/garden-helpers'
 import type { Memory } from '@/lib/types'
 
 const base: Memory = {
@@ -24,10 +24,7 @@ describe('memoryPlantA11yLabel', () => {
   })
 
   it('falls back to tone and stage', () => {
-    expect(memoryPlantA11yLabel(base)).toBe('peaceful memory, sprout stage')
+    expect(memoryPlantA11yLabel(base)).toBe('peaceful sprout memory')
   })
 
-  it('prefixes aria label', () => {
-    expect(memoryPlantAriaLabel({ ...base, text: 'Picnic' })).toBe('Open memory: Picnic')
-  })
 })

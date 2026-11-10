@@ -631,3 +631,9 @@ export function generateHybridTraits(parent1: Memory, parent2: Memory): { traits
 
   return { traits: combinedTraits, geneticsSeed, variety }
 }
+
+export function memoryPlantA11yLabel(memory: Memory): string {
+  const snippet = memory.text?.trim().slice(0, 80)
+  if (snippet) return snippet
+  return `${memory.emotionalTone} ${memory.plantStage} memory`
+}

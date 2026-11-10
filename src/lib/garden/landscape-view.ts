@@ -158,3 +158,4 @@ export function shoreLineYForView(view: GardenLandscapeView): number {
 export function bandWaterTopYForTests(view: GardenLandscapeView): number {
   return bandWaterTopY(view)
 }
+

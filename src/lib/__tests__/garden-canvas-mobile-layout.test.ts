@@ -13,7 +13,7 @@ describe('mobile garden scene layout', () => {
     expect(canvas).toContain('data-testid="enter-walk-button"')
     expect(canvas).toContain('hidden')
     expect(canvas).toContain('sm:flex')
-    expect(canvas).toContain('max-w-[min(100%,calc(100%-4.5rem))]')
+    expect(canvas).toContain('max-w-[min(100%,calc(100%-5.5rem))]')
   })
 
   it('renders the SVG to cover the scene wrap', () => {

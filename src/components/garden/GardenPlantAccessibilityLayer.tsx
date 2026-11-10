@@ -1,7 +1,7 @@
 import type { GardenLandscapeView, Memory } from '@/lib/types'
 import { layoutMemoryPlantsForView } from '@/lib/garden/memory-scene-layout'
 import { resolveGardenLandscapeView } from '@/lib/garden/landscape-view'
-import { memoryPlantA11yLabel } from '@/lib/garden/plant-a11y-label'
+import { memoryPlantA11yLabel } from '@/lib/garden-helpers'
 
 interface GardenPlantAccessibilityLayerProps {
   memories: Memory[]
@@ -21,7 +21,7 @@ export function GardenPlantAccessibilityLayer({
   return (
     <ul
       className="sr-only"
-      aria-label="Memory plants in the garden scene"
+      aria-label="Garden memory plants"
       data-testid="garden-plant-accessibility-layer"
     >
       {memories.map((memory) => {
@@ -33,7 +33,7 @@ export function GardenPlantAccessibilityLayer({
           <li key={memory.id} role="listitem" aria-hidden={isDimmed}>
             <span data-scene-x={Math.round(pos.x)} data-scene-y={Math.round(pos.y)}>
               {label}
-              {isDimmed ? ' (hidden by filter)' : ''}
+              {isDimmed ? ' (filtered)' : null}
             </span>
           </li>
         )

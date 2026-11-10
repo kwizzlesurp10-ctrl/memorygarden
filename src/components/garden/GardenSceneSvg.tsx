@@ -40,7 +40,6 @@ import type { SeededVariety } from '@/components/plants/types'
 import { candle, cattail } from './scenery'
 export { SCENE_W, SCENE_H, SCENE_HZ } from '@/lib/garden/scene-constants'
 import { SCENE_H, SCENE_HZ, SCENE_W } from '@/lib/garden/scene-constants'
-
 export interface GardenSceneSvgProps {
   palette: ScenePalette
   sceneKey: string
@@ -934,7 +933,6 @@ export function GardenSceneSvg({
     () => computeSceneRngData(gardenSeed, sceneKey, palette, motion),
     [gardenSeed, sceneKey, palette, motion],
   )
-
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -945,7 +943,7 @@ export function GardenSceneSvg({
       className="garden-scene-svg block h-full w-full min-h-0 max-w-full"
       style={{ display: 'block' }}
       role="group"
-      aria-label="Garden landscape with memory plants"
+      aria-label="Garden landscape"
     >
       <GardenSkyLayer
         ref={layerRefs?.sky}

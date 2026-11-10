@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { GardenLandscapeView } from '@/lib/types'
 import {
   GARDEN_LANDSCAPE_VIEW_META,
@@ -20,6 +21,13 @@ export function GardenViewPicker({
 }: GardenViewPickerProps) {
   const reducedMotion = useReducedMotion()
   const active = resolveGardenLandscapeView(value)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    scrollRef.current
+      ?.querySelector<HTMLButtonElement>('[role="radio"][aria-checked="true"]')
+      ?.scrollIntoView({ inline: active === 'garden_path' ? 'end' : 'nearest' })
+  }, [active])
 
   if (layout === 'cards') {
     return (
@@ -50,6 +58,7 @@ export function GardenViewPicker({
 
   return (
     <div
+      ref={scrollRef}
       className={`flex max-w-full flex-nowrap gap-1 overflow-x-auto rounded-lg border border-white/20 bg-black/50 p-1 text-[#f5efe6] backdrop-blur-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}
       role="radiogroup"
       aria-label="Garden landscape view"
@@ -63,7 +72,7 @@ export function GardenViewPicker({
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(meta.id)}
-            className="min-h-11 shrink-0 rounded-md px-3 py-2 text-xs font-medium tracking-wide"
+            className="min-h-11 shrink-0 rounded-md px-3 py-2 text-xs font-medium"
             style={{
               background: selected ? 'rgba(240, 231, 218, 0.22)' : 'transparent',
               color: selected ? '#faf4ec' : 'rgba(245, 239, 230, 0.88)',
