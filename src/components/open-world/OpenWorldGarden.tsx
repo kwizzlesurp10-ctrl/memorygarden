@@ -43,8 +43,8 @@ import {
   isWalkCaptureSession,
   registerWalkCaptureBridge,
 } from '@/lib/open-world/walk-capture-bridge'
-import { CC0_WALK_CAPTURE_POSE } from '@/lib/open-world/cc0-placement'
-import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
+import { CC0_MODEL_BY_ID, type Cc0ModelId } from '@/lib/open-world/cc0-catalog'
+import { CC0_WALK_CAPTURE_POSE, cc0ShowcaseCapturePose } from '@/lib/open-world/cc0-placement'
 import { OpenWorldEngine } from './engine'
 import { OpenWorldHud } from './OpenWorldHud'
 
@@ -241,6 +241,8 @@ export function OpenWorldGarden({
         setPose: (pose) => engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch),
         setPalette: (palette) => engine.setPalette(palette),
         showcaseModel: (id: Cc0ModelId | null) => engine.setCc0Showcase(id),
+        showcasePoseFor: (id: Cc0ModelId) =>
+          cc0ShowcaseCapturePose(CC0_MODEL_BY_ID[id].targetHeight),
         ready: () => engine.failed === false,
       })
       engine.setPlayerPose(

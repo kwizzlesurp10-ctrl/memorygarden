@@ -7,8 +7,6 @@ const outDir = process.env.ARTIFACT_DIR || '/opt/cursor/artifacts/after'
 const tilesDir = resolve(outDir, 'cc0-tiles')
 mkdirSync(tilesDir, { recursive: true })
 
-const SHOWCASE_POSE = { x: 1.2, z: 34.5, yaw: 0, pitch: -0.18 }
-
 const MODELS = [
   { id: 'quat_CommonTree_1', label: 'Common tree 1 (Quaternius)' },
   { id: 'quat_Willow_1', label: 'Willow 1 (Quaternius)' },
@@ -104,13 +102,11 @@ try {
       const ctx = await makeContext(browser, hour)
       const page = await ctx.newPage()
       await enterWalk(page)
-      await page.evaluate(
-        async ({ modelId, pose }) => {
-          window.__mgWalkCapture?.setPose(pose)
-          await window.__mgWalkCapture?.showcaseModel(modelId)
-        },
-        { modelId: id, pose: SHOWCASE_POSE },
-      )
+      await page.evaluate(async ({ modelId }) => {
+        const pose = window.__mgWalkCapture?.showcasePoseFor(modelId)
+        if (pose) window.__mgWalkCapture?.setPose(pose)
+        await window.__mgWalkCapture?.showcaseModel(modelId)
+      }, { modelId: id })
       await page.waitForTimeout(2200)
       const file = `${id}-${suffix}.png`
       const path = resolve(tilesDir, file)

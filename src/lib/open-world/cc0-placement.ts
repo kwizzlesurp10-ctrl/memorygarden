@@ -190,3 +190,23 @@ export const CC0_SHOWCASE_CAPTURE_POSE = {
   yaw: CC0_WALK_CAPTURE_POSE.yaw,
   pitch: -0.18,
 } as const
+
+export function cc0ShowcaseFillScale(targetHeight: number): number {
+  if (targetHeight >= 5) return Math.max(0.88, 3.25 / targetHeight)
+  return Math.min(2.85, Math.max(1.35, 4.2 / targetHeight))
+}
+
+export function cc0ShowcaseCapturePose(targetHeight: number): {
+  x: number
+  z: number
+  yaw: number
+  pitch: number
+} {
+  const retreat = targetHeight >= 5 ? (targetHeight - 4) * 1.15 : 0
+  return {
+    x: CC0_WALK_CAPTURE_POSE.x,
+    z: CC0_WALK_CAPTURE_POSE.z + retreat,
+    yaw: CC0_WALK_CAPTURE_POSE.yaw,
+    pitch: targetHeight >= 5 ? -0.13 : -0.18,
+  }
+}

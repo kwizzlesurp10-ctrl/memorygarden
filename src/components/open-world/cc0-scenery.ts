@@ -5,6 +5,7 @@ import { createDefaultCc0Loader, loadCc0Template, retintCc0Object, type Cc0Templ
 import {
   buildCc0Placements,
   CC0_SHOWCASE_ANCHOR,
+  cc0ShowcaseFillScale,
   cc0TierForDevice,
   type Cc0Placement,
 } from '@/lib/open-world/cc0-placement'
@@ -65,8 +66,7 @@ export class Cc0SceneryLayer {
     const clone = template.group.clone(true)
     clone.position.set(CC0_SHOWCASE_ANCHOR.x, 0, CC0_SHOWCASE_ANCHOR.z)
     clone.rotation.y = CC0_SHOWCASE_ANCHOR.yaw
-    const fill = Math.min(2.85, Math.max(1.35, 4.2 / def.targetHeight))
-    clone.scale.multiplyScalar(fill)
+    clone.scale.multiplyScalar(cc0ShowcaseFillScale(def.targetHeight))
     this.root.add(clone)
     this.singles.push(clone)
   }

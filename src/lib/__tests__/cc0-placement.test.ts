@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { layoutGardenWorld } from '@/lib/open-world/layout'
 import type { Memory } from '@/lib/types'
-import { buildCc0Placements, canPlaceScenery, minDistanceToPaths } from '@/lib/open-world/cc0-placement'
+import {
+  buildCc0Placements,
+  canPlaceScenery,
+  cc0ShowcaseCapturePose,
+  cc0ShowcaseFillScale,
+  minDistanceToPaths,
+} from '@/lib/open-world/cc0-placement'
 
 function mem(id: string): Memory {
   return {
@@ -35,5 +41,10 @@ describe('cc0-placement', () => {
     const b = buildCc0Placements(world, 4242, { scatterMultiplier: 1 })
     expect(a).toEqual(b)
     expect(a.length).toBeGreaterThan(10)
+  })
+
+  it('frames showcase shots by model height', () => {
+    expect(cc0ShowcaseFillScale(8.4)).toBeLessThan(cc0ShowcaseFillScale(0.62))
+    expect(cc0ShowcaseCapturePose(8.4).z).toBeGreaterThan(cc0ShowcaseCapturePose(0.62).z)
   })
 })
