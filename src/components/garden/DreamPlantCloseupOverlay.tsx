@@ -109,7 +109,7 @@ export function DreamPlantCloseupOverlay({
               <DialogTitle id={titleId} className="truncate text-xl font-semibold text-[#faf4ec] sm:text-2xl">
                 {genome.name}
               </DialogTitle>
-              <DialogDescription id={descId} className="text-sm text-[#f0e7da]/85">
+              <DialogDescription id={descId} className="font-sans text-sm text-[#f0e7da]/85">
                 {genome.base} × {genome.graft} · stage: {stage} · motif: {genome.motif.label}
               </DialogDescription>
             </div>
@@ -148,25 +148,36 @@ export function DreamPlantCloseupOverlay({
                 role="group"
                 aria-label="Switch growth stage preview"
               >
-                {PLANT_STAGES_ORDER.map((s, i) => (
-                  <Button
-                    key={s}
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    data-testid={`dream-plant-closeup-stage-${s}`}
-                    className={cn(
-                      'h-8 border px-2.5 text-xs font-medium capitalize',
-                      stageIndex === i
-                        ? 'border-[#ffb877]/55 bg-[#ffb877]/20 text-[#ffddb0]'
-                        : 'border-[#f0e7da]/25 bg-[#0d0913]/50 text-[#f0e7da]/85 hover:bg-[#f0e7da]/10',
-                    )}
-                    aria-pressed={stageIndex === i}
-                    onClick={() => setStageIndex(i)}
-                  >
-                    {s}
-                  </Button>
-                ))}
+                {PLANT_STAGES_ORDER.map((s, i) => {
+                  const selected = stageIndex === i
+                  return (
+                    <Button
+                      key={s}
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      data-testid={`dream-plant-closeup-stage-${s}`}
+                      className={cn(
+                        'h-8 border px-2.5 text-xs font-medium capitalize shadow-none',
+                        'focus-visible:border-[#f0e7da]/25 focus-visible:ring-2 focus-visible:ring-[#ffb877]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#120e18]',
+                        selected
+                          ? 'border-[#ffb877]/55 bg-[#ffb877]/20 text-[#ffddb0] hover:bg-[#ffb877]/20 hover:text-[#ffddb0]'
+                          : cn(
+                              'border-[#f0e7da]/25 bg-[#0d0913]/50 text-[#f0e7da]/85',
+                              'hover:bg-[#0d0913]/50 hover:text-[#f0e7da]/85',
+                              '[@media(hover:hover)]:hover:border-[#f0e7da]/40 [@media(hover:hover)]:hover:bg-[#f0e7da]/10',
+                            ),
+                      )}
+                      aria-pressed={selected}
+                      onClick={(event) => {
+                        setStageIndex(i)
+                        event.currentTarget.blur()
+                      }}
+                    >
+                      {s}
+                    </Button>
+                  )
+                })}
               </div>
             </div>
           </div>

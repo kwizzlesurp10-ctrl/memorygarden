@@ -116,7 +116,11 @@ try {
     const dreamInput = panel.locator('input[type="text"]')
     await dreamInput.fill('grandmother’s rosemary by the gate')
     await panel.getByRole('button', { name: 'Dream it' }).click()
-    await page.getByTestId('dream-plant-closeup-trigger').waitFor({ state: 'visible', timeout: 25_000 })
+    const closeupTrigger = page.getByTestId('dream-plant-closeup-trigger')
+    await closeupTrigger.waitFor({ state: 'visible', timeout: 25_000 })
+    await closeupTrigger.evaluate((el) => {
+      el.scrollIntoView({ block: 'center', behavior: 'instant' })
+    })
     await page.waitForTimeout(600)
     await page.screenshot({
       path: resolve(outDir, `${prefix}-dream-plant-panel-with-closeup-${label}.png`),
