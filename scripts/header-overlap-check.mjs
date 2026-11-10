@@ -33,10 +33,18 @@ try {
       localStorage.setItem(`memorygarden:${user.id}:memories`, JSON.stringify([]))
     }, { user: DEMO_USER })
 
-    await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 60_000 })
-    await page.waitForTimeout(400)
+    await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 })
+    await page.waitForTimeout(1200)
+    for (let i = 0; i < 4; i++) {
+      await page.keyboard.press('Escape')
+      await page.waitForTimeout(120)
+    }
 
-    const selector = page.getByRole('button', { name: /My Garden|Shared/ }).first()
+    const selector = page
+      .locator('header')
+      .getByRole('button')
+      .filter({ hasText: /My Garden|Shared|members/ })
+      .first()
     const nav = page.getByRole('navigation', { name: 'Main views' })
     const menu = page.getByRole('button', { name: 'Open menu' })
 
