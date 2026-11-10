@@ -16,6 +16,14 @@
 }
 
 :root {
+  --dock-surface: #faf4ec;
+  --dock-surface-muted: #f0e7da;
+  --dock-accent: #ffb877;
+  --dock-ink: #120e18;
+  --scene-ink: #f0e7da;
+  --scene-backdrop: #0d0913;
+  --type-min: 0.75rem;
+
   --background: oklch(0.96 0.01 95);
   --foreground: oklch(0.25 0.01 95);
   
