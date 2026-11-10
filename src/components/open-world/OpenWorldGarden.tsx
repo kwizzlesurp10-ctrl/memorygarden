@@ -39,6 +39,12 @@ import {
   openGardenGift,
   placeGardenGift,
 } from '@/lib/garden-gifts'
+import {
+  isWalkCaptureSession,
+  registerWalkCaptureBridge,
+} from '@/lib/open-world/walk-capture-bridge'
+import { CC0_WALK_CAPTURE_POSE } from '@/lib/open-world/cc0-placement'
+import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
 import { OpenWorldEngine } from './engine'
 import { OpenWorldHud } from './OpenWorldHud'
 
@@ -79,6 +85,7 @@ export function OpenWorldGarden({
   const [coarse, setCoarse] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches,
   )
+  const captureMode = isWalkCaptureSession()
 
   // Gentle Streaks & Dew Currency
   const [streak, setStreak] = useState<GardenStreak>(() => loadGardenStreak())
@@ -229,7 +236,22 @@ export function OpenWorldGarden({
     engineRef.current = engine
     setFailed(engine.failed)
     setWorld(engine.getWorld())
+    if (captureMode) {
+      registerWalkCaptureBridge({
+        setPose: (pose) => engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch),
+        setPalette: (palette) => engine.setPalette(palette),
+        showcaseModel: (id: Cc0ModelId | null) => engine.setCc0Showcase(id),
+        ready: () => engine.failed === false,
+      })
+      engine.setPlayerPose(
+        CC0_WALK_CAPTURE_POSE.x,
+        CC0_WALK_CAPTURE_POSE.z,
+        CC0_WALK_CAPTURE_POSE.yaw,
+        CC0_WALK_CAPTURE_POSE.pitch,
+      )
+    }
     return () => {
+      registerWalkCaptureBridge(null)
       engine.dispose()
       engineRef.current = null
     }
@@ -394,6 +416,7 @@ export function OpenWorldGarden({
         bondPartnerName={world.bondPartnerName}
         onLeaveGift={handleLeaveGift}
         onOpenGift={handleOpenGift}
+        captureMode={captureMode}
       />
     </div>
   )

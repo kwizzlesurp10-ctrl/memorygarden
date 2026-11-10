@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { ScenePalette } from '@/lib/garden/palettes'
-import { CC0_MODEL_BY_ID, type Cc0ModelId } from '@/lib/open-world/cc0-catalog'
+import { CC0_MODELS, CC0_MODEL_BY_ID, type Cc0ModelId } from '@/lib/open-world/cc0-catalog'
 import { createDefaultCc0Loader, loadCc0Template, retintCc0Object, type Cc0Template } from '@/lib/open-world/cc0-gltf-loader'
 import { buildCc0Placements, cc0TierForDevice, type Cc0Placement } from '@/lib/open-world/cc0-placement'
 import type { GardenWorld } from '@/lib/open-world/types'
@@ -24,6 +24,7 @@ export class Cc0SceneryLayer {
   private world: GardenWorld
   private opts: Cc0SceneryOptions
   private disposed = false
+  private showcaseActive = false
 
   constructor(scene: THREE.Scene, world: GardenWorld, palette: ScenePalette, opts: Cc0SceneryOptions) {
     this.root.name = 'cc0-scenery'
@@ -36,7 +37,40 @@ export class Cc0SceneryLayer {
 
   setWorld(world: GardenWorld): void {
     this.world = world
-    if (this.ready) this.rebuildInstances()
+    if (this.ready && !this.showcaseActive) this.rebuildInstances()
+  }
+
+  async setShowcase(modelId: Cc0ModelId | null): Promise<void> {
+    if (!this.ready || this.failed) return
+    this.clearRendered()
+    if (!modelId) {
+      this.showcaseActive = false
+      this.rebuildInstances()
+      return
+    }
+    this.showcaseActive = true
+    if (!this.templates.has(modelId)) {
+      const loader = await createDefaultCc0Loader()
+      const template = await loadCc0Template(modelId, loader, this.palette)
+      this.templates.set(modelId, template)
+    }
+    const template = this.templates.get(modelId)
+    if (!template) return
+    const clone = template.group.clone(true)
+    clone.position.set(0, 0, 0)
+    clone.rotation.y = 0.4
+    clone.scale.multiplyScalar(1.2)
+    this.root.add(clone)
+    this.singles.push(clone)
+  }
+
+  async ensureAllTemplatesLoaded(): Promise<void> {
+    const loader = await createDefaultCc0Loader()
+    for (const def of CC0_MODELS) {
+      if (this.templates.has(def.id)) continue
+      const template = await loadCc0Template(def.id, loader, this.palette)
+      this.templates.set(def.id, template)
+    }
   }
 
   setPalette(palette: ScenePalette): void {
@@ -104,7 +138,7 @@ export class Cc0SceneryLayer {
     }
   }
 
-  private rebuildInstances(placements?: Cc0Placement[]): void {
+  private clearRendered(): void {
     for (const mesh of this.instanced.values()) {
       this.root.remove(mesh)
       mesh.geometry.dispose()
@@ -115,6 +149,10 @@ export class Cc0SceneryLayer {
       this.root.remove(obj)
     }
     this.singles = []
+  }
+
+  private rebuildInstances(placements?: Cc0Placement[]): void {
+    this.clearRendered()
 
     const tier = cc0TierForDevice(this.opts)
     const list = placements ?? buildCc0Placements(this.world, this.opts.gardenSeed, tier)

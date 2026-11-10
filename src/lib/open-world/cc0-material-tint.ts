@@ -18,21 +18,34 @@ export interface Cc0TintTokens {
   emissive: THREE.Color
 }
 
+function liftedAccent(color: THREE.Color, rim: THREE.Color, glow: THREE.Color, amount: number): THREE.Color {
+  return color.clone().lerp(rim, amount * 0.45).lerp(glow, amount * 0.55)
+}
+
 export function paletteToCc0Tokens(palette: ScenePalette): Cc0TintTokens {
+  const night = (palette.starAlpha ?? 0) > 0.35
+  const lift = night ? 0.22 + (palette.starAlpha ?? 0) * 0.35 : 0
+  const rim = new THREE.Color(palette.rim)
+  const glow = new THREE.Color(palette.glow)
+  const pick = (base: THREE.Color, nightAmount: number, dayAmount = 0): THREE.Color => {
+    if (night) return liftedAccent(base, rim, glow, lift || nightAmount)
+    if (dayAmount > 0) return liftedAccent(base, rim, glow, dayAmount)
+    return base.clone()
+  }
   return {
-    foliage: new THREE.Color(palette.silSoft),
-    foliageDeep: new THREE.Color(palette.hills[1] ?? palette.silSoft),
-    bark: new THREE.Color(palette.bank),
-    wood: new THREE.Color(palette.hills[0] ?? palette.bank),
-    rock: new THREE.Color(palette.bank).lerp(new THREE.Color(palette.sil), 0.35),
-    flower: new THREE.Color(palette.accent).lerp(new THREE.Color(palette.glow), 0.25),
-    berry: new THREE.Color(palette.accent),
-    mushroomCap: new THREE.Color(palette.accent).lerp(new THREE.Color('#c44d4d'), 0.35),
-    mushroomStem: new THREE.Color(palette.bank).lerp(new THREE.Color('#e8dcc8'), 0.35),
-    moss: new THREE.Color(palette.silSoft).lerp(new THREE.Color(palette.hills[2] ?? palette.sil), 0.4),
-    generic: new THREE.Color(palette.sil),
-    rim: new THREE.Color(palette.rim),
-    emissive: new THREE.Color(palette.glow),
+    foliage: pick(new THREE.Color(palette.silSoft), 0.32),
+    foliageDeep: pick(new THREE.Color(palette.hills[1] ?? palette.silSoft), 0.28),
+    bark: pick(new THREE.Color(palette.bank), 0.34),
+    wood: pick(new THREE.Color(palette.hills[0] ?? palette.bank), 0.36),
+    rock: pick(new THREE.Color(palette.bank).lerp(new THREE.Color(palette.sil), 0.35), 0.3),
+    flower: pick(new THREE.Color(palette.accent).lerp(glow, 0.25), 0.38, 0.14),
+    berry: pick(new THREE.Color(palette.accent), 0.35, 0.12),
+    mushroomCap: pick(new THREE.Color(palette.accent).lerp(new THREE.Color('#c44d4d'), 0.35), 0.4, 0.16),
+    mushroomStem: pick(new THREE.Color(palette.bank).lerp(new THREE.Color('#e8dcc8'), 0.35), 0.3),
+    moss: pick(new THREE.Color(palette.silSoft).lerp(new THREE.Color(palette.hills[2] ?? palette.sil), 0.4), 0.28),
+    generic: pick(new THREE.Color(palette.sil), 0.26),
+    rim,
+    emissive: glow,
   }
 }
 
@@ -120,11 +133,12 @@ export function createStylizedMaterial(
 
   const inferred = inferMaterialRoleFromColor(srcColor.r, srcColor.g, srcColor.b, role)
   const base = roleColor(tokens, inferred)
-  const duskLift = base.clone().lerp(tokens.rim, 0.12)
+  const duskLift = base.clone().lerp(tokens.rim, 0.16).lerp(tokens.emissive, 0.08)
 
   const mat = new THREE.MeshToonMaterial({
     color: duskLift,
     gradientMap: getSharedToonGradient(),
+    emissive: tokens.emissive.clone().multiplyScalar(0.06),
   }) as StylizedMaterial
   mat.userData.cc0Role = inferred
   mat.userData.cc0Tinted = true
@@ -137,6 +151,7 @@ export function retintExistingMaterial(
 ): void {
   const role = material.userData.cc0Role ?? 'generic'
   const base = roleColor(tokens, role)
-  material.color.copy(base).lerp(tokens.rim, 0.12)
+  material.color.copy(base).lerp(tokens.rim, 0.16).lerp(tokens.emissive, 0.08)
+  material.emissive.copy(tokens.emissive).multiplyScalar(0.06)
   material.needsUpdate = true
 }

@@ -9,6 +9,7 @@ import { plantRecipe } from '@/lib/open-world/plant-visual'
 import type { GardenWorld, PlayerState, WorldPlant } from '@/lib/open-world/types'
 import { createPlantGroup, disposePlantGroup } from './plant-mesh'
 import { buildTerrain, type TerrainHandle } from './terrain'
+import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
 import { Cc0SceneryLayer, defaultCc0GardenSeed } from './cc0-scenery'
 import { playWaterSfx } from '@/lib/water-sound'
 
@@ -239,6 +240,18 @@ export class OpenWorldEngine {
 
   getPlayer(): PlayerState {
     return this.player
+  }
+
+  setPlayerPose(x: number, z: number, yaw: number, pitch: number): void {
+    this.player.x = x
+    this.player.z = z
+    this.player.yaw = yaw
+    this.player.pitch = pitch
+    this.applyCamera()
+  }
+
+  async setCc0Showcase(modelId: Cc0ModelId | null): Promise<void> {
+    await this.cc0Scenery?.setShowcase(modelId)
   }
 
   dispose(): void {

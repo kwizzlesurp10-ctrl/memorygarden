@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 import { EMBER_DUSK } from '@/lib/garden/palettes'
+import { todPalette } from '@/lib/garden/day-night'
 import {
   createStylizedMaterial,
   inferMaterialRoleFromColor,
@@ -13,8 +14,12 @@ describe('cc0-material-tint', () => {
   it('maps garden palette tokens to coherent foliage and bark', () => {
     const tokens = paletteToCc0Tokens(EMBER_DUSK)
     expect(tokens.foliage.getHexString()).toBe(new THREE.Color(EMBER_DUSK.silSoft).getHexString())
-    expect(tokens.bark.getHexString()).toBe(new THREE.Color(EMBER_DUSK.bank).getHexString())
     expect(roleColor(tokens, 'flower').r).toBeGreaterThan(0.4)
+
+    const dusk = paletteToCc0Tokens(todPalette(19.5, 'summer'))
+    expect(dusk.foliage.r + dusk.foliage.g + dusk.foliage.b).toBeGreaterThan(
+      tokens.foliage.r + tokens.foliage.g + tokens.foliage.b,
+    )
   })
 
   it('infers material roles from source albedo', () => {

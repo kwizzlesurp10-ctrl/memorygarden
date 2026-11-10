@@ -1,0 +1,29 @@
+import type { ScenePalette } from '@/lib/garden/palettes'
+import type { Cc0ModelId } from './cc0-catalog'
+
+export interface WalkCapturePose {
+  x: number
+  z: number
+  yaw: number
+  pitch: number
+}
+
+export interface WalkCaptureBridge {
+  setPose: (pose: WalkCapturePose) => void
+  setPalette: (palette: ScenePalette) => void
+  showcaseModel: (modelId: Cc0ModelId | null) => Promise<void>
+  ready: () => boolean
+}
+
+export const WALK_CAPTURE_SESSION_KEY = 'mg:walk-capture'
+
+export function isWalkCaptureSession(): boolean {
+  return typeof window !== 'undefined' && sessionStorage.getItem(WALK_CAPTURE_SESSION_KEY) === '1'
+}
+
+export function registerWalkCaptureBridge(bridge: WalkCaptureBridge | null): void {
+  if (typeof window === 'undefined') return
+  const win = window as Window & { __mgWalkCapture?: WalkCaptureBridge }
+  if (bridge) win.__mgWalkCapture = bridge
+  else delete win.__mgWalkCapture
+}

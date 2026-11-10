@@ -28,6 +28,7 @@ interface OpenWorldHudProps {
   bondPartnerName?: string
   onLeaveGift?: (giftType: GardenGiftType) => void
   onOpenGift?: (giftId: string) => void
+  captureMode?: boolean
 }
 
 export function OpenWorldHud({
@@ -52,7 +53,9 @@ export function OpenWorldHud({
   bondPartnerName,
   onLeaveGift,
   onOpenGift,
+  captureMode = false,
 }: OpenWorldHudProps) {
+  if (captureMode) return null
   const groveMilestone = world.groveMilestone
   const activeGifts = nearby?.activeGifts ?? []
   const firstUnopenedGift = activeGifts[0] ?? null

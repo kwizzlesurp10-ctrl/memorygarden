@@ -7,6 +7,8 @@ const outDir = process.env.ARTIFACT_DIR || '/opt/cursor/artifacts'
 const prefix = process.env.SCREENSHOT_PREFIX || 'after'
 mkdirSync(outDir, { recursive: true })
 
+const WALK_CAPTURE_POSE = { x: 1.2, z: 34.5, yaw: 0, pitch: -0.12 }
+
 const seedMemories = [
   {
     id: 'cc0-demo-1',
@@ -38,19 +40,21 @@ const seedMemories = [
   },
 ]
 
+const demoUser = {
+  id: '11111111-1111-4111-8111-111111111111',
+  login: 'demo-gardener',
+  avatarUrl: '',
+}
+
 async function prepareContext(browser, viewport, fakeHour) {
   const context = await browser.newContext({
     viewport,
     reducedMotion: 'reduce',
     colorScheme: 'dark',
   })
-  const demoUser = {
-    id: '11111111-1111-4111-8111-111111111111',
-    login: 'demo-gardener',
-    avatarUrl: '',
-  }
   await context.addInitScript(
     ({ memories, hour, user }) => {
+      sessionStorage.setItem('mg:walk-capture', '1')
       localStorage.setItem('memorygarden:preferences', JSON.stringify({ hasCompletedOnboarding: true }))
       localStorage.setItem('memorygarden:user', JSON.stringify(user))
       localStorage.setItem(`memorygarden:${user.id}:memories`, JSON.stringify(memories))
@@ -77,16 +81,31 @@ async function prepareContext(browser, viewport, fakeHour) {
   return context
 }
 
+async function applyCaptureFraming(page) {
+  await page.waitForFunction(() => window.__mgWalkCapture?.ready?.(), { timeout: 60_000 }).catch(() => {})
+  if (prefix === 'after') {
+    await page.waitForFunction(() => window.__cc0SceneryReady === true, { timeout: 60_000 }).catch(() => {})
+    await page.evaluate(async () => {
+      await window.__mgWalkCapture?.showcaseModel(null)
+    })
+  }
+  await page.evaluate(
+    ({ pose }) => {
+      window.__mgWalkCapture?.setPose(pose)
+    },
+    { pose: WALK_CAPTURE_POSE },
+  )
+  await page.waitForTimeout(2200)
+}
+
 async function enterWalk(page) {
   await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 120_000 })
   for (let i = 0; i < 4; i++) {
     await page.keyboard.press('Escape')
-    await page.waitForTimeout(150)
+    await page.waitForTimeout(120)
   }
   await page.getByRole('tab', { name: /Walk/i }).click({ timeout: 15_000 })
-  await page.waitForTimeout(800)
-  await page.waitForFunction(() => window.__cc0SceneryReady === true, { timeout: 45_000 }).catch(() => {})
-  await page.waitForTimeout(2500)
+  await page.waitForTimeout(600)
 }
 
 const browser = await chromium.launch({ headless: true })
@@ -102,28 +121,21 @@ try {
       const ctx = await prepareContext(browser, viewport, tod)
       const page = await ctx.newPage()
       await enterWalk(page)
-      await page.screenshot({
+      await applyCaptureFraming(page)
+      const canvas = page.locator('[data-testid="open-world-garden"] canvas')
+      await canvas.screenshot({
         path: resolve(outDir, `${prefix}-cc0-garden-walk-${label}-${suffix}.png`),
-        fullPage: false,
       })
       await ctx.close()
     }
   }
-
-  const turntableCtx = await prepareContext(browser, { width: 1400, height: 520 }, 19.5)
-  const turntablePage = await turntableCtx.newPage()
-  await enterWalk(turntablePage)
-  await turntablePage.evaluate(() => {
-    const cvs = document.querySelector('canvas')
-    if (cvs?.parentElement) {
-      cvs.parentElement.scrollIntoView()
-    }
-  })
-  await turntablePage.screenshot({ path: resolve(outDir, `${prefix}-cc0-tinted-models-closeup.png`) })
-  await turntableCtx.close()
 } finally {
   await browser.close()
 }
 
-writeFileSync(resolve(outDir, 'cc0-capture-readme.txt'), `Captured from ${baseUrl}\n`, 'utf8')
-console.log('Artifacts in', outDir)
+writeFileSync(
+  resolve(outDir, 'cc0-capture-readme.txt'),
+  `Captured from ${baseUrl}\nPose: ${JSON.stringify(WALK_CAPTURE_POSE)}\nPrefix: ${prefix}\n`,
+  'utf8',
+)
+console.log('Walk artifacts in', outDir)

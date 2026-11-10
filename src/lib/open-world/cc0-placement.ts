@@ -60,11 +60,11 @@ export function canPlaceScenery(
   clearance: number,
 ): boolean {
   const pathDist = minDistanceToPaths(x, z, world.paths)
-  const pathMargin = 1.35 + clearance
+  const pathMargin = 1.2 + clearance
   if (pathDist < pathMargin) return false
 
   const pondDist = Math.hypot(x - world.pond.x, z - world.pond.z)
-  if (pondDist < world.pond.radius + clearance + 0.45) return false
+  if (pondDist < world.pond.radius + clearance + 0.35) return false
 
   const shedHalf = Math.max(world.shed.width, world.shed.depth) * 0.75
   if (Math.hypot(x - world.shed.x, z - world.shed.z) < shedHalf + clearance) return false
@@ -77,7 +77,7 @@ export function canPlaceScenery(
 
   for (const plant of world.plants) {
     const d = Math.hypot(x - plant.x, z - plant.z)
-    if (d < plant.radius + clearance + 0.55) return false
+    if (d < plant.radius + clearance + 0.5) return false
   }
 
   const b = world.bounds
@@ -85,15 +85,21 @@ export function canPlaceScenery(
   return true
 }
 
+/** Hero pieces along the entry path — visible from spawn without blocking the spine. */
 const ANCHORS: Array<Omit<Cc0Placement, 'scale'> & { scale?: number }> = [
-  { modelId: 'quat_CommonTree_1', x: -22, z: -28, yaw: 0.35, anchor: true, scale: 1.05 },
-  { modelId: 'quat_Willow_1', x: 7.2, z: -10.5, yaw: -1.1, anchor: true, scale: 0.95 },
-  { modelId: 'kenney_tree_oak', x: 24, z: -24, yaw: 2.4, anchor: true },
-  { modelId: 'kenney_tree_detailed', x: -18, z: 14, yaw: -0.6, anchor: true },
-  { modelId: 'kenney_tree_pineTallA_detailed', x: 30, z: 8, yaw: 2.9, anchor: true },
-  { modelId: 'kenney_mushroom_redGroup', x: 5.8, z: -2.2, yaw: 0.8, anchor: true, scale: 1.15 },
-  { modelId: 'quat_BushBerries_1', x: -6.5, z: -3.5, yaw: 0.2, anchor: true },
-  { modelId: 'kenney_fence_simple', x: 12, z: 28, yaw: Math.PI / 2, anchor: true },
+  { modelId: 'kenney_tree_detailed', x: -5.2, z: 32, yaw: 0.15, anchor: true, scale: 1.15 },
+  { modelId: 'kenney_tree_oak', x: 5.4, z: 32, yaw: -0.2, anchor: true, scale: 1.12 },
+  { modelId: 'quat_BushBerries_1', x: -4.1, z: 27.5, yaw: 0.5, anchor: true, scale: 1.1 },
+  { modelId: 'kenney_flower_purpleA', x: 3.8, z: 27, yaw: -0.4, anchor: true, scale: 1.15 },
+  { modelId: 'kenney_mushroom_redGroup', x: 4.2, z: 23.5, yaw: 0.9, anchor: true, scale: 1.25 },
+  { modelId: 'kenney_rock_largeA', x: -3.6, z: 23, yaw: 1.2, anchor: true, scale: 1.2 },
+  { modelId: 'quat_Flowers', x: 3.5, z: 20.5, yaw: -0.6, anchor: true, scale: 1.1 },
+  { modelId: 'quat_CommonTree_1', x: -7.5, z: 19, yaw: 0.45, anchor: true, scale: 1.08 },
+  { modelId: 'kenney_tree_pineTallA_detailed', x: 7.8, z: 17, yaw: -0.55, anchor: true, scale: 1.05 },
+  { modelId: 'quat_Willow_1', x: 6.5, z: 6, yaw: -1.05, anchor: true, scale: 1.05 },
+  { modelId: 'kenney_fence_simple', x: -8.5, z: 14, yaw: Math.PI / 2, anchor: true, scale: 1.1 },
+  { modelId: 'kenney_log', x: -6.2, z: 11, yaw: 0.3, anchor: true },
+  { modelId: 'quat_TreeStump_Moss', x: 5.8, z: 10, yaw: -0.8, anchor: true },
 ]
 
 const SCATTER_POOL: Cc0ModelId[] = [
@@ -120,7 +126,10 @@ export function buildCc0Placements(
   const placements: Cc0Placement[] = []
 
   for (const a of ANCHORS) {
-    const clearance = a.modelId.includes('tree') || a.modelId === 'quat_Willow_1' ? 1.8 : 0.55
+    const clearance =
+      a.modelId.includes('tree') || a.modelId === 'quat_Willow_1' || a.modelId === 'quat_CommonTree_1'
+        ? 1.4
+        : 0.48
     if (canPlaceScenery(world, a.x, a.z, clearance)) {
       placements.push({
         modelId: a.modelId,
@@ -133,24 +142,37 @@ export function buildCc0Placements(
     }
   }
 
-  const baseScatter = 52
+  const baseScatter = 48
   const scatterAttempts = Math.round(baseScatter * tier.scatterMultiplier)
   const rng = gardenRng(gardenSeed + 90421)
 
   for (let i = 0; i < scatterAttempts; i++) {
     const modelId = SCATTER_POOL[Math.floor(rng() * SCATTER_POOL.length)]
     const x = (rng() * 2 - 1) * (world.bounds.maxX - 2.5)
-    const z = (rng() * 2 - 1) * (world.bounds.maxZ - 2.5)
-    const clearance = modelId.includes('tree') ? 1.5 : 0.42
+    let z: number
+    if (rng() < 0.55) {
+      z = 8 + rng() * 28
+    } else {
+      z = (rng() * 2 - 1) * (world.bounds.maxZ - 2.5)
+    }
+    const clearance = modelId.includes('tree') ? 1.5 : 0.4
     if (!canPlaceScenery(world, x, z, clearance)) continue
     placements.push({
       modelId,
       x,
       z,
       yaw: rng() * Math.PI * 2,
-      scale: 0.82 + rng() * 0.45,
+      scale: 0.95 + rng() * 0.55,
     })
   }
 
   return placements
 }
+
+/** Capture camera pose — same for before/after comparison shots. */
+export const CC0_WALK_CAPTURE_POSE = {
+  x: 1.2,
+  z: 34.5,
+  yaw: 0,
+  pitch: -0.12,
+} as const
