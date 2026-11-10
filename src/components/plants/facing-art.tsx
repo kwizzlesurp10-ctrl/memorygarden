@@ -4,6 +4,12 @@ import type { HybridPlantPalette } from './seeded-builders'
 import type { SeededVariety } from './types'
 import { lerpHex } from '@/lib/garden/color'
 import { STARTER_MUSHROOM_STEM_W } from '@/lib/garden/starter-mushroom-scale'
+import { plantGroundCollar, plantGroundCollarSubtle } from './plant-surface-detail'
+
+/** Scaled scenic elder tree — same art at every growth stage, sized up through elder. */
+export const TREE_PROGRESSION_FACE_SCALE: readonly number[] = [
+  0, 0.38, 0.52, 0.68, 0.88, 1.08, 1.38, 1.72,
+]
 
 export function applyPlantFacing(
   variety: SeededVariety,
@@ -15,11 +21,10 @@ export function applyPlantFacing(
   rimFromLeft = true,
   geneticsSeed?: string,
 ): ReactNode[] {
-  if (variety === 'tree' && stageIndex >= 7) {
-    return [e('g', { key: 'elder-facing' }, buildElderTreeFacing(facing, C, rim, 1, rimFromLeft))]
-  }
-  if (variety === 'tree' && stageIndex >= 4) {
-    return [e('g', { key: 'tree-facing' }, buildElderTreeFacing(facing, C, rim * 0.85, 0.88, rimFromLeft))]
+  if (variety === 'tree' && stageIndex >= 1) {
+    const scenicElder = geneticsSeed?.startsWith('starter-elder-')
+    const faceScale = scenicElder ? 1 : TREE_PROGRESSION_FACE_SCALE[stageIndex] ?? 1.12
+    return [e('g', { key: 'tree-facing-prog' }, buildElderTreeFacing(facing, C, rim, faceScale, rimFromLeft))]
   }
   if (variety === 'mushroom' && stageIndex >= 3) {
     return [e('g', { key: 'mush-cluster' }, buildReadableMushroomCluster(facing, C, rim, stageIndex, geneticsSeed))]
@@ -624,9 +629,9 @@ function buildElderTreeFacing(
     }
   }
 
+  out.unshift(plantGroundCollarSubtle(C, rim, 26 * scale))
   out.push(
-    e('ellipse', { key: 'base-shadow', cx: 0, cy: 5, rx: 30, ry: 6, fill: C.rim, opacity: 0.28 }),
-    e('ellipse', { key: 'root-mound', cx: 0, cy: 2, rx: 18, ry: 3.2, fill: C.glow, opacity: 0.12 }),
+    e('ellipse', { key: 'base-shadow', cx: 0, cy: 5.8, rx: 22 * scale, ry: 4.2 * scale, fill: C.rim, opacity: 0.11 }),
   )
 
   if (scale !== 1) {
@@ -731,7 +736,7 @@ function oneMushroom(
     'g',
     { key, transform: `rotate(${tiltDeg * 0.65})` },
     ...mushroomForegroundGrass(C, stemW, litSide),
-    e('ellipse', { key: 'sh', cx: -L * stemW * 0.25, cy: 0.6, rx: capHW * 0.8, ry: stemW * 0.18, fill: stem.shadow, opacity: 0.45 }),
+    e('ellipse', { key: 'sh', cx: -L * stemW * 0.2, cy: 1.8, rx: capHW * 1.05, ry: stemW * 0.32, fill: stem.shadow, opacity: 0.72 }),
     // stem: slightly flared base, narrower under the cap
     e('path', {
       key: 'stem',
@@ -853,6 +858,14 @@ export function buildReadableMushroomCluster(
         { key: `mc${i}`, transform: `translate(${mx} ${my})` },
         oneMushroom(`m${i}`, stemW, capKind, rim, C, lit, spots, tilt),
       ),
+    )
+  }
+
+  if (stage >= 3) {
+    const bedW = 12 + Math.min(stage, 7) * 2.2
+    out.unshift(plantGroundCollarSubtle(C, rim, bedW))
+    out.push(
+      e('ellipse', { key: 'mc-shadow', cx: 2, cy: 5.2, rx: bedW * 0.62, ry: bedW * 0.14, fill: C.rim, opacity: 0.1 }),
     )
   }
 

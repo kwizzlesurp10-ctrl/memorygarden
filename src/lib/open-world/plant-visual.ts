@@ -70,7 +70,7 @@ export function plantRecipe(
   return {
     kind,
     stemHeight: Math.max(0.08, height * (kind === 'mushroom' || kind === 'succulent' ? 0.45 : 0.62)),
-    stemRadius: kind === 'tree' ? 0.12 + t * 0.14 : 0.035 + t * 0.04,
+    stemRadius: kind === 'tree' ? 0.12 + t * 0.16 : kind === 'mushroom' ? 0.04 + t * 0.03 : 0.048 + t * 0.05,
     canopyRadius: Math.max(0.12, height * (kind === 'tree' ? 0.42 : 0.28)),
     bloomCount: kind === 'flower' ? 1 + Math.round(t * 5) : kind === 'bush' ? 3 + Math.round(t * 4) : 1,
     stem,

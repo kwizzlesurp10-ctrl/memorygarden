@@ -9,6 +9,7 @@ const baseline = process.env.WALK_CAPTURE_BASELINE === '1'
 mkdirSync(outDir, { recursive: true })
 
 const WALK_CAPTURE_POSE = { x: 1.2, z: 34.5, yaw: 0, pitch: -0.12 }
+const OVERVIEW_CAPTURE_POSE = { x: 0.5, z: 28, yaw: 0.45, pitch: -0.62 }
 
 const seedMemories = [
   {
@@ -106,7 +107,12 @@ async function enterWalk(page) {
     await page.keyboard.press('Escape')
     await page.waitForTimeout(120)
   }
-  await page.getByRole('tab', { name: /Walk/i }).click({ timeout: 15_000 })
+  const walkBtn = page.getByTestId('enter-walk-button')
+  if (await walkBtn.isVisible().catch(() => false)) {
+    await walkBtn.click({ timeout: 15_000 })
+  } else {
+    await page.getByRole('tab', { name: /Walk/i }).click({ timeout: 15_000 })
+  }
   await page.waitForTimeout(600)
 }
 
@@ -127,6 +133,11 @@ try {
       const canvas = page.locator('[data-testid="open-world-garden"] > canvas')
       await canvas.screenshot({
         path: resolve(outDir, `${prefix}-cc0-garden-walk-${label}-${suffix}.png`),
+      })
+      await page.evaluate(({ pose }) => window.__mgWalkCapture?.setPose(pose), { pose: OVERVIEW_CAPTURE_POSE })
+      await page.waitForTimeout(1800)
+      await canvas.screenshot({
+        path: resolve(outDir, `${prefix}-cc0-garden-overview-${label}-${suffix}.png`),
       })
       await ctx.close()
     }

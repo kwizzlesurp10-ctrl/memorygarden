@@ -1,11 +1,10 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import type { GardenLandscapeView, GardenStarterDecor, Memory, Season, StorageShedData, ShedSeed, PlantedHybrid } from '@/lib/types'
 import { resolveGardenLandscapeView } from '@/lib/garden/landscape-view'
-import { projectMemoryToSceneWorld } from '@/lib/garden/landscape-world'
+import { layoutMemoryPlantsForView } from '@/lib/garden/memory-scene-layout'
 import { GardenViewPicker } from '@/components/garden/GardenViewPicker'
 import { WeatherEffects } from './WeatherEffects'
 import { GardenClusterPaths } from './GardenClusterPaths'
-import { getPlantSize } from '@/lib/garden-helpers'
 import { plantStageToIndex } from '@/lib/garden/stage'
 import { todPalette, realClockTod } from '@/lib/garden/day-night'
 import {
@@ -229,15 +228,19 @@ export function GardenCanvas({
     [persistShed, shedData.seeds],
   )
 
+  const memorySceneLayout = useMemo(
+    () => layoutMemoryPlantsForView(memories, resolvedView),
+    [memories, resolvedView],
+  )
+
   const memoryPlants = useMemo(() => (
     [...memories]
       .map((memory) => {
-      const pos = projectMemoryToSceneWorld(memory.position, resolvedView)
+      const pos = memorySceneLayout.get(memory.id)
+      if (!pos) return null
       const isDimmed = highlightedMemoryIds !== null && !highlightedMemoryIds.has(memory.id)
       const isGrowing = growingMemories.has(memory.id)
-      const size = getPlantSize(memory.plantStage) as number
-      const baseSc = Math.max(0.55, Math.min(1.4, size / 90))
-      const sc = baseSc * pos.scale
+      const sc = pos.plantScale
 
       return {
         depth: pos.depth,
@@ -287,9 +290,10 @@ export function GardenCanvas({
       ),
       }
     })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
       .sort((a, b) => a.depth - b.depth)
       .map((item) => item.node)
-  ), [memories, highlightedMemoryIds, growingMemories, lensOn, palette, motion, resolvedView, draggingMemory, onMemoryClick])
+  ), [memories, memorySceneLayout, highlightedMemoryIds, growingMemories, lensOn, palette, motion, draggingMemory, onMemoryClick])
 
   const onLensMove = useCallback((e: React.PointerEvent) => {
     if (!lensOn || !sceneWrapRef.current) return

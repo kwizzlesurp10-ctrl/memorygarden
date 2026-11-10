@@ -1,4 +1,5 @@
 import { createElement as h } from 'react'
+import { execSync } from 'node:child_process'
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs'
 import { Resvg } from '@resvg/resvg-js'
 import { resolve } from 'node:path'
@@ -12,6 +13,8 @@ import { indexToPlantStage } from '@/lib/garden/stage'
 import { PLANT_STAGES_ORDER } from '@/lib/garden/plant-stages'
 import { GARDEN_LANDSCAPE_VIEWS } from '@/lib/garden/landscape-view'
 import { projectMemoryToSceneWorld } from '@/lib/garden/landscape-world'
+import { layoutMemoryPlantsForView } from '@/lib/garden/memory-scene-layout'
+import type { Memory } from '@/lib/types'
 import { createGardenStarterDecor } from '@/lib/garden/garden-starter-decor'
 import { SEEDED_VARIETIES, type SeededVariety } from '@/components/plants/types'
 import { SeededPlantSvg } from '@/components/plants/SeededPlantSvg'
@@ -37,7 +40,7 @@ interface VarietyStageLayout {
 
 const VARIETY_STAGE_LAYOUT: Record<SeededVariety, VarietyStageLayout> = {
   flower: { rowHeight: 228, anchorY: 132, scale: 0.98 },
-  tree: { rowHeight: 260, anchorY: 218, scale: 0.52 },
+  tree: { rowHeight: 328, anchorY: 278, scale: 0.52 },
   herb: { rowHeight: 192, anchorY: 118, scale: 0.98 },
   wildflower: { rowHeight: 196, anchorY: 114, scale: 0.95 },
   mushroom: { rowHeight: 168, anchorY: 100, scale: 1 },
@@ -72,6 +75,8 @@ describe('garden visual artifacts', () => {
     if (process.env.ARTIFACT_CAPTURE !== '1') return
 
     mkdirSync(outDir, { recursive: true })
+    const gitSha = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim()
+    writeFileSync(resolve(outDir, 'BUILD_SHA.txt'), `${gitSha}\n`, 'utf8')
     const palette = todPalette(14, 'summer')
 
     const samplePositions = [
@@ -159,7 +164,7 @@ describe('garden visual artifacts', () => {
         const variety = varieties[i]
         return h(
           'g',
-          { key: mem.id, transform: `translate(${pos.x} ${pos.y})` },
+          { key: mem.id, transform: `translate(${pos.x} ${pos.y}) scale(${pos.scale})` },
           h(SeededPlantSvg, {
             variety,
             stage: indexToPlantStage(4 + (i % 3)),
@@ -200,5 +205,73 @@ describe('garden visual artifacts', () => {
 
     const gridSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${gridW}" height="${gridH}" viewBox="0 0 ${gridW} ${gridH}">${gridRows}</svg>`
     writeSvgAndPng('plant-stages-multi-variety-grid', gridSvg)
+
+    for (const variety of ['tree', 'mushroom'] as const) {
+      const layout = VARIETY_STAGE_LAYOUT[variety]
+      const row = PLANT_STAGES_ORDER.map((_, index) =>
+        stageCell(index, variety, palette, layout),
+      ).join('')
+      const rowSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${gridW}" height="${layout.rowHeight}" viewBox="0 0 ${gridW} ${layout.rowHeight}"><text x="4" y="14" font-size="11" fill="#3d3024" font-family="system-ui,sans-serif" font-weight="600">${variety}</text>${row}</svg>`
+      writeSvgAndPng(`plant-stages-${variety}-row`, rowSvg)
+    }
+
+    const treeMemories: Memory[] = PLANT_STAGES_ORDER.map((stage, i) => ({
+      id: `artifact-tree-${stage}`,
+      photoUrl: '',
+      text: '',
+      date: '2025-06-01',
+      plantedAt: '2025-06-01T12:00:00.000Z',
+      position: { x: 140 + i * 128, y: 442 },
+      emotionalTone: 'peaceful',
+      plantStage: stage,
+      plantVariety: 'tree',
+      visitCount: 1,
+      reflections: [],
+      audioRecordings: [],
+    }))
+    const treeLayout = layoutMemoryPlantsForView(treeMemories, 'pond')
+    const treeByStagePlants = PLANT_STAGES_ORDER.map((stage) => {
+      const mem = treeMemories.find((m) => m.plantStage === stage)!
+      const pos = treeLayout.get(mem.id)!
+      return h(
+        'g',
+        { key: `tree-${stage}`, transform: `translate(${pos.x} ${pos.y}) scale(${pos.plantScale})` },
+        h(SeededPlantSvg, {
+          variety: 'tree',
+          stage,
+          geneticsSeed: mem.id,
+          palette,
+          rimStrength: 0.65,
+          motion: false,
+          scale: 1,
+          facing: pos.facing,
+          rimFromLeft: pos.rimFromLeft,
+        }),
+      )
+    })
+    const treeMemBody = renderToStaticMarkup(
+      h(GardenSceneSvg, {
+        palette,
+        sceneKey: 'pond-trees',
+        gardenSeed: 7,
+        rimStrength: 0.6,
+        motion: false,
+        landscapeView: 'pond',
+        shedStyle: 'storybook',
+        planted: [],
+        candles: [],
+        memoryPlants: treeByStagePlants,
+        starterDecor: undefined,
+      }),
+    )
+    const treeMemWrapped = treeMemBody.includes('xmlns=')
+      ? treeMemBody
+      : treeMemBody.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')
+    const treeMemSvgPath = resolve(outDir, 'garden-tree-memories-pond.svg')
+    writeFileSync(treeMemSvgPath, treeMemWrapped, 'utf8')
+    const treeMemPng = new Resvg(readFileSync(treeMemSvgPath, 'utf8'), {
+      fitTo: { mode: 'width', value: 1440 },
+    }).render().asPng()
+    writeFileSync(resolve(outDir, 'garden-tree-memories-pond.png'), treeMemPng)
   })
 })
