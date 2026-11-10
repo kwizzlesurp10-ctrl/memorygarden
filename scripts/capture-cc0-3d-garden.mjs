@@ -122,7 +122,7 @@ try {
       const page = await ctx.newPage()
       await enterWalk(page)
       await applyCaptureFraming(page)
-      const canvas = page.locator('[data-testid="open-world-garden"] canvas')
+      const canvas = page.locator('[data-testid="open-world-garden"] > canvas')
       await canvas.screenshot({
         path: resolve(outDir, `${prefix}-cc0-garden-walk-${label}-${suffix}.png`),
       })
