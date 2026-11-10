@@ -100,7 +100,7 @@ const TREE_STAGE = [
   { H: 42, bw: 3.1, cw: 13, ch: 9.5, blobs: 4 },
   { H: 52, bw: 3.9, cw: 16, ch: 11.5, blobs: 5 },
   { H: 66, bw: 4.9, cw: 20, ch: 14, blobs: 7 },
-  { H: 80, bw: 6.2, cw: 25, ch: 17, blobs: 9 },
+  { H: 84, bw: 6.6, cw: 27, ch: 18.5, blobs: 10 },
 ] as const
 
 function appendTreeCanopy(

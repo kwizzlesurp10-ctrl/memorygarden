@@ -16,7 +16,7 @@ export function applyPlantFacing(
   rimFromLeft = true,
   geneticsSeed?: string,
 ): ReactNode[] {
-  if (variety === 'tree' && stageIndex >= 7) {
+  if (variety === 'tree' && stageIndex >= 7 && geneticsSeed?.startsWith('starter-elder-')) {
     return [e('g', { key: 'elder-facing' }, buildElderTreeFacing(facing, C, rim, 1, rimFromLeft))]
   }
   if (variety === 'mushroom' && stageIndex >= 3) {
