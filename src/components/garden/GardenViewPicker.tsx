@@ -50,7 +50,7 @@ export function GardenViewPicker({
 
   return (
     <div
-      className={`flex flex-wrap gap-1 rounded-lg border border-white/15 bg-black/35 p-1 text-[#f0e7da] backdrop-blur-sm ${className}`}
+      className={`flex max-w-full flex-nowrap gap-1 overflow-x-auto rounded-lg border border-white/15 bg-black/35 p-1 text-[#f0e7da] backdrop-blur-sm ${className}`}
       role="radiogroup"
       aria-label="Garden landscape view"
     >
@@ -63,7 +63,7 @@ export function GardenViewPicker({
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(meta.id)}
-            className="rounded-md px-2.5 py-1 text-xs tracking-wide"
+            className="min-h-11 shrink-0 rounded-md px-3 py-2 text-xs tracking-wide"
             style={{
               background: selected ? 'rgba(240, 231, 218, 0.18)' : 'transparent',
               color: selected ? '#f0e7da' : 'rgba(240, 231, 218, 0.55)',
