@@ -9,6 +9,7 @@ import { plantRecipe } from '@/lib/open-world/plant-visual'
 import type { GardenWorld, PlayerState, WorldPlant } from '@/lib/open-world/types'
 import { createPlantGroup, disposePlantGroup } from './plant-mesh'
 import { buildTerrain, type TerrainHandle } from './terrain'
+import { Cc0SceneryLayer, defaultCc0GardenSeed } from './cc0-scenery'
 import { playWaterSfx } from '@/lib/water-sound'
 
 export interface EngineHooks {
@@ -69,11 +70,13 @@ export class OpenWorldEngine {
   private readonly onResize: () => void
   private resizeObserver: ResizeObserver | null = null
 
+  private cc0Scenery: Cc0SceneryLayer | null = null
+
   constructor(
     canvas: HTMLCanvasElement,
     memories: Memory[],
     palette: ScenePalette,
-    opts: { reducedMotion: boolean; hooks: EngineHooks },
+    opts: { reducedMotion: boolean; coarsePointer?: boolean; hooks: EngineHooks },
   ) {
     this.canvas = canvas
     this.hooks = opts.hooks
@@ -119,6 +122,18 @@ export class OpenWorldEngine {
 
     this.rebuildTerrain()
     this.rebuildPlants()
+    if (!this.failed) {
+      this.cc0Scenery = new Cc0SceneryLayer(this.scene, this.world, this.palette, {
+        reducedMotion: opts.reducedMotion,
+        coarsePointer: opts.coarsePointer ?? false,
+        gardenSeed: defaultCc0GardenSeed(memories),
+        onReady: () => {
+          if (typeof window !== 'undefined') {
+            ;(window as unknown as { __cc0SceneryReady?: boolean }).__cc0SceneryReady = true
+          }
+        },
+      })
+    }
     this.applyLighting()
     this.spawnFireflies()
     this.applyCamera()
@@ -200,6 +215,7 @@ export class OpenWorldEngine {
   setPalette(palette: ScenePalette): void {
     this.palette = palette
     this.terrain?.recolor(palette)
+    this.cc0Scenery?.setPalette(palette)
     this.applyLighting()
     this.renderer?.setClearColor(palette.sky[2] ?? '#20123a', 1)
     if (this.scene.fog instanceof THREE.Fog) {
@@ -211,6 +227,7 @@ export class OpenWorldEngine {
     const next = layoutGardenWorld(memories)
     this.world = next
     this.rebuildPlants()
+    this.cc0Scenery?.setWorld(next)
     if (positionNeedsReset(this.player, next)) {
       this.player = createPlayer(next)
     }
@@ -235,6 +252,8 @@ export class OpenWorldEngine {
     this.exitLock()
     this.clearPlants()
     this.terrain?.dispose()
+    this.cc0Scenery?.dispose()
+    this.cc0Scenery = null
     for (const arc of this.wateringArcs) {
       this.scene.remove(arc.points)
       arc.points.geometry.dispose()

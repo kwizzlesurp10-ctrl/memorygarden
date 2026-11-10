@@ -212,6 +212,7 @@ export function OpenWorldGarden({
     const palette = todPalette(realClockTod(), season)
     const engine = new OpenWorldEngine(canvas, memories, palette, {
       reducedMotion,
+      coarsePointer: coarse,
       hooks: {
         onProximity,
         onPlayer,
