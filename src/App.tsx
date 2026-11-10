@@ -14,6 +14,7 @@ import { Onboarding } from '@/components/Onboarding'
 import { SearchFilterBar } from '@/components/SearchFilterBar'
 import { KeyboardShortcutsPanel } from '@/components/KeyboardShortcutsPanel'
 import { AppHeader, type ViewMode } from '@/components/AppHeader'
+import { AppBottomNav } from '@/components/AppBottomNav'
 import { GardenBackupDialog } from '@/components/GardenBackupDialog'
 import { useKeyboardShortcuts, APP_SHORTCUTS } from '@/lib/keyboard-shortcuts'
 import type { Memory, UserPreferences, AudioRecording, SharedMemory, SearchFilters, CollaborativeGarden, GardenSettings, ActivityEvent, PlantStylePreference, GardenMood, PlantCosmetics, UnlockState, PlantTraits, PlantVariety, HybridGenome, GardenLandscapeView } from '@/lib/types'
@@ -59,8 +60,6 @@ import { redirectToCheckout } from '@/lib/payments/client'
 import { resolvePaidCheckoutSession } from '@/lib/payments/apply-return'
 const NeonAuthPanel = lazy(() => import('@/components/auth/NeonAuthPanel').then((m) => ({ default: m.NeonAuthPanel })))
 import { isNeonAuthConfigured } from '@/lib/auth/config'
-import { getAuthClient } from '@/lib/auth/neon-auth-client'
-import { completeSignInLinking } from '@/lib/auth/complete-sign-in'
 import { applyRestoredEntitlementsToUnlockState } from '@/lib/auth/restore-purchases'
 
 function describeSyncStatus(status: SyncStatus): string | null {
@@ -309,6 +308,7 @@ function App() {
 
   const refreshAccountEmail = useCallback(async () => {
     if (!neonAuthAvailable) return
+    const { getAuthClient } = await import('@/lib/auth/neon-auth-client')
     const client = getAuthClient()
     if (!client) return
     try {
@@ -325,6 +325,7 @@ function App() {
 
   const handleNeonSignInComplete = useCallback(async () => {
     try {
+      const { completeSignInLinking } = await import('@/lib/auth/complete-sign-in')
       const entitlements = await completeSignInLinking(localUser.id)
       updateUnlockState((state) => applyRestoredEntitlementsToUnlockState(state, entitlements))
       await refreshAccountEmail()
@@ -336,6 +337,7 @@ function App() {
   }, [localUser.id, refreshAccountEmail, updateUnlockState])
 
   const handleNeonSignOut = useCallback(async () => {
+    const { getAuthClient } = await import('@/lib/auth/neon-auth-client')
     const client = getAuthClient()
     if (client) {
       await client.signOut()
@@ -1300,6 +1302,14 @@ function App() {
     () => (activeFilterCount > 0 ? new Set(filteredMemories.map((m) => m.id)) : null),
     [filteredMemories, activeFilterCount]
   )
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode)
+    if (mode !== 'explore') {
+      setVisitingGardenId(null)
+      setVisitingGardenName(null)
+    }
+  }, [])
+
   const gardenSearchHasNoMatches =
     activeFilterCount > 0 && filteredMemories.length === 0 && safeMemories.length > 0
   const clearSearchAndFilters = useCallback(() => {
@@ -1375,7 +1385,7 @@ function App() {
           cloudSyncStatusLabel={describeSyncStatus(syncStatus)}
           onSelectGarden={handleSelectGarden}
           onCreateGarden={() => setIsCreateGardenOpen(true)}
-          onViewModeChange={setViewMode}
+          onViewModeChange={handleViewModeChange}
           onToggleSound={(checked) => {
             setPreferences((c) => ({
               ...(c ?? {
@@ -1430,7 +1440,9 @@ function App() {
           availableLocations={availableLocations}
         />
 
-        <main className="flex-1 relative outline-none" tabIndex={-1}>
+        <AppBottomNav viewMode={viewMode} onViewModeChange={handleViewModeChange} />
+
+        <main className="relative flex-1 outline-none pb-[calc(3.75rem+env(safe-area-inset-bottom))] md:pb-0" tabIndex={-1}>
           <AnimatePresence>
             {pollinationParent && (
               <motion.div

@@ -16,10 +16,11 @@ interface GardenLayoutToolDockProps {
   weeklyAlreadySaved?: boolean
   onLightCandle: (candle: Omit<Candle, 'id'>) => void
   onExtinguishCandle: (id: string) => void
+  onDockPanelOpenChange?: (open: boolean) => void
 }
 
 const iconButtonBase =
-  'flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-full border bg-black/40 text-[#f0e7da] backdrop-blur-sm transition-colors hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f0e7da]/40'
+  'flex h-11 w-11 min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full border bg-black/40 text-[#f0e7da] backdrop-blur-sm transition-colors hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f0e7da]/40 sm:h-[54px] sm:w-[54px]'
 
 export function GardenLayoutToolDock({
   palette,
@@ -31,6 +32,7 @@ export function GardenLayoutToolDock({
   weeklyAlreadySaved,
   onLightCandle,
   onExtinguishCandle,
+  onDockPanelOpenChange,
 }: GardenLayoutToolDockProps) {
   const [openTool, setOpenTool] = useState<LayoutTool | null>(null)
 
@@ -49,6 +51,10 @@ export function GardenLayoutToolDock({
     return () => window.removeEventListener('keydown', onKey)
   }, [openTool, close])
 
+  useEffect(() => {
+    onDockPanelOpenChange?.(openTool !== null)
+  }, [openTool, onDockPanelOpenChange])
+
   return (
     <>
       {openTool !== null && (
@@ -61,7 +67,7 @@ export function GardenLayoutToolDock({
       )}
 
       <div
-        className="absolute bottom-[4.75rem] left-3 right-3 z-30 flex w-auto max-w-md flex-col items-stretch gap-2 pointer-events-none sm:bottom-20 sm:right-auto sm:w-[min(100%,420px)]"
+        className="absolute bottom-[max(4.75rem,calc(env(safe-area-inset-bottom)+3.5rem))] left-3 right-3 z-30 flex w-auto max-w-md flex-col items-stretch gap-2 overflow-x-auto pointer-events-none sm:bottom-20 sm:right-auto sm:w-[min(100%,420px)]"
         role="group"
         aria-label="Garden layout tools"
       >
