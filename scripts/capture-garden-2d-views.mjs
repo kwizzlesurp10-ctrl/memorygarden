@@ -108,24 +108,70 @@ try {
         reflections: [],
         audioRecordings: [],
       }))
-      for (const view of landscapes) {
+      await page.evaluate(
+        ({ user, mems, p }) => {
+          localStorage.setItem('memorygarden:user', JSON.stringify(user))
+          localStorage.setItem(`memorygarden:${user.id}:memories`, JSON.stringify(mems))
+          localStorage.setItem(
+            'memorygarden:preferences',
+            JSON.stringify({ ...p, gardenLandscapeView: 'pond' }),
+          )
+        },
+        { user: demoUser, mems: memories, p: prefs },
+      )
+      await page.reload({ waitUntil: 'networkidle' })
+      await page.waitForTimeout(1100)
+      for (let i = 0; i < 3; i++) await page.keyboard.press('Escape')
+      await page.getByTestId('garden-scene-wrap').waitFor({ state: 'visible', timeout: 20_000 })
+      await page.screenshot({
+        path: resolve(outDir, `${prefix}-garden-2d-tree-memories-pond-${vp.label}.png`),
+      })
+
+      const scatterUser = {
+        id: '22222222-2222-4222-8222-222222222222',
+        login: 'tree-scatter-demo',
+        avatarUrl: '',
+      }
+      const scatterPlacements = [
+        { id: 'scatter-young-west', plantStage: 'young', x: 268, y: 444 },
+        { id: 'scatter-bloom-mid', plantStage: 'bloom', x: 478, y: 441 },
+        { id: 'scatter-mature', plantStage: 'mature', x: 612, y: 446 },
+        { id: 'scatter-bud-cluster', plantStage: 'bud', x: 538, y: 449 },
+        { id: 'scatter-elder-east', plantStage: 'elder', x: 892, y: 443 },
+      ]
+      const scatterMemories = scatterPlacements.map((s) => ({
+        id: s.id,
+        photoUrl:
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        text: s.id,
+        date: '2025-06-01',
+        plantedAt: '2025-06-01T12:00:00.000Z',
+        position: { x: s.x, y: s.y },
+        emotionalTone: 'peaceful',
+        plantStage: s.plantStage,
+        plantVariety: 'tree',
+        visitCount: 2,
+        reflections: [],
+        audioRecordings: [],
+      }))
+      if (vp.label === 'desktop-1440') {
         await page.evaluate(
-          ({ user, mems, p, landscape }) => {
+          ({ user, mems, p }) => {
             localStorage.setItem('memorygarden:user', JSON.stringify(user))
             localStorage.setItem(`memorygarden:${user.id}:memories`, JSON.stringify(mems))
             localStorage.setItem(
               'memorygarden:preferences',
-              JSON.stringify({ ...p, gardenLandscapeView: landscape }),
+              JSON.stringify({ ...p, gardenLandscapeView: 'pond' }),
             )
           },
-          { user: demoUser, mems: memories, p: prefs, landscape: view },
+          { user: scatterUser, mems: scatterMemories, p: prefs },
         )
         await page.reload({ waitUntil: 'networkidle' })
         await page.waitForTimeout(1100)
         for (let i = 0; i < 3; i++) await page.keyboard.press('Escape')
         await page.getByTestId('garden-scene-wrap').waitFor({ state: 'visible', timeout: 20_000 })
         await page.screenshot({
-          path: resolve(outDir, `${prefix}-garden-2d-tree-memories-${view}-${vp.label}.png`),
+          path: resolve(outDir, `${prefix}-garden-2d-tree-scatter-pond-${vp.label}.png`),
         })
       }
     }
