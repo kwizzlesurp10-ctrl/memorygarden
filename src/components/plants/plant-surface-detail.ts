@@ -73,33 +73,49 @@ export function plantGroundCollar(
   width = 11,
   depth = 3.2,
 ): ReactNode {
+  const soil = C.bank ?? C.silSoft
+  const grass = C.hills?.[1] ?? C.sil
   return e(
     'g',
     { key: 'ground-collar' },
     e('ellipse', {
       cx: 0,
-      cy: 1.8,
-      rx: width * 0.55,
-      ry: depth * 0.42,
-      fill: C.bank ?? C.silSoft,
-      opacity: 0.38,
+      cy: 4.2,
+      rx: width * 0.92,
+      ry: depth * 0.72,
+      fill: C.rim,
+      opacity: 0.5,
     }),
     e('ellipse', {
       cx: 0,
       cy: 2.4,
-      rx: width * 0.78,
+      rx: width * 0.68,
       ry: depth * 0.55,
-      fill: C.rim,
-      opacity: 0.16 * rim,
+      fill: soil,
+      opacity: 0.92,
+      stroke: C.rim,
+      strokeOpacity: 0.35 * rim,
+      strokeWidth: 0.55,
     }),
     e('path', {
-      d: `M ${-width * 0.42} 0.6 Q 0 ${-depth * 0.35} ${width * 0.42} 0.6 Q 0 ${depth * 0.85} ${-width * 0.42} 0.6 Z`,
-      fill: C.silSoft,
+      d: `M ${-width * 0.52} 1.4 Q 0 ${-depth * 0.55} ${width * 0.52} 1.4 Q 0 ${depth * 1.05} ${-width * 0.52} 1.4 Z`,
+      fill: soil,
       stroke: C.rim,
-      strokeOpacity: 0.28 * rim,
-      strokeWidth: 0.45,
-      opacity: 0.72,
+      strokeOpacity: 0.42 * rim,
+      strokeWidth: 0.6,
+      opacity: 0.88,
     }),
+    ...([-0.42, 0, 0.38] as const).map((t, i) =>
+      e('path', {
+        key: `grass-${i}`,
+        d: `M ${t * width} 0.8 Q ${t * width - 2.2} -5.5 ${t * width + 0.4} -9.5`,
+        stroke: grass,
+        strokeWidth: 1.35,
+        fill: 'none',
+        strokeLinecap: 'round',
+        opacity: 0.85,
+      }),
+    ),
   )
 }
 
@@ -107,10 +123,24 @@ export function plantGroundCollar(
 export function stemGroundFlare(C: HybridPlantPalette, rim: number, halfW = 1.4): ReactNode {
   return e('path', {
     key: 'stem-flare',
-    d: `M ${-halfW} 0 Q ${-halfW * 0.35} ${-1.6} 0 ${-1.1} Q ${halfW * 0.35} ${-1.6} ${halfW} 0 Z`,
+    d: `M ${-halfW} 0.4 Q ${-halfW * 0.42} ${-2.4} 0 ${-1.6} Q ${halfW * 0.42} ${-2.4} ${halfW} 0.4 Z`,
     fill: C.sil,
     stroke: C.rim,
-    strokeOpacity: 0.35 * rim,
-    strokeWidth: 0.45,
+    strokeOpacity: 0.48 * rim,
+    strokeWidth: 0.65,
+  })
+}
+
+/** Filled tapered stem (reads at scene scale; stroke-only stems vanish). */
+export function filledStemPath(halfW: number, height: number, C: HybridPlantPalette, rim: number, key = 'fstem'): ReactNode {
+  const hw = Math.max(0.75, halfW)
+  const top = Math.min(-4, -height)
+  return e('path', {
+    key,
+    d: `M ${-hw} 0.2 Q ${-hw * 0.55} ${top * 0.45} ${-hw * 0.35} ${top} L ${hw * 0.35} ${top} Q ${hw * 0.55} ${top * 0.45} ${hw} 0.2 Z`,
+    fill: C.sil,
+    stroke: C.rim,
+    strokeOpacity: 0.4 * rim,
+    strokeWidth: 0.55,
   })
 }

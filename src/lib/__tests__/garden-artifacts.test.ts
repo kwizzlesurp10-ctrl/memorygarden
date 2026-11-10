@@ -1,4 +1,5 @@
 import { createElement as h } from 'react'
+import { execSync } from 'node:child_process'
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs'
 import { Resvg } from '@resvg/resvg-js'
 import { resolve } from 'node:path'
@@ -37,7 +38,7 @@ interface VarietyStageLayout {
 
 const VARIETY_STAGE_LAYOUT: Record<SeededVariety, VarietyStageLayout> = {
   flower: { rowHeight: 228, anchorY: 132, scale: 0.98 },
-  tree: { rowHeight: 260, anchorY: 218, scale: 0.52 },
+  tree: { rowHeight: 280, anchorY: 228, scale: 0.5 },
   herb: { rowHeight: 192, anchorY: 118, scale: 0.98 },
   wildflower: { rowHeight: 196, anchorY: 114, scale: 0.95 },
   mushroom: { rowHeight: 168, anchorY: 100, scale: 1 },
@@ -72,6 +73,8 @@ describe('garden visual artifacts', () => {
     if (process.env.ARTIFACT_CAPTURE !== '1') return
 
     mkdirSync(outDir, { recursive: true })
+    const gitSha = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim()
+    writeFileSync(resolve(outDir, 'BUILD_SHA.txt'), `${gitSha}\n`, 'utf8')
     const palette = todPalette(14, 'summer')
 
     const samplePositions = [
