@@ -1,5 +1,10 @@
 import { z } from 'zod'
 import { authFetch } from '@/lib/auth/auth-fetch'
+import {
+  getDemoGardenDetail,
+  isValidCommunityGardenUuid,
+  normalizePublicGardenIds,
+} from '@/lib/community-demo-gardens'
 import type { CommunityPrivacyMode } from '../../api/gardens/lib/community-memory-privacy'
 import type { EmotionalTone, Memory, PlantVariety } from '@/lib/types'
 
@@ -104,7 +109,7 @@ export async function fetchPublicGardens(viewerId?: string): Promise<ApiResult<P
     const json = (await res.json()) as { gardens?: unknown[] }
     const parsed = z.array(publicGardenSchema).safeParse(json.gardens ?? [])
     if (!parsed.success) return { ok: false, error: 'Invalid gardens response' }
-    return { ok: true, value: parsed.data }
+    return { ok: true, value: normalizePublicGardenIds(parsed.data) }
   } catch {
     return { ok: false, error: 'Could not reach community gardens' }
   }
@@ -120,6 +125,36 @@ export async function fetchGardenDetail(
     activity: GardenActivity[]
   }>
 > {
+  const demo = getDemoGardenDetail(gardenId)
+  if (demo) {
+    return {
+      ok: true,
+      value: {
+        garden: demo.garden,
+        memories: demo.memories.map((m) => ({
+          ...m,
+          contributor_id: null,
+          contributor_avatar_url: null,
+          memory_date: null,
+          location: null,
+          last_visited: null,
+          reflections: [],
+        })),
+        activity: demo.activity.map((a) => ({
+          id: a.id,
+          user_name: a.user_name,
+          activity_type: a.activity_type,
+          description: a.description,
+          created_at: a.created_at,
+        })),
+      },
+    }
+  }
+
+  if (!isValidCommunityGardenUuid(gardenId)) {
+    return { ok: false, error: 'Invalid garden id' }
+  }
+
   try {
     const search = new URLSearchParams({ id: gardenId })
     if (options?.viewerId) search.set('viewerId', options.viewerId)
