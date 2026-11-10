@@ -298,6 +298,44 @@ export function buildMiniHybrid(
   )
 }
 
+/** Boost scale for early stages so fullscreen close-up stays readable while elder stays largest. */
+export function closeupHybridPlantScale(stageIndex: number): number {
+  const t = Math.max(0, Math.min(7, stageIndex)) / 7
+  return 2.45 - t * 0.95
+}
+
+export function buildCloseupHybrid(
+  stageIndex: number,
+  g: HybridGenome,
+  C: ScenePalette,
+  rimv: number,
+  motion: boolean,
+): ReactNode {
+  const CH = hybridPlantPalette(g, C)
+  const plantScale = closeupHybridPlantScale(stageIndex)
+  const growthT = stageIndex / 7
+  const groundRx = 22 + growthT * 14
+  const anchorY = 136 - (1 - growthT) * 6
+  const growStyle: CSSProperties | undefined = motion
+    ? {
+        animation: 'mgGrow 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) backwards',
+        transformBox: 'fill-box',
+        transformOrigin: '50% 100%',
+      }
+    : undefined
+
+  return (
+    <>
+      <ellipse cx={66} cy={139} rx={groundRx + 10} ry={7} fill="#050308" opacity={0.35} />
+      <ellipse cx={66} cy={136.5} rx={groundRx} ry={4.5 + growthT * 1.2} fill={CH.hills[2]} opacity={0.92} />
+      <ellipse cx={66} cy={135.8} rx={groundRx * 0.55} ry={2} fill={CH.bank} opacity={0.35} />
+      <g transform={`translate(66 ${anchorY}) scale(${plantScale})`}>
+        <g style={growStyle}>{buildHybrid(stageIndex, CH, rimv, motion, g)}</g>
+      </g>
+    </>
+  )
+}
+
 /** Flat SVG children for server-side contact sheets (no React fragment). */
 export function buildDreamHybridPreview(
   g: HybridGenome,

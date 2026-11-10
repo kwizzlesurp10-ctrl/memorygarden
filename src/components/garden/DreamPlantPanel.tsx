@@ -7,6 +7,7 @@ import { getPlantOfWeek } from '@/lib/garden/plant-of-week'
 import { HybridGrowthStrip } from '@/components/plants/hybrid-builder'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DREAM_CLOSEUP_DEFAULT_STAGE_INDEX } from '@/lib/garden/dream-closeup'
 import { cn } from '@/lib/utils'
 
 const DreamPlantCloseupOverlay = lazy(() =>
@@ -179,13 +180,18 @@ export function DreamPlantPanel({
       {genome && (
         <Suspense fallback={null}>
           <DreamPlantCloseupOverlay
-            key={closeupOpen ? `open-${genome.seed}` : `idle-${genome.seed}`}
+            key={
+              closeupOpen
+                ? `open-${genome.seed}-${DREAM_CLOSEUP_DEFAULT_STAGE_INDEX}`
+                : `idle-${genome.seed}`
+            }
             open={closeupOpen}
             onClose={() => setCloseupOpen(false)}
             genome={genome}
             palette={palette}
             rimStrength={rimStrength}
             motion={motion}
+            initialStageIndex={DREAM_CLOSEUP_DEFAULT_STAGE_INDEX}
             returnFocusRef={closeupTriggerRef}
           />
         </Suspense>
