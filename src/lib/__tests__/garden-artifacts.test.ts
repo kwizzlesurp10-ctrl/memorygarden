@@ -13,6 +13,8 @@ import { indexToPlantStage } from '@/lib/garden/stage'
 import { PLANT_STAGES_ORDER } from '@/lib/garden/plant-stages'
 import { GARDEN_LANDSCAPE_VIEWS } from '@/lib/garden/landscape-view'
 import { projectMemoryToSceneWorld } from '@/lib/garden/landscape-world'
+import { layoutMemoryPlantsForView } from '@/lib/garden/memory-scene-layout'
+import type { Memory } from '@/lib/types'
 import { createGardenStarterDecor } from '@/lib/garden/garden-starter-decor'
 import { SEEDED_VARIETIES, type SeededVariety } from '@/components/plants/types'
 import { SeededPlantSvg } from '@/components/plants/SeededPlantSvg'
@@ -213,21 +215,37 @@ describe('garden visual artifacts', () => {
       writeSvgAndPng(`plant-stages-${variety}-row`, rowSvg)
     }
 
-    const treeByStagePlants = PLANT_STAGES_ORDER.map((stage, i) => {
-      const mem = { x: 150 + i * 128, y: 442 }
-      const pos = projectMemoryToSceneWorld(mem, 'pond')
+    const treeMemories: Memory[] = PLANT_STAGES_ORDER.map((stage, i) => ({
+      id: `artifact-tree-${stage}`,
+      photoUrl: '',
+      text: '',
+      date: '2025-06-01',
+      plantedAt: '2025-06-01T12:00:00.000Z',
+      position: { x: 140 + i * 128, y: 442 },
+      emotionalTone: 'peaceful',
+      plantStage: stage,
+      plantVariety: 'tree',
+      visitCount: 1,
+      reflections: [],
+      audioRecordings: [],
+    }))
+    const treeLayout = layoutMemoryPlantsForView(treeMemories, 'pond')
+    const treeByStagePlants = PLANT_STAGES_ORDER.map((stage) => {
+      const mem = treeMemories.find((m) => m.plantStage === stage)!
+      const pos = treeLayout.get(mem.id)!
       return h(
         'g',
-        { key: `tree-${stage}`, transform: `translate(${pos.x} ${pos.y}) scale(${pos.scale * 0.92})` },
+        { key: `tree-${stage}`, transform: `translate(${pos.x} ${pos.y}) scale(${pos.plantScale})` },
         h(SeededPlantSvg, {
           variety: 'tree',
           stage,
-          geneticsSeed: `artifact-tree-${stage}`,
+          geneticsSeed: mem.id,
           palette,
           rimStrength: 0.65,
           motion: false,
           scale: 1,
           facing: pos.facing,
+          rimFromLeft: pos.rimFromLeft,
         }),
       )
     })

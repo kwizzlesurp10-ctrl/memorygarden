@@ -86,7 +86,7 @@ try {
       })
     }
 
-    if (vp.label === 'desktop-1440') {
+    if (vp.label === 'desktop-1440' || vp.label === 'mobile-390') {
       const demoUser = {
         id: '11111111-1111-4111-8111-111111111111',
         login: 'tree-stage-demo',
@@ -108,21 +108,26 @@ try {
         reflections: [],
         audioRecordings: [],
       }))
-      await page.evaluate(
-        ({ user, mems, p }) => {
-          localStorage.setItem('memorygarden:user', JSON.stringify(user))
-          localStorage.setItem(`memorygarden:${user.id}:memories`, JSON.stringify(mems))
-          localStorage.setItem('memorygarden:preferences', JSON.stringify({ ...p, gardenLandscapeView: 'pond' }))
-        },
-        { user: demoUser, mems: memories, p: prefs },
-      )
-      await page.reload({ waitUntil: 'networkidle' })
-      await page.waitForTimeout(1200)
-      for (let i = 0; i < 3; i++) await page.keyboard.press('Escape')
-      await page.getByTestId('garden-scene-wrap').waitFor({ state: 'visible', timeout: 20_000 })
-      await page.screenshot({
-        path: resolve(outDir, `${prefix}-garden-2d-tree-memories-pond-${vp.label}.png`),
-      })
+      for (const view of landscapes) {
+        await page.evaluate(
+          ({ user, mems, p, landscape }) => {
+            localStorage.setItem('memorygarden:user', JSON.stringify(user))
+            localStorage.setItem(`memorygarden:${user.id}:memories`, JSON.stringify(mems))
+            localStorage.setItem(
+              'memorygarden:preferences',
+              JSON.stringify({ ...p, gardenLandscapeView: landscape }),
+            )
+          },
+          { user: demoUser, mems: memories, p: prefs, landscape: view },
+        )
+        await page.reload({ waitUntil: 'networkidle' })
+        await page.waitForTimeout(1100)
+        for (let i = 0; i < 3; i++) await page.keyboard.press('Escape')
+        await page.getByTestId('garden-scene-wrap').waitFor({ state: 'visible', timeout: 20_000 })
+        await page.screenshot({
+          path: resolve(outDir, `${prefix}-garden-2d-tree-memories-${view}-${vp.label}.png`),
+        })
+      }
     }
 
     await context.close()

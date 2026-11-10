@@ -1,5 +1,5 @@
 import type { GardenLandscapeView, Memory } from '@/lib/types'
-import { projectMemoryToSceneWorld } from '@/lib/garden/landscape-world'
+import { layoutMemoryPlantsForView } from '@/lib/garden/memory-scene-layout'
 import { resolveGardenLandscapeView } from '@/lib/garden/landscape-view'
 
 interface GardenPlantAccessibilityLayerProps {
@@ -16,6 +16,7 @@ export function GardenPlantAccessibilityLayer({
   onMemoryClick,
 }: GardenPlantAccessibilityLayerProps) {
   const resolvedView = resolveGardenLandscapeView(landscapeView)
+  const layout = layoutMemoryPlantsForView(memories, resolvedView)
 
   return (
     <ul
@@ -25,7 +26,8 @@ export function GardenPlantAccessibilityLayer({
     >
       {memories.map((memory) => {
         const isDimmed = highlightedMemoryIds !== null && !highlightedMemoryIds.has(memory.id)
-        const pos = projectMemoryToSceneWorld(memory.position, resolvedView)
+        const pos = layout.get(memory.id)
+        if (!pos) return null
         const label =
           memory.text?.trim().slice(0, 80) ||
           `${memory.emotionalTone} memory, ${memory.plantStage} stage`
