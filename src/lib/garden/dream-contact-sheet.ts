@@ -2,7 +2,7 @@ import { createElement as h, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { HybridBaseVariety, HybridGenome } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
-import { buildDreamHybridPreview } from '@/components/plants/hybrid-builder'
+import { buildDreamHybridPreview, type HybridRenderOpts } from '@/components/plants/hybrid-builder'
 import { localGenome } from '@/lib/garden/hybrid'
 import { MOTIF_GLYPHS, motifFromKey } from '@/lib/garden/hybrid-motifs'
 
@@ -18,6 +18,9 @@ export interface DreamContactSheetOptions {
   stage?: number
   background?: string
   title?: string
+  plantScale?: number
+  renderOpts?: HybridRenderOpts
+  clipPlant?: boolean
 }
 
 function esc(s: string): string {
@@ -73,12 +76,19 @@ export function buildDreamContactSheetSvg(opts: DreamContactSheetOptions): strin
             y: labelH,
             width: 132,
             height: cellH - labelH - 4,
-            overflow: 'visible',
+            overflow: opts.clipPlant ? 'hidden' : 'visible',
           },
-          ...(buildDreamHybridPreview(g, opts.palette, stage, rimStrength, 1.28) as ReactNode[]),
+          ...(buildDreamHybridPreview(
+            g,
+            opts.palette,
+            stage,
+            rimStrength,
+            opts.plantScale ?? 1.28,
+            opts.renderOpts,
+          ) as ReactNode[]),
         ),
       )
-      return `<g transform="translate(${x} ${y})"><text x="8" y="14" font-size="10" fill="#2d2418" font-family="system-ui,sans-serif">${esc(idea)}</text><text x="8" y="27" font-size="8.5" fill="#6a5a48" font-family="system-ui,sans-serif">${esc(g.name)} · ${g.base}</text>${plantMarkup}</g>`
+      return `<g transform="translate(${x} ${y})"><text x="8" y="14" font-size="11" font-weight="600" fill="#2a2218" font-family="Georgia, 'Times New Roman', serif">${esc(idea)}</text><text x="8" y="27" font-size="9" fill="#5c4f3f" font-family="system-ui,sans-serif" letter-spacing="0.02em">${esc(g.name)} · ${g.base}</text>${plantMarkup}</g>`
     })
     .join('')
 
@@ -105,8 +115,8 @@ function motifPreviewGenome(motifKey: string): HybridGenome {
 export function buildMotifGridContactSheetSvg(palette: ScenePalette, background = '#e9f3e5'): string {
   const keys = Object.keys(MOTIF_GLYPHS).sort((a, b) => a.localeCompare(b))
   const cols = 8
-  const cellW = 120
-  const cellH = 138
+  const cellW = 124
+  const cellH = 148
   const rows = Math.ceil(keys.length / cols)
   const width = cols * cellW
   const padTop = 22
@@ -120,7 +130,10 @@ export function buildMotifGridContactSheetSvg(palette: ScenePalette, background 
     cols,
     cellW,
     cellH,
-    labelH: 28,
+    labelH: 36,
+    plantScale: 1.12,
+    renderOpts: { motifAnchor: 'in-canopy' },
+    clipPlant: true,
     title: `Motif grid (${keys.length} glyphs)`,
     background,
   })

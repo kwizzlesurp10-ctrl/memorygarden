@@ -189,7 +189,7 @@ export function MemoryCard({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 flex flex-col overflow-hidden">
+      <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 flex flex-col overflow-hidden rounded-2xl border-border/80 shadow-2xl">
         <DialogTitle className="sr-only">Memory Details</DialogTitle>
         <DialogDescription className="sr-only">View and reflect on your memory</DialogDescription>
         

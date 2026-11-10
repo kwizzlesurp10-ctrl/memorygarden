@@ -61,7 +61,7 @@ export function GardenLayoutToolDock({
       )}
 
       <div
-        className="absolute bottom-20 left-3 z-30 flex max-w-md w-[min(100%,420px)] flex-col items-start gap-2 pointer-events-none"
+        className="absolute bottom-[4.75rem] left-3 right-3 z-30 flex w-auto max-w-md flex-col items-stretch gap-2 pointer-events-none sm:bottom-20 sm:right-auto sm:w-[min(100%,420px)]"
         role="group"
         aria-label="Garden layout tools"
       >

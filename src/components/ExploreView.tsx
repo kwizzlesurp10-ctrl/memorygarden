@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Heart, Tree, Sparkle, Eye, ArrowRight, Flower, Plant, CircleNotch, MagnifyingGlass, Clock } from '@phosphor-icons/react'
+import { Users, Tree, Sparkle, Eye, ArrowRight, Flower, Plant, CircleNotch, MagnifyingGlass, Clock } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -97,13 +97,15 @@ export function ExploreView({ onVisitGarden, onJoinGarden, userId, userName }: E
 
   if (loading) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-background to-primary/5">
+      <div className="mg-page-hero w-full h-full flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
+          className="mg-empty-state"
+          role="status"
+          aria-live="polite"
         >
-          <CircleNotch size={48} className="animate-spin text-primary mx-auto mb-4" />
+          <CircleNotch size={48} className="animate-spin text-primary" aria-hidden />
           <p className="text-muted-foreground">Discovering gardens...</p>
         </motion.div>
       </div>
@@ -112,9 +114,9 @@ export function ExploreView({ onVisitGarden, onJoinGarden, userId, userName }: E
 
   if (error) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-background to-primary/5">
-        <div className="text-center max-w-md px-6">
-          <Tree size={56} className="text-muted-foreground/40 mx-auto mb-4" />
+      <div className="mg-page-hero w-full h-full flex items-center justify-center">
+        <div className="mg-empty-state max-w-md">
+          <Tree size={56} className="text-muted-foreground/50" aria-hidden />
           <p className="text-foreground font-medium mb-2">Could not load community gardens</p>
           <p className="text-muted-foreground text-sm mb-6">{error}</p>
           <Button
@@ -155,7 +157,7 @@ export function ExploreView({ onVisitGarden, onJoinGarden, userId, userName }: E
   }
 
   return (
-    <div className="w-full h-full overflow-y-auto bg-gradient-to-b from-background via-background to-primary/5">
+    <div className="mg-page-hero w-full h-full overflow-y-auto">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
@@ -266,11 +268,12 @@ export function ExploreView({ onVisitGarden, onJoinGarden, userId, userName }: E
                         {/* Overlay gradient */}
                         <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
                         
-                        {/* Memory count badge */}
-                        <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-background/90 backdrop-blur-sm text-sm font-medium flex items-center gap-2 shadow-lg">
-                          <Heart size={14} weight="fill" className="text-rose-500" />
-                          <span>{garden.memory_count}</span>
-                        </div>
+                        {typeof garden.memory_count === 'number' && garden.memory_count > 0 && (
+                          <div className="absolute top-4 right-4 flex items-center gap-1.5 rounded-full bg-background/90 px-3 py-1.5 text-sm font-medium shadow-lg backdrop-blur-sm">
+                            <Plant size={14} weight="duotone" className="text-primary" aria-hidden />
+                            <span>{garden.memory_count} memories</span>
+                          </div>
+                        )}
 
                         {/* Sample memory photos */}
                         {garden.sample_memories && garden.sample_memories.length > 0 && (

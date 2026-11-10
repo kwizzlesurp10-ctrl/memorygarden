@@ -212,6 +212,25 @@ describe('dreamPlant with mocked LLM', () => {
   })
 })
 
+describe('motif glyph legibility', () => {
+  it('keeps stroke-only motif paths at readable weight for small renders', () => {
+    const thin: string[] = []
+    for (const [key, glyph] of Object.entries(MOTIF_GLYPHS)) {
+      const strokeOnly = glyph.paths.filter((p) => p.fill === 'none' && p.stroke && p.stroke !== 'none')
+      const filled = glyph.paths.filter((p) => p.fill !== 'none')
+      if (filled.length === 0 && strokeOnly.length > 0) {
+        const minSw = Math.min(...strokeOnly.map((p) => p.sw ?? 1))
+        if (minSw < 1.25) thin.push(key)
+      }
+    }
+    expect(thin).toEqual([])
+  })
+
+  it('exposes at least 47 motif glyphs', () => {
+    expect(Object.keys(MOTIF_GLYPHS).length).toBeGreaterThanOrEqual(47)
+  })
+})
+
 describe('dream plant contact sheet artifact', () => {
   const samples = [
     'red rose',

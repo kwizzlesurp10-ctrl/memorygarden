@@ -13,7 +13,7 @@ import { PLANT_STAGES_ORDER } from '@/lib/garden/plant-stages'
 import { GARDEN_LANDSCAPE_VIEWS } from '@/lib/garden/landscape-view'
 import { projectMemoryToSceneWorld } from '@/lib/garden/landscape-world'
 import { createGardenStarterDecor } from '@/lib/garden/garden-starter-decor'
-import type { SeededVariety } from '@/components/plants/types'
+import { SEEDED_VARIETIES, type SeededVariety } from '@/components/plants/types'
 import { SeededPlantSvg } from '@/components/plants/SeededPlantSvg'
 
 const outDir = process.env.ARTIFACT_DIR || '/opt/cursor/artifacts'
@@ -57,7 +57,7 @@ function stageCell(
   const nodes = buildSeededPlant(variety, {
     stageIndex,
     palette,
-    rimStrength: 0.65,
+    rimStrength: 0.82,
     motion: false,
     rng: gardenRng(99 + stageIndex * 17 + variety.length * 3),
   })
@@ -183,7 +183,7 @@ describe('garden visual artifacts', () => {
     const flowerSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PLANT_STAGES_ORDER.length * STAGE_CELL_W}" height="${flowerLayout.rowHeight}" viewBox="0 0 ${PLANT_STAGES_ORDER.length * STAGE_CELL_W} ${flowerLayout.rowHeight}">${flowerRow}</svg>`
     writeFileSync(resolve(outDir, 'plant-stages-flower-row.svg'), flowerSvg, 'utf8')
 
-    const gridVarieties: SeededVariety[] = ['flower', 'tree', 'herb', 'wildflower']
+    const gridVarieties: SeededVariety[] = [...SEEDED_VARIETIES]
     const gridW = PLANT_STAGES_ORDER.length * STAGE_CELL_W
     let gridH = 0
     const gridRows = gridVarieties
@@ -199,6 +199,6 @@ describe('garden visual artifacts', () => {
       .join('')
 
     const gridSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${gridW}" height="${gridH}" viewBox="0 0 ${gridW} ${gridH}">${gridRows}</svg>`
-    writeFileSync(resolve(outDir, 'plant-stages-multi-variety-grid.svg'), gridSvg, 'utf8')
+    writeSvgAndPng('plant-stages-multi-variety-grid', gridSvg)
   })
 })

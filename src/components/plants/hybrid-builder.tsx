@@ -17,15 +17,38 @@ const Hm: Record<string, number> = {
   lotus: 18,
 }
 
-const MOTIF_SIZES = [0, 0, 0, 0, 10, 14, 18, 24]
+const MOTIF_SIZES = [0, 0, 0, 0, 12, 16, 22, 28]
 
-export function buildMotifNode(m: HybridGenome['motif'], size: number, C: HybridPlantPalette): ReactNode {
+export type MotifEmphasis = 'default' | 'tree-canopy'
+
+export function buildMotifNode(
+  m: HybridGenome['motif'],
+  size: number,
+  C: HybridPlantPalette,
+  emphasis: MotifEmphasis = 'default',
+): ReactNode {
   const map: Record<string, string> = { sil: C.sil, rim: C.rim, glow: C.glow, accent: C.accent, none: 'none' }
-  const outline = Math.max(0.85, 1.25 * (size / 16))
+  const outline = Math.max(1.05, 1.45 * (size / 16))
+  const treeBoost = emphasis === 'tree-canopy'
+  const padR = treeBoost ? 14.5 : 12.5
+  const innerR = treeBoost ? 11.5 : 10.5
   return (
     <g transform={`scale(${size / 24}) translate(-12 -12)`}>
-      <circle cx={12} cy={12} r={12.5} fill={C.glow} opacity={0.35} />
-      <circle cx={12} cy={12} r={10.5} fill={C.accent} opacity={0.2} />
+      <circle cx={12} cy={12} r={padR + 0.8} fill={C.silSoft} opacity={treeBoost ? 0.55 : 0.25} />
+      <circle
+        cx={12}
+        cy={12}
+        r={padR}
+        fill={treeBoost ? '#faf6ef' : C.glow}
+        opacity={treeBoost ? 0.92 : 0.35}
+        stroke={C.rim}
+        strokeWidth={treeBoost ? 1.6 : 0}
+        strokeOpacity={treeBoost ? 0.75 : 0}
+      />
+      <circle cx={12} cy={12} r={innerR} fill={C.accent} opacity={treeBoost ? 0.14 : 0.2} />
+      {treeBoost && (
+        <circle cx={12} cy={12} r={padR - 2.2} fill="none" stroke={C.glow} strokeWidth={1.1} opacity={0.65} />
+      )}
       {m.paths.map((p, i) => {
         const fill = map[p.fill] === C.sil || p.fill === 'sil' ? C.glow : (map[p.fill] ?? C.glow)
         const stroke =
@@ -48,12 +71,18 @@ export function buildMotifNode(m: HybridGenome['motif'], size: number, C: Hybrid
   )
 }
 
+export type HybridRenderOpts = {
+  /** Tree motifs above the crown (default) or nested inside the canopy silhouette. */
+  motifAnchor?: 'default' | 'in-canopy'
+}
+
 export function buildHybrid(
   s: number,
   C: HybridPlantPalette,
   rimv: number,
   motion: boolean,
   g: HybridGenome,
+  renderOpts: HybridRenderOpts = {},
 ): ReactNode[] {
   const out: ReactNode[] = []
   const baseH = Hm[g.base] || 50
@@ -199,22 +228,26 @@ export function buildHybrid(
   }
 
   if (g.motif && g.motif.paths && g.motif.paths.length && s >= 4) {
-    const msize = (MOTIF_SIZES[s] ?? 0) + (g.base === 'tree' ? 5 : 0)
-    const my =
-      g.base === 'tree'
-        ? -hh * treeScale - 30
-        : g.base === 'mushroom'
-          ? -hh - 2
-          : -hh - 5
+    const treeMotif = g.base === 'tree'
+    const msize = (MOTIF_SIZES[s] ?? 0) + (treeMotif ? 14 : 0)
+    const my = treeMotif
+      ? renderOpts.motifAnchor === 'in-canopy'
+        ? -hh * treeScale * 0.62
+        : -hh * treeScale - 38
+      : g.base === 'mushroom'
+        ? -hh - 2
+        : -hh - 5
     const bobStyle: CSSProperties | undefined = motion
       ? { animation: 'mgBob 3.2s ease-in-out infinite alternate' }
       : undefined
     out.push(
       <g key="motif" transform={`translate(0 ${my})`}>
-        <g style={bobStyle}>{buildMotifNode(g.motif, msize, C)}</g>
+        <g style={bobStyle}>
+          {buildMotifNode(g.motif, msize, C, treeMotif ? 'tree-canopy' : 'default')}
+        </g>
       </g>,
     )
-    if (s === 7) {
+    if (s === 7 && !treeMotif) {
       ;[
         [-12, -hh * 0.68],
         [11, -hh * 0.82],
@@ -228,7 +261,7 @@ export function buildHybrid(
                   : undefined
               }
             >
-              {buildMotifNode(g.motif, 6.5, C)}
+              {buildMotifNode(g.motif, 8, C)}
             </g>
           </g>,
         )
@@ -272,12 +305,14 @@ export function buildDreamHybridPreview(
   stage = 7,
   rimv = 0.92,
   plantScale = 1.28,
+  renderOpts: HybridRenderOpts = {},
 ): ReactNode[] {
   const CH = hybridPlantPalette(g, C)
+  const anchorY = renderOpts.motifAnchor === 'in-canopy' ? 138 : 134
   return [
     <ellipse key="ground" cx={66} cy={136} rx={30} ry={5} fill={C.hills[2]} opacity={0.85} />,
-    <g key="plant" transform={`translate(66 134) scale(${plantScale})`}>
-      {buildHybrid(stage, CH, rimv, false, g)}
+    <g key="plant" transform={`translate(66 ${anchorY}) scale(${plantScale})`}>
+      {buildHybrid(stage, CH, rimv, false, g, renderOpts)}
     </g>,
   ]
 }
@@ -326,14 +361,35 @@ export interface HybridGrowthStripProps {
   palette: ScenePalette
   rimStrength: number
   motion: boolean
+  /** Wider strip for dock panels — fills container width with taller stage cells. */
+  density?: 'default' | 'dock'
 }
 
-export function HybridGrowthStrip({ genome, palette, rimStrength, motion }: HybridGrowthStripProps) {
+export function HybridGrowthStrip({
+  genome,
+  palette,
+  rimStrength,
+  motion,
+  density = 'default',
+}: HybridGrowthStripProps) {
+  const dock = density === 'dock'
+  const plantScale = dock ? 1.38 : 1.15
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+    <div
+      className={dock ? 'flex w-full items-end justify-between gap-0.5 sm:gap-1' : undefined}
+      style={dock ? undefined : { display: 'flex', gap: 8, alignItems: 'flex-end' }}
+    >
       {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-        <svg key={i} width={132} height={150} viewBox="0 0 132 150" aria-hidden>
-          {buildMiniHybrid(i, genome, palette, rimStrength, motion)}
+        <svg
+          key={i}
+          viewBox="0 0 132 150"
+          aria-hidden
+          className={dock ? 'h-[92px] sm:h-[100px] min-w-0 flex-1' : undefined}
+          width={dock ? undefined : 132}
+          height={dock ? undefined : 150}
+          preserveAspectRatio="xMidYMax meet"
+        >
+          {buildMiniHybrid(i, genome, palette, rimStrength, motion, plantScale)}
         </svg>
       ))}
     </div>
