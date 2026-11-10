@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { Suspense, lazy, useMemo, useRef, useState } from 'react'
+import Maximize2Icon from 'lucide-react/dist/esm/icons/maximize-2'
 import type { HybridGenome } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { dreamPlant } from '@/lib/garden/dream-plant'
@@ -7,6 +8,12 @@ import { HybridGrowthStrip } from '@/components/plants/hybrid-builder'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+
+const DreamPlantCloseupOverlay = lazy(() =>
+  import('@/components/garden/DreamPlantCloseupOverlay').then((m) => ({
+    default: m.DreamPlantCloseupOverlay,
+  })),
+)
 
 interface DreamPlantPanelProps {
   palette: ScenePalette
@@ -34,6 +41,8 @@ export function DreamPlantPanel({
   const [dreaming, setDreaming] = useState(false)
   const [genome, setGenome] = useState<HybridGenome | null>(null)
   const [source, setSource] = useState<'ai' | 'local'>('ai')
+  const [closeupOpen, setCloseupOpen] = useState(false)
+  const closeupTriggerRef = useRef<HTMLButtonElement>(null)
 
   const weekly = useMemo(() => getPlantOfWeek(), [])
   const weeklySaved = weeklyAlreadySaved
@@ -142,15 +151,44 @@ export function DreamPlantPanel({
           </div>
           <p className="text-sm text-[#f0e7da]/90">{genome.essence}</p>
           <HybridGrowthStrip genome={genome} palette={palette} rimStrength={rimStrength} motion={motion} density="dock" />
-          <Button
-            type="button"
-            variant="outline"
-            className="h-10 border-[#f0e7da]/40 bg-[#f0e7da]/10 text-[#faf4ec] hover:bg-[#f0e7da]/16"
-            onClick={() => onPlant(genome, idea.trim())}
-          >
-            Plant it in the garden
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+            <Button
+              ref={closeupTriggerRef}
+              type="button"
+              variant="secondary"
+              className="h-10 gap-2 border border-[#d4c4ff]/45 bg-[#d4c4ff]/18 text-sm font-medium text-[#f0e8ff] hover:bg-[#d4c4ff]/28"
+              data-testid="dream-plant-closeup-trigger"
+              aria-haspopup="dialog"
+              onClick={() => setCloseupOpen(true)}
+            >
+              <Maximize2Icon className="size-4 shrink-0" aria-hidden />
+              Close-up
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 flex-1 border-[#f0e7da]/40 bg-[#f0e7da]/10 text-[#faf4ec] hover:bg-[#f0e7da]/16"
+              data-testid="dream-plant-store-garden"
+              onClick={() => onPlant(genome, idea.trim())}
+            >
+              Plant it in the garden
+            </Button>
+          </div>
         </div>
+      )}
+      {genome && (
+        <Suspense fallback={null}>
+          <DreamPlantCloseupOverlay
+            key={closeupOpen ? `open-${genome.seed}` : `idle-${genome.seed}`}
+            open={closeupOpen}
+            onClose={() => setCloseupOpen(false)}
+            genome={genome}
+            palette={palette}
+            rimStrength={rimStrength}
+            motion={motion}
+            returnFocusRef={closeupTriggerRef}
+          />
+        </Suspense>
       )}
     </div>
   )

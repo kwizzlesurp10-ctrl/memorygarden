@@ -57,6 +57,10 @@ async function newPreparedPage(context) {
     localStorage.setItem('memorygarden:preferences', JSON.stringify(p))
   }, prefs)
 
+  await page.route('**/api/llm**', async (route) => {
+    await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'offline' }) })
+  })
+
   await page.route('**/api/gardens**', async (route) => {
     const req = route.request()
     if (req.method() !== 'GET' || req.url().includes('id=')) {
@@ -108,7 +112,31 @@ try {
     const panel = page.getByTestId('garden-tool-dream-panel')
     await panel.waitFor({ state: 'visible', timeout: 10_000 })
     await page.getByRole('heading', { name: 'Dream a plant' }).waitFor({ state: 'visible' })
-    await page.waitForTimeout(1200)
+
+    const dreamInput = panel.locator('input[type="text"]')
+    await dreamInput.fill('grandmother’s rosemary by the gate')
+    await panel.getByRole('button', { name: 'Dream it' }).click()
+    const closeupTrigger = page.getByTestId('dream-plant-closeup-trigger')
+    await closeupTrigger.waitFor({ state: 'visible', timeout: 25_000 })
+    await closeupTrigger.evaluate((el) => {
+      el.scrollIntoView({ block: 'center', behavior: 'instant' })
+    })
+    await page.waitForTimeout(600)
+    await page.screenshot({
+      path: resolve(outDir, `${prefix}-dream-plant-panel-with-closeup-${label}.png`),
+    })
+
+    await page.getByTestId('dream-plant-closeup-trigger').click()
+    await page.getByTestId('dream-plant-closeup-dialog').waitFor({ state: 'visible', timeout: 10_000 })
+    await page.waitForTimeout(800)
+    await page.screenshot({
+      path: resolve(outDir, `${prefix}-dream-plant-closeup-fullscreen-${label}.png`),
+    })
+
+    await page.getByTestId('dream-plant-closeup-back').click()
+    await page.getByTestId('dream-plant-closeup-dialog').waitFor({ state: 'hidden', timeout: 10_000 })
+
+    await page.waitForTimeout(400)
     await page.screenshot({ path: resolve(outDir, `${prefix}-dream-plant-panel-${label}.png`) })
 
     await page.close()
