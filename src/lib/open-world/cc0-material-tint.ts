@@ -130,8 +130,8 @@ export function inferMaterialRoleFromName(
   fallback: Cc0MaterialRole,
 ): Cc0MaterialRole | null {
   const hay = `${meshName} ${materialName}`.toLowerCase()
-  if (/\bmushroom\b/.test(hay) && /\b(red|cap|color)/.test(hay)) return 'mushroom_cap'
-  if (/\bmushroom\b/.test(hay) && /default|stem|stipe|white/.test(hay)) return 'mushroom_stem'
+  if (/\bmushroom\b/.test(hay) && /(red|cap|color)/.test(hay)) return 'mushroom_cap'
+  if (/\bmushroom\b/.test(hay) && /(default|stem|stipe|_defaultmat)/.test(hay)) return 'mushroom_stem'
   for (const { pattern, role } of NAME_ROLE_RULES) {
     if (pattern.test(hay)) {
       if (role === 'mushroom_stem' && fallback !== 'mushroom_cap' && fallback !== 'mushroom_stem') {
