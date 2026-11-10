@@ -8,7 +8,7 @@ import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CalendarBlank, Image as ImageIcon, Link as LinkIcon, MapPin, Plant as PlantIcon, Sparkle, X } from '@phosphor-icons/react'
 import { AudioRecorder } from '@/components/AudioRecorder'
 import { FlowerPlant } from '@/components/plants/FlowerPlant'
@@ -476,16 +476,28 @@ export function PlantMemoryModal({ open, onClose, onPlant }: PlantMemoryModalPro
                 <Label>Audio (optional)</Label>
                 <Tabs value={recordingType} onValueChange={(v) => setRecordingType(v as 'voice-note' | 'ambient-sound')}>
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="voice-note">Voice Note</TabsTrigger>
-                    <TabsTrigger value="ambient-sound">Ambient Sound</TabsTrigger>
+                    <TabsTrigger value="voice-note" aria-controls="plant-memory-voice-panel">
+                      Voice Note
+                    </TabsTrigger>
+                    <TabsTrigger value="ambient-sound" aria-controls="plant-memory-ambient-panel">
+                      Ambient Sound
+                    </TabsTrigger>
                   </TabsList>
+                  <TabsContent value="voice-note" id="plant-memory-voice-panel" className="mt-3 space-y-0">
+                    <AudioRecorder
+                      onRecordingComplete={handleRecordingComplete}
+                      recordingType="voice-note"
+                      maxDuration={120}
+                    />
+                  </TabsContent>
+                  <TabsContent value="ambient-sound" id="plant-memory-ambient-panel" className="mt-3 space-y-0">
+                    <AudioRecorder
+                      onRecordingComplete={handleRecordingComplete}
+                      recordingType="ambient-sound"
+                      maxDuration={120}
+                    />
+                  </TabsContent>
                 </Tabs>
-
-                <AudioRecorder
-                  onRecordingComplete={handleRecordingComplete}
-                  recordingType={recordingType}
-                  maxDuration={120}
-                />
 
                 {audioRecordings.length > 0 && (
                   <div className="text-xs text-muted-foreground">

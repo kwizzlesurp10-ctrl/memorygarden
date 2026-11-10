@@ -64,9 +64,11 @@ export function DreamPlantPanel({
   return (
     <div className="mg-garden-dock-panel max-h-[min(70vh,520px)] overflow-y-auto p-4 font-sans space-y-3">
       <div className="flex w-full items-center gap-2">
-        <span className="rounded-md border border-[#ffb877]/45 bg-[#ffb877]/18 px-2 py-0.5 font-mono text-xs font-medium text-[#ffddb0]">
-          3a
-        </span>
+        {import.meta.env.DEV ? (
+          <span className="rounded-md border border-[#ffb877]/45 bg-[#ffb877]/18 px-2 py-0.5 font-mono text-xs font-medium text-[#ffddb0]">
+            3a
+          </span>
+        ) : null}
         <h3 className="text-lg font-semibold text-[#faf4ec]">Dream a plant</h3>
         {onClose && (
           <Button

@@ -63,9 +63,25 @@ export function Onboarding({ open, onComplete }: OnboardingProps) {
   const step = steps[currentStep]
   const Icon = step.icon
 
+  const handleOpenChange = (next: boolean) => {
+    if (!next && currentStep === VIEW_STEP_INDEX) {
+      onComplete(landscapeView)
+    }
+  }
+
+  const handleEscapeKeyDown = (event: { preventDefault: () => void }) => {
+    if (currentStep === VIEW_STEP_INDEX) {
+      event.preventDefault()
+      onComplete(landscapeView)
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="max-w-lg">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="max-w-lg [&>button]:min-h-8 [&>button]:min-w-8 [&>button]:size-8"
+        onEscapeKeyDown={handleEscapeKeyDown}
+      >
         <DialogTitle className="sr-only">Onboarding</DialogTitle>
         <DialogDescription className="sr-only">Information about how to use Memory Garden.</DialogDescription>
         <AnimatePresence mode="wait">

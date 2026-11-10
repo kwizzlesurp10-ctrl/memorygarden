@@ -47,7 +47,11 @@ export function StorageShedPanel({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-6 flex items-baseline gap-3">
-          <span className="rounded-md border border-[#d8e89a]/35 bg-[#d8e89a]/12 px-2 py-0.5 font-mono text-xs text-[#d8e89a]">4a</span>
+          {import.meta.env.DEV ? (
+            <span className="rounded-md border border-[#d8e89a]/35 bg-[#d8e89a]/12 px-2 py-0.5 font-mono text-xs text-[#d8e89a]">
+              4a
+            </span>
+          ) : null}
           <h2 className="text-2xl font-semibold">Storage Shed</h2>
           <p className="text-sm italic opacity-60">your private seed store — only you can see it</p>
           <button type="button" onClick={onClose} className="ml-auto text-sm opacity-50 hover:opacity-90">✕</button>
@@ -55,7 +59,7 @@ export function StorageShedPanel({
 
         {seeds.length === 0 ? (
           <p className="rounded-xl border border-dashed border-white/25 p-8 text-center italic opacity-60">
-            The shed is empty. Dream a plant — every dreamt seed is stored here automatically.
+            The shed is empty. Dream a plant, then choose &ldquo;Plant it in the garden&rdquo; to save a seed here for later.
           </p>
         ) : (
           <>

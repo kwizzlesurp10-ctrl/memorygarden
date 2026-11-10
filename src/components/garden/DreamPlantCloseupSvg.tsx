@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import type { HybridGenome } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { buildCloseupHybrid } from '@/components/plants/hybrid-builder'
@@ -21,6 +21,8 @@ export interface DreamPlantCloseupSvgProps {
   motion: boolean
   stageLabel: string
   className?: string
+  /** When true, re-measures after mount/open (dialog visibility). */
+  dialogOpen?: boolean
   /** Test-only: draw viewBox frame inside SVG. */
   showDebugFrame?: boolean
 }
@@ -46,13 +48,14 @@ export function DreamPlantCloseupSvg({
   motion,
   stageLabel,
   className,
+  dialogOpen = true,
   showDebugFrame = false,
 }: DreamPlantCloseupSvgProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const contentRef = useRef<SVGGElement>(null)
   const [viewBox, setViewBox] = useState(() => initialViewBox(stageIndex, genome))
 
-  useLayoutEffect(() => {
+  const fitViewBoxFromDom = useCallback(() => {
     const content = contentRef.current
     if (!content) return
 
@@ -70,7 +73,48 @@ export function DreamPlantCloseupSvg({
 
     const next = fitCloseupViewBox(contentBox)
     setViewBox((prev) => (prev === next ? prev : next))
-  }, [stageIndex, genome, palette, rimStrength, motion])
+  }, [stageIndex, genome])
+
+  useLayoutEffect(() => {
+    if (!dialogOpen) return
+
+    let cancelled = false
+    let resizeObserver: ResizeObserver | undefined
+
+    const scheduleFit = () => {
+      if (cancelled) return
+      requestAnimationFrame(() => {
+        if (!cancelled) requestAnimationFrame(fitViewBoxFromDom)
+      })
+    }
+
+    const runInitialFit = async () => {
+      fitViewBoxFromDom()
+      try {
+        if (typeof document !== 'undefined' && document.fonts?.ready) {
+          await document.fonts.ready
+        }
+      } catch {
+        // ignore font loading errors
+      }
+      if (!cancelled) scheduleFit()
+    }
+
+    void runInitialFit()
+
+    const content = contentRef.current
+    const host = svgRef.current?.parentElement
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => scheduleFit())
+      if (content) resizeObserver.observe(content)
+      if (host) resizeObserver.observe(host)
+    }
+
+    return () => {
+      cancelled = true
+      resizeObserver?.disconnect()
+    }
+  }, [dialogOpen, stageIndex, genome, palette, rimStrength, motion, fitViewBoxFromDom])
 
   const frameBox = showDebugFrame ? parseViewBox(viewBox) : null
 

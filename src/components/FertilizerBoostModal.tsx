@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Sparkle, Lightning, Crown, Drop, CheckCircle } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
@@ -108,6 +108,10 @@ export function FertilizerBoostModal({
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl p-0 overflow-hidden border-2 border-primary/20 max-h-[90vh] flex flex-col">
+        <DialogTitle className="sr-only">Fertilizer boost for {memory.text?.slice(0, 40) || 'memory'}</DialogTitle>
+        <DialogDescription className="sr-only">
+          Choose a growth boost level for this memory plant.
+        </DialogDescription>
         <AnimatePresence mode="wait">
           {showSuccess ? (
             <motion.div

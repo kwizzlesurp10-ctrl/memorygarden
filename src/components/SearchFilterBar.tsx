@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useId } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MagnifyingGlass, Funnel, X } from '@phosphor-icons/react'
 import { Input } from '@/components/ui/input'
@@ -27,12 +27,25 @@ export function SearchFilterBar({
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [localQuery, setLocalQuery] = useState(searchQuery)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const filterPanelId = useId()
 
   useEffect(() => {
     queueMicrotask(() => {
       setLocalQuery(searchQuery)
     })
   }, [searchQuery])
+
+  useEffect(() => {
+    if (!isFilterOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation()
+        setIsFilterOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isFilterOpen])
 
   const handleQueryChange = (value: string) => {
     setLocalQuery(value)
@@ -82,6 +95,8 @@ export function SearchFilterBar({
           size="sm"
           onClick={() => setIsFilterOpen(!isFilterOpen)}
           className="relative"
+          aria-expanded={isFilterOpen}
+          aria-controls={filterPanelId}
         >
           <Funnel size={16} className="mr-1" />
           Filters
@@ -105,6 +120,7 @@ export function SearchFilterBar({
       <AnimatePresence>
         {isFilterOpen && (
           <motion.div
+            id={filterPanelId}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}

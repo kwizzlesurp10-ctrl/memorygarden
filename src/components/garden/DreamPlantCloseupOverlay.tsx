@@ -47,7 +47,6 @@ export function DreamPlantCloseupOverlay({
   const plantMotion = motion && !reducedMotion
   const showDebugFrame =
     typeof window !== 'undefined' && window.localStorage?.getItem('memorygarden:debug-closeup-frame') === '1'
-
   const finishClose = useCallback(() => {
     onClose()
   }, [onClose])
@@ -195,6 +194,7 @@ export function DreamPlantCloseupOverlay({
                   rimStrength={rimStrength}
                   motion={plantMotion}
                   stageLabel={stage}
+                  dialogOpen={open}
                   showDebugFrame={showDebugFrame}
                   className="max-h-full max-w-full"
                 />

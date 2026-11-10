@@ -13,7 +13,7 @@ describe('open-world walk wiring', () => {
     expect(app).toContain("viewMode === 'walk'")
     expect(app).toContain('OpenWorldGarden')
     expect(app).toContain('onEnterWalk')
-    expect(header).toContain("value=\"walk\"")
+    expect(header).toContain("value: 'walk'")
     expect(header).toContain('Walk the garden')
   })
 
