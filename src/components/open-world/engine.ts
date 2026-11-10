@@ -72,6 +72,7 @@ export class OpenWorldEngine {
   private resizeObserver: ResizeObserver | null = null
 
   private cc0Scenery: Cc0SceneryLayer | null = null
+  private captureBackdrop = false
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -123,7 +124,10 @@ export class OpenWorldEngine {
 
     this.rebuildTerrain()
     this.rebuildPlants()
-    if (!this.failed) {
+    const skipCc0 =
+      typeof window !== 'undefined' &&
+      sessionStorage.getItem('mg:walk-capture-baseline') === '1'
+    if (!this.failed && !skipCc0) {
       this.cc0Scenery = new Cc0SceneryLayer(this.scene, this.world, this.palette, {
         reducedMotion: opts.reducedMotion,
         coarsePointer: opts.coarsePointer ?? false,
@@ -222,6 +226,7 @@ export class OpenWorldEngine {
     if (this.scene.fog instanceof THREE.Fog) {
       this.scene.fog.color.set(palette.sky[2] ?? '#20123a')
     }
+    if (this.captureBackdrop) this.applyCaptureFog()
   }
 
   setMemories(memories: Memory[]): void {
@@ -250,8 +255,34 @@ export class OpenWorldEngine {
     this.applyCamera()
   }
 
+  setWalkCaptureBackdrop(active: boolean): void {
+    if (this.captureBackdrop === active) return
+    this.captureBackdrop = active
+    this.plantsRoot.visible = !active
+    if (this.terrain) {
+      const children = this.terrain.root.children
+      for (let i = 0; i < children.length; i++) {
+        children[i].visible = !active || i === 0
+      }
+    }
+    if (this.fireflies) this.fireflies.visible = !active && !this.reducedMotion
+    if (active) this.applyCaptureFog()
+    else if (this.scene.fog instanceof THREE.Fog) {
+      this.scene.fog.near = 18
+      this.scene.fog.far = 78
+    }
+  }
+
+  private applyCaptureFog(): void {
+    if (!(this.scene.fog instanceof THREE.Fog)) return
+    this.scene.fog.near = 8
+    this.scene.fog.far = 52
+  }
+
   async setCc0Showcase(modelId: Cc0ModelId | null): Promise<void> {
+    this.setWalkCaptureBackdrop(modelId !== null)
     await this.cc0Scenery?.setShowcase(modelId)
+    this.applyCamera()
   }
 
   dispose(): void {

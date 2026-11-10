@@ -176,3 +176,17 @@ export const CC0_WALK_CAPTURE_POSE = {
   yaw: 0,
   pitch: -0.12,
 } as const
+
+/** Single-model turntable anchor — in front of the walk capture camera. */
+export const CC0_SHOWCASE_ANCHOR = {
+  x: 1.9,
+  z: 31.35,
+  yaw: 0.22,
+} as const
+
+export const CC0_SHOWCASE_CAPTURE_POSE = {
+  x: CC0_WALK_CAPTURE_POSE.x,
+  z: CC0_WALK_CAPTURE_POSE.z,
+  yaw: CC0_WALK_CAPTURE_POSE.yaw,
+  pitch: -0.18,
+} as const

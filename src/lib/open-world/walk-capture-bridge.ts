@@ -16,6 +16,13 @@ export interface WalkCaptureBridge {
 }
 
 export const WALK_CAPTURE_SESSION_KEY = 'mg:walk-capture'
+export const WALK_CAPTURE_BASELINE_KEY = 'mg:walk-capture-baseline'
+
+export function isWalkCaptureBaseline(): boolean {
+  return (
+    typeof window !== 'undefined' && sessionStorage.getItem(WALK_CAPTURE_BASELINE_KEY) === '1'
+  )
+}
 
 export function isWalkCaptureSession(): boolean {
   return typeof window !== 'undefined' && sessionStorage.getItem(WALK_CAPTURE_SESSION_KEY) === '1'

@@ -2,7 +2,12 @@ import * as THREE from 'three'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { CC0_MODELS, CC0_MODEL_BY_ID, type Cc0ModelId } from '@/lib/open-world/cc0-catalog'
 import { createDefaultCc0Loader, loadCc0Template, retintCc0Object, type Cc0Template } from '@/lib/open-world/cc0-gltf-loader'
-import { buildCc0Placements, cc0TierForDevice, type Cc0Placement } from '@/lib/open-world/cc0-placement'
+import {
+  buildCc0Placements,
+  CC0_SHOWCASE_ANCHOR,
+  cc0TierForDevice,
+  type Cc0Placement,
+} from '@/lib/open-world/cc0-placement'
 import type { GardenWorld } from '@/lib/open-world/types'
 
 export interface Cc0SceneryOptions {
@@ -55,11 +60,13 @@ export class Cc0SceneryLayer {
       this.templates.set(modelId, template)
     }
     const template = this.templates.get(modelId)
-    if (!template) return
+    const def = CC0_MODEL_BY_ID[modelId]
+    if (!template || !def) return
     const clone = template.group.clone(true)
-    clone.position.set(0, 0, 0)
-    clone.rotation.y = 0.4
-    clone.scale.multiplyScalar(1.2)
+    clone.position.set(CC0_SHOWCASE_ANCHOR.x, 0, CC0_SHOWCASE_ANCHOR.z)
+    clone.rotation.y = CC0_SHOWCASE_ANCHOR.yaw
+    const fill = Math.min(2.85, Math.max(1.35, 4.2 / def.targetHeight))
+    clone.scale.multiplyScalar(fill)
     this.root.add(clone)
     this.singles.push(clone)
   }

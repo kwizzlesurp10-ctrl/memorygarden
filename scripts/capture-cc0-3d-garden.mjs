@@ -5,6 +5,7 @@ import { chromium, devices } from 'playwright'
 const baseUrl = process.env.PREVIEW_URL || 'http://127.0.0.1:4173'
 const outDir = process.env.ARTIFACT_DIR || '/opt/cursor/artifacts'
 const prefix = process.env.SCREENSHOT_PREFIX || 'after'
+const baseline = process.env.WALK_CAPTURE_BASELINE === '1'
 mkdirSync(outDir, { recursive: true })
 
 const WALK_CAPTURE_POSE = { x: 1.2, z: 34.5, yaw: 0, pitch: -0.12 }
@@ -53,8 +54,9 @@ async function prepareContext(browser, viewport, fakeHour) {
     colorScheme: 'dark',
   })
   await context.addInitScript(
-    ({ memories, hour, user }) => {
+    ({ memories, hour, user, baselineCapture }) => {
       sessionStorage.setItem('mg:walk-capture', '1')
+      if (baselineCapture) sessionStorage.setItem('mg:walk-capture-baseline', '1')
       localStorage.setItem('memorygarden:preferences', JSON.stringify({ hasCompletedOnboarding: true }))
       localStorage.setItem('memorygarden:user', JSON.stringify(user))
       localStorage.setItem(`memorygarden:${user.id}:memories`, JSON.stringify(memories))
@@ -73,7 +75,7 @@ async function prepareContext(browser, viewport, fakeHour) {
         }
       }
     },
-    { memories: seedMemories, hour: fakeHour, user: demoUser },
+    { memories: seedMemories, hour: fakeHour, user: demoUser, baselineCapture: baseline },
   )
   await context.route('**/api/**', (route) =>
     route.fulfill({ status: 503, body: '{}', contentType: 'application/json' }),
@@ -83,7 +85,7 @@ async function prepareContext(browser, viewport, fakeHour) {
 
 async function applyCaptureFraming(page) {
   await page.waitForFunction(() => window.__mgWalkCapture?.ready?.(), { timeout: 60_000 }).catch(() => {})
-  if (prefix === 'after') {
+  if (prefix === 'after' && !baseline) {
     await page.waitForFunction(() => window.__cc0SceneryReady === true, { timeout: 60_000 }).catch(() => {})
     await page.evaluate(async () => {
       await window.__mgWalkCapture?.showcaseModel(null)
