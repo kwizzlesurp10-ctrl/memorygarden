@@ -23,7 +23,8 @@
         "tailwind:watch": "tailwindcss -i ./src/styles/tailwind.css -o ./dist/tailwind.css --watch"
     },
     "dependencies": {
-        "@heroicons/react": "^2.2.0",
+        "@fontsource/crimson-pro": "^5.3.0",
+        "@fontsource/space-grotesk": "^5.3.0",
         "@hookform/resolvers": "^5.4.0",
         "@neondatabase/auth": "0.7.0-beta",
         "@neondatabase/auth-ui": "0.4.0-beta",

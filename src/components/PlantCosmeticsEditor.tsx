@@ -72,9 +72,15 @@ export function PlantCosmeticsEditor({
     }
   }
 
-  const paletteItems = UNLOCKABLE_ITEMS.filter(i => i.type === 'palette')
-  const adornmentItems = UNLOCKABLE_ITEMS.filter(i => i.type === 'adornment')
-  const patternItems = UNLOCKABLE_ITEMS.filter(i => i.type === 'pattern')
+  const paletteItems = UNLOCKABLE_ITEMS.filter(
+    (i) => i.type === 'palette' && state.unlockedPalettes.includes(i.id as PaletteId),
+  )
+  const adornmentItems = UNLOCKABLE_ITEMS.filter(
+    (i) => i.type === 'adornment' && state.unlockedAdornments.includes(i.id as AdornmentId),
+  )
+  const patternItems = UNLOCKABLE_ITEMS.filter(
+    (i) => i.type === 'pattern' && state.unlockedPatterns.includes(i.id as PatternId),
+  )
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -127,7 +133,7 @@ export function PlantCosmeticsEditor({
 
           <Separator />
 
-          {/* Palette selection */}
+          {paletteItems.length > 0 ? (
           <div>
             <Label className="mb-2 block text-sm font-semibold text-muted-foreground uppercase tracking-wide">
               Color Palette
@@ -171,10 +177,11 @@ export function PlantCosmeticsEditor({
               })}
             </div>
           </div>
+          ) : null}
 
-          <Separator />
+          {paletteItems.length > 0 && (patternItems.length > 0 || adornmentItems.length > 0) ? <Separator /> : null}
 
-          {/* Pattern selection */}
+          {patternItems.length > 0 ? (
           <div>
             <Label className="mb-2 block text-sm font-semibold text-muted-foreground uppercase tracking-wide">
               Pattern
@@ -204,10 +211,11 @@ export function PlantCosmeticsEditor({
               })}
             </div>
           </div>
+          ) : null}
 
-          <Separator />
+          {patternItems.length > 0 && adornmentItems.length > 0 ? <Separator /> : null}
 
-          {/* Adornment selection */}
+          {adornmentItems.length > 0 ? (
           <div>
             <Label className="mb-2 block text-sm font-semibold text-muted-foreground uppercase tracking-wide">
               Adornment
@@ -243,6 +251,7 @@ export function PlantCosmeticsEditor({
               })}
             </div>
           </div>
+          ) : null}
         </div>
 
         <div className="flex gap-3 pt-2">

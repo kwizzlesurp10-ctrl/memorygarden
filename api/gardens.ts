@@ -239,14 +239,21 @@ export default async function handler(req: Request): Promise<Response> {
       // Get sample memories for each garden (up to 3)
       const gardensWithSamples = await Promise.all(
         gardens.map(async (garden) => {
-          const samples = await sql`
+          try {
+            if (!isValidUuid(String(garden.id))) {
+              return { ...garden, sample_memories: [] }
+            }
+            const samples = await sql`
             SELECT id, photo_url, text, contributor_name, plant_stage, plant_variety, emotional_tone
             FROM garden_memories 
             WHERE garden_id = ${garden.id}::uuid
             ORDER BY visit_count DESC
             LIMIT 3
           `
-          return { ...garden, sample_memories: samples }
+            return { ...garden, sample_memories: samples }
+          } catch {
+            return { ...garden, sample_memories: [] }
+          }
         })
       )
       

@@ -4,6 +4,11 @@ import { ErrorBoundary } from "react-error-boundary";
 import App from './App.tsx'
 import { ErrorFallback } from './ErrorFallback.tsx'
 
+import '@fontsource/crimson-pro/400.css'
+import '@fontsource/crimson-pro/600.css'
+import '@fontsource/space-grotesk/400.css'
+import '@fontsource/space-grotesk/500.css'
+import '@fontsource/space-grotesk/700.css'
 import "./main.css"
 import "./styles/theme.css"
 import "./index.css"
