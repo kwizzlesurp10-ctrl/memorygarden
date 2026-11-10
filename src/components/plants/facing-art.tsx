@@ -4,7 +4,12 @@ import type { HybridPlantPalette } from './seeded-builders'
 import type { SeededVariety } from './types'
 import { lerpHex } from '@/lib/garden/color'
 import { STARTER_MUSHROOM_STEM_W } from '@/lib/garden/starter-mushroom-scale'
-import { plantGroundCollar } from './plant-surface-detail'
+import { plantGroundCollar, plantGroundCollarSubtle } from './plant-surface-detail'
+
+/** Scaled scenic elder tree — same art at every growth stage, sized up through elder. */
+export const TREE_PROGRESSION_FACE_SCALE: readonly number[] = [
+  0, 0.38, 0.52, 0.68, 0.88, 1.08, 1.38, 1.72,
+]
 
 export function applyPlantFacing(
   variety: SeededVariety,
@@ -16,8 +21,10 @@ export function applyPlantFacing(
   rimFromLeft = true,
   geneticsSeed?: string,
 ): ReactNode[] {
-  if (variety === 'tree' && stageIndex >= 7 && geneticsSeed?.startsWith('starter-elder-')) {
-    return [e('g', { key: 'elder-facing' }, buildElderTreeFacing(facing, C, rim, 1, rimFromLeft))]
+  if (variety === 'tree' && stageIndex >= 1) {
+    const scenicElder = geneticsSeed?.startsWith('starter-elder-')
+    const faceScale = scenicElder ? 1 : TREE_PROGRESSION_FACE_SCALE[stageIndex] ?? 1.12
+    return [e('g', { key: 'tree-facing-prog' }, buildElderTreeFacing(facing, C, rim, faceScale, rimFromLeft))]
   }
   if (variety === 'mushroom' && stageIndex >= 3) {
     return [e('g', { key: 'mush-cluster' }, buildReadableMushroomCluster(facing, C, rim, stageIndex, geneticsSeed))]
@@ -622,10 +629,9 @@ function buildElderTreeFacing(
     }
   }
 
-  out.unshift(plantGroundCollar(C, rim, 34, 5.5))
+  out.unshift(plantGroundCollarSubtle(C, rim, 26 * scale))
   out.push(
-    e('ellipse', { key: 'base-shadow', cx: 0, cy: 6, rx: 34, ry: 7.5, fill: C.rim, opacity: 0.55 }),
-    e('ellipse', { key: 'root-mound', cx: 0, cy: 2.5, rx: 22, ry: 4, fill: C.bank ?? C.silSoft, opacity: 0.55 }),
+    e('ellipse', { key: 'base-shadow', cx: 0, cy: 5.8, rx: 22 * scale, ry: 4.2 * scale, fill: C.rim, opacity: 0.11 }),
   )
 
   if (scale !== 1) {
@@ -840,8 +846,6 @@ export function buildReadableMushroomCluster(
     { mx: -16, my: 4.5, sc: 0.58, tilt: 8 },
   ]
 
-  out.push(plantGroundCollar(C, rim, 26 + memberCount * 4, 4.8))
-
   for (let i = 0; i < memberCount; i++) {
     const { mx, my, sc, tilt } = layouts[i] ?? layouts[layouts.length - 1]
     const capKind = i === 0 ? primary.kind : secondaryKinds[i % secondaryKinds.length]
@@ -854,6 +858,14 @@ export function buildReadableMushroomCluster(
         { key: `mc${i}`, transform: `translate(${mx} ${my})` },
         oneMushroom(`m${i}`, stemW, capKind, rim, C, lit, spots, tilt),
       ),
+    )
+  }
+
+  if (stage >= 3) {
+    const bedW = 12 + Math.min(stage, 7) * 2.2
+    out.unshift(plantGroundCollarSubtle(C, rim, bedW))
+    out.push(
+      e('ellipse', { key: 'mc-shadow', cx: 2, cy: 5.2, rx: bedW * 0.62, ry: bedW * 0.14, fill: C.rim, opacity: 0.1 }),
     )
   }
 

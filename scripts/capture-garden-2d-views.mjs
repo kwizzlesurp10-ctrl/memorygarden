@@ -86,6 +86,45 @@ try {
       })
     }
 
+    if (vp.label === 'desktop-1440') {
+      const demoUser = {
+        id: '11111111-1111-4111-8111-111111111111',
+        login: 'tree-stage-demo',
+        avatarUrl: '',
+      }
+      const stages = ['seed', 'sprout', 'seedling', 'young', 'bud', 'bloom', 'mature', 'elder']
+      const memories = stages.map((plantStage, i) => ({
+        id: `tree-stage-${plantStage}`,
+        photoUrl:
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        text: `Tree at ${plantStage}`,
+        date: '2025-06-01',
+        plantedAt: '2025-06-01T12:00:00.000Z',
+        position: { x: 140 + i * 128, y: 442 },
+        emotionalTone: 'peaceful',
+        plantStage,
+        plantVariety: 'tree',
+        visitCount: 4,
+        reflections: [],
+        audioRecordings: [],
+      }))
+      await page.evaluate(
+        ({ user, mems, p }) => {
+          localStorage.setItem('memorygarden:user', JSON.stringify(user))
+          localStorage.setItem(`memorygarden:${user.id}:memories`, JSON.stringify(mems))
+          localStorage.setItem('memorygarden:preferences', JSON.stringify({ ...p, gardenLandscapeView: 'pond' }))
+        },
+        { user: demoUser, mems: memories, p: prefs },
+      )
+      await page.reload({ waitUntil: 'networkidle' })
+      await page.waitForTimeout(1200)
+      for (let i = 0; i < 3; i++) await page.keyboard.press('Escape')
+      await page.getByTestId('garden-scene-wrap').waitFor({ state: 'visible', timeout: 20_000 })
+      await page.screenshot({
+        path: resolve(outDir, `${prefix}-garden-2d-tree-memories-pond-${vp.label}.png`),
+      })
+    }
+
     await context.close()
   }
 } finally {

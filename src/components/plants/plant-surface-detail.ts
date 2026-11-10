@@ -66,6 +66,31 @@ export function canopyShimmerStyle(motion: boolean, phase: number): { animation?
   return { animation: `mgPulse ${3.6 + (phase % 5) * 0.4}s ease-in-out ${phase * 0.3}s infinite alternate` }
 }
 
+/** Soft soil bed for close-ups (no bright rims or grass tufts). */
+export function plantGroundCollarSubtle(C: HybridPlantPalette, rim: number, width = 14): ReactNode {
+  const soil = C.bank ?? C.rim
+  return e(
+    'g',
+    { key: 'ground-collar-subtle' },
+    e('ellipse', {
+      cx: 0,
+      cy: 4.4,
+      rx: width * 0.92,
+      ry: width * 0.2,
+      fill: C.rim,
+      opacity: 0.09 * Math.max(0.35, rim),
+    }),
+    e('ellipse', {
+      cx: 0,
+      cy: 2.6,
+      rx: width * 0.62,
+      ry: width * 0.13,
+      fill: soil,
+      opacity: 0.58,
+    }),
+  )
+}
+
 /** Soil mound + contact shadow so stems read as planted at y=0 (not floating). */
 export function plantGroundCollar(
   C: HybridPlantPalette,
@@ -73,50 +98,9 @@ export function plantGroundCollar(
   width = 11,
   depth = 3.2,
 ): ReactNode {
-  const soil = C.bank ?? C.silSoft
-  const grass = C.hills?.[1] ?? C.sil
-  return e(
-    'g',
-    { key: 'ground-collar' },
-    e('ellipse', {
-      cx: 0,
-      cy: 4.2,
-      rx: width * 0.92,
-      ry: depth * 0.72,
-      fill: C.rim,
-      opacity: 0.5,
-    }),
-    e('ellipse', {
-      cx: 0,
-      cy: 2.4,
-      rx: width * 0.68,
-      ry: depth * 0.55,
-      fill: soil,
-      opacity: 0.92,
-      stroke: C.rim,
-      strokeOpacity: 0.35 * rim,
-      strokeWidth: 0.55,
-    }),
-    e('path', {
-      d: `M ${-width * 0.52} 1.4 Q 0 ${-depth * 0.55} ${width * 0.52} 1.4 Q 0 ${depth * 1.05} ${-width * 0.52} 1.4 Z`,
-      fill: soil,
-      stroke: C.rim,
-      strokeOpacity: 0.42 * rim,
-      strokeWidth: 0.6,
-      opacity: 0.88,
-    }),
-    ...([-0.42, 0, 0.38] as const).map((t, i) =>
-      e('path', {
-        key: `grass-${i}`,
-        d: `M ${t * width} 0.8 Q ${t * width - 2.2} -5.5 ${t * width + 0.4} -9.5`,
-        stroke: grass,
-        strokeWidth: 1.35,
-        fill: 'none',
-        strokeLinecap: 'round',
-        opacity: 0.85,
-      }),
-    ),
-  )
+  void rim
+  void depth
+  return plantGroundCollarSubtle(C, 0.5, width)
 }
 
 /** Flat pad where a vertical stem meets the soil line — improves joint continuity. */

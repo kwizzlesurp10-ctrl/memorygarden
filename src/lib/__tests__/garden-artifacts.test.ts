@@ -38,7 +38,7 @@ interface VarietyStageLayout {
 
 const VARIETY_STAGE_LAYOUT: Record<SeededVariety, VarietyStageLayout> = {
   flower: { rowHeight: 228, anchorY: 132, scale: 0.98 },
-  tree: { rowHeight: 280, anchorY: 228, scale: 0.5 },
+  tree: { rowHeight: 328, anchorY: 278, scale: 0.52 },
   herb: { rowHeight: 192, anchorY: 118, scale: 0.98 },
   wildflower: { rowHeight: 196, anchorY: 114, scale: 0.95 },
   mushroom: { rowHeight: 168, anchorY: 100, scale: 1 },
@@ -203,5 +203,57 @@ describe('garden visual artifacts', () => {
 
     const gridSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${gridW}" height="${gridH}" viewBox="0 0 ${gridW} ${gridH}">${gridRows}</svg>`
     writeSvgAndPng('plant-stages-multi-variety-grid', gridSvg)
+
+    for (const variety of ['tree', 'mushroom'] as const) {
+      const layout = VARIETY_STAGE_LAYOUT[variety]
+      const row = PLANT_STAGES_ORDER.map((_, index) =>
+        stageCell(index, variety, palette, layout),
+      ).join('')
+      const rowSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${gridW}" height="${layout.rowHeight}" viewBox="0 0 ${gridW} ${layout.rowHeight}"><text x="4" y="14" font-size="11" fill="#3d3024" font-family="system-ui,sans-serif" font-weight="600">${variety}</text>${row}</svg>`
+      writeSvgAndPng(`plant-stages-${variety}-row`, rowSvg)
+    }
+
+    const treeByStagePlants = PLANT_STAGES_ORDER.map((stage, i) => {
+      const mem = { x: 150 + i * 128, y: 442 }
+      const pos = projectMemoryToSceneWorld(mem, 'pond')
+      return h(
+        'g',
+        { key: `tree-${stage}`, transform: `translate(${pos.x} ${pos.y}) scale(${pos.scale * 0.92})` },
+        h(SeededPlantSvg, {
+          variety: 'tree',
+          stage,
+          geneticsSeed: `artifact-tree-${stage}`,
+          palette,
+          rimStrength: 0.65,
+          motion: false,
+          scale: 1,
+          facing: pos.facing,
+        }),
+      )
+    })
+    const treeMemBody = renderToStaticMarkup(
+      h(GardenSceneSvg, {
+        palette,
+        sceneKey: 'pond-trees',
+        gardenSeed: 7,
+        rimStrength: 0.6,
+        motion: false,
+        landscapeView: 'pond',
+        shedStyle: 'storybook',
+        planted: [],
+        candles: [],
+        memoryPlants: treeByStagePlants,
+        starterDecor: undefined,
+      }),
+    )
+    const treeMemWrapped = treeMemBody.includes('xmlns=')
+      ? treeMemBody
+      : treeMemBody.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')
+    const treeMemSvgPath = resolve(outDir, 'garden-tree-memories-pond.svg')
+    writeFileSync(treeMemSvgPath, treeMemWrapped, 'utf8')
+    const treeMemPng = new Resvg(readFileSync(treeMemSvgPath, 'utf8'), {
+      fitTo: { mode: 'width', value: 1440 },
+    }).render().asPng()
+    writeFileSync(resolve(outDir, 'garden-tree-memories-pond.png'), treeMemPng)
   })
 })
