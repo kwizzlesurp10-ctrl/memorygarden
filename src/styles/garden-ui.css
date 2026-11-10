@@ -47,4 +47,17 @@
   .mg-skeleton {
     @apply animate-pulse rounded-lg bg-muted/60;
   }
+
+  .garden-scene-svg {
+    display: block;
+  }
+
+  .garden-scene-plant:focus {
+    outline: none;
+  }
+
+  .garden-scene-plant:focus-visible {
+    outline: 2px solid color-mix(in oklch, #ffb877 85%, white);
+    outline-offset: 3px;
+  }
 }

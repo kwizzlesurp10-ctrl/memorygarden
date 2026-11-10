@@ -942,9 +942,10 @@ export function GardenSceneSvg({
       preserveAspectRatio="xMidYMid slice"
       width={SCENE_W}
       height={SCENE_H}
-      className="block h-auto max-h-full w-full max-w-full"
+      className="garden-scene-svg block h-full w-full min-h-0 max-w-full"
       style={{ display: 'block' }}
-      aria-hidden
+      role="group"
+      aria-label="Garden landscape with memory plants"
     >
       <GardenSkyLayer
         ref={layerRefs?.sky}

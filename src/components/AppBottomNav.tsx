@@ -41,7 +41,7 @@ export function AppBottomNav({ viewMode, onViewModeChange }: AppBottomNavProps) 
               onClick={() => onViewModeChange(value)}
               className={cn(
                 'flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1 text-[11px] font-medium',
-                selected ? 'text-primary' : 'text-muted-foreground',
+                selected ? 'text-primary' : 'text-foreground/72',
               )}
             >
               <Icon size={22} aria-hidden className="flex-shrink-0" />

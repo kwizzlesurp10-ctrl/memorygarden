@@ -1465,7 +1465,7 @@ function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="w-full h-full"
+                className="h-full min-h-0 w-full"
               >
                 <SectionErrorBoundary label="garden view">
                   <GardenCanvas
