@@ -12,7 +12,7 @@ const TREE_CANOPY_HALF_W = 50
 const TREE_CANOPY_HEIGHT = 104
 
 const SCENE_MARGIN_X: Record<GardenLandscapeView, { left: number; right: number }> = {
-  pond: { left: 98, right: 118 },
+  pond: { left: 102, right: 148 },
   lakeside: { left: 88, right: 104 },
   meadow: { left: 82, right: 96 },
   garden_path: { left: 108, right: 88 },
@@ -41,8 +41,8 @@ function treeCanopyTopY(baseY: number, drawScale: number, stageIndex: number): n
 function cottageKeepOut(view: GardenLandscapeView): { x0: number; x1: number } | null {
   const shed = projectWorldToScene(WORLD_COTTAGE, view, { objectYaw: WORLD_COTTAGE.yaw, layer: 'near' })
   const half = (shed.facing === 'front' || shed.facing === 'back' ? 54 : 58) * shed.scale * 0.62
-  const pad = view === 'pond' ? 36 : 28
-  return { x0: shed.x - half - pad, x1: shed.x + half + pad * 0.35 }
+  const pad = view === 'pond' ? 54 : 32
+  return { x0: shed.x - half - pad, x1: shed.x + half + pad * 0.4 }
 }
 
 export interface ResolvedMemoryScenePlacement {
@@ -131,7 +131,7 @@ function packMemoryTrees(items: TreeLayoutItem[], view: GardenLandscapeView): vo
   if (items.length === 1) return
   items.sort((a, b) => a.order - b.order)
   const margin = SCENE_MARGIN_X[view]
-  const gapFactor = 0.88
+  const gapFactor = 1.04
   const cottage = cottageKeepOut(view)
 
   let rowMul = 1
@@ -159,8 +159,23 @@ function packMemoryTrees(items: TreeLayoutItem[], view: GardenLandscapeView): vo
     )
     const cottageOk = items.every((t) => !treeBlocksCottage(t.x, t.halfW, cottage))
 
-    if (rightEdge <= SCENE_W && hudOk && cottageOk) break
-    rowMul *= 0.94
+    if (cottage && !cottageOk) {
+      let maxShift = 0
+      for (const t of items) {
+        if (treeBlocksCottage(t.x, t.halfW, cottage)) {
+          maxShift = Math.max(maxShift, t.x + t.halfW - cottage.x0 + 14)
+        }
+      }
+      if (maxShift > 0) {
+        for (const t of items) t.x -= maxShift
+      }
+    }
+
+    const cottageOkAfter = items.every((t) => !treeBlocksCottage(t.x, t.halfW, cottage))
+    const rightAfter = items[items.length - 1].x + items[items.length - 1].halfW + margin.right
+
+    if (rightAfter <= SCENE_W && hudOk && cottageOkAfter) break
+    rowMul *= 0.93
   }
 }
 
@@ -178,9 +193,13 @@ export function layoutMemoryPlantsForView(
     const stageIndex = plantStageToIndex(memory.plantStage)
     const drawScale = memoryPlantDrawScale(memory.plantStage, proj.scale)
 
-    if (variety === 'tree' && stageIndex >= 1) {
-      const capped = capTreeDrawScale(drawScale, stageIndex, proj.x, proj.y, view)
-      const halfW = treeFootprintHalfW(capped.plantScale, stageIndex)
+    if (variety === 'tree') {
+      const capped =
+        stageIndex >= 1
+          ? capTreeDrawScale(drawScale, stageIndex, proj.x, proj.y, view)
+          : { plantScale: drawScale, x: proj.x }
+      const halfW =
+        stageIndex >= 1 ? treeFootprintHalfW(capped.plantScale, stageIndex) : 9 * capped.plantScale
       trees.push({
         id: memory.id,
         order: treeOrder++,
