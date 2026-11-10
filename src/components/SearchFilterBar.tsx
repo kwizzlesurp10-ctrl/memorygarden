@@ -78,7 +78,7 @@ export function SearchFilterBar({
             placeholder="Search memories..."
             value={localQuery}
             onChange={(e) => handleQueryChange(e.target.value)}
-            className="pl-9 pr-8 h-9 bg-background/50"
+            className="pl-9 pr-8 h-9 bg-background/50 placeholder:text-foreground/65"
           />
           {localQuery && (
             <button

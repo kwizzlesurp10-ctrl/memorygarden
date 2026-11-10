@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import type { GardenLandscapeView, GardenStarterDecor, Memory, Season, StorageShedData, ShedSeed, PlantedHybrid } from '@/lib/types'
 import { resolveGardenLandscapeView } from '@/lib/garden/landscape-view'
 import { layoutMemoryPlantsForView } from '@/lib/garden/memory-scene-layout'
+import { frameMemoryPlantsForMobile } from '@/lib/garden/garden-mobile-framing'
 import { GardenViewPicker } from '@/components/garden/GardenViewPicker'
 import { WeatherEffects } from './WeatherEffects'
 import { GardenClusterPaths } from './GardenClusterPaths'
@@ -31,6 +32,7 @@ import { getPlantOfWeek, hasWeeklySeedForWeek } from '@/lib/garden/plant-of-week
 import { loadShed, saveShed } from '@/lib/garden/shed-storage'
 import { getLocalUser } from '@/lib/local-user'
 import { toast } from 'sonner'
+import { memoryPlantA11yLabel } from '@/lib/garden-helpers'
 
 const RIM_STRENGTH = 0.6
 const GARDEN_SEED = 7
@@ -126,6 +128,16 @@ export function GardenCanvas({
       h: Math.max(1, rect.height),
     }
   }, [])
+
+  useEffect(() => {
+    const wrap = sceneWrapRef.current
+    if (!wrap) return
+    const sync = () => setSceneSize(measureScene())
+    sync()
+    const ro = new ResizeObserver(() => sync())
+    ro.observe(wrap)
+    return () => ro.disconnect()
+  }, [measureScene, landscapeView, memories.length])
 
   const seedLensAtCenter = useCallback(() => {
     const size = measureScene()
@@ -233,29 +245,53 @@ export function GardenCanvas({
     [memories, resolvedView],
   )
 
+  const mobileFraming = useMemo(
+    () => frameMemoryPlantsForMobile(memorySceneLayout, memories, sceneSize),
+    [memorySceneLayout, memories, sceneSize],
+  )
+
+  const activeLayout = mobileFraming?.layout ?? memorySceneLayout
+
   const memoryPlants = useMemo(() => (
     [...memories]
       .map((memory) => {
-      const pos = memorySceneLayout.get(memory.id)
+      const pos = activeLayout.get(memory.id)
       if (!pos) return null
       const isDimmed = highlightedMemoryIds !== null && !highlightedMemoryIds.has(memory.id)
       const isGrowing = growingMemories.has(memory.id)
       const sc = pos.plantScale
+
+      const openMemory = () => {
+        if (lensOn) {
+          setDetailMemory(memory)
+        } else if (!draggingMemory) {
+          onMemoryClick(memory)
+        }
+      }
 
       return {
         depth: pos.depth,
         node: (
         <g
           key={memory.id}
+          role="button"
+          tabIndex={isDimmed ? -1 : 0}
+          aria-label={`Memory: ${memoryPlantA11yLabel(memory)}`}
+          aria-disabled={isDimmed || undefined}
           transform={`translate(${pos.x} ${pos.y})`}
           opacity={isDimmed ? 0.15 : 1}
+          className="garden-scene-plant"
           style={{ pointerEvents: isDimmed ? 'none' : 'auto', cursor: lensOn ? 'pointer' : 'grab' }}
           onClick={(e) => {
             e.stopPropagation()
-            if (lensOn) {
-              setDetailMemory(memory)
-            } else if (!draggingMemory) {
-              onMemoryClick(memory)
+            openMemory()
+          }}
+          onKeyDown={(e) => {
+            if (isDimmed) return
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              e.stopPropagation()
+              openMemory()
             }
           }}
         >
@@ -293,7 +329,7 @@ export function GardenCanvas({
       .filter((item): item is NonNullable<typeof item> => item !== null)
       .sort((a, b) => a.depth - b.depth)
       .map((item) => item.node)
-  ), [memories, memorySceneLayout, highlightedMemoryIds, growingMemories, lensOn, palette, motion, draggingMemory, onMemoryClick])
+  ), [memories, activeLayout, highlightedMemoryIds, growingMemories, lensOn, palette, motion, draggingMemory, onMemoryClick])
 
   const onLensMove = useCallback((e: React.PointerEvent) => {
     if (!lensOn || !sceneWrapRef.current) return
@@ -314,7 +350,7 @@ export function GardenCanvas({
   }, [lensOn, lensPos, lensZoom, sceneSize])
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-[#0d0913]">
+    <div className="relative h-full min-h-0 w-full overflow-hidden bg-[#0d0913]">
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {searchHasNoMatches
           ? 'No memories match your search or filters in the garden view.'
@@ -342,7 +378,7 @@ export function GardenCanvas({
 
       {onLandscapeViewChange ? (
         <GardenViewPicker
-          className="absolute z-40 left-3 top-3 max-w-[min(100%,420px)]"
+          className="absolute left-3 top-3 z-40 max-w-[min(100%,calc(100%-5.5rem))] sm:max-w-[min(100%,420px)]"
           value={landscapeView}
           onChange={onLandscapeViewChange}
         />
@@ -351,6 +387,7 @@ export function GardenCanvas({
       <GardenPlantAccessibilityLayer
         memories={memories}
         landscapeView={landscapeView}
+        plantLayout={activeLayout}
         highlightedMemoryIds={highlightedMemoryIds}
         onMemoryClick={onMemoryClick}
       />
@@ -376,7 +413,7 @@ export function GardenCanvas({
           type="button"
           aria-label="Walk through the garden"
           onClick={onEnterWalk}
-          className="absolute z-40 flex h-[54px] w-[54px] items-center justify-center rounded-full border border-[#f0e7da]/30 bg-black/40 text-[#f0e7da] backdrop-blur-sm hover:bg-black/55"
+          className="absolute z-40 hidden h-[54px] w-[54px] items-center justify-center rounded-full border border-[#f0e7da]/35 bg-black/55 text-[#f5efe6] backdrop-blur-sm hover:bg-black/65 sm:flex"
           style={{ top: 12, right: 74 }}
           data-testid="enter-walk-button"
         >
@@ -394,8 +431,7 @@ export function GardenCanvas({
           aria-label={lensOn ? 'Disable magnifying lens' : 'Enable magnifying lens'}
           aria-pressed={lensOn}
           onClick={toggleLens}
-          className="absolute z-40 flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-[#f0e7da]/30 bg-black/40 text-[#f0e7da] backdrop-blur-sm hover:bg-black/55 sm:h-[54px] sm:w-[54px]"
-          style={{ top: 12, right: 12 }}
+          className="absolute right-3 top-3 z-40 flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-[#f0e7da]/35 bg-black/55 text-[#f5efe6] backdrop-blur-sm hover:bg-black/65 sm:right-3 sm:top-3 sm:h-[54px] sm:w-[54px]"
         >
           <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
             <circle cx={10} cy={10} r={6.5} />
@@ -432,7 +468,7 @@ export function GardenCanvas({
 
       <div
         ref={frameRef}
-        className="relative w-full h-full flex items-center justify-center"
+        className="relative flex h-full min-h-0 w-full items-stretch justify-center"
         // Perspective only when parallax is active — avoid 3D tilt while loupe tracking.
         style={{ perspective: motion && !lensOn ? '1100px' : undefined }}
         onPointerMove={onLensMove}
@@ -443,7 +479,7 @@ export function GardenCanvas({
         */}
         <div
           ref={sceneWrapRef}
-          className="relative max-w-full max-h-full"
+          className="relative h-full min-h-0 w-full max-w-full"
           data-testid="garden-scene-wrap"
           data-lens-on={lensOn ? 'true' : 'false'}
         >
@@ -454,6 +490,7 @@ export function GardenCanvas({
             rimStrength={RIM_STRENGTH}
             motion={motion}
             landscapeView={resolvedView}
+            sceneViewBox={mobileFraming?.viewBox}
             shedStyle={shedData.shedStyle}
             onShedClick={() => setShedOpen(true)}
             planted={shedData.planted}

@@ -40,7 +40,6 @@ import type { SeededVariety } from '@/components/plants/types'
 import { candle, cattail } from './scenery'
 export { SCENE_W, SCENE_H, SCENE_HZ } from '@/lib/garden/scene-constants'
 import { SCENE_H, SCENE_HZ, SCENE_W } from '@/lib/garden/scene-constants'
-
 export interface GardenSceneSvgProps {
   palette: ScenePalette
   sceneKey: string
@@ -48,6 +47,7 @@ export interface GardenSceneSvgProps {
   rimStrength: number
   motion: boolean
   landscapeView?: GardenLandscapeView
+  sceneViewBox?: string
   shedStyle: ShedStyle
   onShedClick?: () => void
   planted: PlantedHybrid[]
@@ -921,6 +921,7 @@ export function GardenSceneSvg({
   rimStrength,
   motion,
   landscapeView,
+  sceneViewBox,
   shedStyle,
   onShedClick,
   planted,
@@ -934,17 +935,17 @@ export function GardenSceneSvg({
     () => computeSceneRngData(gardenSeed, sceneKey, palette, motion),
     [gardenSeed, sceneKey, palette, motion],
   )
-
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox={`-120 0 ${SCENE_W + 240} ${SCENE_H}`}
+      viewBox={sceneViewBox ?? `-120 0 ${SCENE_W + 240} ${SCENE_H}`}
       preserveAspectRatio="xMidYMid slice"
       width={SCENE_W}
       height={SCENE_H}
-      className="block h-auto max-h-full w-full max-w-full"
+      className="garden-scene-svg block h-full w-full min-h-0 max-w-full"
       style={{ display: 'block' }}
-      aria-hidden
+      role="group"
+      aria-label="Garden landscape"
     >
       <GardenSkyLayer
         ref={layerRefs?.sky}
