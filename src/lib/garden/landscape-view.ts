@@ -34,6 +34,13 @@ export const GARDEN_LANDSCAPE_VIEW_META: readonly GardenLandscapeViewMeta[] = [
   { id: 'garden_path', label: 'Garden path', description: 'Winding path; water glimpsed at the edge' },
 ]
 
+export const GARDEN_LANDSCAPE_VIEW_COMPACT_LABEL: Record<GardenLandscapeView, string> = {
+  pond: 'Pond',
+  lakeside: 'Lake',
+  meadow: 'Meadow',
+  garden_path: 'Path',
+}
+
 /** @deprecated Use PondGeometry — kept for scene clip helpers. */
 export interface WaterRect {
   x: number

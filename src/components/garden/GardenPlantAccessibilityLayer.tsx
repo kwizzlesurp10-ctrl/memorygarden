@@ -1,11 +1,15 @@
 import type { GardenLandscapeView, Memory } from '@/lib/types'
-import { layoutMemoryPlantsForView } from '@/lib/garden/memory-scene-layout'
+import {
+  layoutMemoryPlantsForView,
+  type ResolvedMemoryScenePlacement,
+} from '@/lib/garden/memory-scene-layout'
 import { resolveGardenLandscapeView } from '@/lib/garden/landscape-view'
 import { memoryPlantA11yLabel } from '@/lib/garden-helpers'
 
 interface GardenPlantAccessibilityLayerProps {
   memories: Memory[]
   landscapeView?: GardenLandscapeView
+  plantLayout?: Map<string, ResolvedMemoryScenePlacement>
   highlightedMemoryIds: Set<string> | null
   onMemoryClick: (memory: Memory) => void
 }
@@ -13,10 +17,11 @@ interface GardenPlantAccessibilityLayerProps {
 export function GardenPlantAccessibilityLayer({
   memories,
   landscapeView,
+  plantLayout,
   highlightedMemoryIds,
 }: GardenPlantAccessibilityLayerProps) {
   const resolvedView = resolveGardenLandscapeView(landscapeView)
-  const layout = layoutMemoryPlantsForView(memories, resolvedView)
+  const layout = plantLayout ?? layoutMemoryPlantsForView(memories, resolvedView)
 
   return (
     <ul

@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react'
 import type { GardenLandscapeView } from '@/lib/types'
 import {
+  GARDEN_LANDSCAPE_VIEW_COMPACT_LABEL,
   GARDEN_LANDSCAPE_VIEW_META,
   resolveGardenLandscapeView,
 } from '@/lib/garden/landscape-view'
@@ -21,13 +21,6 @@ export function GardenViewPicker({
 }: GardenViewPickerProps) {
   const reducedMotion = useReducedMotion()
   const active = resolveGardenLandscapeView(value)
-  const scrollRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    scrollRef.current
-      ?.querySelector<HTMLButtonElement>('[role="radio"][aria-checked="true"]')
-      ?.scrollIntoView({ inline: active === 'garden_path' ? 'end' : 'nearest' })
-  }, [active])
 
   if (layout === 'cards') {
     return (
@@ -58,8 +51,7 @@ export function GardenViewPicker({
 
   return (
     <div
-      ref={scrollRef}
-      className={`flex max-w-full flex-nowrap gap-1 overflow-x-auto rounded-lg border border-white/20 bg-black/50 p-1 text-[#f5efe6] backdrop-blur-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}
+      className={`max-sm:grid max-sm:grid-cols-4 max-sm:gap-0.5 max-sm:overflow-visible sm:flex sm:max-w-full sm:flex-nowrap sm:gap-1 sm:overflow-x-auto rounded-lg border border-white/20 bg-black/50 p-1 text-[#f5efe6] backdrop-blur-sm [-ms-overflow-style:none] [scrollbar-width:none] sm:[&::-webkit-scrollbar]:hidden ${className}`}
       role="radiogroup"
       aria-label="Garden landscape view"
     >
@@ -71,15 +63,18 @@ export function GardenViewPicker({
             type="button"
             role="radio"
             aria-checked={selected}
+            aria-label={meta.label}
+            title={meta.label}
             onClick={() => onChange(meta.id)}
-            className="min-h-11 shrink-0 rounded-md px-3 py-2 text-xs font-medium"
+            className="min-h-11 min-w-0 shrink rounded-md px-1 py-2 text-[10px] font-medium max-sm:flex max-sm:items-center max-sm:justify-center sm:shrink-0 sm:px-3 sm:text-xs"
             style={{
               background: selected ? 'rgba(240, 231, 218, 0.22)' : 'transparent',
               color: selected ? '#faf4ec' : 'rgba(245, 239, 230, 0.88)',
               transition: reducedMotion ? undefined : 'background 0.2s ease',
             }}
           >
-            {meta.label}
+            <span className="sm:hidden">{GARDEN_LANDSCAPE_VIEW_COMPACT_LABEL[meta.id]}</span>
+            <span className="hidden sm:inline">{meta.label}</span>
           </button>
         )
       })}

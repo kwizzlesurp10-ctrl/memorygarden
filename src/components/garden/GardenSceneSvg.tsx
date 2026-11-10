@@ -47,6 +47,7 @@ export interface GardenSceneSvgProps {
   rimStrength: number
   motion: boolean
   landscapeView?: GardenLandscapeView
+  sceneViewBox?: string
   shedStyle: ShedStyle
   onShedClick?: () => void
   planted: PlantedHybrid[]
@@ -920,6 +921,7 @@ export function GardenSceneSvg({
   rimStrength,
   motion,
   landscapeView,
+  sceneViewBox,
   shedStyle,
   onShedClick,
   planted,
@@ -936,7 +938,7 @@ export function GardenSceneSvg({
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox={`-120 0 ${SCENE_W + 240} ${SCENE_H}`}
+      viewBox={sceneViewBox ?? `-120 0 ${SCENE_W + 240} ${SCENE_H}`}
       preserveAspectRatio="xMidYMid slice"
       width={SCENE_W}
       height={SCENE_H}

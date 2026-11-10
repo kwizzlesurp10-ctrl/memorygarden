@@ -8,8 +8,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Plant as PlantIcon, Tree } from '@phosphor-icons/react'
 import { GardenCanvas } from '@/components/GardenCanvas'
-import { PlantMemoryModal } from '@/components/PlantMemoryModal'
-import { MemoryCard } from '@/components/MemoryCard'
 import { Onboarding } from '@/components/Onboarding'
 import { SearchFilterBar } from '@/components/SearchFilterBar'
 import { KeyboardShortcutsPanel } from '@/components/KeyboardShortcutsPanel'
@@ -41,6 +39,10 @@ const GardenMembersPanel = lazy(() => import('@/components/GardenMembersPanel').
 const ActivityFeed = lazy(() => import('@/components/ActivityFeed').then(m => ({ default: m.ActivityFeed })))
 const ContributorLeaderboard = lazy(() => import('@/components/ContributorLeaderboard').then(m => ({ default: m.ContributorLeaderboard })))
 const OpenWorldGarden = lazy(() => import('@/components/open-world/OpenWorldGarden').then(m => ({ default: m.OpenWorldGarden })))
+const PlantMemoryModal = lazy(() =>
+  import('@/components/PlantMemoryModal').then((m) => ({ default: m.PlantMemoryModal })),
+)
+const MemoryCard = lazy(() => import('@/components/MemoryCard').then((m) => ({ default: m.MemoryCard })))
 import { countUnreadActivity, deriveActivityFromMemories } from '@/lib/activity-helpers'
 import { classifyEmotionalTone, generateAIReflection, getPlantStage, getSeason, selectPlantVariety, calculateGrowthMetrics, applyPremiumFertilizer, filterMemories, getActiveFilterCount, computeGardenMood, generateGardenId, generateInviteToken, getDayPeriod, generateHybridTraits, plantStageAfterGrowth, applyManualPlantStage } from '@/lib/garden-helpers'
 import { memoryPrimaryLabel } from '@/lib/memory-display'
@@ -1675,11 +1677,13 @@ function App() {
         </main>
       </div>
 
-      <PlantMemoryModal
-        open={isPlantModalOpen}
-        onClose={() => setIsPlantModalOpen(false)}
-        onPlant={handlePlantMemory}
-      />
+      <Suspense fallback={null}>
+        <PlantMemoryModal
+          open={isPlantModalOpen}
+          onClose={() => setIsPlantModalOpen(false)}
+          onPlant={handlePlantMemory}
+        />
+      </Suspense>
 
       {visitingGardenId && visitingGardenName ? (
         <Suspense fallback={null}>
@@ -1699,28 +1703,30 @@ function App() {
         </Suspense>
       ) : null}
 
-      <MemoryCard
-        memory={selectedMemory}
-        open={selectedMemory !== null}
-        onClose={() => {
-          setSelectedMemory(null)
-          setAiReflection('')
-        }}
-        onWater={handleWater}
-        onAskAI={handleAskAI}
-        onShare={handleShareMemory}
-        onBoost={handleOpenBoost}
-        onUpdateTraits={handleUpdateTraits}
-        onCustomize={selectedMemory ? () => handleOpenCosmeticsEditor(selectedMemory) : undefined}
-        onEditPlant={selectedMemory ? () => setIsEditPlantOpen(true) : undefined}
-        onCrossPollinate={handleCrossPollinateInit}
-        aiReflection={aiReflection}
-        isLoadingAI={isLoadingAI}
-        allMemories={safeMemories}
-        onNavigate={handleNavigateToMemory}
-        onReact={handleReaction}
-        currentUserId={user?.id}
-      />
+      <Suspense fallback={null}>
+        <MemoryCard
+          memory={selectedMemory}
+          open={selectedMemory !== null}
+          onClose={() => {
+            setSelectedMemory(null)
+            setAiReflection('')
+          }}
+          onWater={handleWater}
+          onAskAI={handleAskAI}
+          onShare={handleShareMemory}
+          onBoost={handleOpenBoost}
+          onUpdateTraits={handleUpdateTraits}
+          onCustomize={selectedMemory ? () => handleOpenCosmeticsEditor(selectedMemory) : undefined}
+          onEditPlant={selectedMemory ? () => setIsEditPlantOpen(true) : undefined}
+          onCrossPollinate={handleCrossPollinateInit}
+          aiReflection={aiReflection}
+          isLoadingAI={isLoadingAI}
+          allMemories={safeMemories}
+          onNavigate={handleNavigateToMemory}
+          onReact={handleReaction}
+          currentUserId={user?.id}
+        />
+      </Suspense>
 
       <Suspense fallback={null}>
         <ShareMemoryDialog

@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import type { GardenLandscapeView, GardenStarterDecor, Memory, Season, StorageShedData, ShedSeed, PlantedHybrid } from '@/lib/types'
 import { resolveGardenLandscapeView } from '@/lib/garden/landscape-view'
 import { layoutMemoryPlantsForView } from '@/lib/garden/memory-scene-layout'
+import { frameMemoryPlantsForMobile } from '@/lib/garden/garden-mobile-framing'
 import { GardenViewPicker } from '@/components/garden/GardenViewPicker'
 import { WeatherEffects } from './WeatherEffects'
 import { GardenClusterPaths } from './GardenClusterPaths'
@@ -128,6 +129,16 @@ export function GardenCanvas({
     }
   }, [])
 
+  useEffect(() => {
+    const wrap = sceneWrapRef.current
+    if (!wrap) return
+    const sync = () => setSceneSize(measureScene())
+    sync()
+    const ro = new ResizeObserver(() => sync())
+    ro.observe(wrap)
+    return () => ro.disconnect()
+  }, [measureScene, landscapeView, memories.length])
+
   const seedLensAtCenter = useCallback(() => {
     const size = measureScene()
     setSceneSize(size)
@@ -234,10 +245,17 @@ export function GardenCanvas({
     [memories, resolvedView],
   )
 
+  const mobileFraming = useMemo(
+    () => frameMemoryPlantsForMobile(memorySceneLayout, memories, sceneSize),
+    [memorySceneLayout, memories, sceneSize],
+  )
+
+  const activeLayout = mobileFraming?.layout ?? memorySceneLayout
+
   const memoryPlants = useMemo(() => (
     [...memories]
       .map((memory) => {
-      const pos = memorySceneLayout.get(memory.id)
+      const pos = activeLayout.get(memory.id)
       if (!pos) return null
       const isDimmed = highlightedMemoryIds !== null && !highlightedMemoryIds.has(memory.id)
       const isGrowing = growingMemories.has(memory.id)
@@ -311,7 +329,7 @@ export function GardenCanvas({
       .filter((item): item is NonNullable<typeof item> => item !== null)
       .sort((a, b) => a.depth - b.depth)
       .map((item) => item.node)
-  ), [memories, memorySceneLayout, highlightedMemoryIds, growingMemories, lensOn, palette, motion, draggingMemory, onMemoryClick])
+  ), [memories, activeLayout, highlightedMemoryIds, growingMemories, lensOn, palette, motion, draggingMemory, onMemoryClick])
 
   const onLensMove = useCallback((e: React.PointerEvent) => {
     if (!lensOn || !sceneWrapRef.current) return
@@ -369,6 +387,7 @@ export function GardenCanvas({
       <GardenPlantAccessibilityLayer
         memories={memories}
         landscapeView={landscapeView}
+        plantLayout={activeLayout}
         highlightedMemoryIds={highlightedMemoryIds}
         onMemoryClick={onMemoryClick}
       />
@@ -471,6 +490,7 @@ export function GardenCanvas({
             rimStrength={RIM_STRENGTH}
             motion={motion}
             landscapeView={resolvedView}
+            sceneViewBox={mobileFraming?.viewBox}
             shedStyle={shedData.shedStyle}
             onShedClick={() => setShedOpen(true)}
             planted={shedData.planted}
