@@ -114,7 +114,7 @@ try {
       await page.waitForTimeout(1600)
       const file = `${id}-${suffix}.png`
       const path = resolve(tilesDir, file)
-      await page.locator('[data-testid="open-world-garden"] canvas').screenshot({ path })
+      await page.locator('[data-testid="open-world-garden"] > canvas').screenshot({ path })
       tilePaths.push({ label, suffix, file, path })
       await ctx.close()
     }
