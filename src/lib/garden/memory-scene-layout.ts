@@ -8,7 +8,7 @@ import { TREE_PROGRESSION_FACE_SCALE } from '@/components/plants/facing-art'
 import type { SeededVariety } from '@/components/plants/types'
 
 const HUD_CLEARANCE_Y = 78
-const TREE_CANOPY_HALF_W = 50
+const TREE_CANOPY_HALF_W = 58
 const TREE_CANOPY_HEIGHT = 104
 
 const SCENE_MARGIN_X: Record<GardenLandscapeView, { left: number; right: number }> = {
@@ -134,8 +134,10 @@ function packMemoryTrees(items: TreeLayoutItem[], view: GardenLandscapeView): vo
   const gapFactor = 1.04
   const cottage = cottageKeepOut(view)
 
+  const hardCanopyRight = cottage ? cottage.x0 - 10 : SCENE_W - margin.right
+
   let rowMul = 1
-  for (let attempt = 0; attempt < 32; attempt++) {
+  for (let attempt = 0; attempt < 40; attempt++) {
     let x = margin.left + treeFootprintHalfW(items[0].baseScale * rowMul, items[0].stageIndex)
 
     for (let i = 0; i < items.length; i++) {
@@ -172,10 +174,11 @@ function packMemoryTrees(items: TreeLayoutItem[], view: GardenLandscapeView): vo
     }
 
     const cottageOkAfter = items.every((t) => !treeBlocksCottage(t.x, t.halfW, cottage))
-    const rightAfter = items[items.length - 1].x + items[items.length - 1].halfW + margin.right
+    const canopyRight = Math.max(...items.map((t) => t.x + t.halfW))
+    const sceneOk = canopyRight + margin.right <= SCENE_W && canopyRight <= hardCanopyRight
 
-    if (rightAfter <= SCENE_W && hudOk && cottageOkAfter) break
-    rowMul *= 0.93
+    if (sceneOk && hudOk && cottageOkAfter) break
+    rowMul = Math.max(0.34, rowMul * 0.92)
   }
 }
 

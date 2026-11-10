@@ -35,9 +35,9 @@ describe('memory-scene-layout', () => {
     expect(mature).toBeDefined()
     const elderSc = elder!.plantScale
     const face = TREE_PROGRESSION_FACE_SCALE[plantStageToIndex('elder')] ?? 1
-    const halfW = 50 * elderSc * face
+    const halfW = 58 * elderSc * face
     expect(elder!.x + halfW).toBeLessThanOrEqual(SCENE_W - 90)
-    expect(mature!.x + 50 * mature!.plantScale * (TREE_PROGRESSION_FACE_SCALE[6] ?? 1)).toBeLessThanOrEqual(SCENE_W - 90)
+    expect(mature!.x + 58 * mature!.plantScale * (TREE_PROGRESSION_FACE_SCALE[6] ?? 1)).toBeLessThanOrEqual(SCENE_W - 90)
   })
 
   it('separates mature and elder canopies', () => {
@@ -46,10 +46,10 @@ describe('memory-scene-layout', () => {
     const elder = layout.get('tree-stage-elder')!
     const gap = elder.x - mature.x
     const need =
-      50 *
+      58 *
       (mature.plantScale * (TREE_PROGRESSION_FACE_SCALE[6] ?? 1) +
         elder.plantScale * (TREE_PROGRESSION_FACE_SCALE[7] ?? 1)) *
-      0.88
+      1.0
     expect(gap).toBeGreaterThanOrEqual(need - 4)
   })
 
@@ -58,7 +58,7 @@ describe('memory-scene-layout', () => {
     const shed = projectWorldToScene(WORLD_COTTAGE, 'pond', { objectYaw: WORLD_COTTAGE.yaw, layer: 'near' })
     const elder = layout.get('tree-stage-elder')!
     const face = TREE_PROGRESSION_FACE_SCALE[7] ?? 1
-    const leftEdge = elder.x - 50 * elder.plantScale * face
+    const leftEdge = elder.x - 58 * elder.plantScale * face
     const shedHalf = 54 * shed.scale * 0.62
     expect(leftEdge).toBeLessThan(shed.x - shedHalf - 20)
   })
