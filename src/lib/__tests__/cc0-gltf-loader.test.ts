@@ -7,13 +7,15 @@ function mockGltfScene(): THREE.Group {
   const group = new THREE.Group()
   const trunk = new THREE.Mesh(
     new THREE.BoxGeometry(0.2, 1, 0.2),
-    new THREE.MeshBasicMaterial({ color: '#6b4423' }),
+    new THREE.MeshBasicMaterial({ color: '#6b4423', name: 'woodBark' }),
   )
+  trunk.name = 'trunk'
   trunk.position.y = 0.5
   const leaves = new THREE.Mesh(
     new THREE.SphereGeometry(0.5, 6, 6),
-    new THREE.MeshBasicMaterial({ color: '#3d8b4f' }),
+    new THREE.MeshBasicMaterial({ color: '#3d8b4f', name: 'leafsGreen' }),
   )
+  leaves.name = 'canopy'
   leaves.position.y = 1.2
   group.add(trunk, leaves)
   return group
@@ -41,6 +43,13 @@ describe('cc0-gltf-loader', () => {
       }
     })
     expect(toonCount).toBe(2)
+    const colors: string[] = []
+    group.traverse((c) => {
+      if (c instanceof THREE.Mesh && c.material instanceof THREE.MeshToonMaterial) {
+        colors.push(c.material.color.getHexString())
+      }
+    })
+    expect(new Set(colors).size).toBe(2)
   })
 
   it('loads via injected GLTFLoader mock', async () => {

@@ -39,7 +39,10 @@ export function applyCc0TintToObject(root: THREE.Object3D, def: Cc0ModelDef, pal
     const prev = obj.material
     const materials = Array.isArray(prev) ? prev : [prev]
     const nextMats = materials.map((m) => {
-      const stylized = createStylizedMaterial(tokens, def.role, m)
+      const stylized = createStylizedMaterial(tokens, def.role, m, {
+        meshName: obj.name,
+        materialName: m?.name ?? '',
+      }, palette)
       if (m) m.dispose()
       return stylized
     })
@@ -56,7 +59,9 @@ export function retintCc0Object(root: THREE.Object3D, palette: ScenePalette): vo
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
     for (const m of mats) {
       if (m instanceof THREE.MeshToonMaterial && (m as StylizedMaterial).userData.cc0Tinted) {
-        retintExistingMaterial(m as StylizedMaterial, tokens)
+        retintExistingMaterial(m as StylizedMaterial, tokens, palette)
+        const stylized = m as StylizedMaterial
+        stylized.userData.cc0Palette = palette
       }
     }
   })
