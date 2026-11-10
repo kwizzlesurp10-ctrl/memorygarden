@@ -219,6 +219,42 @@ function applyInstanceVariation(color: THREE.Color, seed: number, role: Cc0Mater
   return out
 }
 
+/** Dusk targets keep hue separation (not rim/bank wash). */
+export function duskRoleTarget(
+  role: Cc0MaterialRole,
+  tokens: Cc0TintTokens,
+  palette: ScenePalette,
+): THREE.Color {
+  const hills0 = new THREE.Color(palette.hills[0] ?? palette.silSoft)
+  const accent = new THREE.Color(palette.accent)
+  switch (role) {
+    case 'foliage':
+    case 'moss':
+      return hills0
+        .clone()
+        .lerp(new THREE.Color(palette.silSoft), 0.35)
+        .lerp(new THREE.Color('#1e4a32'), 0.55)
+    case 'berry':
+      return tokens.foliageDeep.clone().lerp(accent, 0.22)
+    case 'flower':
+      return accent.clone().lerp(new THREE.Color(palette.glow), 0.35)
+    case 'mushroom_cap':
+      return new THREE.Color('#d45a42')
+        .lerp(accent, 0.4)
+        .lerp(new THREE.Color(palette.glow), 0.25)
+    case 'mushroom_stem':
+      return new THREE.Color('#8a7358').lerp(tokens.bark, 0.35)
+    case 'bark':
+      return new THREE.Color('#3d2618').lerp(tokens.bark, 0.45)
+    case 'wood':
+      return new THREE.Color('#4a3320').lerp(tokens.wood, 0.35)
+    case 'rock':
+      return new THREE.Color('#5a6675').lerp(tokens.rock, 0.4).lerp(new THREE.Color(palette.sil), 0.25)
+    default:
+      return tokens.generic.clone()
+  }
+}
+
 function applyNightRoleTint(
   color: THREE.Color,
   role: Cc0MaterialRole,
@@ -227,36 +263,23 @@ function applyNightRoleTint(
 ): THREE.Color {
   const t = tokens.nightStrength
   if (t <= 0.05) return color.clone()
-
-  const out = color.clone()
-  const bank = new THREE.Color(palette.bank)
-  const hills1 = new THREE.Color(palette.hills[1] ?? palette.silSoft)
-
-  switch (role) {
-    case 'foliage':
-    case 'moss':
-      out.lerp(hills1, t * 0.28).multiplyScalar(0.88 + t * 0.22)
-      break
-    case 'berry':
-      out.lerp(tokens.foliageDeep, t * 0.35).multiplyScalar(0.82 + t * 0.2)
-      break
-    case 'flower':
-    case 'mushroom_cap':
-      out.lerp(new THREE.Color(palette.accent), t * 0.22).multiplyScalar(0.9 + t * 0.28)
-      break
-    case 'mushroom_stem':
-      out.lerp(tokens.mushroomStem, t * 0.15).multiplyScalar(0.92 + t * 0.15)
-      break
-    case 'bark':
-    case 'wood':
-      out.lerp(bank, t * 0.25).multiplyScalar(0.78 + t * 0.12)
-      break
-    case 'rock':
-      out.lerp(new THREE.Color(palette.sil), t * 0.32).multiplyScalar(0.85 + t * 0.18)
-      break
-    default:
-      out.lerp(bank, t * 0.2).multiplyScalar(0.86 + t * 0.14)
-  }
+  const dusk = duskRoleTarget(role, tokens, palette)
+  const out = color.clone().lerp(dusk, Math.min(1, 0.35 + t * 0.95))
+  const hsl = { h: 0, s: 0, l: 0 }
+  out.getHSL(hsl)
+  const minL =
+    role === 'foliage' || role === 'moss'
+      ? 0.2 + t * 0.1
+      : role === 'bark' || role === 'wood'
+        ? 0.14 + t * 0.06
+        : role === 'rock'
+          ? 0.18 + t * 0.08
+          : role === 'mushroom_cap'
+            ? 0.26 + t * 0.12
+            : 0.16 + t * 0.06
+  hsl.l = Math.max(hsl.l, minL)
+  if (role === 'foliage' || role === 'moss') hsl.s = Math.max(hsl.s, 0.32 + t * 0.12)
+  out.setHSL(hsl.h, hsl.s, hsl.l)
   return out
 }
 
@@ -265,14 +288,45 @@ function roleEmissiveStrength(role: Cc0MaterialRole, night: number): number {
   switch (role) {
     case 'mushroom_cap':
     case 'flower':
-      return 0.07 + night * 0.06
+      return 0.18 + night * 0.2
     case 'foliage':
     case 'moss':
-      return 0.035 + night * 0.03
+      return 0.1 + night * 0.12
     case 'berry':
-      return 0.05 + night * 0.04
+      return 0.08 + night * 0.06
+    case 'bark':
+    case 'wood':
+      return 0.015 + night * 0.01
+    case 'rock':
+      return 0.025 + night * 0.02
     default:
       return 0.02 + night * 0.02
+  }
+}
+
+function roleEmissiveColor(
+  role: Cc0MaterialRole,
+  tokens: Cc0TintTokens,
+  palette: ScenePalette,
+): THREE.Color {
+  const night = tokens.nightStrength
+  if (night <= 0.05) {
+    return tokens.emissive.clone()
+  }
+  switch (role) {
+    case 'foliage':
+    case 'moss':
+      return duskRoleTarget('foliage', tokens, palette)
+    case 'mushroom_cap':
+    case 'flower':
+      return duskRoleTarget('mushroom_cap', tokens, palette)
+    case 'bark':
+    case 'wood':
+      return duskRoleTarget('bark', tokens, palette)
+    case 'rock':
+      return duskRoleTarget('rock', tokens, palette)
+    default:
+      return tokens.emissive.clone()
   }
 }
 
@@ -284,10 +338,24 @@ export function createToonGradientMap(): THREE.DataTexture {
 }
 
 let sharedGradient: THREE.DataTexture | null = null
+let sharedDuskGradient: THREE.DataTexture | null = null
 
 export function getSharedToonGradient(): THREE.DataTexture {
   sharedGradient ??= createToonGradientMap()
   return sharedGradient
+}
+
+function createDuskToonGradientMap(): THREE.DataTexture {
+  const data = new Uint8Array([108, 142, 176, 208, 255])
+  const tex = new THREE.DataTexture(data, data.length, 1, THREE.RedFormat)
+  tex.needsUpdate = true
+  return tex
+}
+
+export function getToonGradientForNight(nightStrength: number): THREE.DataTexture {
+  if (nightStrength <= 0.22) return getSharedToonGradient()
+  sharedDuskGradient ??= createDuskToonGradientMap()
+  return sharedDuskGradient
 }
 
 export interface StylizedMaterial extends THREE.MeshToonMaterial {
@@ -330,13 +398,11 @@ export function createStylizedMaterial(
 
   const mat = new THREE.MeshToonMaterial({
     color: tinted,
-    gradientMap: getSharedToonGradient(),
-    emissive:
-      inferred === 'foliage' || inferred === 'moss'
-        ? tokens.foliage.clone().multiplyScalar(emissiveScale)
-        : inferred === 'mushroom_cap' || inferred === 'flower'
-          ? tokens.mushroomCap.clone().multiplyScalar(emissiveScale)
-          : tokens.emissive.clone().multiplyScalar(emissiveScale),
+    gradientMap: getToonGradientForNight(night),
+    emissive: palette
+      ? roleEmissiveColor(inferred, tokens, palette).multiplyScalar(emissiveScale)
+      : tokens.emissive.clone().multiplyScalar(emissiveScale),
+    emissiveIntensity: night > 0.22 ? 1.35 : 1,
   }) as StylizedMaterial
   mat.userData.cc0Role = inferred
   mat.userData.cc0Tinted = true
@@ -355,12 +421,14 @@ export function retintExistingMaterial(
   if (p) base = applyNightRoleTint(base, role, tokens, p)
   material.color.copy(base)
   const night = tokens.nightStrength
-  material.emissive.copy(
-    role === 'foliage' || role === 'moss'
-      ? tokens.foliage
-      : role === 'mushroom_cap' || role === 'flower'
-        ? tokens.mushroomCap
-        : tokens.emissive,
-  ).multiplyScalar(roleEmissiveStrength(role, night))
+  material.gradientMap = getToonGradientForNight(night)
+  if (p) {
+    material.emissive
+      .copy(roleEmissiveColor(role, tokens, p))
+      .multiplyScalar(roleEmissiveStrength(role, night))
+  } else {
+    material.emissive.copy(tokens.emissive).multiplyScalar(roleEmissiveStrength(role, night))
+  }
+  material.emissiveIntensity = night > 0.22 ? 1.35 : 1
   material.needsUpdate = true
 }

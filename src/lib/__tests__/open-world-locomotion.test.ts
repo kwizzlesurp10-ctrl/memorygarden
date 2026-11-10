@@ -35,7 +35,7 @@ function idle(): LocomotionInput {
 describe('locomotion', () => {
   it('walks forward along -Z when yaw is 0', () => {
     const world = layoutGardenWorld([])
-    const player = createPlayer(world)
+    const player = { ...createPlayer(world), yaw: 0 }
     const next = stepPlayer(player, { ...idle(), forward: 1 }, 0.25, world)
     expect(next.z).toBeLessThan(player.z)
     expect(next.x).toBeCloseTo(player.x, 5)

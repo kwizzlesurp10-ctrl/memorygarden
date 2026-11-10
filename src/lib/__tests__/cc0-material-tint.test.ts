@@ -23,6 +23,38 @@ describe('cc0-material-tint', () => {
     expect(cap.r / Math.max(cap.g, 0.01)).toBeGreaterThan(stem.r / Math.max(stem.g, 0.01))
   })
 
+  it('keeps dusk role hues distinct from bark and foliage', () => {
+    const duskPalette = todPalette(19.5, 'summer')
+    const tokens = paletteToCc0Tokens(duskPalette)
+    const leaf = createStylizedMaterial(
+      tokens,
+      'foliage',
+      new THREE.MeshBasicMaterial({ color: '#4b8f52' }),
+      { meshName: 'canopy', materialName: 'leafsGreen' },
+      duskPalette,
+    )
+    const bark = createStylizedMaterial(
+      tokens,
+      'foliage',
+      new THREE.MeshBasicMaterial({ color: '#f2be9e' }),
+      { meshName: 'trunk', materialName: 'woodBark' },
+      duskPalette,
+    )
+    const rock = createStylizedMaterial(
+      tokens,
+      'rock',
+      new THREE.MeshBasicMaterial({ color: '#aaaaaa' }),
+      { meshName: 'stone', materialName: 'dirt' },
+      duskPalette,
+    )
+    expect(leaf.color.g).toBeGreaterThan(leaf.color.r * 1.05)
+    expect(bark.color.r).toBeGreaterThan(bark.color.g)
+    expect(rock.color.b).toBeGreaterThan(rock.color.r * 0.9)
+    leaf.dispose()
+    bark.dispose()
+    rock.dispose()
+  })
+
   it('lifts dusk foliage without gray-washing to rim', () => {
     const day = paletteToCc0Tokens(todPalette(14, 'summer'))
     const dusk = paletteToCc0Tokens(todPalette(19.5, 'summer'))

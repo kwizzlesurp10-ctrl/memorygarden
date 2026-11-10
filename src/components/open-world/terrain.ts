@@ -918,8 +918,21 @@ export function buildTerrain(
       disposables.forEach((d) => d.dispose())
     },
     recolor: (next) => {
-      const nextNight = (next.starAlpha ?? 0) > 0.45
-      groundMat.color.set(next.hills[1] ?? '#2c163c')
+      const star = next.starAlpha ?? 0
+      const nextNight = star > 0.45
+      const twilight = star > 0.22
+      const ground = new THREE.Color(next.hills[1] ?? '#2c163c')
+      if (twilight) {
+        ground.lerp(new THREE.Color(next.hills[0] ?? next.silSoft), 0.38 + star * 0.22)
+      }
+      groundMat.color.copy(ground)
+      if (twilight) {
+        groundMat.emissive.set(next.hills[0] ?? next.silSoft)
+        groundMat.emissiveIntensity = 0.08 + star * 0.1
+      } else {
+        groundMat.emissive.set('#000000')
+        groundMat.emissiveIntensity = 0
+      }
       waterMat.color.set(next.waterTint[1] ?? '#1a0f2b')
       waterMat.emissive.set(next.ripple)
       hedgeMat.color.set(next.hills[2] ?? next.sil)

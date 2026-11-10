@@ -140,6 +140,7 @@ export class OpenWorldEngine {
       })
     }
     this.applyLighting()
+    this.applyRendererExposure()
     this.spawnFireflies()
     this.applyCamera()
     this.resize()
@@ -224,9 +225,30 @@ export class OpenWorldEngine {
     this.applyLighting()
     this.renderer?.setClearColor(palette.sky[2] ?? '#20123a', 1)
     if (this.scene.fog instanceof THREE.Fog) {
-      this.scene.fog.color.set(palette.sky[2] ?? '#20123a')
+      const fogColor = new THREE.Color(palette.sky[2] ?? '#20123a')
+      const star = palette.starAlpha ?? 0
+      if (star > 0.22) fogColor.lerp(new THREE.Color(palette.hills[1] ?? palette.bank), 0.28)
+      this.scene.fog.color.copy(fogColor)
+      if (star > 0.35 && !this.captureBackdrop) {
+        this.scene.fog.near = 14
+        this.scene.fog.far = 82
+      } else if (!this.captureBackdrop) {
+        this.scene.fog.near = 18
+        this.scene.fog.far = 78
+      }
     }
     if (this.captureBackdrop) this.applyCaptureFog()
+    this.applyRendererExposure()
+  }
+
+  private applyRendererExposure(): void {
+    if (!this.renderer) return
+    const star = this.palette.starAlpha ?? 0
+    if (star > 0.22) {
+      this.renderer.toneMappingExposure = 1.05 + star * 0.45
+    } else {
+      this.renderer.toneMappingExposure = 1
+    }
   }
 
   setMemories(memories: Memory[]): void {
@@ -539,14 +561,22 @@ export class OpenWorldEngine {
 
   private applyLighting(): void {
     const p = this.palette
+    const star = p.starAlpha ?? 0
+    const twilight = star > 0.22
+    const deepNight = star > 0.45
     this.hemi.color.set(p.sky[1] ?? '#88aacc')
-    this.hemi.groundColor.set(p.bank)
-    const night = (p.starAlpha ?? 0) > 0.45
-    this.hemi.intensity = night ? 0.35 : 0.9
+    const groundColor = new THREE.Color(p.bank)
+    if (twilight) {
+      groundColor.lerp(new THREE.Color(p.hills[1] ?? p.silSoft), 0.42 + star * 0.25)
+      groundColor.lerp(new THREE.Color(p.hills[0] ?? p.silSoft), 0.18)
+    }
+    this.hemi.groundColor.copy(groundColor)
+    this.hemi.intensity = deepNight ? 0.88 : twilight ? 0.96 : 0.9
     this.fill.color.set(p.silSoft)
-    this.fill.intensity = night ? 0.12 : 0.22
+    if (twilight) this.fill.color.lerp(new THREE.Color(p.sky[2] ?? p.sil), 0.2)
+    this.fill.intensity = deepNight ? 0.48 : twilight ? 0.52 : 0.22
     this.sun.color.set(p.sun?.disk ?? p.glow)
-    this.sun.intensity = night ? 0.18 : 1.2
+    this.sun.intensity = deepNight ? 0.52 : twilight ? 0.72 : 1.2
     if (p.sun) {
       const u = p.sun.x / 1200 - 0.5
       const v = (470 - p.sun.y) / 400
@@ -560,8 +590,8 @@ export class OpenWorldEngine {
     if (this.fireflies) {
       this.fireflies.visible = !this.reducedMotion
       if (this.fireflies.material instanceof THREE.PointsMaterial) {
-        this.fireflies.material.color.set(night ? p.fire : (p.glow ?? '#ffdf9e'))
-        this.fireflies.material.opacity = night ? 0.85 : 0.45
+        this.fireflies.material.color.set(deepNight ? p.fire : (p.glow ?? '#ffdf9e'))
+        this.fireflies.material.opacity = deepNight ? 0.85 : 0.45
       }
     }
   }

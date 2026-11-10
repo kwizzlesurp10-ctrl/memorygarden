@@ -171,10 +171,10 @@ export function buildCc0Placements(
 
 /** Capture camera pose — same for before/after comparison shots. */
 export const CC0_WALK_CAPTURE_POSE = {
-  x: 1.2,
-  z: 34.5,
-  yaw: 0,
-  pitch: -0.12,
+  x: 2.15,
+  z: 33.6,
+  yaw: 0.42,
+  pitch: -0.11,
 } as const
 
 /** Single-model turntable anchor — in front of the walk capture camera. */
