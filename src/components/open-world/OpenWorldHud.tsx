@@ -28,6 +28,7 @@ interface OpenWorldHudProps {
   bondPartnerName?: string
   onLeaveGift?: (giftType: GardenGiftType) => void
   onOpenGift?: (giftId: string) => void
+  captureMode?: boolean
 }
 
 export function OpenWorldHud({
@@ -52,25 +53,18 @@ export function OpenWorldHud({
   bondPartnerName,
   onLeaveGift,
   onOpenGift,
+  captureMode = false,
 }: OpenWorldHudProps) {
+  if (captureMode) return null
   const groveMilestone = world.groveMilestone
   const activeGifts = nearby?.activeGifts ?? []
   const firstUnopenedGift = activeGifts[0] ?? null
-  return (
-    <div className="pointer-events-none absolute inset-0 z-10 text-[#f0e7da]">
-      <div className="pointer-events-auto absolute left-3 top-3 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onExit}
-          className="flex items-center gap-2 rounded-full border border-[#f0e7da]/25 bg-black/45 px-3 py-2 text-sm backdrop-blur-sm hover:bg-black/60 transition-colors"
-          aria-label="Leave the garden path"
+  const statusChips = (
+    <>
+      {streak ? (
+        <div
+          className={`flex items-center gap-2 rounded-full border border-[#f0e7da]/20 bg-black/45 px-3 py-2 text-xs backdrop-blur-sm shadow-sm ${coarse ? 'flex-wrap justify-end' : ''}`}
         >
-          <ArrowLeft size={16} />
-          Leave path
-        </button>
-
-        {streak ? (
-          <div className="flex items-center gap-2 rounded-full border border-[#f0e7da]/20 bg-black/45 px-3 py-2 text-xs backdrop-blur-sm shadow-sm">
             <span className="flex items-center gap-1 font-semibold text-amber-300" title="Daily Mindful Stewardship Streak">
               🔥 {streak.currentStreak}d
             </span>
@@ -89,32 +83,50 @@ export function OpenWorldHud({
           </div>
         ) : null}
 
-        {bondPartnerName ? (
-          <div
-            className="flex items-center gap-1.5 rounded-full border border-amber-400/35 bg-amber-950/45 px-3 py-2 text-xs text-amber-200 backdrop-blur-sm shadow-sm"
-            title="Active 48-Hour Garden Bond (Twin Fireflies at Entrance)"
-          >
-            <span>💕</span>
-            <span className="font-medium">Bond · {bondPartnerName}</span>
-          </div>
-        ) : null}
+      {bondPartnerName ? (
+        <div
+          className="flex items-center gap-1.5 rounded-full border border-amber-400/35 bg-amber-950/45 px-3 py-2 text-xs text-amber-200 backdrop-blur-sm shadow-sm"
+          title="Active 48-Hour Garden Bond (Twin Fireflies at Entrance)"
+        >
+          <span>💕</span>
+          <span className="font-medium">Bond · {bondPartnerName}</span>
+        </div>
+      ) : null}
 
-        {groveMilestone ? (
-          <div
-            className="hidden sm:flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-200 backdrop-blur-sm shadow-sm"
-            title="The Grove Project — Collective Sanctuary Unlocks"
-          >
-            <span>🌸</span>
-            <span className="font-medium">
-              Grove Tier {groveMilestone.currentTier} · {groveMilestone.totalCommunityWaterings}/
-              {groveMilestone.nextMilestoneAt}
-            </span>
-          </div>
-        ) : null}
+      {groveMilestone ? (
+        <div
+          className={`flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-200 backdrop-blur-sm shadow-sm ${coarse ? '' : 'hidden sm:flex'}`}
+          title="The Grove Project — Collective Sanctuary Unlocks"
+        >
+          <span>🌸</span>
+          <span className="font-medium">
+            Grove Tier {groveMilestone.currentTier} · {groveMilestone.totalCommunityWaterings}/
+            {groveMilestone.nextMilestoneAt}
+          </span>
+        </div>
+      ) : null}
+    </>
+  )
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-10 text-[#f0e7da]">
+      <div className="pointer-events-auto absolute left-3 top-3 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onExit}
+          className="flex items-center gap-2 rounded-full border border-[#f0e7da]/25 bg-black/45 px-3 py-2 text-sm backdrop-blur-sm hover:bg-black/60 transition-colors"
+          aria-label="Leave the garden path"
+        >
+          <ArrowLeft size={16} />
+          Leave path
+        </button>
+
+        {coarse ? null : statusChips}
       </div>
 
-      <div className="pointer-events-auto absolute right-3 top-3">
+      <div className="pointer-events-auto absolute right-3 top-3 flex w-[min(92vw,10.5rem)] flex-col items-end gap-2">
         <OpenWorldMinimap world={world} player={player} hasMorningDew={canHarvestDew} />
+        {coarse ? statusChips : null}
       </div>
 
       {webglFailed ? (

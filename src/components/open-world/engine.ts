@@ -9,6 +9,8 @@ import { plantRecipe } from '@/lib/open-world/plant-visual'
 import type { GardenWorld, PlayerState, WorldPlant } from '@/lib/open-world/types'
 import { createPlantGroup, disposePlantGroup } from './plant-mesh'
 import { buildTerrain, type TerrainHandle } from './terrain'
+import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
+import { Cc0SceneryLayer, defaultCc0GardenSeed } from './cc0-scenery'
 import { playWaterSfx } from '@/lib/water-sound'
 
 export interface EngineHooks {
@@ -69,11 +71,14 @@ export class OpenWorldEngine {
   private readonly onResize: () => void
   private resizeObserver: ResizeObserver | null = null
 
+  private cc0Scenery: Cc0SceneryLayer | null = null
+  private captureBackdrop = false
+
   constructor(
     canvas: HTMLCanvasElement,
     memories: Memory[],
     palette: ScenePalette,
-    opts: { reducedMotion: boolean; hooks: EngineHooks },
+    opts: { reducedMotion: boolean; coarsePointer?: boolean; hooks: EngineHooks },
   ) {
     this.canvas = canvas
     this.hooks = opts.hooks
@@ -119,7 +124,23 @@ export class OpenWorldEngine {
 
     this.rebuildTerrain()
     this.rebuildPlants()
+    const skipCc0 =
+      typeof window !== 'undefined' &&
+      sessionStorage.getItem('mg:walk-capture-baseline') === '1'
+    if (!this.failed && !skipCc0) {
+      this.cc0Scenery = new Cc0SceneryLayer(this.scene, this.world, this.palette, {
+        reducedMotion: opts.reducedMotion,
+        coarsePointer: opts.coarsePointer ?? false,
+        gardenSeed: defaultCc0GardenSeed(memories),
+        onReady: () => {
+          if (typeof window !== 'undefined') {
+            ;(window as unknown as { __cc0SceneryReady?: boolean }).__cc0SceneryReady = true
+          }
+        },
+      })
+    }
     this.applyLighting()
+    this.applyRendererExposure()
     this.spawnFireflies()
     this.applyCamera()
     this.resize()
@@ -200,10 +221,33 @@ export class OpenWorldEngine {
   setPalette(palette: ScenePalette): void {
     this.palette = palette
     this.terrain?.recolor(palette)
+    this.cc0Scenery?.setPalette(palette)
     this.applyLighting()
     this.renderer?.setClearColor(palette.sky[2] ?? '#20123a', 1)
     if (this.scene.fog instanceof THREE.Fog) {
-      this.scene.fog.color.set(palette.sky[2] ?? '#20123a')
+      const fogColor = new THREE.Color(palette.sky[2] ?? '#20123a')
+      const star = palette.starAlpha ?? 0
+      if (star > 0.22) fogColor.lerp(new THREE.Color(palette.hills[1] ?? palette.bank), 0.28)
+      this.scene.fog.color.copy(fogColor)
+      if (star > 0.35 && !this.captureBackdrop) {
+        this.scene.fog.near = 14
+        this.scene.fog.far = 82
+      } else if (!this.captureBackdrop) {
+        this.scene.fog.near = 18
+        this.scene.fog.far = 78
+      }
+    }
+    if (this.captureBackdrop) this.applyCaptureFog()
+    this.applyRendererExposure()
+  }
+
+  private applyRendererExposure(): void {
+    if (!this.renderer) return
+    const star = this.palette.starAlpha ?? 0
+    if (star > 0.22) {
+      this.renderer.toneMappingExposure = 1.05 + star * 0.45
+    } else {
+      this.renderer.toneMappingExposure = 1
     }
   }
 
@@ -211,6 +255,7 @@ export class OpenWorldEngine {
     const next = layoutGardenWorld(memories)
     this.world = next
     this.rebuildPlants()
+    this.cc0Scenery?.setWorld(next)
     if (positionNeedsReset(this.player, next)) {
       this.player = createPlayer(next)
     }
@@ -224,6 +269,44 @@ export class OpenWorldEngine {
     return this.player
   }
 
+  setPlayerPose(x: number, z: number, yaw: number, pitch: number): void {
+    this.player.x = x
+    this.player.z = z
+    this.player.yaw = yaw
+    this.player.pitch = pitch
+    this.applyCamera()
+  }
+
+  setWalkCaptureBackdrop(active: boolean): void {
+    if (this.captureBackdrop === active) return
+    this.captureBackdrop = active
+    this.plantsRoot.visible = !active
+    if (this.terrain) {
+      const children = this.terrain.root.children
+      for (let i = 0; i < children.length; i++) {
+        children[i].visible = !active || i === 0
+      }
+    }
+    if (this.fireflies) this.fireflies.visible = !active && !this.reducedMotion
+    if (active) this.applyCaptureFog()
+    else if (this.scene.fog instanceof THREE.Fog) {
+      this.scene.fog.near = 18
+      this.scene.fog.far = 78
+    }
+  }
+
+  private applyCaptureFog(): void {
+    if (!(this.scene.fog instanceof THREE.Fog)) return
+    this.scene.fog.near = 8
+    this.scene.fog.far = 52
+  }
+
+  async setCc0Showcase(modelId: Cc0ModelId | null): Promise<void> {
+    this.setWalkCaptureBackdrop(modelId !== null)
+    await this.cc0Scenery?.setShowcase(modelId)
+    this.applyCamera()
+  }
+
   dispose(): void {
     cancelAnimationFrame(this.raf)
     window.removeEventListener('keydown', this.onKeyDown)
@@ -235,6 +318,8 @@ export class OpenWorldEngine {
     this.exitLock()
     this.clearPlants()
     this.terrain?.dispose()
+    this.cc0Scenery?.dispose()
+    this.cc0Scenery = null
     for (const arc of this.wateringArcs) {
       this.scene.remove(arc.points)
       arc.points.geometry.dispose()
@@ -476,14 +561,22 @@ export class OpenWorldEngine {
 
   private applyLighting(): void {
     const p = this.palette
+    const star = p.starAlpha ?? 0
+    const twilight = star > 0.22
+    const deepNight = star > 0.45
     this.hemi.color.set(p.sky[1] ?? '#88aacc')
-    this.hemi.groundColor.set(p.bank)
-    const night = (p.starAlpha ?? 0) > 0.45
-    this.hemi.intensity = night ? 0.35 : 0.9
+    const groundColor = new THREE.Color(p.bank)
+    if (twilight) {
+      groundColor.lerp(new THREE.Color(p.hills[1] ?? p.silSoft), 0.42 + star * 0.25)
+      groundColor.lerp(new THREE.Color(p.hills[0] ?? p.silSoft), 0.18)
+    }
+    this.hemi.groundColor.copy(groundColor)
+    this.hemi.intensity = deepNight ? 0.88 : twilight ? 0.96 : 0.9
     this.fill.color.set(p.silSoft)
-    this.fill.intensity = night ? 0.12 : 0.22
+    if (twilight) this.fill.color.lerp(new THREE.Color(p.sky[2] ?? p.sil), 0.2)
+    this.fill.intensity = deepNight ? 0.48 : twilight ? 0.52 : 0.22
     this.sun.color.set(p.sun?.disk ?? p.glow)
-    this.sun.intensity = night ? 0.18 : 1.2
+    this.sun.intensity = deepNight ? 0.52 : twilight ? 0.72 : 1.2
     if (p.sun) {
       const u = p.sun.x / 1200 - 0.5
       const v = (470 - p.sun.y) / 400
@@ -497,8 +590,8 @@ export class OpenWorldEngine {
     if (this.fireflies) {
       this.fireflies.visible = !this.reducedMotion
       if (this.fireflies.material instanceof THREE.PointsMaterial) {
-        this.fireflies.material.color.set(night ? p.fire : (p.glow ?? '#ffdf9e'))
-        this.fireflies.material.opacity = night ? 0.85 : 0.45
+        this.fireflies.material.color.set(deepNight ? p.fire : (p.glow ?? '#ffdf9e'))
+        this.fireflies.material.opacity = deepNight ? 0.85 : 0.45
       }
     }
   }

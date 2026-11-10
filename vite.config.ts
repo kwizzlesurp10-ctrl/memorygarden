@@ -40,7 +40,11 @@ export default defineConfig({
             if ((id.includes('@neondatabase/auth') && !id.includes('@neondatabase/auth-ui')) || id.includes('better-auth') || id.includes('@better-fetch') || id.includes('@better-auth')) {
               return 'vendor-auth'
             }
-            if (id.includes('three')) {
+            if (id.includes('node_modules/three')) {
+              // Keep GLTFLoader / meshopt in the lazy 3D walk chunk, not vendor-three.
+              if (id.includes('/examples/')) {
+                return undefined
+              }
               return 'vendor-three'
             }
           }

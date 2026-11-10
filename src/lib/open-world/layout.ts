@@ -292,7 +292,7 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
 
   return {
     bounds: { minX: -half, maxX: half, minZ: -half, maxZ: half },
-    spawn: { x: spawnX, z: spawnZ, yaw: 0 },
+    spawn: { x: spawnX + 0.35, z: spawnZ - 0.65, yaw: 0.38 },
     plants,
     paths: buildPaths(),
     pond,
