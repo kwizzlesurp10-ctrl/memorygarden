@@ -99,6 +99,7 @@ export function buildWorldSceneryItems(
         style={{ cursor: onShedClick ? 'pointer' : undefined }}
         onClick={onShedClick}
         role={onShedClick ? 'button' : undefined}
+        aria-label={onShedClick ? 'Open storage shed' : undefined}
         tabIndex={onShedClick ? 0 : undefined}
         onKeyDown={
           onShedClick
