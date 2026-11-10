@@ -159,7 +159,7 @@ describe('garden visual artifacts', () => {
         const variety = varieties[i]
         return h(
           'g',
-          { key: mem.id, transform: `translate(${pos.x} ${pos.y})` },
+          { key: mem.id, transform: `translate(${pos.x} ${pos.y}) scale(${pos.scale})` },
           h(SeededPlantSvg, {
             variety,
             stage: indexToPlantStage(4 + (i % 3)),

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { barkStriationPaths, trunkGradientDef } from '../plant-surface-detail'
+import { barkStriationPaths, plantGroundCollar, stemGroundFlare, trunkGradientDef } from '../plant-surface-detail'
 import type { HybridPlantPalette } from '../seeded-builders'
 
 const palette: HybridPlantPalette = {
@@ -25,5 +25,10 @@ describe('plant-surface-detail', () => {
   it('builds a trunk gradient def with stable id', () => {
     const node = trunkGradientDef('mg-bark-1', palette)
     expect(node).toBeTruthy()
+  })
+
+  it('emits grounding collar and stem flare primitives', () => {
+    expect(plantGroundCollar(palette, 0.7)).toBeTruthy()
+    expect(stemGroundFlare(palette, 0.7, 1.5)).toBeTruthy()
   })
 })

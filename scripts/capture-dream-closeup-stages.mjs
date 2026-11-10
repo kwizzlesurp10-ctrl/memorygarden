@@ -71,7 +71,10 @@ async function openDreamCloseup(page) {
     await page.keyboard.press('Escape')
     await page.waitForTimeout(150)
   }
-  await page.getByTitle('Garden View', { exact: true }).click({ force: true })
+  await page.evaluate(() => {
+    const btn = document.querySelector('button[title="Garden View"]')
+    if (btn instanceof HTMLElement) btn.click()
+  })
   await page.waitForTimeout(800)
   await page.getByTestId('garden-tool-dream-toggle').click({ force: true })
   await page.getByTestId('garden-tool-dream-panel').waitFor({ state: 'visible', timeout: 15_000 })

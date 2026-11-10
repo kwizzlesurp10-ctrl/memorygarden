@@ -65,3 +65,52 @@ export function canopyShimmerStyle(motion: boolean, phase: number): { animation?
   if (!motion) return undefined
   return { animation: `mgPulse ${3.6 + (phase % 5) * 0.4}s ease-in-out ${phase * 0.3}s infinite alternate` }
 }
+
+/** Soil mound + contact shadow so stems read as planted at y=0 (not floating). */
+export function plantGroundCollar(
+  C: HybridPlantPalette,
+  rim: number,
+  width = 11,
+  depth = 3.2,
+): ReactNode {
+  return e(
+    'g',
+    { key: 'ground-collar' },
+    e('ellipse', {
+      cx: 0,
+      cy: 1.8,
+      rx: width * 0.55,
+      ry: depth * 0.42,
+      fill: C.bank ?? C.silSoft,
+      opacity: 0.38,
+    }),
+    e('ellipse', {
+      cx: 0,
+      cy: 2.4,
+      rx: width * 0.78,
+      ry: depth * 0.55,
+      fill: C.rim,
+      opacity: 0.16 * rim,
+    }),
+    e('path', {
+      d: `M ${-width * 0.42} 0.6 Q 0 ${-depth * 0.35} ${width * 0.42} 0.6 Q 0 ${depth * 0.85} ${-width * 0.42} 0.6 Z`,
+      fill: C.silSoft,
+      stroke: C.rim,
+      strokeOpacity: 0.28 * rim,
+      strokeWidth: 0.45,
+      opacity: 0.72,
+    }),
+  )
+}
+
+/** Flat pad where a vertical stem meets the soil line — improves joint continuity. */
+export function stemGroundFlare(C: HybridPlantPalette, rim: number, halfW = 1.4): ReactNode {
+  return e('path', {
+    key: 'stem-flare',
+    d: `M ${-halfW} 0 Q ${-halfW * 0.35} ${-1.6} 0 ${-1.1} Q ${halfW * 0.35} ${-1.6} ${halfW} 0 Z`,
+    fill: C.sil,
+    stroke: C.rim,
+    strokeOpacity: 0.35 * rim,
+    strokeWidth: 0.45,
+  })
+}

@@ -9,6 +9,8 @@ import {
   canopyShimmerStyle,
   leafVein,
   petalSheen,
+  plantGroundCollar,
+  stemGroundFlare,
   trunkGradientDef,
 } from './plant-surface-detail'
 
@@ -25,6 +27,7 @@ const rimStroke = (C: HybridPlantPalette, rim: number) => ({
 
 function seedInSoil(C: HybridPlantPalette, rim: number, r: () => number): ReactNode[] {
   return [
+    plantGroundCollar(C, rim, 10, 2.8),
     e('path', {
       key: 'mound',
       d: 'M -10 1 Q -4 -5 4 -4 Q 10 -3 10 1 Q 0 3 -10 1 Z',
@@ -102,7 +105,9 @@ function buildFlower(s: number, r: () => number, C: HybridPlantPalette, rim: num
     const H = [0, 13, 25, 38, 50, 58, 66, 72][s];
     const lean = (r() - 0.5) * 12;
     const tipX = lean * 0.8, tipY = -H;
-    const stemW = 1.1 + s * 0.28;
+    const stemW = 1.35 + s * 0.34;
+  out.push(plantGroundCollar(C, rim, 8 + s * 0.65, 2.6));
+  out.push(stemGroundFlare(C, rim, stemW * 0.62));
     const stem = `M 0 0 C ${lean * 0.2} ${-H * 0.35}, ${lean} ${-H * 0.7}, ${tipX} ${tipY}`;
     out.push(e('path', { key: 'st', d: stem, stroke: C.sil, strokeWidth: stemW, fill: 'none', strokeLinecap: 'round' }));
     out.push(e('path', { key: 'str', d: stem, stroke: C.rim, strokeWidth: stemW * 0.35, fill: 'none', strokeLinecap: 'round', opacity: 0.45 * rim, transform: 'translate(0.7 0)' }));
@@ -204,19 +209,51 @@ function buildTree(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
       return seedInSoil(C, rim, r);
     }
     if (s === 1) {
-      out.push(e('path', { key: 'st', d: 'M 0 0 L 0 -10', stroke: C.sil, strokeWidth: 1.2, strokeLinecap: 'round' }));
+      out.push(plantGroundCollar(C, rim, 9, 2.4));
+      out.push(stemGroundFlare(C, rim, 1.1));
+      out.push(
+        e('path', {
+          key: 'st',
+          d: 'M -0.9 0 Q -0.5 -5.5, 0 -10 Q 0.5 -5.5, 0.9 0 Z',
+          fill: C.sil,
+          stroke: C.rim,
+          strokeOpacity: 0.4 * rim,
+          strokeWidth: 0.5,
+        }),
+      );
       out.push(...sproutPair(C, rim, -10, 0));
       return out;
     }
     const H = [0, 15, 28, 42, 56, 68, 80, 90][s];
-    const bw = 1.6 + s * 1.0, tw = Math.max(0.7, bw * 0.3);
+    const bw = [0, 1.2, 2.1, 3.1, 4.0, 4.8, 5.6, 6.4][s];
+    const tw = Math.max(0.7, bw * 0.32);
+    out.push(plantGroundCollar(C, rim, Math.min(22, 8 + bw * 1.85), 3.4));
+    out.push(stemGroundFlare(C, rim, Math.max(1.2, bw * 0.38)));
     const gradId = `mg-trunk-${s}`
     out.push(e('defs', { key: 'defs' }, trunkGradientDef(gradId, C)));
     out.push(e('path', { key: 'tr', d: `M ${-bw} 0 C ${-bw * 0.7} ${-H * 0.4}, ${-tw * 1.4} ${-H * 0.72}, ${-tw} ${-H} L ${tw} ${-H} C ${tw * 1.4} ${-H * 0.72}, ${bw * 0.7} ${-H * 0.4}, ${bw} 0 Z`, fill: `url(#${gradId})`, stroke: C.rim, strokeOpacity: 0.4 * rim, strokeWidth: 0.6 }));
     if (s >= 3) out.push(...barkStriationPaths(bw, H, s * 7 + Math.floor(r() * 9), C, rim));
     if (s >= 4) {
-      out.push(e('path', { key: 'r1', d: `M ${-bw} 0 Q ${-bw - 3.5} -1.5, ${-bw - 6} 0`, stroke: C.sil, strokeWidth: 1.8, fill: 'none', strokeLinecap: 'round' }));
-      out.push(e('path', { key: 'r2', d: `M ${bw} 0 Q ${bw + 3.5} -1.5, ${bw + 6} 0`, stroke: C.sil, strokeWidth: 1.8, fill: 'none', strokeLinecap: 'round' }));
+      out.push(
+        e('path', {
+          key: 'r1',
+          d: `M ${-bw * 0.92} 0.4 Q ${-bw - 2.8} 3.2, ${-bw - 5.5} 5.5`,
+          stroke: C.sil,
+          strokeWidth: 1.65,
+          fill: 'none',
+          strokeLinecap: 'round',
+        }),
+      );
+      out.push(
+        e('path', {
+          key: 'r2',
+          d: `M ${bw * 0.92} 0.4 Q ${bw + 2.8} 3.2, ${bw + 5.5} 5.5`,
+          stroke: C.sil,
+          strokeWidth: 1.65,
+          fill: 'none',
+          strokeLinecap: 'round',
+        }),
+      );
     }
     const nb = Math.min(2 + s, 7);
     if (s >= 2) for (let i = 0; i < nb; i++) {
@@ -224,7 +261,17 @@ function buildTree(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
       const side = i % 2 ? 1 : -1;
       const y0 = -H * f;
       const len = H * 0.36 * (1.15 - f * 0.55) * (0.8 + r() * 0.4);
-      out.push(e('path', { key: 'b' + i, d: `M 0 ${y0} Q ${side * len * 0.55} ${y0 - len * 0.4}, ${side * len} ${y0 - len * 0.72}`, stroke: C.sil, strokeWidth: Math.max(0.7, 2.4 - i * 0.25), fill: 'none', strokeLinecap: 'round' }));
+      const attachY = y0 + 0.35;
+      out.push(
+        e('path', {
+          key: 'b' + i,
+          d: `M ${side * bw * 0.05} ${attachY} Q ${side * len * 0.55} ${attachY - len * 0.4}, ${side * len} ${attachY - len * 0.72}`,
+          stroke: C.sil,
+          strokeWidth: Math.max(0.85, 2.5 - i * 0.22),
+          fill: 'none',
+          strokeLinecap: 'round',
+        }),
+      );
     }
     if (s === 2) {
       const tips = [[-5, -H - 4], [4, -H - 6], [-1, -H - 9]];
@@ -281,6 +328,7 @@ function buildSucculent(s: number, r: () => number, C: HybridPlantPalette, rim: 
       }
     }
     inner.push(e('circle', { key: 'core', cx: 0, cy: 0, r: LR * 0.14, fill: C.glow, opacity: 0.55 }));
+    out.push(plantGroundCollar(C, rim, 10 + s * 1.4, 2.8));
     out.push(e('g', { key: 'ros', transform: 'translate(0 -2) scale(1 0.62)' }, inner));
     if (s >= 6) {
       const SH = 26 + (s - 6) * 12;
@@ -301,6 +349,7 @@ function buildVine(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
       return seedInSoil(C, rim, r);
     }
     const H = [0, 12, 22, 34, 46, 56, 66, 74][s];
+    out.push(plantGroundCollar(C, rim, 11 + s * 0.5, 2.5));
     out.push(e('path', { key: 'stake', d: `M 2 0 L 4 ${-H * 0.92}`, stroke: C.rim, strokeOpacity: 0.35 * rim, strokeWidth: 2, strokeLinecap: 'round' }));
     if (s >= 4) out.push(e('path', { key: 'bar', d: `M ${4 - 7} ${-H * 0.6} L ${4 + 7} ${-H * 0.64}`, stroke: C.sil, strokeWidth: 1.8, strokeLinecap: 'round' }));
     const segs = 5 + s;
@@ -356,12 +405,14 @@ function buildHerb(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
       return seedInSoil(C, rim, r);
     }
     const K = [0, 2, 3, 4, 5, 6, 7, 9][s];
+    out.push(plantGroundCollar(C, rim, 11 + s * 1.1, 3));
+    out.push(stemGroundFlare(C, rim, 1.6 + s * 0.12));
     for (let i = 0; i < K; i++) {
       const ang = (K === 1 ? 0 : (-1 + 2 * i / (K - 1))) * 0.55;
       const hh = (10 + s * 6.5) * (0.72 + r() * 0.5);
       const tx = Math.sin(ang) * hh * 0.6;
       const d = `M 0 0 Q ${tx * 0.3} ${-hh * 0.55}, ${tx} ${-hh}`;
-      out.push(e('path', { key: 's' + i, d, stroke: C.sil, strokeWidth: 1.35 + s * 0.12, fill: 'none', strokeLinecap: 'round' }));
+      out.push(e('path', { key: 's' + i, d, stroke: C.sil, strokeWidth: 1.5 + s * 0.14, fill: 'none', strokeLinecap: 'round' }));
       const leafPairs = Math.min(4, 1 + Math.floor(s / 2));
       for (let j = 1; j <= leafPairs; j++) {
         const t = j / (leafPairs + 1);
@@ -397,6 +448,7 @@ function buildWildflower(s: number, r: () => number, C: HybridPlantPalette, rim:
       return seedInSoil(C, rim, r);
     }
     const M = [0, 1, 2, 3, 5, 7, 9, 11][s];
+    out.push(plantGroundCollar(C, rim, 12 + s * 1.2, 2.8));
     const spread = 3 + s * 3.1;
     for (let i = 0; i < s + 2; i++) {
       const gx = (r() - 0.5) * 2 * spread;
@@ -408,7 +460,7 @@ function buildWildflower(s: number, r: () => number, C: HybridPlantPalette, rim:
       const bx = (r() - 0.5) * 2 * spread;
       const hh = 8 + r() * 9 + s * 1.4;
       const lean = (r() - 0.5) * 5;
-      out.push(e('path', { key: 'f' + i + 's', d: `M ${bx} 0 Q ${bx + lean * 0.5} ${-hh * 0.55}, ${bx + lean} ${-hh}`, stroke: C.sil, strokeWidth: 0.8, fill: 'none', strokeLinecap: 'round' }));
+      out.push(e('path', { key: 'f' + i + 's', d: `M ${bx} 0 Q ${bx + lean * 0.5} ${-hh * 0.55}, ${bx + lean} ${-hh}`, stroke: C.sil, strokeWidth: 1.05 + s * 0.06, fill: 'none', strokeLinecap: 'round' }));
       const hx = bx + lean, hy = -hh;
       const useAccent = r() > 0.6;
       for (let p = 0; p < 5; p++) {
@@ -427,6 +479,7 @@ function buildFern(s: number, r: () => number, C: HybridPlantPalette, rim: numbe
       return seedInSoil(C, rim, r);
     }
     const F = [0, 1, 2, 3, 4, 5, 6, 7][s];
+    out.push(plantGroundCollar(C, rim, 10 + s, 2.6));
     for (let f = 0; f < F; f++) {
       const dir = (F === 1 ? (r() > 0.5 ? 1 : -1) * 0.5 : -1 + 2 * f / (F - 1)) * 0.85;
       const len = (11 + s * 5.5) * (0.78 + r() * 0.42);
@@ -483,9 +536,19 @@ function buildMushroom(s: number, r: () => number, C: HybridPlantPalette, rim: n
     members.forEach(([mx, my, msc], mi) => {
       const capW = (4 + s * 1.15) * msc;
       const capH = capW * 0.72;
-      const stemH = (4 + s * 1.5) * msc;
+      const stemH = (4.6 + s * 1.65) * msc;
       const g: ReactNode[] = [];
-      g.push(e('path', { key: 'stem', d: `M ${-capW * 0.28} 0 C ${-capW * 0.2} ${-stemH * 0.6}, ${-capW * 0.24} ${-stemH}, ${-capW * 0.3} ${-stemH} L ${capW * 0.3} ${-stemH} C ${capW * 0.24} ${-stemH}, ${capW * 0.2} ${-stemH * 0.6}, ${capW * 0.28} 0 Z`, fill: C.silSoft }));
+      g.push(plantGroundCollar(C, rim, capW * 1.35, 2.2));
+      g.push(
+        e('path', {
+          key: 'stem',
+          d: `M ${-capW * 0.32} 0.4 C ${-capW * 0.22} ${-stemH * 0.58}, ${-capW * 0.28} ${-stemH + 0.2}, ${-capW * 0.34} ${-stemH + 0.2} L ${capW * 0.34} ${-stemH + 0.2} C ${capW * 0.28} ${-stemH + 0.2}, ${capW * 0.22} ${-stemH * 0.58}, ${capW * 0.32} 0.4 Z`,
+          fill: C.silSoft,
+          stroke: C.rim,
+          strokeOpacity: 0.32 * rim,
+          strokeWidth: 0.45,
+        }),
+      );
       g.push(e('path', { key: 'gillglow', d: `M ${-capW * 0.82} ${-stemH + 0.4} Q 0 ${-stemH + capH * 0.5}, ${capW * 0.82} ${-stemH + 0.4}`, stroke: C.glow, strokeWidth: 1, fill: 'none', opacity: 0.8, style: motion ? { animation: `mgPulse ${2.8 + mi * 0.7}s ease-in-out infinite alternate` } : null }));
       g.push(e('ellipse', { key: 'under', cx: 0, cy: -stemH + capH * 0.2, rx: capW * 0.6, ry: capH * 0.28, fill: C.glow, opacity: 0.18, style: { filter: 'blur(2px)' } }));
       g.push(e('path', { key: 'cap', d: `M ${-capW} ${-stemH} Q 0 ${-stemH - capH * 2}, ${capW} ${-stemH} Q 0 ${-stemH + capH * 0.4}, ${-capW} ${-stemH} Z`, fill: C.sil, stroke: C.rim, strokeOpacity: 0.5 * rim, strokeWidth: 0.6 }));
