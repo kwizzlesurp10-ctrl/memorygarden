@@ -118,23 +118,17 @@ export function AppHeader(props: AppHeaderProps) {
 
   return (
     <header className="relative z-10 border-b border-border bg-card/50 px-4 py-3 backdrop-blur-sm md:px-6 md:py-4">
-      <div className="grid grid-cols-1 items-center gap-x-4 gap-y-3 md:grid-cols-[1fr_auto_1fr]">
-        <div className="flex min-w-0 items-center gap-2 md:gap-3 md:justify-self-start">
+      <div className="grid grid-cols-1 items-center gap-x-3 gap-y-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-x-4">
+        <div className="flex min-w-0 max-w-full items-center gap-2 overflow-hidden md:gap-3 md:justify-self-start">
           <Tree size={28} weight="duotone" className="flex-shrink-0 text-primary md:h-8 md:w-8" />
-          <h1 className="truncate text-lg font-bold md:text-xl">MemoryGarden</h1>
-          <SeasonIndicator season={season} className="hidden sm:flex" />
-          <WeatherIndicator mood={gardenMood} className="hidden sm:flex" />
-          <GardenSelector
-            gardens={gardens}
-            activeGardenId={activeGardenId}
-            onSelectGarden={onSelectGarden}
-            onCreateGarden={onCreateGarden}
-          />
+          <h1 className="min-w-0 truncate text-lg font-bold md:text-xl">MemoryGarden</h1>
+          <SeasonIndicator season={season} className="hidden shrink-0 sm:flex" />
+          <WeatherIndicator mood={gardenMood} className="hidden shrink-0 sm:flex" />
         </div>
 
         <nav
           aria-label="Main views"
-          className="flex w-full justify-center overflow-x-auto md:w-auto md:justify-self-center"
+          className="relative z-20 flex w-full min-w-0 justify-center overflow-x-auto md:w-auto md:max-w-[min(100%,42rem)] md:justify-self-center"
         >
           <div
             role="list"
@@ -166,7 +160,13 @@ export function AppHeader(props: AppHeaderProps) {
           </div>
         </nav>
 
-        <div className="flex flex-shrink-0 items-center justify-end gap-2 md:gap-3 md:justify-self-end">
+        <div className="flex min-w-0 flex-shrink-0 items-center justify-end gap-2 md:gap-2 md:justify-self-end lg:gap-3">
+          <GardenSelector
+            gardens={gardens}
+            activeGardenId={activeGardenId}
+            onSelectGarden={onSelectGarden}
+            onCreateGarden={onCreateGarden}
+          />
           {activeGarden && onToggleActivityPanel && (
             <Button
               variant={isActivityPanelOpen ? 'secondary' : 'ghost'}
