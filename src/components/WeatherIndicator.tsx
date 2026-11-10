@@ -21,13 +21,12 @@ export function WeatherIndicator({ mood, className = '' }: WeatherIndicatorProps
 
   return (
     <div
-      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium text-foreground ${className}`}
       style={{
-        backgroundColor: `color-mix(in oklch, ${config.color} 20%, transparent)`,
-        color: config.color,
+        backgroundColor: `color-mix(in oklch, ${config.color} 28%, var(--background))`,
       }}
     >
-      <Icon size={14} weight="duotone" />
+      <Icon size={14} weight="duotone" style={{ color: config.color }} aria-hidden />
       <span className="hidden sm:inline">{config.label}</span>
     </div>
   )

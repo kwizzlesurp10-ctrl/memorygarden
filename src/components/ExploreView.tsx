@@ -71,7 +71,9 @@ export function ExploreView({ onVisitGarden, onJoinGarden, userId, userName }: E
     })
     setJoiningGarden(null)
     if (!result.ok) {
-      toast.error('Could not join garden', { description: result.error })
+      toast.error('Could not join garden', {
+        description: result.error || 'Check your connection and try again.',
+      })
       return
     }
     setJoinedGardens((prev) => new Set([...prev, garden.id]))
@@ -306,9 +308,9 @@ export function ExploreView({ onVisitGarden, onJoinGarden, userId, userName }: E
                       <div className="p-6">
                         <div className="flex items-start justify-between gap-4 mb-3">
                           <div className="flex-1">
-                            <h3 className="font-semibold text-xl tracking-tight group-hover:text-primary transition-colors line-clamp-1">
+                            <h2 className="font-semibold text-xl tracking-tight group-hover:text-primary transition-colors line-clamp-1">
                               {garden.name}
-                            </h3>
+                            </h2>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                               {garden.owner_avatar_url && (
                                 <img 

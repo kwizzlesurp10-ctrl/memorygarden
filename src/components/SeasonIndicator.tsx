@@ -44,13 +44,15 @@ export function SeasonIndicator({ season, className }: SeasonIndicatorProps) {
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      className={cn("flex items-center gap-2 px-3 py-1.5 rounded-full", className)}
+      className={cn(
+        'flex items-center gap-2 rounded-full px-3 py-1.5 text-foreground',
+        className,
+      )}
       style={{
         backgroundColor: config.bgColor,
-        color: config.color,
       }}
     >
-      <Icon size={16} weight="fill" />
+      <Icon size={16} weight="fill" style={{ color: config.color }} aria-hidden />
       <span className="text-sm font-medium hidden sm:inline">{config.label}</span>
     </motion.div>
   )

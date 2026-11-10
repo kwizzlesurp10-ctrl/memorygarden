@@ -49,6 +49,9 @@ interface GardenCanvasProps {
   landscapeView?: GardenLandscapeView
   onLandscapeViewChange?: (view: GardenLandscapeView) => void
   starterDecor?: GardenStarterDecor
+  /** True when filters/search are active but no memories match (garden view only). */
+  searchHasNoMatches?: boolean
+  onClearSearch?: () => void
 }
 
 export function GardenCanvas({
@@ -64,6 +67,8 @@ export function GardenCanvas({
   landscapeView,
   onLandscapeViewChange,
   starterDecor,
+  searchHasNoMatches = false,
+  onClearSearch,
 }: GardenCanvasProps) {
   const reducedMotion = useReducedMotion()
   const motion = !reducedMotion
@@ -294,6 +299,29 @@ export function GardenCanvas({
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-[#0d0913]">
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {searchHasNoMatches
+          ? 'No memories match your search or filters in the garden view.'
+          : ''}
+      </div>
+      {searchHasNoMatches ? (
+        <div
+          className="absolute left-1/2 top-20 z-50 w-[min(92vw,24rem)] -translate-x-1/2 rounded-2xl border border-[#f0e7da]/25 bg-[#120e18]/92 p-4 text-center text-[#f0e7da] shadow-xl backdrop-blur-md"
+          data-testid="garden-search-no-match"
+        >
+          <p className="text-sm font-medium text-[#faf4ec]">No memories match your search</p>
+          <p className="mt-1 text-xs text-[#f0e7da]/75">Try adjusting your filters or search terms.</p>
+          {onClearSearch ? (
+            <button
+              type="button"
+              onClick={onClearSearch}
+              className="mt-3 inline-flex min-h-8 items-center justify-center rounded-md border border-[#f0e7da]/30 bg-[#f0e7da]/10 px-3 text-xs font-medium hover:bg-[#f0e7da]/18"
+            >
+              Clear search &amp; filters
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {mood && <WeatherEffects mood={mood} season={season} />}
 
       {onLandscapeViewChange ? (

@@ -21,6 +21,8 @@ export interface DreamPlantCloseupSvgProps {
   motion: boolean
   stageLabel: string
   className?: string
+  /** When true, re-measures after mount/open (dialog visibility). */
+  dialogOpen?: boolean
   /** Test-only: draw viewBox frame inside SVG. */
   showDebugFrame?: boolean
 }
@@ -46,13 +48,14 @@ export function DreamPlantCloseupSvg({
   motion,
   stageLabel,
   className,
+  dialogOpen = true,
   showDebugFrame = false,
 }: DreamPlantCloseupSvgProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const contentRef = useRef<SVGGElement>(null)
   const [viewBox, setViewBox] = useState(() => initialViewBox(stageIndex, genome))
 
-  useLayoutEffect(() => {
+  const fitViewBoxFromDom = () => {
     const content = contentRef.current
     if (!content) return
 
@@ -70,7 +73,16 @@ export function DreamPlantCloseupSvg({
 
     const next = fitCloseupViewBox(contentBox)
     setViewBox((prev) => (prev === next ? prev : next))
-  }, [stageIndex, genome, palette, rimStrength, motion])
+  }
+
+  useLayoutEffect(() => {
+    if (!dialogOpen) return
+    fitViewBoxFromDom()
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(fitViewBoxFromDom)
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [dialogOpen, stageIndex, genome, palette, rimStrength, motion])
 
   const frameBox = showDebugFrame ? parseViewBox(viewBox) : null
 

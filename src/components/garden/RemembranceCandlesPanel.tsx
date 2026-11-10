@@ -27,7 +27,11 @@ export function RemembranceCandlesPanel({ candles, onLight, onExtinguish, onClos
     <div className="rounded-xl border border-white/8 bg-black/30 p-4 text-[#f0e7da] font-serif space-y-3">
       <div className="space-y-1">
         <div className="flex w-full items-center gap-2">
-          <span className="rounded-md border border-[#ffd88a]/35 bg-[#ffd88a]/13 px-2 py-0.5 font-mono text-xs text-[#ffd88a]">6a</span>
+          {import.meta.env.DEV ? (
+            <span className="rounded-md border border-[#ffd88a]/35 bg-[#ffd88a]/13 px-2 py-0.5 font-mono text-xs text-[#ffd88a]">
+              6a
+            </span>
+          ) : null}
           <h3 className="text-lg font-semibold">Floating candles</h3>
           {onClose && (
             <button type="button" onClick={onClose} className="ml-auto text-sm opacity-50 hover:opacity-90" aria-label="Close floating candles panel">

@@ -1300,6 +1300,17 @@ function App() {
     () => (activeFilterCount > 0 ? new Set(filteredMemories.map((m) => m.id)) : null),
     [filteredMemories, activeFilterCount]
   )
+  const gardenSearchHasNoMatches =
+    activeFilterCount > 0 && filteredMemories.length === 0 && safeMemories.length > 0
+  const clearSearchAndFilters = useCallback(() => {
+    setSearchQuery('')
+    setFilters({
+      emotionalTones: [],
+      plantStages: [],
+      dateRange: {},
+      locations: [],
+    })
+  }, [])
   const availableLocations = useMemo(
     () => Array.from(new Set(safeMemories.map((m) => m.location).filter(Boolean) as string[])),
     [safeMemories]
@@ -1459,6 +1470,8 @@ function App() {
                     landscapeView={safePreferences.gardenLandscapeView}
                     onLandscapeViewChange={handleLandscapeViewChange}
                     starterDecor={safePreferences.gardenStarterDecor}
+                    searchHasNoMatches={gardenSearchHasNoMatches}
+                    onClearSearch={clearSearchAndFilters}
                   />
                 </SectionErrorBoundary>
               </motion.div>

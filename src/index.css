@@ -25,7 +25,7 @@
   --popover: oklch(0.94 0.02 85);
   --popover-foreground: oklch(0.25 0.01 95);
   
-  --primary: oklch(0.55 0.08 155);
+  --primary: oklch(0.46 0.09 155);
   --primary-foreground: oklch(0.98 0 0);
   
   --secondary: oklch(0.45 0.05 65);
@@ -42,7 +42,7 @@
   
   --border: oklch(0.85 0.02 95);
   --input: oklch(0.85 0.02 95);
-  --ring: oklch(0.55 0.08 155);
+  --ring: oklch(0.46 0.09 155);
   
   --radius: 0.75rem;
 }
