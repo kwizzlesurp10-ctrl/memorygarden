@@ -134,7 +134,7 @@ export function AppHeader(props: AppHeaderProps) {
 
         <nav
           aria-label="Main views"
-          className="flex w-full justify-center overflow-x-auto md:w-auto md:justify-self-center"
+          className="hidden w-full justify-center overflow-x-auto md:flex md:w-auto md:justify-self-center"
         >
           <div
             role="list"

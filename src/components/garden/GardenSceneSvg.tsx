@@ -938,9 +938,10 @@ export function GardenSceneSvg({
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox={`0 0 ${SCENE_W} ${SCENE_H}`}
-      width={SCENE_W}
-      height={SCENE_H}
+      viewBox={`-120 0 ${SCENE_W + 240} ${SCENE_H}`}
+      preserveAspectRatio="xMidYMid slice"
+      width="100%"
+      height="100%"
       style={{ display: 'block' }}
       aria-hidden
     >
