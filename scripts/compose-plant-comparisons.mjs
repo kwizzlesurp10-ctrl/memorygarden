@@ -62,40 +62,35 @@ const layouts = {
 sideBySide('compare-garden-starter-pond', 'garden-starter-pond.png', 'garden-starter-pond.png')
 sideBySide('compare-plant-stages-grid', 'plant-stages-multi-variety-grid.png', 'plant-stages-multi-variety-grid.png', 900)
 
-const treeY = layouts.flower.rowHeight
-const mushY =
-  layouts.flower.rowHeight +
-  layouts.tree.rowHeight +
-  192 +
-  196 +
-  200 +
-  200 +
-  200
+const ROW_HEIGHTS = [228, 280, 192, 200, 192, 196, 200, 168]
+const ROW_LABELS = ['flower', 'tree', 'succulent', 'vine', 'herb', 'wildflower', 'fern', 'mushroom']
 
-function zoomRow(label, y0, rowHeight, outName) {
-  const sliceH = rowHeight + 24
-  for (const [side, dir, xOff] of [
-    ['before', beforeDir, 0],
-    ['after', afterDir, sourceW],
-  ]) {
-    const half = `<?xml version="1.0"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${sourceW}" height="${sliceH}">
-  <image href="data:image/png;base64,${b64(resolve(dir, 'plant-stages-multi-variety-grid.png'))}" width="${sourceW}" height="auto" y="${-y0 + 40}"/>
-</svg>`
-    writeFileSync(resolve(outDir, `_tmp_${side}_${outName}.svg`), half)
-  }
+function rowYOffset(rowIndex) {
+  let y = 0
+  for (let i = 0; i < rowIndex; i++) y += ROW_HEIGHTS[i]
+  return y
+}
+
+function zoomRow(label, rowIndex, outName) {
+  const y0 = rowYOffset(rowIndex)
+  const sliceH = ROW_HEIGHTS[rowIndex] + 8
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${sourceW * 2}" height="${sliceH + 40}">
-  <rect width="100%" height="100%" fill="#0d0c0a"/>
-  <text x="16" y="26" fill="#e8dcc8" font-size="18">${label} stages — BEFORE</text>
-  <text x="${sourceW + 16}" y="26" fill="#c8f0c0" font-size="18">${label} stages — AFTER</text>
-  <image href="data:image/png;base64,${b64(resolve(beforeDir, 'plant-stages-multi-variety-grid.png'))}" x="0" y="${40 - y0}" width="${sourceW}"/>
-  <image href="data:image/png;base64,${b64(resolve(afterDir, 'plant-stages-multi-variety-grid.png'))}" x="${sourceW}" y="${40 - y0}" width="${sourceW}"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="${sourceW * 2}" height="${sliceH + 44}" viewBox="0 0 ${sourceW * 2} ${sliceH + 44}">
+  <rect width="100%" height="100%" fill="#e8e2d6"/>
+  <text x="16" y="28" fill="#2a2118" font-size="17" font-weight="600" font-family="system-ui,sans-serif">${label} stages — BEFORE (main)</text>
+  <text x="${sourceW + 16}" y="28" fill="#1a3d24" font-size="17" font-weight="600" font-family="system-ui,sans-serif">${label} stages — AFTER (${readFileSync(resolve(afterDir, 'BUILD_SHA.txt'), 'utf8').trim().slice(0, 7)})</text>
+  <svg x="0" y="40" width="${sourceW}" height="${sliceH}" viewBox="0 ${y0} ${sourceW} ${sliceH}">
+    <image href="data:image/png;base64,${b64(resolve(beforeDir, 'plant-stages-multi-variety-grid.png'))}" width="${sourceW}" height="${ROW_HEIGHTS.reduce((a, b) => a + b, 0)}"/>
+  </svg>
+  <svg x="${sourceW}" y="40" width="${sourceW}" height="${sliceH}" viewBox="0 ${y0} ${sourceW} ${sliceH}">
+    <image href="data:image/png;base64,${b64(resolve(afterDir, 'plant-stages-multi-variety-grid.png'))}" width="${sourceW}" height="${ROW_HEIGHTS.reduce((a, b) => a + b, 0)}"/>
+  </svg>
+  <line x1="${sourceW}" y1="36" x2="${sourceW}" y2="${sliceH + 44}" stroke="#9a8a72" stroke-width="2"/>
 </svg>`
   const png = new Resvg(svg, { fitTo: { mode: 'width', value: sourceW * 2 } }).render().asPng()
   writeFileSync(resolve(outDir, outName), png)
   console.log('Wrote', resolve(outDir, outName))
 }
 
-zoomRow('Tree', treeY, layouts.tree.rowHeight, 'compare-crop-tree-stages.png')
-zoomRow('Mushroom', mushY, layouts.mushroom.rowHeight, 'compare-crop-mushroom-stages.png')
+zoomRow('Tree', 1, 'compare-crop-tree-stages.png')
+zoomRow('Mushroom', 7, 'compare-crop-mushroom-stages.png')
