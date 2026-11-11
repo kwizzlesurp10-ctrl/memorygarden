@@ -6,7 +6,6 @@ import { frameMemoryPlantsForMobile } from '@/lib/garden/garden-mobile-framing'
 import { GardenViewPicker } from '@/components/garden/GardenViewPicker'
 import { WeatherEffects } from './WeatherEffects'
 import { GardenClusterPaths } from './GardenClusterPaths'
-import { plantStageToIndex } from '@/lib/garden/stage'
 import { todPalette, realClockTod } from '@/lib/garden/day-night'
 import {
   computeLoupeLayout,
@@ -22,19 +21,15 @@ import { GardenLensDetail } from '@/components/garden/GardenLensDetail'
 import { StorageShedPanel } from '@/components/garden/StorageShedPanel'
 import { GardenLayoutToolDock } from '@/components/garden/GardenLayoutToolDock'
 import { GardenPlantAccessibilityLayer } from '@/components/garden/GardenPlantAccessibilityLayer'
-import { GrowthCeremony } from '@/components/garden/GrowthCeremony'
-import { SeededPlantSvg } from '@/components/plants/SeededPlantSvg'
-import { HybridPlantSvg } from '@/components/plants/hybrid-builder'
-import type { SeededVariety } from '@/components/plants/types'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { useParallaxCursor } from '@/hooks/useParallaxCursor'
 import { getPlantOfWeek, hasWeeklySeedForWeek } from '@/lib/garden/plant-of-week'
 import { loadShed, saveShed } from '@/lib/garden/shed-storage'
 import { getLocalUser } from '@/lib/local-user'
 import { toast } from 'sonner'
-import { memoryPlantA11yLabel } from '@/lib/garden-helpers'
+import { GardenSceneMemoryPlant } from '@/components/garden/GardenSceneMemoryPlant'
 
-const RIM_STRENGTH = 0.6
+const RIM_STRENGTH = 0.66
 const GARDEN_SEED = 7
 
 interface GardenCanvasProps {
@@ -252,6 +247,13 @@ export function GardenCanvas({
 
   const activeLayout = mobileFraming?.layout ?? memorySceneLayout
 
+  const focusGardenPlant = useCallback((memoryId: string) => {
+    const root = sceneWrapRef.current
+    if (!root) return
+    const el = root.querySelector<SVGGElement>(`[data-memory-id="${CSS.escape(memoryId)}"]`)
+    el?.focus()
+  }, [])
+
   const memoryPlants = useMemo(() => (
     [...memories]
       .map((memory) => {
@@ -259,77 +261,36 @@ export function GardenCanvas({
       if (!pos) return null
       const isDimmed = highlightedMemoryIds !== null && !highlightedMemoryIds.has(memory.id)
       const isGrowing = growingMemories.has(memory.id)
-      const sc = pos.plantScale
-
-      const openMemory = () => {
-        if (lensOn) {
-          setDetailMemory(memory)
-        } else if (!draggingMemory) {
-          onMemoryClick(memory)
-        }
-      }
 
       return {
         depth: pos.depth,
         node: (
-        <g
-          key={memory.id}
-          role="button"
-          tabIndex={isDimmed ? -1 : 0}
-          aria-label={`Memory: ${memoryPlantA11yLabel(memory)}`}
-          aria-disabled={isDimmed || undefined}
-          transform={`translate(${pos.x} ${pos.y})`}
-          opacity={isDimmed ? 0.15 : 1}
-          className="garden-scene-plant"
-          style={{ pointerEvents: isDimmed ? 'none' : 'auto', cursor: lensOn ? 'pointer' : 'grab' }}
-          onClick={(e) => {
-            e.stopPropagation()
-            openMemory()
-          }}
-          onKeyDown={(e) => {
-            if (isDimmed) return
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              e.stopPropagation()
-              openMemory()
-            }
-          }}
-        >
-          <GrowthCeremony active={isGrowing} glow={palette.glow} rim={palette.rim}>
-            <g transform={`scale(${sc})`}>
-              {memory.isHybrid && memory.hybridGenome ? (
-                <HybridPlantSvg
-                  genome={memory.hybridGenome}
-                  palette={palette}
-                  rimStrength={RIM_STRENGTH}
-                  motion={motion}
-                  stage={plantStageToIndex(memory.plantStage)}
-                  x={0}
-                  y={0}
-                  scale={1}
-                />
-              ) : (
-                <SeededPlantSvg
-                  variety={memory.plantVariety as SeededVariety}
-                  stage={memory.plantStage}
-                  geneticsSeed={memory.geneticsSeed || memory.id}
-                  palette={palette}
-                  rimStrength={RIM_STRENGTH}
-                  motion={motion}
-                  facing={pos.facing}
-                  rimFromLeft={pos.rimFromLeft}
-                />
-              )}
-            </g>
-          </GrowthCeremony>
-        </g>
-      ),
+          <GardenSceneMemoryPlant
+            key={memory.id}
+            memory={memory}
+            pos={pos}
+            isDimmed={isDimmed}
+            isGrowing={isGrowing}
+            palette={palette}
+            rimStrength={RIM_STRENGTH}
+            motion={motion}
+            lensOn={lensOn}
+            draggingMemory={draggingMemory}
+            activeLayout={activeLayout}
+            memories={memories}
+            highlightedMemoryIds={highlightedMemoryIds}
+            onMemoryClick={onMemoryClick}
+            onMemoryMove={onMemoryMove}
+            onLensDetail={setDetailMemory}
+            focusGardenPlant={focusGardenPlant}
+          />
+        ),
       }
     })
       .filter((item): item is NonNullable<typeof item> => item !== null)
       .sort((a, b) => a.depth - b.depth)
       .map((item) => item.node)
-  ), [memories, activeLayout, highlightedMemoryIds, growingMemories, lensOn, palette, motion, draggingMemory, onMemoryClick])
+  ), [memories, activeLayout, highlightedMemoryIds, growingMemories, lensOn, palette, motion, draggingMemory, onMemoryClick, onMemoryMove, focusGardenPlant])
 
   const onLensMove = useCallback((e: React.PointerEvent) => {
     if (!lensOn || !sceneWrapRef.current) return
@@ -356,6 +317,9 @@ export function GardenCanvas({
           ? 'No memories match your search or filters in the garden view.'
           : ''}
       </div>
+      <p className="sr-only">
+        Garden plants: Tab to focus a plant. Arrow keys move between plants. Control and arrow keys nudge the selected plant position. Enter or Space opens the memory.
+      </p>
       {searchHasNoMatches ? (
         <div
           className="absolute left-1/2 top-20 z-50 w-[min(92vw,24rem)] -translate-x-1/2 rounded-2xl border border-[#f0e7da]/25 bg-[#120e18]/92 p-4 text-center text-[#f0e7da] shadow-xl backdrop-blur-md"
@@ -442,7 +406,7 @@ export function GardenCanvas({
 
       {lensOn && (
         <div
-          className="absolute top-16 right-3 z-40 flex items-center gap-2 rounded-lg border border-white/15 bg-black/40 px-2 py-1 text-xs text-[#f0e7da]"
+          className="absolute top-16 right-3 z-40 flex items-center gap-2 rounded-lg border border-[#f0e7da]/28 bg-[#0d0913]/88 px-2 py-1 text-xs text-[#faf4ec]"
           role="group"
           aria-label="Lens zoom"
         >

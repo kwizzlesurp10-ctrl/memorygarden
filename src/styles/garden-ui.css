@@ -57,7 +57,8 @@
   }
 
   .garden-scene-plant:focus-visible {
-    outline: 2px solid color-mix(in oklch, #ffb877 85%, white);
-    outline-offset: 3px;
+    outline: 2.5px solid color-mix(in oklch, #ffb877 92%, white);
+    outline-offset: 4px;
+    filter: drop-shadow(0 0 6px color-mix(in oklch, #ffb877 55%, transparent));
   }
 }

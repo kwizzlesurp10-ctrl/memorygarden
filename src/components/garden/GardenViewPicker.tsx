@@ -51,7 +51,7 @@ export function GardenViewPicker({
 
   return (
     <div
-      className={`max-sm:grid max-sm:grid-cols-4 max-sm:gap-0.5 max-sm:overflow-visible sm:flex sm:max-w-full sm:flex-nowrap sm:gap-1 sm:overflow-x-auto rounded-lg border border-white/20 bg-black/50 p-1 text-[#f5efe6] backdrop-blur-sm [-ms-overflow-style:none] [scrollbar-width:none] sm:[&::-webkit-scrollbar]:hidden ${className}`}
+      className={`max-sm:grid max-sm:grid-cols-4 max-sm:gap-0.5 max-sm:overflow-visible sm:flex sm:max-w-full sm:flex-nowrap sm:gap-1 sm:overflow-x-auto rounded-lg border border-white/25 bg-[#0d0913]/78 p-1 text-[#faf4ec] backdrop-blur-sm [-ms-overflow-style:none] [scrollbar-width:none] sm:[&::-webkit-scrollbar]:hidden ${className}`}
       role="radiogroup"
       aria-label="Garden landscape view"
     >
@@ -68,8 +68,8 @@ export function GardenViewPicker({
             onClick={() => onChange(meta.id)}
             className="min-h-11 min-w-0 shrink rounded-md px-1 py-2 text-[10px] font-medium max-sm:flex max-sm:items-center max-sm:justify-center sm:shrink-0 sm:px-3 sm:text-xs"
             style={{
-              background: selected ? 'rgba(240, 231, 218, 0.22)' : 'transparent',
-              color: selected ? '#faf4ec' : 'rgba(245, 239, 230, 0.88)',
+              background: selected ? 'rgba(240, 231, 218, 0.26)' : 'transparent',
+              color: selected ? '#fff8ef' : '#f0e7da',
               transition: reducedMotion ? undefined : 'background 0.2s ease',
             }}
           >
