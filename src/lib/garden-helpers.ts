@@ -1,4 +1,5 @@
 import type { Memory, EmotionalTone, PlantStage, PlantVariety, GrowthMetrics, GardenMood, WeatherType, SearchFilters, Season, ArtStyle, PlantTraits } from './types'
+import { plantVarietyDisplayLabel } from '@/lib/garden/plant-variety-labels'
 import { maxPlantStage } from '@/lib/garden/stage'
 import { getLLMProvider } from './llm-client'
 import { withRetry } from './retry'
@@ -633,7 +634,11 @@ export function generateHybridTraits(parent1: Memory, parent2: Memory): { traits
 }
 
 export function memoryPlantA11yLabel(memory: Memory): string {
-  const snippet = memory.text?.trim().slice(0, 80)
-  if (snippet) return snippet
-  return `${memory.emotionalTone} ${memory.plantStage} memory`
+  const variety = plantVarietyDisplayLabel(memory.plantVariety)
+  const stage = memory.plantStage.replace(/_/g, ' ')
+  const hybridName = memory.isHybrid && memory.hybridGenome?.name ? memory.hybridGenome.name.trim() : ''
+  const kind = hybridName || variety
+  const snippet = memory.text?.trim().slice(0, 72)
+  if (snippet) return `${kind}, ${stage} stage: ${snippet}`
+  return `${kind}, ${stage} stage, ${memory.emotionalTone} memory`
 }

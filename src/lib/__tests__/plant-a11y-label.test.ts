@@ -20,11 +20,13 @@ const base: Memory = {
 
 describe('memoryPlantA11yLabel', () => {
   it('uses trimmed text when present', () => {
-    expect(memoryPlantA11yLabel({ ...base, text: '  Sunday walk  ' })).toBe('Sunday walk')
+    expect(memoryPlantA11yLabel({ ...base, text: '  Sunday walk  ' })).toBe(
+      'Tree, sprout stage: Sunday walk',
+    )
   })
 
   it('falls back to tone and stage', () => {
-    expect(memoryPlantA11yLabel(base)).toBe('peaceful sprout memory')
+    expect(memoryPlantA11yLabel(base)).toBe('Tree, sprout stage, peaceful memory')
   })
 
 })

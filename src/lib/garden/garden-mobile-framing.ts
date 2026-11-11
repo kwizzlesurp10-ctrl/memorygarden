@@ -57,7 +57,8 @@ export function frameMemoryPlantsForMobile(
   if (!bounds) return null
 
   const centerX = (bounds.minX + bounds.maxX) / 2
-  const span = bounds.maxX - bounds.minX + EDGE_PAD * 2
+  const edgePad = viewport.w < 400 ? 48 : EDGE_PAD
+  const span = bounds.maxX - bounds.minX + edgePad * 2
   const visibleW = visibleSceneWidthForSlice(viewport)
   const fitScale = Math.min(1, visibleW / span)
 
@@ -82,10 +83,10 @@ export function frameMemoryPlantsForMobile(
     fitMax = Math.max(fitMax, pos.x + half)
   }
 
-  const viewMin = Math.max(-SCENE_ART_BLEED, fitMin - EDGE_PAD)
+  const viewMin = Math.max(-SCENE_ART_BLEED, fitMin - edgePad)
   const viewW = Math.min(
     SCENE_W + SCENE_ART_BLEED * 2,
-    fitMax + EDGE_PAD - viewMin,
+    fitMax + edgePad - viewMin,
   )
   const viewBox = `${viewMin} 0 ${viewW} ${SCENE_H}`
 
