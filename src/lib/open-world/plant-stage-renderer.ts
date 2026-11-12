@@ -121,23 +121,25 @@ export function mountStagePlantPreview(
 
   const elderExtent = elder2DVisualExtent(variety)
   const stageExtent = stage2DVisualExtent(variety, stageIdx)
-
-  const baseFit = fitCameraDistance(camera, size, width, height, 1.16)
   const metricRatio = stageExtent / elderExtent
+
   let finalDist: number
-  if (variety === 'tree' && stageIdx <= 2) {
-    finalDist = 1.14 - stageIdx * 0.07
-  } else if (variety === 'flower' && stageIdx <= 3) {
+  if (variety === 'tree') {
+    const baseFit = fitCameraDistance(camera, size, width, height, 1.38)
+    const monoDenom = 0.38 + metricRatio * 1.04
+    const earlySoft = stageIdx <= 2 ? 0.84 + stageIdx * 0.05 : 1
+    const stagePull = [1.1, 1.08, 1.05, 1.36, 1.24, 1.14, 1.02, 0.9]
+    finalDist = (baseFit * (stagePull[stageIdx] ?? 1.06)) / (monoDenom * earlySoft)
+  } else if (stageIdx <= 3) {
     finalDist = 1.78 - stageIdx * 0.1
-  } else if (metricRatio < 0.5) {
-    finalDist = baseFit * (0.52 + metricRatio * 0.88)
   } else {
-    finalDist = baseFit * (0.8 + metricRatio * 0.26)
+    const baseFit = fitCameraDistance(camera, size, width, height, 1.14)
+    finalDist =
+      metricRatio < 0.5
+        ? baseFit * (0.52 + metricRatio * 0.88)
+        : baseFit * (0.8 + metricRatio * 0.26)
+    if (stageIdx >= 7) finalDist *= 0.84
   }
-  if (variety === 'tree' && stageIdx === 5) finalDist *= 1.08
-  if (variety === 'tree' && stageIdx >= 6) finalDist *= 0.86
-  if (variety === 'tree' && stageIdx >= 7) finalDist *= 0.7
-  if (variety === 'flower' && stageIdx >= 7) finalDist *= 0.84
 
   const lookY =
     variety === 'tree'

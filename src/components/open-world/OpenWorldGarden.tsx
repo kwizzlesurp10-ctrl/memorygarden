@@ -45,7 +45,10 @@ import {
 } from '@/lib/open-world/walk-capture-bridge'
 import { CC0_MODEL_BY_ID, type Cc0ModelId } from '@/lib/open-world/cc0-catalog'
 import { CC0_WALK_CAPTURE_POSE, cc0ShowcaseCapturePose } from '@/lib/open-world/cc0-placement'
-import { STAGE_ROW_CAMERA_POSE } from '@/lib/open-world/stage-capture-layout'
+import {
+  STAGE_ROW_CAMERA_POSE,
+  TREE_YOUNG_ELDER_CAMERA_POSE,
+} from '@/lib/open-world/stage-capture-layout'
 import { OpenWorldEngine } from './engine'
 import { OpenWorldHud } from './OpenWorldHud'
 
@@ -254,7 +257,14 @@ export function OpenWorldGarden({
             stage: p.stage,
           })),
       })
-      if (sessionStorage.getItem('mg:stage-row-capture') !== '1') {
+      if (sessionStorage.getItem('mg:tree-young-elder-capture') === '1') {
+        engine.setPlayerPose(
+          TREE_YOUNG_ELDER_CAMERA_POSE.x,
+          TREE_YOUNG_ELDER_CAMERA_POSE.z,
+          TREE_YOUNG_ELDER_CAMERA_POSE.yaw,
+          TREE_YOUNG_ELDER_CAMERA_POSE.pitch,
+        )
+      } else if (sessionStorage.getItem('mg:stage-row-capture') !== '1') {
         engine.setPlayerPose(
           CC0_WALK_CAPTURE_POSE.x,
           CC0_WALK_CAPTURE_POSE.z,

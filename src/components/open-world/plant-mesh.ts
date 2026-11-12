@@ -87,7 +87,7 @@ function addTreeCanopyBlobs(
     const nx = sinP * Math.cos(theta)
     const ny = Math.cos(phi)
     const nz = sinP * Math.sin(theta)
-    const rr = canopyRadius * (0.35 + rng() * 0.1)
+    const rr = canopyRadius * (0.32 + rng() * 0.13)
     const outward = coreSurface + rr * 0.5
 
     const px = nx * outward
@@ -99,7 +99,7 @@ function addTreeCanopyBlobs(
     const bodyMat = highlightLump ? leafHighlightMat : j % 2 === 0 ? leafMat : leafAltMat
 
     const body = new THREE.Mesh(geo.blob, bodyMat)
-    body.scale.set(rr * 1.06, rr * 0.9, rr * 1.02)
+    body.scale.set(rr * 1.02, rr * 0.88, rr * 0.98)
     body.position.set(px, py, pz)
     body.castShadow = true
     g.add(body)
@@ -249,7 +249,7 @@ function addSproutLeafPair(
 
 let flowerGlowTexture: THREE.CanvasTexture | null = null
 
-function flowerHeadGlowSprite(radius: number): THREE.Sprite {
+function flowerHeadGlowSprite(radius: number, spriteOpacity = 0.52): THREE.Sprite {
   if (!flowerGlowTexture) {
     const c = document.createElement('canvas')
     c.width = 128
@@ -257,9 +257,9 @@ function flowerHeadGlowSprite(radius: number): THREE.Sprite {
     const ctx = c.getContext('2d')
     if (ctx) {
       const grd = ctx.createRadialGradient(64, 64, 0, 64, 64, 64)
-      grd.addColorStop(0, 'rgba(200, 245, 140, 0.38)')
-      grd.addColorStop(0.28, 'rgba(150, 220, 95, 0.14)')
-      grd.addColorStop(0.55, 'rgba(120, 190, 80, 0.04)')
+      grd.addColorStop(0, 'rgba(215, 255, 165, 0.72)')
+      grd.addColorStop(0.28, 'rgba(175, 235, 120, 0.34)')
+      grd.addColorStop(0.55, 'rgba(130, 200, 85, 0.08)')
       grd.addColorStop(1, 'rgba(0,0,0,0)')
       ctx.fillStyle = grd
       ctx.fillRect(0, 0, 128, 128)
@@ -270,10 +270,10 @@ function flowerHeadGlowSprite(radius: number): THREE.Sprite {
   const mat = new THREE.SpriteMaterial({
     map: flowerGlowTexture,
     transparent: true,
-    opacity: 0.26,
+    opacity: spriteOpacity,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
-    color: new THREE.Color('#d4f0a0'),
+    color: new THREE.Color('#ddf5b5'),
   })
   const sprite = new THREE.Sprite(mat)
   const s = radius * 1.0
@@ -337,8 +337,9 @@ function addFlowerStageMeshes(
 
   if (stageIndex >= 5) {
     const headRadius = recipe.canopyRadius * 0.4
-    const glowSprite = flowerHeadGlowSprite(headRadius * 1.85)
-    glowSprite.position.set(0, canopyY + 0.02, -headRadius * 0.35)
+    const glowOpacity = stageIndex === 5 ? 0.55 : 0.5
+    const glowSprite = flowerHeadGlowSprite(headRadius * 2.0, glowOpacity)
+    glowSprite.position.set(0, canopyY + 0.04, 0)
     glowSprite.renderOrder = 4
     g.add(glowSprite)
   }
