@@ -5,6 +5,7 @@ import type { ScenePalette } from '@/lib/garden/palettes'
 import { gardenRng, seedFromGenetics } from '@/lib/garden/prng'
 import { plantStageToIndex } from '@/lib/garden/stage'
 import { buildSeededPlant, getSwayStyle } from './seeded-builders'
+import { PlantPixelArtRaster } from './PlantPixelArtRaster'
 import type { SeededVariety } from './types'
 
 export interface SeededPlantSvgProps {
@@ -42,11 +43,19 @@ export function SeededPlantSvg({
   const swayStyle = getSwayStyle(seedN, motion, variety === 'tree')
   const resolvedStyle = resolvePlantArtStyle(artStyle)
   const plantFilter = plantArtFilterUrl(resolvedStyle)
+  const pixelArt = resolvedStyle === 'pixel-art'
+  const plantBody = pixelArt ? (
+    <PlantPixelArtRaster variety={variety} stage={stage} scale={scale}>
+      {nodes}
+    </PlantPixelArtRaster>
+  ) : (
+    nodes
+  )
 
   return (
     <g className={className} transform={scale !== 1 ? `scale(${scale})` : undefined}>
       <g style={swayStyle} filter={plantFilter}>
-        {nodes}
+        {plantBody}
       </g>
     </g>
   )

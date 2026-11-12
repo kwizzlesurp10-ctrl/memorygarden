@@ -1,3 +1,4 @@
+import type { ArtStyle } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { CC0_MODEL_BY_ID, type Cc0ModelId } from './cc0-catalog'
 import { cc0ShowcaseCapturePose } from './cc0-placement'
@@ -12,6 +13,7 @@ export interface WalkCapturePose {
 export interface WalkCaptureBridge {
   setPose: (pose: WalkCapturePose) => void
   setPalette: (palette: ScenePalette) => void
+  setPlantArtStyle?: (style: ArtStyle) => void
   showcaseModel: (modelId: Cc0ModelId | null) => Promise<void>
   showcasePoseFor: (modelId: Cc0ModelId) => WalkCapturePose
   ready: () => boolean

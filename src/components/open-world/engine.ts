@@ -1,5 +1,6 @@
 import * as THREE from 'three'
-import type { Memory } from '@/lib/types'
+import type { ArtStyle, Memory } from '@/lib/types'
+import { resolvePlantArtStyle } from '@/lib/garden/plant-art-style'
 import { isWalkCaptureSession } from '@/lib/open-world/walk-capture-bridge'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { LOOK_SENSITIVITY } from '@/lib/open-world/constants'
@@ -8,6 +9,7 @@ import { layoutGardenWorld } from '@/lib/open-world/layout'
 import { createPlayer, eyeOffset, findNearestPlant, stepPlayer } from '@/lib/open-world/locomotion'
 import { plantRecipe } from '@/lib/open-world/plant-visual'
 import type { GardenWorld, PlayerState, WorldPlant } from '@/lib/open-world/types'
+import { applyWatercolorWalkTint } from './minecraft-visual'
 import { createPlantGroup, disposePlantGroup } from './plant-mesh'
 import { buildTerrain, type TerrainHandle } from './terrain'
 import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
@@ -75,16 +77,23 @@ export class OpenWorldEngine {
 
   private cc0Scenery: Cc0SceneryLayer | null = null
   private captureBackdrop = false
+  private plantArtStyle: ArtStyle
 
   constructor(
     canvas: HTMLCanvasElement,
     memories: Memory[],
     palette: ScenePalette,
-    opts: { reducedMotion: boolean; coarsePointer?: boolean; hooks: EngineHooks },
+    opts: {
+      reducedMotion: boolean
+      coarsePointer?: boolean
+      hooks: EngineHooks
+      plantArtStyle?: ArtStyle
+    },
   ) {
     this.canvas = canvas
     this.hooks = opts.hooks
     this.reducedMotion = opts.reducedMotion
+    this.plantArtStyle = resolvePlantArtStyle(opts.plantArtStyle)
     this.palette = palette
     this.world = layoutGardenWorld(memories)
     this.player = createPlayer(this.world)
@@ -92,7 +101,7 @@ export class OpenWorldEngine {
     try {
       this.renderer = new THREE.WebGLRenderer({
         canvas,
-        antialias: true,
+        antialias: this.plantArtStyle !== 'pixel-art',
         alpha: false,
         powerPreference: 'high-performance',
       })
@@ -107,7 +116,9 @@ export class OpenWorldEngine {
     }
 
     const renderer = this.renderer
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+    renderer.setPixelRatio(
+      this.plantArtStyle === 'pixel-art' ? 1 : Math.min(window.devicePixelRatio || 1, 2),
+    )
     renderer.setClearColor(palette.sky[2] ?? '#20123a', 1)
     renderer.shadowMap.enabled = !opts.reducedMotion
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
@@ -221,6 +232,15 @@ export class OpenWorldEngine {
 
   setGrowing(ids: Set<string>): void {
     this.growing = ids
+  }
+
+  setPlantArtStyle(style: ArtStyle): void {
+    const next = resolvePlantArtStyle(style)
+    if (next === this.plantArtStyle) return
+    this.plantArtStyle = next
+    this.applyLighting()
+    this.rebuildTerrain()
+    this.rebuildPlants()
   }
 
   setPalette(palette: ScenePalette): void {
@@ -419,12 +439,14 @@ export class OpenWorldEngine {
       this.scene.remove(this.terrain.root)
       this.terrain.dispose()
     }
-    this.terrain = buildTerrain(this.world, this.palette, this.reducedMotion)
+    const minecraftMode = this.plantArtStyle === 'pixel-art'
+    this.terrain = buildTerrain(this.world, this.palette, this.reducedMotion, minecraftMode)
     this.scene.add(this.terrain.root)
   }
 
   private rebuildPlants(): void {
     this.clearPlants()
+    const style = this.plantArtStyle
     for (const plant of this.world.plants) {
       const recipe = plantRecipe(
         plant.variety,
@@ -434,7 +456,10 @@ export class OpenWorldEngine {
         plant.height,
         plant.isHybrid,
       )
-      const group = createPlantGroup(plant, recipe)
+      const group = createPlantGroup(plant, recipe, style)
+      if (style === 'watercolor') {
+        applyWatercolorWalkTint(group)
+      }
       this.plantsRoot.add(group)
       this.plantGroups.set(plant.id, group)
     }
@@ -454,7 +479,11 @@ export class OpenWorldEngine {
     for (const [id, group] of this.plantGroups) {
       const dim = ids !== null && !ids.has(id)
       group.traverse((obj: THREE.Object3D) => {
-        if (obj instanceof THREE.Mesh && obj.material instanceof THREE.MeshStandardMaterial) {
+        if (
+          obj instanceof THREE.Mesh &&
+          (obj.material instanceof THREE.MeshStandardMaterial ||
+            obj.material instanceof THREE.MeshLambertMaterial)
+        ) {
           obj.material.opacity = dim ? 0.22 : 1
           obj.material.transparent = dim
         }
@@ -567,6 +596,15 @@ export class OpenWorldEngine {
   }
 
   private applyLighting(): void {
+    if (this.plantArtStyle === 'pixel-art') {
+      this.hemi.intensity = 1.05
+      this.fill.intensity = 0.38
+      this.sun.intensity = 0.82
+      this.rim.intensity = 0.06
+      this.sun.position.set(18, 32, -14)
+      this.rim.position.set(-12, 20, 18)
+      return
+    }
     const p = this.palette
     const star = p.starAlpha ?? 0
     const twilight = star > 0.22

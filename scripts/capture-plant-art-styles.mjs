@@ -101,11 +101,7 @@ async function main() {
   const { GardenSceneSvg } = await import('../src/components/garden/GardenSceneSvg.tsx')
   const { todPalette } = await import('../src/lib/garden/day-night.ts')
   const { createGardenStarterDecor } = await import('../src/lib/garden/garden-starter-decor.ts')
-  const { buildSeededPlant } = await import('../src/components/plants/seeded-builders.tsx')
-  const { gardenRng } = await import('../src/lib/garden/prng.ts')
-  const { plantStageToIndex } = await import('../src/lib/garden/stage.ts')
   const { PlantArtStyleDefs } = await import('../src/components/plants/PlantArtStyleDefs.tsx')
-  const { plantArtFilterUrl } = await import('../src/lib/garden/plant-art-style.ts')
   const { SeededPlantSvg } = await import('../src/components/plants/SeededPlantSvg.tsx')
 
   const palette = todPalette(PALETTE_HOUR, 'summer')
@@ -186,13 +182,6 @@ async function main() {
     console.log('Wrote', resolve(outDir, `garden-art-style-${artStyle}.png`))
   }
 
-  const flowerNodes = buildSeededPlant('flower', {
-    stageIndex: plantStageToIndex('bloom'),
-    palette,
-    rimStrength: 0.7,
-    motion: false,
-    rng: gardenRng(4242),
-  })
   const cellW = 200
   const cellH = 176
 
@@ -200,8 +189,16 @@ async function main() {
     const inner = renderToStaticMarkup(
       h(
         'g',
-        { transform: `translate(100 ${cellH - 8}) scale(1.35)`, filter: plantArtFilterUrl(style) },
-        flowerNodes,
+        { transform: `translate(100 ${cellH - 8}) scale(1.35)` },
+        h(SeededPlantSvg, {
+          variety: 'flower',
+          stage: 'bloom',
+          geneticsSeed: 'grid-flower',
+          palette,
+          rimStrength: 0.7,
+          motion: false,
+          artStyle: style,
+        }),
       ),
     )
     const label = STYLE_LABELS[style]

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import type { GardenGiftType, GardenStreak, Memory, Season } from '@/lib/types'
+import type { ArtStyle, GardenGiftType, GardenStreak, Memory, Season } from '@/lib/types'
 import { todPalette, realClockTod } from '@/lib/garden/day-night'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import type { PlayerState, WorldPlant } from '@/lib/open-world/types'
@@ -58,6 +58,7 @@ export interface OpenWorldGardenProps {
   onMemoryClick: (memory: Memory) => void
   onWaterMemory?: (memoryId: string, result: WateringResult) => void
   onExit: () => void
+  plantArtStyle?: ArtStyle
 }
 
 export function OpenWorldGarden({
@@ -69,6 +70,7 @@ export function OpenWorldGarden({
   onMemoryClick,
   onWaterMemory,
   onExit,
+  plantArtStyle,
 }: OpenWorldGardenProps) {
   const reducedMotion = useReducedMotion()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -221,6 +223,7 @@ export function OpenWorldGarden({
     const engine = new OpenWorldEngine(canvas, memories, palette, {
       reducedMotion,
       coarsePointer: coarse,
+      plantArtStyle,
       hooks: {
         onProximity,
         onPlayer,
@@ -241,6 +244,7 @@ export function OpenWorldGarden({
       registerWalkCaptureBridge({
         setPose: (pose) => engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch),
         setPalette: (palette) => engine.setPalette(palette),
+        setPlantArtStyle: (style) => engine.setPlantArtStyle(style),
         showcaseModel: (id: Cc0ModelId | null) => engine.setCc0Showcase(id),
         showcasePoseFor: (id: Cc0ModelId) =>
           cc0ShowcaseCapturePose(CC0_MODEL_BY_ID[id].targetHeight),
@@ -296,6 +300,10 @@ export function OpenWorldGarden({
   useEffect(() => {
     engineRef.current?.setPaused(paused)
   }, [paused])
+
+  useEffect(() => {
+    if (plantArtStyle) engineRef.current?.setPlantArtStyle(plantArtStyle)
+  }, [plantArtStyle])
 
   useEffect(() => {
     const id = window.setInterval(() => {
