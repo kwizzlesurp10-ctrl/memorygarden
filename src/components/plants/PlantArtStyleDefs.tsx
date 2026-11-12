@@ -2,28 +2,45 @@ import { Fragment } from 'react'
 import type { ArtStyle } from '@/lib/types'
 import { PLANT_ART_STYLES, plantArtFilterId } from '@/lib/garden/plant-art-style'
 
-/** Default look: soft bleed + light wash — moderate step from unfiltered SVG, not invisible. */
+/** Soft bleed + washed tint; grayscale grain clipped to SourceAlpha only. */
 function WatercolorFilter({ id }: { id: string }) {
   return (
-    <filter id={id} x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
-      <feTurbulence type="fractalNoise" baseFrequency="0.07 0.09" numOctaves="3" seed="2" result="grain" />
+    <filter
+      id={id}
+      filterUnits="objectBoundingBox"
+      x="-6%"
+      y="-6%"
+      width="112%"
+      height="112%"
+      colorInterpolationFilters="sRGB"
+    >
+      <feTurbulence type="fractalNoise" baseFrequency="0.055" numOctaves="2" seed="2" result="dispNoise" />
       <feDisplacementMap
         in="SourceGraphic"
-        in2="grain"
-        scale="4.2"
+        in2="dispNoise"
+        scale="2.4"
         xChannelSelector="R"
         yChannelSelector="G"
         result="bleed"
       />
-      <feGaussianBlur in="bleed" stdDeviation="0.85" result="soft" />
+      <feGaussianBlur in="bleed" stdDeviation="0.65" result="soft" />
       <feColorMatrix
         in="soft"
         type="matrix"
-        values="1 0 0 0 0.08  0 1 0 0 0.08  0 0 1 0 0.07  0 0 0 0.72 0"
+        values="1 0 0 0 0.07  0 1 0 0 0.07  0 0 1 0 0.06  0 0 0 0.88 0"
         result="wash"
       />
-      <feBlend in="wash" in2="grain" mode="multiply" result="paper" />
-      <feColorMatrix in="paper" type="saturate" values="0.82" />
+      <feTurbulence type="fractalNoise" baseFrequency="0.38" numOctaves="1" seed="11" result="paperNoise" />
+      <feColorMatrix
+        in="paperNoise"
+        type="matrix"
+        values="0.333 0.333 0.333 0 0.04  0.333 0.333 0.333 0 0.04  0.333 0.333 0.333 0 0.04  0 0 0 0.09 0"
+        result="paperGray"
+      />
+      <feComposite in="paperGray" in2="SourceAlpha" operator="in" result="paperInShape" />
+      <feBlend in="wash" in2="paperInShape" mode="soft-light" result="textured" />
+      <feComposite in="textured" in2="SourceAlpha" operator="in" result="clipped" />
+      <feColorMatrix in="clipped" type="saturate" values="0.86" />
     </filter>
   )
 }
@@ -63,20 +80,21 @@ function BotanicalFilter({ id }: { id: string }) {
   )
 }
 
-/** Mosaic downsample — posterize mid-tones, no crushed blacks or blown highlights. */
+/**
+ * Chunky morphology + posterize (feTile mosaic is unreliable in resvg/Batik stacks).
+ * Reads as pixel blocks while keeping plant colors opaque.
+ */
 function PixelArtFilter({ id }: { id: string }) {
   return (
-    <filter id={id} x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
-      <feFlood x="0" y="0" height="1" width="1" result="pt" />
-      <feComposite in="pt" in2="SourceGraphic" width="6" height="6" operator="over" result="slice" />
-      <feTile in="slice" result="tiles" />
-      <feComposite in="SourceGraphic" in2="tiles" operator="in" result="mosaic" />
-      <feMorphology in="mosaic" operator="dilate" radius="2.2" result="blocks" />
+    <filter id={id} filterUnits="objectBoundingBox" x="0" y="0" width="1" height="1" colorInterpolationFilters="sRGB">
+      <feMorphology in="SourceGraphic" operator="dilate" radius="2" result="chunk" />
+      <feGaussianBlur in="chunk" stdDeviation="0.3" result="blocks" />
       <feComponentTransfer in="blocks">
-        <feFuncR type="discrete" tableValues="0.18 0.34 0.5 0.66 0.82" />
-        <feFuncG type="discrete" tableValues="0.18 0.34 0.5 0.66 0.82" />
-        <feFuncB type="discrete" tableValues="0.18 0.34 0.5 0.66 0.82" />
+        <feFuncR type="discrete" tableValues="0.2 0.36 0.52 0.68 0.84" />
+        <feFuncG type="discrete" tableValues="0.2 0.36 0.52 0.68 0.84" />
+        <feFuncB type="discrete" tableValues="0.2 0.36 0.52 0.68 0.84" />
       </feComponentTransfer>
+      <feMorphology operator="dilate" radius="0.9" />
     </filter>
   )
 }
