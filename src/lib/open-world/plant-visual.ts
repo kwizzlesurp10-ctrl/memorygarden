@@ -5,10 +5,10 @@ import {
   PLANT_KIND_BY_VARIETY,
   type PlantVisualKind,
   plantFoliageAccent,
-  plantFoliageColor,
-  plantTrunkColor,
+  plantMeshFoliageColor,
+  plantMeshTrunkColor,
   treeMeshMetrics,
-  flowerMeshStemHeight,
+  flowerMeshMetrics,
 } from '@/lib/garden/plant-visual-spec'
 import { TONE_DOT } from './constants'
 
@@ -50,13 +50,16 @@ export function plantRecipe(
   const t = stageT(stage)
   const kind = plantKind(variety)
   const bloom = hybrid ? palette.accent : (TONE_DOT[tone] ?? palette.accent)
-  const foliage = plantFoliageColor('mid', palette)
-  const foliageAlt = plantFoliageColor('shadow', palette)
-  const stem = plantTrunkColor(palette)
+  const foliage = plantMeshFoliageColor('mid', palette)
+  const foliageAlt = plantMeshFoliageColor('shadow', palette)
+  const stem = plantMeshTrunkColor(palette)
+  const twilight = (palette.plantDimBlend ?? 0) > 0.4 || (palette.starAlpha ?? 0) > 0.2
   const glow =
     variety === 'starlight_succulent' || variety === 'eternal_rose' || hybrid
-      ? 0.35 + t * 0.4
-      : 0.18 + t * 0.22
+      ? 0.45 + t * 0.45
+      : twilight
+        ? 0.32 + t * 0.35
+        : 0.18 + t * 0.22
 
   let stemHeight = Math.max(0.08, height * (kind === 'mushroom' || kind === 'succulent' ? 0.45 : 0.62))
   let stemRadius = kind === 'tree' ? 0.12 + t * 0.16 : kind === 'mushroom' ? 0.04 + t * 0.03 : 0.048 + t * 0.05
@@ -72,9 +75,10 @@ export function plantRecipe(
     canopyLift = tree.canopyLift
     canopyBlobs = tree.blobCount
   } else if (kind === 'flower') {
-    stemHeight = flowerMeshStemHeight(stage, height)
+    const flower = flowerMeshMetrics(stage, height)
+    stemHeight = flower.stemHeight
     stemRadius = 0.028 + t * 0.038
-    canopyRadius = Math.max(0.1, height * 0.22 * (0.35 + t))
+    canopyRadius = flower.canopyRadius
     canopyBlobs = stage === 'bloom' || stage === 'mature' || stage === 'elder' ? 5 + Math.round(t * 3) : 1
   }
 

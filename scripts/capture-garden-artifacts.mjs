@@ -15,6 +15,7 @@ async function main() {
   const { PLANT_STAGES_ORDER } = await import('../src/lib/garden/plant-stages.ts')
 
   const palette = todPalette(14, 'summer')
+  const duskPalette = todPalette(19.5, 'autumn')
 
   for (const view of ['pond', 'lakeside', 'meadow', 'garden_path']) {
     const body = renderToStaticMarkup(
@@ -33,34 +34,26 @@ async function main() {
     writeFileSync(resolve(outDir, `garden-view-${view}.svg`), body, 'utf8')
   }
 
-  const stageRow = PLANT_STAGES_ORDER.map((stage) => {
-    const nodes = buildSeededPlant('flower', {
-      stageIndex: plantStageToIndex(stage),
-      palette,
-      rimStrength: 0.6,
-      motion: false,
-      rng: gardenRng(99),
-    })
-    const inner = renderToStaticMarkup(h('g', { transform: 'translate(90 70)' }, nodes))
-    return `<g transform="translate(${PLANT_STAGES_ORDER.indexOf(stage) * 120} 0)">${inner}<text x="0" y="95" font-size="11" fill="#333">${stage}</text></g>`
-  }).join('')
+  const rowSvg = (variety, rowPalette, labelFill, yNudge) => {
+    const cellW = variety === 'tree' ? 130 : 120
+    const row = PLANT_STAGES_ORDER.map((stage) => {
+      const nodes = buildSeededPlant(variety, {
+        stageIndex: plantStageToIndex(stage),
+        palette: rowPalette,
+        rimStrength: 0.72,
+        motion: false,
+        rng: gardenRng(variety === 'tree' ? 77 : 99),
+      })
+      const inner = renderToStaticMarkup(h('g', { transform: `translate(90 ${yNudge})` }, nodes))
+      return `<g transform="translate(${PLANT_STAGES_ORDER.indexOf(stage) * cellW} 0)">${inner}<text x="0" y="${yNudge + 25}" font-size="11" fill="${labelFill}">${stage}</text></g>`
+    }).join('')
+  const svgHeight = variety === 'tree' ? 130 : 120
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${PLANT_STAGES_ORDER.length * cellW}" height="${svgHeight}" viewBox="0 0 ${PLANT_STAGES_ORDER.length * cellW} ${svgHeight}">${row}</svg>`
+  }
 
-  const stagesSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PLANT_STAGES_ORDER.length * 120}" height="120" viewBox="0 0 ${PLANT_STAGES_ORDER.length * 120} 120">${stageRow}</svg>`
-  writeFileSync(resolve(outDir, 'plant-stages-flower-row.svg'), stagesSvg, 'utf8')
-
-  const treeRow = PLANT_STAGES_ORDER.map((stage) => {
-    const nodes = buildSeededPlant('tree', {
-      stageIndex: plantStageToIndex(stage),
-      palette,
-      rimStrength: 0.6,
-      motion: false,
-      rng: gardenRng(77),
-    })
-    const inner = renderToStaticMarkup(h('g', { transform: 'translate(90 80)' }, nodes))
-    return `<g transform="translate(${PLANT_STAGES_ORDER.indexOf(stage) * 130} 0)">${inner}<text x="0" y="105" font-size="11" fill="#333">${stage}</text></g>`
-  }).join('')
-  const treeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PLANT_STAGES_ORDER.length * 130}" height="130" viewBox="0 0 ${PLANT_STAGES_ORDER.length * 130} 130">${treeRow}</svg>`
-  writeFileSync(resolve(outDir, 'plant-stages-tree-row-2d.svg'), treeSvg, 'utf8')
+  writeFileSync(resolve(outDir, 'plant-stages-flower-row.svg'), rowSvg('flower', palette, '#333', 70), 'utf8')
+  writeFileSync(resolve(outDir, 'plant-stages-flower-row-dusk.svg'), rowSvg('flower', duskPalette, '#f0e7da', 70), 'utf8')
+  writeFileSync(resolve(outDir, 'plant-stages-tree-row-2d.svg'), rowSvg('tree', duskPalette, '#f0e7da', 80), 'utf8')
 
   console.log('Artifacts written to', outDir)
 }

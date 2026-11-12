@@ -21,6 +21,8 @@ import {
 } from './constants'
 import type { GardenWorld, Vec2, WorldBed, WorldPlant } from './types'
 import { memoryPrimaryLabel } from '@/lib/memory-display'
+import { applyDualStageRowCapture, isStageRowCapture } from './stage-capture-layout'
+import { applyWalkCaptureFocus, isWalkPlantFocusCapture } from './walk-capture-layout'
 
 const BEDS: WorldBed[] = [
   { tone: 'happy', x: -16, z: -15, radius: 10 },
@@ -276,6 +278,12 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
     }
     clampPlant(p, half)
   }
+  if (isWalkPlantFocusCapture() && !isStageRowCapture()) {
+    applyWalkCaptureFocus(plants)
+  }
+  if (isStageRowCapture()) {
+    applyDualStageRowCapture(plants)
+  }
 
   const spawnX = gate.x
   let spawnZ = gate.z - 1.2
@@ -289,7 +297,7 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
 
   const bondCheck = hasActiveGardenBond()
   const groveMilestone = computeGroveMilestone(loadCommunityWateringCount(memories))
-  const fillerFlora = generateBedFillerFlora(BEDS, plants)
+  const fillerFlora = isStageRowCapture() ? [] : generateBedFillerFlora(BEDS, plants)
 
   return {
     bounds: { minX: -half, maxX: half, minZ: -half, maxZ: half },

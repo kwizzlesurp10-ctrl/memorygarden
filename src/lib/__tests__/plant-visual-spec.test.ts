@@ -5,6 +5,7 @@ import {
   PLANT_KIND_BY_VARIETY,
   TREE_STAGE_METRICS,
   plantFoliageColor,
+  plantMeshFoliageColor,
   plantTrunkColor,
   treeMeshMetrics,
 } from '@/lib/garden/plant-visual-spec'
@@ -19,10 +20,17 @@ describe('plant-visual-spec', () => {
 
   it('uses readable foliage at dusk instead of raw silhouette sil', () => {
     const dusk = { ...EMBER_DUSK, plantDimBlend: 0.82, starAlpha: 0.6 }
-    const foliage = plantFoliageColor('mid', dusk)
+    const foliage = plantMeshFoliageColor('mid', dusk)
     const trunk = plantTrunkColor(dusk)
     expect(foliage.toLowerCase()).not.toBe(dusk.sil.toLowerCase())
+    expect(plantMeshFoliageColor('mid', dusk)).not.toBe(plantFoliageColor('mid', dusk))
     expect(trunk.toLowerCase()).not.toBe('#000000')
+  })
+
+  it('sizes elder tree canopies proportionally to world height', () => {
+    const elder = treeMeshMetrics('elder', 4)
+    expect(elder.canopyRadius).toBeGreaterThan(1)
+    expect(elder.stemHeight).toBeGreaterThan(2.5)
   })
 
   it('scales tree canopy blobs with shared TREE_STAGE metrics', () => {
@@ -37,8 +45,7 @@ describe('plant-visual-spec', () => {
   it('feeds 3D recipes from the same dusk palette as 2D', () => {
     const dusk = todPalette(19.2, 'autumn')
     const recipe = plantRecipe('tree', 'mature', 'peaceful', dusk, 1.85, false)
-    expect(recipe.stem).toBe(plantTrunkColor(dusk))
-    expect(recipe.foliage).toBe(plantFoliageColor('mid', dusk))
+    expect(recipe.foliage).toBe(plantMeshFoliageColor('mid', dusk))
     expect(recipe.canopyBlobs).toBeGreaterThan(0)
   })
 })

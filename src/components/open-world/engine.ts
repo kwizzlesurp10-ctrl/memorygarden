@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { Memory } from '@/lib/types'
+import { isWalkCaptureSession } from '@/lib/open-world/walk-capture-bridge'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { LOOK_SENSITIVITY } from '@/lib/open-world/constants'
 import { isTypingTarget, mergeMotion, motionFromKeys, type Stick } from '@/lib/open-world/input'
@@ -128,7 +129,9 @@ export class OpenWorldEngine {
     this.rebuildPlants()
     const skipCc0 =
       typeof window !== 'undefined' &&
-      sessionStorage.getItem('mg:walk-capture-baseline') === '1'
+      (sessionStorage.getItem('mg:walk-capture-baseline') === '1' ||
+        sessionStorage.getItem('mg:stage-row-capture') === '1' ||
+        sessionStorage.getItem('mg:walk-plant-focus') === '1')
     if (!this.failed && !skipCc0) {
       this.cc0Scenery = new Cc0SceneryLayer(this.scene, this.world, this.palette, {
         reducedMotion: opts.reducedMotion,
@@ -249,7 +252,7 @@ export class OpenWorldEngine {
     if (!this.renderer) return
     const star = this.palette.starAlpha ?? 0
     if (star > 0.22) {
-      this.renderer.toneMappingExposure = 1.12 + star * 0.38
+      this.renderer.toneMappingExposure = 1.18 + star * 0.42
     } else {
       this.renderer.toneMappingExposure = 1.02
     }
@@ -260,7 +263,7 @@ export class OpenWorldEngine {
     this.world = next
     this.rebuildPlants()
     this.cc0Scenery?.setWorld(next)
-    if (positionNeedsReset(this.player, next)) {
+    if (positionNeedsReset(this.player, next) && !isWalkCaptureSession()) {
       this.player = createPlayer(next)
     }
   }

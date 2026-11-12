@@ -1,6 +1,12 @@
 import type { PlantStage, PlantVariety } from '@/lib/types'
 import { lerpHex } from './color'
 import type { ScenePalette } from './palettes'
+
+/** Palette fields used for plant surface colors (2D hybrid palette is a subset). */
+export type PlantColorPalette = Pick<
+  ScenePalette,
+  'sil' | 'silSoft' | 'rim' | 'glow' | 'accent' | 'bank' | 'hills' | 'plantDimBlend'
+>
 import { plantStageToIndex } from './stage'
 
 /** Shared growth metrics for trees — same indices as `plantStageToIndex` (0…7). */
@@ -57,11 +63,11 @@ export const CANOPY_DAY: Record<CanopyTone, string> = {
 
 export const TRUNK_DAY = '#3D2817'
 
-export function plantDimBlendAmount(palette: ScenePalette): number {
+export function plantDimBlendAmount(palette: PlantColorPalette): number {
   return Math.max(0, Math.min(1, palette.plantDimBlend ?? 0))
 }
 
-function canopyNightFill(tone: CanopyTone, palette: ScenePalette): string {
+function canopyNightFill(tone: CanopyTone, palette: PlantColorPalette): string {
   switch (tone) {
     case 'deep':
       return palette.sil
@@ -81,24 +87,39 @@ function canopyNightFill(tone: CanopyTone, palette: ScenePalette): string {
 }
 
 /** Foliage fill aligned with 2D `canopyFill` in facing-art. */
-export function plantFoliageColor(tone: CanopyTone, palette: ScenePalette): string {
+export function plantFoliageColor(tone: CanopyTone, palette: PlantColorPalette): string {
   const blend = plantDimBlendAmount(palette)
   if (blend <= 0) return CANOPY_DAY[tone]
   return lerpHex(CANOPY_DAY[tone], canopyNightFill(tone, palette), blend)
 }
 
 /** Trunk / stem bark tone aligned with 2D tree trunk gradients. */
-export function plantTrunkColor(palette: ScenePalette): string {
+export function plantTrunkColor(palette: PlantColorPalette): string {
   const blend = plantDimBlendAmount(palette)
   const night = lerpHex(palette.bank, palette.sil, 0.42)
   return lerpHex(TRUNK_DAY, night, blend)
 }
 
-export function plantFoliageAccent(palette: ScenePalette): string {
+export function plantFoliageAccent(palette: PlantColorPalette): string {
   return lerpHex(plantFoliageColor('light', palette), palette.glow, 0.1)
 }
 
-const TREE_REF_HEIGHT = TREE_STAGE_METRICS[7].H
+/** 3D mesh albedo — keeps dusk readable (2D can stay darker as silhouettes). */
+export function plantMeshFoliageColor(tone: CanopyTone, palette: PlantColorPalette): string {
+  const scene = plantFoliageColor(tone, palette)
+  const blend = plantDimBlendAmount(palette)
+  const lift = Math.min(0.75, 0.2 + blend * 0.55)
+  return lerpHex(scene, CANOPY_DAY[tone], lift)
+}
+
+export function plantMeshTrunkColor(palette: PlantColorPalette): string {
+  const scene = plantTrunkColor(palette)
+  const blend = plantDimBlendAmount(palette)
+  return lerpHex(scene, TRUNK_DAY, Math.min(0.5, blend * 0.35))
+}
+
+const ELDER_TREE = TREE_STAGE_METRICS[7]
+const ELDER_FLOWER_H = FLOWER_STAGE_HEIGHT[7]
 
 export interface TreeMeshMetrics {
   stemHeight: number
@@ -110,12 +131,18 @@ export interface TreeMeshMetrics {
 
 export function treeMeshMetrics(stage: PlantStage, worldHeight: number): TreeMeshMetrics {
   const idx = plantStageToIndex(stage)
-  const st = TREE_STAGE_METRICS[idx] ?? TREE_STAGE_METRICS[7]
-  const scale = worldHeight / TREE_REF_HEIGHT
-  const canopyRadius = Math.max(0.08, st.cw * scale * 0.045)
-  const trunkRadius = Math.max(0.04, st.bw * scale * 0.032)
-  const stemHeight = Math.max(0.06, st.H * scale * 0.95)
-  const canopyLift = st.ch > 0 ? st.ch * scale * 0.38 : stemHeight * 0.92
+  const st = TREE_STAGE_METRICS[idx] ?? ELDER_TREE
+  const hRatio = ELDER_TREE.H > 0 ? st.H / ELDER_TREE.H : 0
+  const cwRatio = ELDER_TREE.cw > 0 ? st.cw / ELDER_TREE.cw : 0
+  const bwRatio = ELDER_TREE.bw > 0 ? Math.max(0.12, st.bw / ELDER_TREE.bw) : 0.12
+  const stemHeight = Math.max(0.08, worldHeight * hRatio)
+  const canopyRadius =
+    cwRatio > 0 ? Math.max(0.14, worldHeight * 0.38 * cwRatio) : Math.max(0.08, worldHeight * 0.1)
+  const trunkRadius = Math.max(0.035, worldHeight * 0.07 * bwRatio)
+  const canopyLift =
+    st.ch > 0 && ELDER_TREE.ch > 0
+      ? stemHeight * (0.68 + (st.ch / ELDER_TREE.ch) * 0.22)
+      : stemHeight * 0.88
   return {
     stemHeight,
     trunkRadius,
@@ -125,9 +152,15 @@ export function treeMeshMetrics(stage: PlantStage, worldHeight: number): TreeMes
   }
 }
 
-export function flowerMeshStemHeight(stage: PlantStage, worldHeight: number): number {
+export function flowerMeshMetrics(
+  stage: PlantStage,
+  worldHeight: number,
+): { stemHeight: number; canopyRadius: number } {
   const idx = plantStageToIndex(stage)
-  const ref = FLOWER_STAGE_HEIGHT[idx] ?? FLOWER_STAGE_HEIGHT[7]
-  const scale = worldHeight / FLOWER_STAGE_HEIGHT[7]
-  return Math.max(0.08, ref * scale * 0.95)
+  const hRef = FLOWER_STAGE_HEIGHT[idx] ?? ELDER_FLOWER_H
+  const hRatio = hRef / ELDER_FLOWER_H
+  return {
+    stemHeight: Math.max(0.08, worldHeight * hRatio),
+    canopyRadius: Math.max(0.1, worldHeight * 0.26 * (0.2 + hRatio * 0.85)),
+  }
 }

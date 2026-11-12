@@ -258,15 +258,16 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
   const isEternal = Boolean(plant.isEternal)
 
   const stemMat = mat(recipe.stem, { roughness: 0.85 })
+  const leafEmissive = Math.max(0.28, recipe.emissiveIntensity * 0.95)
   const leafMat = mat(recipe.foliage, {
-    emissive: recipe.emissive,
-    emissiveIntensity: Math.max(0.2, recipe.emissiveIntensity * 0.72),
-    roughness: 0.58,
+    emissive: recipe.foliage,
+    emissiveIntensity: leafEmissive,
+    roughness: 0.52,
   })
   const leafAltMat = mat(recipe.foliageAlt, {
-    emissive: recipe.rimLit,
-    emissiveIntensity: Math.max(0.12, recipe.emissiveIntensity * 0.45),
-    roughness: 0.6,
+    emissive: recipe.foliageAlt,
+    emissiveIntensity: leafEmissive * 0.75,
+    roughness: 0.54,
   })
   const bloomMat = mat(recipe.bloom, {
     emissive: recipe.emissive,
@@ -301,7 +302,10 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
   const soilMat = mat(soilColor, { roughness: soilRoughness })
   const stoneMat = mat('#635b6b', { roughness: 0.88 })
 
-  const isEarlyStage = plant.stage === 'seed' || plant.stage === 'sprout' || plant.stage === 'seedling'
+  const isEarlyStage =
+    (plant.stage === 'seed' || plant.stage === 'sprout' || plant.stage === 'seedling') &&
+    recipe.kind !== 'tree' &&
+    recipe.kind !== 'flower'
   const isAdvanced = plant.stage === 'mature' || plant.stage === 'elder' || plant.isHybrid
 
   // Ground soil mound & garden pebble accent for non-lotus plants
@@ -382,7 +386,54 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
     g.add(mistRing)
   }
 
-  // Early botanical stages: Seed & Sprout
+  if (recipe.kind === 'tree' && (plant.stage === 'seed' || plant.stage === 'sprout' || plant.stage === 'seedling')) {
+    if (plant.stage === 'seed') {
+      const shell = new THREE.Mesh(geo.sphere, stemMat)
+      shell.scale.set(0.09, 0.06, 0.07)
+      shell.position.y = 0.06
+      g.add(shell)
+    } else {
+      const earlyStem = new THREE.Mesh(geo.stemTaper, stemMat)
+      earlyStem.castShadow = true
+      earlyStem.scale.set(recipe.stemRadius * 1.1, recipe.stemHeight, recipe.stemRadius * 1.2)
+      earlyStem.position.y = recipe.stemHeight / 2
+      g.add(earlyStem)
+      if (recipe.canopyBlobs > 0) {
+        const sproutCanopy = new THREE.Mesh(geo.sphere, leafMat)
+        sproutCanopy.scale.set(
+          recipe.canopyRadius * 1.1,
+          recipe.canopyRadius * 0.75,
+          recipe.canopyRadius * 1.05,
+        )
+        sproutCanopy.position.y = recipe.canopyLift
+        g.add(sproutCanopy)
+      } else if (plant.stage === 'sprout') {
+        for (const side of [-1, 1]) {
+          const leaf = new THREE.Mesh(geo.sphere, leafAltMat)
+          leaf.scale.set(0.08, 0.05, 0.06)
+          leaf.position.set(side * 0.05, recipe.stemHeight + 0.02, 0)
+          g.add(leaf)
+        }
+      }
+    }
+    addGiftMeshes(g, plant, recipe)
+    g.position.set(plant.x, 0, plant.z)
+    g.userData.baseScale = 1
+    return g
+  }
+
+  if (recipe.kind === 'flower' && plant.stage === 'seed') {
+    const shell = new THREE.Mesh(geo.sphere, stemMat)
+    shell.scale.set(0.07, 0.05, 0.05)
+    shell.position.y = 0.05
+    g.add(shell)
+    addGiftMeshes(g, plant, recipe)
+    g.position.set(plant.x, 0, plant.z)
+    g.userData.baseScale = 1
+    return g
+  }
+
+  // Early botanical stages: Seed & Sprout (non-tree / non-flower seed)
   if (isEarlyStage) {
     if (plant.stage === 'seed') {
       const shellMat = mat('#3c271e', { roughness: 0.6 })
