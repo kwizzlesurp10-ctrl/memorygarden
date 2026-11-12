@@ -109,8 +109,13 @@ export function mountStagePlantPreview(
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
   renderer.setSize(width, height, false)
   renderer.outputColorSpace = THREE.SRGBColorSpace
+  renderer.toneMapping = THREE.NoToneMapping
   renderer.toneMappingExposure = (palette.starAlpha ?? 0) > 0.2 ? 1.42 : 1.12
-  host.replaceChildren(renderer.domElement)
+  const canvas = renderer.domElement
+  canvas.style.display = 'block'
+  canvas.style.width = '100%'
+  canvas.style.height = '100%'
+  host.replaceChildren(canvas)
 
   const stageIdx = plantStageToIndex(stage)
   const camera = new THREE.PerspectiveCamera(variety === 'tree' ? 50 : 36, width / height, 0.05, 48)
@@ -128,7 +133,7 @@ export function mountStagePlantPreview(
     const baseFit = fitCameraDistance(camera, size, width, height, 1.38)
     const monoDenom = 0.38 + metricRatio * 1.04
     const earlySoft = stageIdx <= 2 ? 0.84 + stageIdx * 0.05 : 1
-    const stagePull = [1.1, 1.08, 1.05, 1.36, 1.24, 1.14, 1.02, 0.9]
+    const stagePull = [1.1, 1.08, 1.05, 1.36, 1.24, 1.26, 0.9, 0.9]
     finalDist = (baseFit * (stagePull[stageIdx] ?? 1.06)) / (monoDenom * earlySoft)
   } else if (stageIdx <= 3) {
     finalDist = 1.78 - stageIdx * 0.1

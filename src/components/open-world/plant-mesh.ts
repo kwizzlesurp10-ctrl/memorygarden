@@ -249,35 +249,45 @@ function addSproutLeafPair(
 
 let flowerGlowTexture: THREE.CanvasTexture | null = null
 
-function flowerHeadGlowSprite(radius: number, spriteOpacity = 0.52): THREE.Sprite {
+function getFlowerGlowTexture(): THREE.CanvasTexture {
   if (!flowerGlowTexture) {
     const c = document.createElement('canvas')
-    c.width = 128
-    c.height = 128
+    c.width = 256
+    c.height = 256
     const ctx = c.getContext('2d')
     if (ctx) {
-      const grd = ctx.createRadialGradient(64, 64, 0, 64, 64, 64)
-      grd.addColorStop(0, 'rgba(215, 255, 165, 0.72)')
-      grd.addColorStop(0.28, 'rgba(175, 235, 120, 0.34)')
-      grd.addColorStop(0.55, 'rgba(130, 200, 85, 0.08)')
+      const grd = ctx.createRadialGradient(128, 128, 0, 128, 128, 128)
+      grd.addColorStop(0, 'rgba(245, 255, 200, 1)')
+      grd.addColorStop(0.22, 'rgba(205, 245, 130, 0.78)')
+      grd.addColorStop(0.48, 'rgba(155, 215, 95, 0.32)')
+      grd.addColorStop(0.72, 'rgba(110, 180, 75, 0.08)')
       grd.addColorStop(1, 'rgba(0,0,0,0)')
       ctx.fillStyle = grd
-      ctx.fillRect(0, 0, 128, 128)
+      ctx.fillRect(0, 0, 256, 256)
     }
     flowerGlowTexture = new THREE.CanvasTexture(c)
     flowerGlowTexture.colorSpace = THREE.SRGBColorSpace
   }
+  return flowerGlowTexture
+}
+
+function flowerHeadGlowSprite(worldSize: number, spriteOpacity = 0.58): THREE.Sprite {
   const mat = new THREE.SpriteMaterial({
-    map: flowerGlowTexture,
+    map: getFlowerGlowTexture(),
     transparent: true,
     opacity: spriteOpacity,
+    depthTest: false,
     depthWrite: false,
+    fog: false,
+    toneMapped: false,
     blending: THREE.AdditiveBlending,
-    color: new THREE.Color('#ddf5b5'),
+    color: new THREE.Color('#fffadb'),
   })
   const sprite = new THREE.Sprite(mat)
-  const s = radius * 1.0
-  sprite.scale.set(s, s, 1)
+  sprite.scale.set(worldSize * 1.12, worldSize * 1.12, 1)
+  sprite.center.set(0.5, 0.5)
+  sprite.renderOrder = 12
+  sprite.frustumCulled = false
   sprite.userData.isFlowerGlow = true
   return sprite
 }
@@ -335,15 +345,6 @@ function addFlowerStageMeshes(
     return
   }
 
-  if (stageIndex >= 5) {
-    const headRadius = recipe.canopyRadius * 0.4
-    const glowOpacity = stageIndex === 5 ? 0.55 : 0.5
-    const glowSprite = flowerHeadGlowSprite(headRadius * 2.0, glowOpacity)
-    glowSprite.position.set(0, canopyY + 0.04, 0)
-    glowSprite.renderOrder = 4
-    g.add(glowSprite)
-  }
-
   const petalCount =
     stageIndex === 5 ? 6 : stageIndex === 6 ? 11 : stageIndex >= 7 ? 12 : 8
   for (let i = 0; i < petalCount; i++) {
@@ -380,6 +381,52 @@ function addFlowerStageMeshes(
     sideBloom.scale.setScalar(recipe.canopyRadius * 0.28)
     sideBloom.position.set(recipe.canopyRadius * 0.72, sbH * 0.82, recipe.canopyRadius * 0.28)
     g.add(sideBloom)
+  }
+
+  if (stageIndex >= 5) {
+    const bloomHeadRadius = recipe.canopyRadius * 0.38
+    const glowOpacity = stageIndex === 5 ? 0.62 : 0.54
+    const glowWorld = bloomHeadRadius * 3.1
+    const glowSprite = flowerHeadGlowSprite(glowWorld, glowOpacity)
+    glowSprite.position.set(0, canopyY + 0.035, 0.06)
+    g.add(glowSprite)
+
+    const haloMat = new THREE.MeshBasicMaterial({
+      map: getFlowerGlowTexture(),
+      transparent: true,
+      opacity: glowOpacity * 0.92,
+      depthTest: false,
+      depthWrite: false,
+      fog: false,
+      toneMapped: false,
+      blending: THREE.AdditiveBlending,
+      color: new THREE.Color('#f4ffd8'),
+      side: THREE.DoubleSide,
+    })
+    const haloPlane = new THREE.Mesh(new THREE.PlaneGeometry(glowWorld, glowWorld), haloMat)
+    haloPlane.position.set(0, canopyY + 0.035, 0.08)
+    haloPlane.renderOrder = 11
+    haloPlane.frustumCulled = false
+    haloPlane.userData.isFlowerGlow = true
+    g.add(haloPlane)
+
+    const auraMat = new THREE.MeshBasicMaterial({
+      color: '#eaffa8',
+      transparent: true,
+      opacity: 0.38,
+      depthTest: false,
+      depthWrite: false,
+      fog: false,
+      toneMapped: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.BackSide,
+    })
+    const auraShell = new THREE.Mesh(new THREE.SphereGeometry(bloomHeadRadius * 1.55, 14, 10), auraMat)
+    auraShell.position.set(0, canopyY + 0.04, 0)
+    auraShell.renderOrder = 10
+    auraShell.frustumCulled = false
+    auraShell.userData.isFlowerGlow = true
+    g.add(auraShell)
   }
 }
 
