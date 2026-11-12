@@ -50,11 +50,18 @@ function skyTexture(palette: ScenePalette): THREE.CanvasTexture {
   if (!ctx) return new THREE.CanvasTexture(c)
   const g = ctx.createLinearGradient(0, 0, 0, 256)
   const sky = palette.sky
-  g.addColorStop(0, sky[0] ?? '#070619')
-  g.addColorStop(0.35, sky[1] ?? sky[0] ?? '#1d1748')
-  g.addColorStop(0.62, sky[2] ?? '#472a68')
-  g.addColorStop(0.85, sky[3] ?? sky[2] ?? '#8a4a7d')
-  g.addColorStop(1, sky[sky.length - 1] ?? '#d98a86')
+  const star = palette.starAlpha ?? 0
+  const twilight = star > 0.22
+  const top = sky[0] ?? '#070619'
+  const upper = sky[1] ?? sky[0] ?? '#1d1748'
+  const mid = twilight ? (sky[3] ?? sky[2] ?? '#8a4a7d') : (sky[2] ?? '#472a68')
+  const lower = twilight ? (sky[4] ?? sky[3] ?? '#d97a4e') : (sky[3] ?? sky[2] ?? '#8a4a7d')
+  const horizon = sky[sky.length - 1] ?? '#d98a86'
+  g.addColorStop(0, top)
+  g.addColorStop(0.32, upper)
+  g.addColorStop(0.58, mid)
+  g.addColorStop(0.82, lower)
+  g.addColorStop(1, horizon)
   ctx.fillStyle = g
   ctx.fillRect(0, 0, 8, 256)
   const tex = new THREE.CanvasTexture(c)
@@ -111,7 +118,9 @@ export function buildTerrain(
     return obj
   }
 
-  const isNight = (palette.starAlpha ?? 0) > 0.45
+  const starAlpha = palette.starAlpha ?? 0
+  const isNight = starAlpha > 0.45
+  const twilight = starAlpha > 0.22
 
   // ── Ground Plane ────────────────────────────────────────────────────────
   const grassTex = track(grassTexture(palette))
@@ -754,7 +763,15 @@ export function buildTerrain(
   root.add(lintel)
 
   // ── Distant Hills ───────────────────────────────────────────────────────
-  const hillMat = track(new THREE.MeshStandardMaterial({ color: palette.hills[2] ?? palette.sil, roughness: 1 }))
+  const hillColor = palette.hills[1] ?? palette.hills[0] ?? palette.silSoft
+  const hillMat = track(
+    new THREE.MeshStandardMaterial({
+      color: hillColor,
+      roughness: 0.94,
+      emissive: twilight ? (palette.hills[0] ?? palette.silSoft) : '#000000',
+      emissiveIntensity: twilight ? 0.14 + starAlpha * 0.08 : 0,
+    }),
+  )
   const hillGeo = track(new THREE.SphereGeometry(1, 10, 8))
   const hills = [
     { x: -32, z: -44, s: 18 },
@@ -935,8 +952,16 @@ export function buildTerrain(
       }
       waterMat.color.set(next.waterTint[1] ?? '#1a0f2b')
       waterMat.emissive.set(next.ripple)
-      hedgeMat.color.set(next.hills[2] ?? next.sil)
-      hillMat.color.set(next.hills[2] ?? next.sil)
+      hedgeMat.color.set(next.hills[1] ?? next.hills[0] ?? next.silSoft)
+      const nextHill = next.hills[1] ?? next.hills[0] ?? next.silSoft
+      hillMat.color.set(nextHill)
+      if (twilight) {
+        hillMat.emissive.set(next.hills[0] ?? next.silSoft)
+        hillMat.emissiveIntensity = 0.12 + star * 0.1
+      } else {
+        hillMat.emissive.set('#000000')
+        hillMat.emissiveIntensity = 0
+      }
       soilBermMat.color.set(next.hills[0] ?? '#3a1f33')
       steppingStoneMat.color.set(next.bank)
       rockMat.color.set(next.bank)

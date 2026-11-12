@@ -48,6 +48,20 @@ async function main() {
   const stagesSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PLANT_STAGES_ORDER.length * 120}" height="120" viewBox="0 0 ${PLANT_STAGES_ORDER.length * 120} 120">${stageRow}</svg>`
   writeFileSync(resolve(outDir, 'plant-stages-flower-row.svg'), stagesSvg, 'utf8')
 
+  const treeRow = PLANT_STAGES_ORDER.map((stage) => {
+    const nodes = buildSeededPlant('tree', {
+      stageIndex: plantStageToIndex(stage),
+      palette,
+      rimStrength: 0.6,
+      motion: false,
+      rng: gardenRng(77),
+    })
+    const inner = renderToStaticMarkup(h('g', { transform: 'translate(90 80)' }, nodes))
+    return `<g transform="translate(${PLANT_STAGES_ORDER.indexOf(stage) * 130} 0)">${inner}<text x="0" y="105" font-size="11" fill="#333">${stage}</text></g>`
+  }).join('')
+  const treeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PLANT_STAGES_ORDER.length * 130}" height="130" viewBox="0 0 ${PLANT_STAGES_ORDER.length * 130} 130">${treeRow}</svg>`
+  writeFileSync(resolve(outDir, 'plant-stages-tree-row-2d.svg'), treeSvg, 'utf8')
+
   console.log('Artifacts written to', outDir)
 }
 

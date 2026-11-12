@@ -58,8 +58,8 @@ async function prepareContext(browser, viewport, fakeHour) {
     ({ memories, hour, user, baselineCapture }) => {
       sessionStorage.setItem('mg:walk-capture', '1')
       if (baselineCapture) sessionStorage.setItem('mg:walk-capture-baseline', '1')
-      localStorage.setItem('memorygarden:preferences', JSON.stringify({ hasCompletedOnboarding: true }))
       localStorage.setItem('memorygarden:user', JSON.stringify(user))
+      localStorage.setItem(`memorygarden:${user.id}:preferences`, JSON.stringify({ hasCompletedOnboarding: true }))
       localStorage.setItem(`memorygarden:${user.id}:memories`, JSON.stringify(memories))
       const OriginalDate = Date
       // eslint-disable-next-line no-global-assign
@@ -107,19 +107,17 @@ async function enterWalk(page) {
     await page.keyboard.press('Escape')
     await page.waitForTimeout(120)
   }
-  const walkBtn = page.getByTestId('enter-walk-button')
-  if (await walkBtn.isVisible().catch(() => false)) {
-    await walkBtn.click({ timeout: 15_000 })
-  } else {
-    await page.getByRole('tab', { name: /Walk/i }).click({ timeout: 15_000 })
-  }
+  await page.evaluate(() => {
+    const btn = document.querySelector('[data-testid="enter-walk-button"]')
+    if (btn instanceof HTMLElement) btn.click()
+  })
   await page.waitForTimeout(600)
 }
 
 const browser = await chromium.launch({ headless: true })
 try {
   for (const { label, viewport } of [
-    { label: 'desktop', viewport: { width: 1280, height: 800 } },
+    { label: 'desktop', viewport: { width: 1440, height: 900 } },
     { label: 'mobile', viewport: devices['iPhone 13'].viewport },
   ]) {
     for (const { tod, suffix } of [

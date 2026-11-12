@@ -251,6 +251,7 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
       title: memoryPrimaryLabel(memory),
       photoUrl: memory.photoUrl,
       isHybrid: Boolean(memory.isHybrid),
+      geneticsSeed: memory.geneticsSeed ?? memory.id,
       moistureLevel,
       healthStatus,
       wiltingFactor,

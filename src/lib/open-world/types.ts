@@ -46,6 +46,8 @@ export interface WorldPlant {
   isSleepingSeed?: boolean
   visibility?: 'public' | 'circle' | 'private'
   activeGifts?: GardenGift[]
+  /** Mirrors memory genetics seed for deterministic plant shape (runtime only). */
+  geneticsSeed?: string
 }
 
 export interface WorldFillerFlora {

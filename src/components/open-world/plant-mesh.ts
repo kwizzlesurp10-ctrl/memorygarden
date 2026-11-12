@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { gardenRng } from '@/lib/garden/prng'
+import { gardenRng, seedFromGenetics } from '@/lib/garden/prng'
 import type { PlantVisualRecipe } from '@/lib/open-world/plant-visual'
 import type { WorldPlant } from '@/lib/open-world/types'
 
@@ -177,7 +177,9 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
   const g = new THREE.Group()
   g.name = `plant:${plant.id}`
   g.userData.memoryId = plant.id
-  const rng = gardenRng((plant.id.charCodeAt(0) * 997 + plant.id.length * 13) >>> 0)
+  const seedKey = plant.geneticsSeed ?? plant.id
+  const seedN = seedFromGenetics(seedKey, `${plant.variety}-${plant.stage}`)
+  const rng = gardenRng(seedN)
 
   // Mode B Privacy: The "Sleeping Seed" crystalline opalescent bud
   if (plant.isSleepingSeed) {
@@ -258,8 +260,13 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
   const stemMat = mat(recipe.stem, { roughness: 0.85 })
   const leafMat = mat(recipe.foliage, {
     emissive: recipe.emissive,
-    emissiveIntensity: recipe.emissiveIntensity * 0.35,
-    roughness: 0.65,
+    emissiveIntensity: Math.max(0.2, recipe.emissiveIntensity * 0.72),
+    roughness: 0.58,
+  })
+  const leafAltMat = mat(recipe.foliageAlt, {
+    emissive: recipe.rimLit,
+    emissiveIntensity: Math.max(0.12, recipe.emissiveIntensity * 0.45),
+    roughness: 0.6,
   })
   const bloomMat = mat(recipe.bloom, {
     emissive: recipe.emissive,
@@ -444,76 +451,71 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
   }
   g.add(stem)
 
-  const canopyY = recipe.stemHeight
+  const canopyY = recipe.canopyLift ?? recipe.stemHeight
 
   // Botanical species generator
   if (recipe.kind === 'tree') {
-    // Sculpted organic tree with flared trunk base & branching
-    stem.scale.set(recipe.stemRadius * 0.9, recipe.stemHeight, recipe.stemRadius * 1.35)
+    stem.scale.set(recipe.stemRadius * 1.35, recipe.stemHeight, recipe.stemRadius * 1.35)
 
-    // Root buttresses
     for (let i = 0; i < 4; i++) {
       const root = new THREE.Mesh(geo.cone, stemMat)
       const ang = (i / 4) * Math.PI * 2 + (rng() - 0.5) * 0.3
-      const dist = recipe.stemRadius * 1.1
-      root.scale.set(recipe.stemRadius * 0.4, recipe.stemHeight * 0.32, recipe.stemRadius * 0.6)
-      root.position.set(Math.cos(ang) * dist, (recipe.stemHeight * 0.32) / 2, Math.sin(ang) * dist)
-      root.rotation.x = Math.sin(ang) * 0.4
-      root.rotation.z = -Math.cos(ang) * 0.4
+      const dist = recipe.stemRadius * 1.15
+      root.scale.set(recipe.stemRadius * 0.55, recipe.stemHeight * 0.22, recipe.stemRadius * 0.75)
+      root.position.set(Math.cos(ang) * dist, (recipe.stemHeight * 0.22) / 2, Math.sin(ang) * dist)
+      root.rotation.x = Math.sin(ang) * 0.35
+      root.rotation.z = -Math.cos(ang) * 0.35
       g.add(root)
     }
 
-    // Branch boughs
-    const branchCount = 3
-    for (let b = 0; b < branchCount; b++) {
-      const bough = new THREE.Mesh(geo.stem, stemMat)
-      const ang = (b / branchCount) * Math.PI * 2 + rng() * 0.4
-      const bLen = recipe.canopyRadius * 0.85
-      bough.scale.set(recipe.stemRadius * 0.42, bLen, recipe.stemRadius * 0.42)
-      bough.position.set(Math.cos(ang) * 0.25, canopyY * 0.78, Math.sin(ang) * 0.25)
-      bough.rotation.x = Math.sin(ang) * 0.75
-      bough.rotation.z = -Math.cos(ang) * 0.75
-      bough.castShadow = true
-      g.add(bough)
-    }
-
-    // Multi-lobed lush foliage canopy clusters
-    const layers = 3 + (plant.stage === 'elder' ? 2 : plant.stage === 'mature' ? 1 : 0)
-    for (let i = 0; i < layers; i++) {
-      const canopy = new THREE.Mesh(geo.sphere, leafMat)
-      const r = recipe.canopyRadius * (1.05 - i * 0.14)
-      canopy.scale.set(r * (1.1 + rng() * 0.25), r * (0.8 + rng() * 0.15), r * (1.1 + rng() * 0.25))
-      const offX = (rng() - 0.5) * recipe.canopyRadius * 0.5
-      const offZ = (rng() - 0.5) * recipe.canopyRadius * 0.5
-      canopy.position.set(offX, canopyY + i * r * 0.42 + 0.1, offZ)
-      canopy.castShadow = true
-      g.add(canopy)
-    }
-
-    // Blossom / fruit speckles in canopy
-    for (let f = 0; f < 8; f++) {
-      const fruit = new THREE.Mesh(geo.sphere, bloomMat)
-      const ang = rng() * Math.PI * 2
-      const dist = recipe.canopyRadius * (0.5 + rng() * 0.4)
-      fruit.scale.setScalar(0.065 + rng() * 0.035)
-      fruit.position.set(
-        Math.cos(ang) * dist,
-        canopyY + recipe.canopyRadius * (0.2 + rng() * 0.6),
-        Math.sin(ang) * dist,
+    const blobs = Math.max(recipe.canopyBlobs, recipe.canopyRadius > 0.12 ? 2 : 0)
+    if (blobs > 0) {
+      const baseY = canopyY
+      const backdrop = new THREE.Mesh(geo.sphere, leafAltMat)
+      backdrop.scale.set(
+        recipe.canopyRadius * 2.1,
+        recipe.canopyRadius * 1.55,
+        recipe.canopyRadius * 1.85,
       )
-      g.add(fruit)
+      backdrop.position.set(0, baseY, 0)
+      backdrop.castShadow = true
+      g.add(backdrop)
+
+      for (let j = 0; j < blobs; j++) {
+        const canopy = new THREE.Mesh(geo.sphere, j % 2 === 0 ? leafMat : leafAltMat)
+        const rr = recipe.canopyRadius * (0.34 + rng() * 0.28)
+        canopy.scale.set(rr * (1.05 + rng() * 0.2), rr * 0.72, rr * (1.02 + rng() * 0.18))
+        const offX = (rng() - 0.5) * recipe.canopyRadius * 1.35
+        const offZ = (rng() - 0.5) * recipe.canopyRadius * 0.95
+        canopy.position.set(offX, baseY - rng() * recipe.canopyRadius * 0.35, offZ)
+        canopy.castShadow = true
+        g.add(canopy)
+      }
+
+      const highlight = new THREE.Mesh(
+        geo.sphere,
+        mat(recipe.emissive, {
+          emissive: recipe.emissive,
+          emissiveIntensity: 0.35,
+          transparent: true,
+          opacity: 0.22,
+          roughness: 0.4,
+        }),
+      )
+      highlight.scale.set(recipe.canopyRadius * 0.75, recipe.canopyRadius * 0.42, recipe.canopyRadius * 0.55)
+      highlight.position.set(-recipe.canopyRadius * 0.28, baseY + recipe.canopyRadius * 0.12, recipe.canopyRadius * 0.12)
+      g.add(highlight)
     }
 
-    // Fallen flower petals / leaves ring around trunk
-    for (let fl = 0; fl < 7; fl++) {
-      const petal = new THREE.Mesh(geo.disk, bloomMat)
-      const ang = rng() * Math.PI * 2
-      const dist = recipe.stemRadius * 1.8 + rng() * recipe.canopyRadius * 0.9
-      petal.rotation.x = -Math.PI / 2
-      petal.rotation.z = rng() * Math.PI
-      petal.scale.set(0.05, 0.08, 0.05)
-      petal.position.set(Math.cos(ang) * dist, 0.02, Math.sin(ang) * dist)
-      g.add(petal)
+    if (plant.stage === 'mature' || plant.stage === 'elder') {
+      for (let f = 0; f < 4; f++) {
+        const fruit = new THREE.Mesh(geo.sphere, bloomMat)
+        const ang = rng() * Math.PI * 2
+        const dist = recipe.canopyRadius * (0.35 + rng() * 0.35)
+        fruit.scale.setScalar(0.045 + rng() * 0.02)
+        fruit.position.set(Math.cos(ang) * dist, canopyY + recipe.canopyRadius * 0.15, Math.sin(ang) * dist)
+        g.add(fruit)
+      }
     }
   } else if (recipe.kind === 'mushroom') {
     // Sculpted mushroom with swollen base, gills, annulus ring and dots

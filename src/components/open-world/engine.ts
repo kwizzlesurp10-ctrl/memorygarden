@@ -39,6 +39,7 @@ export class OpenWorldEngine {
   private readonly hemi = new THREE.HemisphereLight('#88aacc', '#2a1a18', 0.85)
   private readonly sun = new THREE.DirectionalLight('#fff4d8', 1.15)
   private readonly fill = new THREE.AmbientLight('#1a1220', 0.22)
+  private readonly rim = new THREE.DirectionalLight('#ffcf9a', 0.35)
   private world: GardenWorld
   private player: PlayerState
   private terrain: TerrainHandle | null = null
@@ -120,7 +121,8 @@ export class OpenWorldEngine {
     this.sun.shadow.camera.right = 40
     this.sun.shadow.camera.top = 40
     this.sun.shadow.camera.bottom = -40
-    this.scene.add(this.hemi, this.sun, this.fill, this.plantsRoot)
+    this.rim.castShadow = false
+    this.scene.add(this.hemi, this.sun, this.fill, this.rim, this.plantsRoot)
 
     this.rebuildTerrain()
     this.rebuildPlants()
@@ -230,24 +232,26 @@ export class OpenWorldEngine {
       if (star > 0.22) fogColor.lerp(new THREE.Color(palette.hills[1] ?? palette.bank), 0.28)
       this.scene.fog.color.copy(fogColor)
       if (star > 0.35 && !this.captureBackdrop) {
-        this.scene.fog.near = 14
-        this.scene.fog.far = 82
+        fogColor.lerp(new THREE.Color(palette.sky[3] ?? palette.hills[1] ?? palette.bank), 0.42)
+        this.scene.fog.near = 16
+        this.scene.fog.far = 88
       } else if (!this.captureBackdrop) {
-        this.scene.fog.near = 18
-        this.scene.fog.far = 78
+        this.scene.fog.near = 20
+        this.scene.fog.far = 82
       }
     }
     if (this.captureBackdrop) this.applyCaptureFog()
     this.applyRendererExposure()
+    this.rebuildPlants()
   }
 
   private applyRendererExposure(): void {
     if (!this.renderer) return
     const star = this.palette.starAlpha ?? 0
     if (star > 0.22) {
-      this.renderer.toneMappingExposure = 1.05 + star * 0.45
+      this.renderer.toneMappingExposure = 1.12 + star * 0.38
     } else {
-      this.renderer.toneMappingExposure = 1
+      this.renderer.toneMappingExposure = 1.02
     }
   }
 
@@ -564,28 +568,37 @@ export class OpenWorldEngine {
     const star = p.starAlpha ?? 0
     const twilight = star > 0.22
     const deepNight = star > 0.45
-    this.hemi.color.set(p.sky[1] ?? '#88aacc')
-    const groundColor = new THREE.Color(p.bank)
+    const skyWash = new THREE.Color(p.sky[3] ?? p.sky[2] ?? '#88aacc')
+    this.hemi.color.set(p.sky[1] ?? '#88aacc').lerp(skyWash, twilight ? 0.35 : 0)
+    const groundColor = new THREE.Color(p.hills[1] ?? p.bank)
     if (twilight) {
-      groundColor.lerp(new THREE.Color(p.hills[1] ?? p.silSoft), 0.42 + star * 0.25)
-      groundColor.lerp(new THREE.Color(p.hills[0] ?? p.silSoft), 0.18)
+      groundColor.lerp(new THREE.Color(p.hills[0] ?? p.silSoft), 0.55 + star * 0.2)
+    } else {
+      groundColor.lerp(new THREE.Color(p.bank), 0.35)
     }
     this.hemi.groundColor.copy(groundColor)
-    this.hemi.intensity = deepNight ? 0.88 : twilight ? 0.96 : 0.9
-    this.fill.color.set(p.silSoft)
-    if (twilight) this.fill.color.lerp(new THREE.Color(p.sky[2] ?? p.sil), 0.2)
-    this.fill.intensity = deepNight ? 0.48 : twilight ? 0.52 : 0.22
+    this.hemi.intensity = deepNight ? 1.05 : twilight ? 1.12 : 0.92
+    this.fill.color.set(p.glow ?? p.silSoft)
+    if (twilight) this.fill.color.lerp(new THREE.Color(p.sky[4] ?? p.sky[3] ?? p.glow), 0.28)
+    this.fill.intensity = deepNight ? 0.62 : twilight ? 0.58 : 0.24
     this.sun.color.set(p.sun?.disk ?? p.glow)
-    this.sun.intensity = deepNight ? 0.52 : twilight ? 0.72 : 1.2
+    this.sun.intensity = deepNight ? 0.58 : twilight ? 0.95 : 1.18
     if (p.sun) {
       const u = p.sun.x / 1200 - 0.5
       const v = (470 - p.sun.y) / 400
       this.sun.position.set(u * 55, 8 + v * 36, -18)
+      this.rim.position.set(-u * 42, 6 + v * 22, 24)
+      this.rim.color.set(p.glow ?? '#ffd9a0')
+      this.rim.intensity = twilight ? 0.42 + star * 0.25 : 0.18
     } else if (p.moon) {
       this.sun.position.set((p.moon.x / 1200 - 0.5) * 40, 18, -12)
       this.sun.color.set('#c9d8ea')
+      this.rim.position.set(8, 14, 20)
+      this.rim.intensity = 0.35
     } else {
       this.sun.position.set(12, 28, -10)
+      this.rim.position.set(-10, 18, 22)
+      this.rim.intensity = 0.2
     }
     if (this.fireflies) {
       this.fireflies.visible = !this.reducedMotion
