@@ -8,8 +8,8 @@ const prefix = process.env.SCREENSHOT_PREFIX || 'after'
 const baseline = process.env.WALK_CAPTURE_BASELINE === '1'
 mkdirSync(outDir, { recursive: true })
 
-const WALK_CAPTURE_POSE = { x: 1.2, z: 34.5, yaw: 0, pitch: -0.12 }
-const OVERVIEW_CAPTURE_POSE = { x: 0.5, z: 28, yaw: 0.45, pitch: -0.62 }
+const WALK_CAPTURE_POSE = { x: 1.2, z: 34.5, yaw: 0, pitch: 0.12 }
+const OVERVIEW_CAPTURE_POSE = { x: 0.5, z: 28, yaw: 0.45, pitch: 0.42 }
 
 const seedMemories = [
   {
@@ -57,9 +57,10 @@ async function prepareContext(browser, viewport, fakeHour) {
   await context.addInitScript(
     ({ memories, hour, user, baselineCapture }) => {
       sessionStorage.setItem('mg:walk-capture', '1')
+      sessionStorage.setItem('mg:walk-plant-focus', '1')
       if (baselineCapture) sessionStorage.setItem('mg:walk-capture-baseline', '1')
-      localStorage.setItem('memorygarden:preferences', JSON.stringify({ hasCompletedOnboarding: true }))
       localStorage.setItem('memorygarden:user', JSON.stringify(user))
+      localStorage.setItem(`memorygarden:${user.id}:preferences`, JSON.stringify({ hasCompletedOnboarding: true }))
       localStorage.setItem(`memorygarden:${user.id}:memories`, JSON.stringify(memories))
       const OriginalDate = Date
       // eslint-disable-next-line no-global-assign
@@ -84,21 +85,41 @@ async function prepareContext(browser, viewport, fakeHour) {
   return context
 }
 
-async function applyCaptureFraming(page) {
+async function poseNearVariety(page, variety, dist = 4.8) {
+  return page.evaluate(
+    ({ v, d }) => {
+      const plants = window.__mgWalkCapture?.worldPlants?.() ?? []
+      const t = plants.find((p) => p.variety === v) ?? plants[0]
+      if (!t) return { x: 2, z: 12, yaw: 0, pitch: 0.2 }
+      return { x: t.x + 0.35, z: t.z + d, yaw: 0, pitch: 0.22 }
+    },
+    { v: variety, d: dist },
+  )
+}
+
+async function applyCaptureFraming(page, mode) {
   await page.waitForFunction(() => window.__mgWalkCapture?.ready?.(), { timeout: 60_000 }).catch(() => {})
   if (prefix === 'after' && !baseline) {
-    await page.waitForFunction(() => window.__cc0SceneryReady === true, { timeout: 60_000 }).catch(() => {})
     await page.evaluate(async () => {
-      await window.__mgWalkCapture?.showcaseModel(null)
+      await window.__mgWalkCapture?.showcaseModel?.(null)
     })
   }
-  await page.evaluate(
-    ({ pose }) => {
-      window.__mgWalkCapture?.setPose(pose)
-    },
-    { pose: WALK_CAPTURE_POSE },
-  )
-  await page.waitForTimeout(2200)
+  let pose =
+    mode === 'walk'
+      ? await poseNearVariety(page, 'tree', 3.4)
+      : mode === 'overview'
+        ? await poseNearVariety(page, 'tree', 9.5)
+        : WALK_CAPTURE_POSE
+  if (mode === 'walk') {
+    pose.pitch = 0.2
+    pose.yaw = 0.05
+  }
+  if (mode === 'overview') {
+    pose.pitch = 0.34
+    pose.yaw = -0.15
+  }
+  await page.evaluate(({ p }) => window.__mgWalkCapture?.setPose(p), { p: pose })
+  await page.waitForTimeout(2600)
 }
 
 async function enterWalk(page) {
@@ -107,19 +128,18 @@ async function enterWalk(page) {
     await page.keyboard.press('Escape')
     await page.waitForTimeout(120)
   }
-  const walkBtn = page.getByTestId('enter-walk-button')
-  if (await walkBtn.isVisible().catch(() => false)) {
-    await walkBtn.click({ timeout: 15_000 })
-  } else {
-    await page.getByRole('tab', { name: /Walk/i }).click({ timeout: 15_000 })
-  }
-  await page.waitForTimeout(600)
+  await page.evaluate(() => {
+    const btn = document.querySelector('[data-testid="enter-walk-button"]')
+    if (btn instanceof HTMLElement) btn.click()
+  })
+  await page.locator('[data-testid="open-world-garden"]').waitFor({ state: 'visible', timeout: 90_000 })
+  await page.waitForFunction(() => window.__mgWalkCapture?.ready?.(), { timeout: 90_000 }).catch(() => {})
 }
 
 const browser = await chromium.launch({ headless: true })
 try {
   for (const { label, viewport } of [
-    { label: 'desktop', viewport: { width: 1280, height: 800 } },
+    { label: 'desktop', viewport: { width: 1440, height: 900 } },
     { label: 'mobile', viewport: devices['iPhone 13'].viewport },
   ]) {
     for (const { tod, suffix } of [
@@ -129,13 +149,12 @@ try {
       const ctx = await prepareContext(browser, viewport, tod)
       const page = await ctx.newPage()
       await enterWalk(page)
-      await applyCaptureFraming(page)
-      const canvas = page.locator('[data-testid="open-world-garden"] > canvas')
+      await applyCaptureFraming(page, 'walk')
+      const canvas = page.locator('[data-testid="open-world-garden"]')
       await canvas.screenshot({
         path: resolve(outDir, `${prefix}-cc0-garden-walk-${label}-${suffix}.png`),
       })
-      await page.evaluate(({ pose }) => window.__mgWalkCapture?.setPose(pose), { pose: OVERVIEW_CAPTURE_POSE })
-      await page.waitForTimeout(1800)
+      await applyCaptureFraming(page, 'overview')
       await canvas.screenshot({
         path: resolve(outDir, `${prefix}-cc0-garden-overview-${label}-${suffix}.png`),
       })

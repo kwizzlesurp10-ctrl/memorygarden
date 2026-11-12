@@ -14,6 +14,7 @@ import {
   filledStemPath,
   trunkGradientDef,
 } from './plant-surface-detail'
+import { TREE_STAGE_METRICS as TREE_STAGE, FLOWER_STAGE_HEIGHT } from '@/lib/garden/plant-visual-spec'
 
 export type HybridPlantPalette = Pick<
   ScenePalette,
@@ -92,17 +93,6 @@ function sproutPair(C: HybridPlantPalette, rim: number, tipY: number, tipX: numb
   ]
 }
 
-const TREE_STAGE = [
-  { H: 0, bw: 0, cw: 0, ch: 0, blobs: 0 },
-  { H: 11, bw: 1, cw: 0, ch: 0, blobs: 0 },
-  { H: 22, bw: 1.7, cw: 7, ch: 5.5, blobs: 2 },
-  { H: 32, bw: 2.4, cw: 10, ch: 7.5, blobs: 3 },
-  { H: 42, bw: 3.1, cw: 13, ch: 9.5, blobs: 4 },
-  { H: 52, bw: 3.9, cw: 16, ch: 11.5, blobs: 5 },
-  { H: 66, bw: 4.9, cw: 20, ch: 14, blobs: 7 },
-  { H: 84, bw: 6.6, cw: 27, ch: 18.5, blobs: 10 },
-] as const
-
 function appendTreeCanopy(
   out: ReactNode[],
   s: number,
@@ -168,7 +158,7 @@ function buildFlower(s: number, r: () => number, C: HybridPlantPalette, rim: num
     if (s === 0) {
       return seedInSoil(C, rim, r);
     }
-    const H = [0, 13, 25, 38, 50, 58, 66, 72][s];
+    const H = FLOWER_STAGE_HEIGHT[s] ?? FLOWER_STAGE_HEIGHT[7];
     const lean = (r() - 0.5) * 12;
     const tipX = lean * 0.8, tipY = -H;
     const stemW = 1.35 + s * 0.34;

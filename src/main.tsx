@@ -3,7 +3,6 @@ import { ErrorBoundary } from "react-error-boundary";
 
 import App from './App.tsx'
 import { ErrorFallback } from './ErrorFallback.tsx'
-
 import '@fontsource/crimson-pro/400.css'
 import '@fontsource/crimson-pro/600.css'
 import '@fontsource/space-grotesk/400.css'
@@ -13,8 +12,25 @@ import "./main.css"
 import "./styles/theme.css"
 import "./index.css"
 
-createRoot(document.getElementById('root')!).render(
-  <ErrorBoundary FallbackComponent={ErrorFallback}>
-    <App />
-   </ErrorBoundary>
-)
+async function bootstrap() {
+  const isPlantStageGrid =
+    typeof sessionStorage !== 'undefined' && sessionStorage.getItem('mg:plant-stage-grid') === '1'
+
+  if (isPlantStageGrid) {
+    const { PlantStageGridCapture } = await import('./components/capture/PlantStageGridCapture.tsx')
+    createRoot(document.getElementById('root')!).render(
+      <ErrorBoundary FallbackComponent={ErrorFallback}>
+        <PlantStageGridCapture />
+      </ErrorBoundary>,
+    )
+    return
+  }
+
+  createRoot(document.getElementById('root')!).render(
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <App />
+    </ErrorBoundary>,
+  )
+}
+
+void bootstrap()

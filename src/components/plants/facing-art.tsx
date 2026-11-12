@@ -3,6 +3,7 @@ import type { PlantFacing } from '@/lib/garden/landscape-world'
 import type { HybridPlantPalette } from './seeded-builders'
 import type { SeededVariety } from './types'
 import { lerpHex } from '@/lib/garden/color'
+import { type CanopyTone, plantDimBlendAmount, plantFoliageColor } from '@/lib/garden/plant-visual-spec'
 import { STARTER_MUSHROOM_STEM_W } from '@/lib/garden/starter-mushroom-scale'
 import { plantGroundCollar, plantGroundCollarSubtle } from './plant-surface-detail'
 
@@ -68,43 +69,8 @@ function withMemoryPresentation(
   ]
 }
 
-type CanopyTone = 'deep' | 'shadow' | 'mid' | 'light' | 'highlight'
-
-function plantDimBlend(C: HybridPlantPalette): number {
-  return Math.max(0, Math.min(1, C.plantDimBlend ?? 0))
-}
-
-const CANOPY_DAY: Record<CanopyTone, string> = {
-  deep: '#1F3D2C',
-  shadow: '#2A4534',
-  mid: '#3E6B3F',
-  light: '#7FA05A',
-  highlight: '#9DBE6E',
-}
-
-function canopyNightFill(tone: CanopyTone, C: HybridPlantPalette): string {
-  switch (tone) {
-    case 'deep':
-      return C.sil
-    case 'shadow':
-      return C.silSoft
-    case 'mid':
-      return lerpHex(C.hills[1], C.silSoft, 0.55)
-    case 'light':
-      return lerpHex(C.hills[0], C.silSoft, 0.65)
-    case 'highlight':
-      return lerpHex(C.hills[0], C.glow, 0.08)
-    default: {
-      const _exhaustive: never = tone
-      return _exhaustive
-    }
-  }
-}
-
 function canopyFill(tone: CanopyTone, C: HybridPlantPalette): string {
-  const blend = plantDimBlend(C)
-  if (blend <= 0) return CANOPY_DAY[tone]
-  return lerpHex(CANOPY_DAY[tone], canopyNightFill(tone, C), blend)
+  return plantFoliageColor(tone, C)
 }
 
 /** Soft cloud silhouette from smooth cubic bezier segments (no hard polygon edges). */
@@ -662,7 +628,7 @@ const MUSHROOM_STEM_SHADE_DAY = '#BFB194'
 const MUSHROOM_SHADOW_DAY = '#1E3A2C'
 
 function mushroomStemColors(C: HybridPlantPalette): { stem: string; stemShade: string; shadow: string; gills: string } {
-  const blend = plantDimBlend(C)
+  const blend = plantDimBlendAmount(C)
   if (blend <= 0) {
     return {
       stem: MUSHROOM_STEM_DAY,
@@ -684,7 +650,7 @@ function mushroomCapColors(
   C: HybridPlantPalette,
 ): { cap: string; capDark: string; capLight: string } {
   const base = MUSHROOM_COLORS[kind]
-  const blend = plantDimBlend(C)
+  const blend = plantDimBlendAmount(C)
   if (blend <= 0) return base
   return {
     cap: lerpHex(base.cap, C.hills[1], blend * 0.5),

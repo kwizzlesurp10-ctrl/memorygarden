@@ -15,6 +15,7 @@ export interface WalkCaptureBridge {
   showcaseModel: (modelId: Cc0ModelId | null) => Promise<void>
   showcasePoseFor: (modelId: Cc0ModelId) => WalkCapturePose
   ready: () => boolean
+  worldPlants: () => Array<{ id: string; x: number; z: number; variety: string; stage: string }>
 }
 
 export const WALK_CAPTURE_SESSION_KEY = 'mg:walk-capture'
