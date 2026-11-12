@@ -41,7 +41,12 @@ async function captureVariety(browser, variety) {
       .locator(`[data-testid="stage-3d-${variety}-${stage}"]`)
       .waitFor({ state: 'visible', timeout: 30_000 })
   }
-  await page.waitForTimeout(600)
+  for (const stage of STAGES) {
+    await page
+      .locator(`[data-testid="stage-3d-${variety}-${stage}"][data-stage-preview-ready="1"]`)
+      .waitFor({ state: 'attached', timeout: 45_000 })
+  }
+  await page.waitForTimeout(1200)
   const outName =
     variety === 'tree'
       ? 'after-tree-stages-2d-3d-stacked.png'

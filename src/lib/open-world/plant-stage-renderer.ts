@@ -4,6 +4,7 @@ import type { ScenePalette } from '@/lib/garden/palettes'
 import { plantHeight, plantRadius } from '@/lib/open-world/layout'
 import { plantRecipe } from '@/lib/open-world/plant-visual'
 import type { PlantStage, PlantVariety } from '@/lib/types'
+import { plantStageToIndex } from '@/lib/garden/stage'
 import type { WorldPlant } from './types'
 
 export interface StagePreviewHandle {
@@ -80,8 +81,10 @@ export function mountStagePlantPreview(
   const box = new THREE.Box3().setFromObject(group)
   const size = box.getSize(new THREE.Vector3())
   const center = box.getCenter(new THREE.Vector3())
+  const stageIdx = plantStageToIndex(stage)
   const maxDim = Math.max(size.x, size.y, size.z, 0.35)
-  const zoom = variety === 'tree' ? 0.68 : 0.88
+  const zoom =
+    variety === 'tree' ? Math.max(0.48, 0.94 - stageIdx * 0.055) : Math.max(0.62, 0.92 - stageIdx * 0.028)
   const dist = (maxDim / Math.tan((camera.fov * Math.PI) / 360)) * zoom
   const lookY = center.y + size.y * (variety === 'tree' ? 0.32 : 0.12)
   camera.position.set(center.x + dist * 0.08, center.y + maxDim * 0.02, center.z + dist * 0.95)
@@ -91,6 +94,7 @@ export function mountStagePlantPreview(
     renderer.render(scene, camera)
   }
   render()
+  host.dataset.stagePreviewReady = '1'
 
   return {
     render,

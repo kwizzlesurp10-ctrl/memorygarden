@@ -116,7 +116,7 @@ export function plantMeshFoliageColor(tone: CanopyTone, palette: PlantColorPalet
 export function plantMeshTrunkColor(palette: PlantColorPalette): string {
   const scene = plantTrunkColor(palette)
   const blend = plantDimBlendAmount(palette)
-  return lerpHex(scene, TRUNK_DAY, Math.min(0.62, 0.12 + blend * 0.38))
+  return lerpHex(scene, TRUNK_DAY, Math.min(0.82, 0.38 + blend * 0.38))
 }
 
 const ELDER_TREE = TREE_STAGE_METRICS[7]
@@ -136,13 +136,19 @@ export function treeMeshMetrics(stage: PlantStage, worldHeight: number): TreeMes
   const hRatio = ELDER_TREE.H > 0 ? st.H / ELDER_TREE.H : 0
   const cwRatio = ELDER_TREE.cw > 0 ? st.cw / ELDER_TREE.cw : 0
   const bwRatio = ELDER_TREE.bw > 0 ? Math.max(0.12, st.bw / ELDER_TREE.bw) : 0.12
-  const stemHeight = Math.max(0.08, worldHeight * hRatio)
+  const lateHeight =
+    idx >= 6 ? 1.08 + (idx - 6) * 0.1 : idx >= 5 ? 1.04 : 1
+  const lateCanopy =
+    idx >= 6 ? 1.26 + (idx - 6) * 0.22 : idx >= 5 ? 1.12 : idx >= 4 ? 1.05 : 1
+  const stemHeight = Math.max(0.08, worldHeight * hRatio * lateHeight)
   const canopyRadius =
-    cwRatio > 0 ? Math.max(0.14, worldHeight * 0.44 * cwRatio) : Math.max(0.08, worldHeight * 0.1)
-  const trunkRadius = Math.max(0.035, worldHeight * 0.07 * bwRatio)
+    cwRatio > 0
+      ? Math.max(0.14, worldHeight * 0.52 * cwRatio * lateCanopy)
+      : Math.max(0.08, worldHeight * 0.1)
+  const trunkRadius = Math.max(0.028, worldHeight * 0.052 * bwRatio)
   const canopyLift =
     st.ch > 0 && ELDER_TREE.ch > 0
-      ? stemHeight * (0.68 + (st.ch / ELDER_TREE.ch) * 0.22)
+      ? stemHeight * (0.66 + (st.ch / ELDER_TREE.ch) * 0.24)
       : stemHeight * 0.88
   return {
     stemHeight,

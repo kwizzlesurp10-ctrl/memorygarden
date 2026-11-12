@@ -25,6 +25,8 @@ export interface PlantVisualRecipe {
   stem: string
   foliage: string
   foliageAlt: string
+  foliageLight: string
+  foliageHighlight: string
   bloom: string
   emissive: string
   emissiveIntensity: number
@@ -49,10 +51,17 @@ export function plantRecipe(
 ): PlantVisualRecipe {
   const t = stageT(stage)
   const kind = plantKind(variety)
-  const bloom = hybrid ? palette.accent : (TONE_DOT[tone] ?? palette.accent)
   const foliage = plantMeshFoliageColor('mid', palette)
   const foliageAlt = plantMeshFoliageColor('shadow', palette)
+  const foliageLight = plantMeshFoliageColor('light', palette)
+  const foliageHighlight = plantMeshFoliageColor('highlight', palette)
   const stem = plantMeshTrunkColor(palette)
+  const bloom =
+    kind === 'flower' || kind === 'tree'
+      ? foliageLight
+      : hybrid
+        ? palette.accent
+        : (TONE_DOT[tone] ?? palette.accent)
   const twilight = (palette.plantDimBlend ?? 0) > 0.4 || (palette.starAlpha ?? 0) > 0.2
   const glow =
     variety === 'starlight_succulent' || variety === 'eternal_rose' || hybrid
@@ -77,7 +86,7 @@ export function plantRecipe(
   } else if (kind === 'flower') {
     const flower = flowerMeshMetrics(stage, height)
     stemHeight = flower.stemHeight
-    stemRadius = 0.028 + t * 0.038
+    stemRadius = 0.011 + t * 0.016
     canopyRadius = flower.canopyRadius
     canopyBlobs = stage === 'bloom' || stage === 'mature' || stage === 'elder' ? 5 + Math.round(t * 3) : 1
   }
@@ -93,6 +102,8 @@ export function plantRecipe(
     stem,
     foliage,
     foliageAlt,
+    foliageLight,
+    foliageHighlight,
     bloom,
     emissive: plantFoliageAccent(palette),
     emissiveIntensity: glow,
