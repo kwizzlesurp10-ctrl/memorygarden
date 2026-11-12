@@ -124,11 +124,11 @@ export function mountStagePlantPreview(
 
   const baseFit = fitCameraDistance(camera, size, width, height, 1.16)
   const metricRatio = stageExtent / elderExtent
-  const tinySubject = size.y < (variety === 'tree' ? 1.15 : 0.85)
+  const tinyStage = variety === 'tree' ? stageIdx <= 4 : stageIdx <= 3
 
   let finalDist: number
-  if (tinySubject && stageIdx <= 4) {
-    finalDist = variety === 'tree' ? 1.92 - stageIdx * 0.11 : 1.82 - stageIdx * 0.09
+  if (tinyStage) {
+    finalDist = variety === 'tree' ? 1.86 - stageIdx * 0.12 : 1.78 - stageIdx * 0.1
   } else if (metricRatio < 0.5) {
     finalDist = baseFit * (0.52 + metricRatio * 0.88)
   } else {
