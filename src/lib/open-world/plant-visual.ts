@@ -58,7 +58,7 @@ export function plantRecipe(
     variety === 'starlight_succulent' || variety === 'eternal_rose' || hybrid
       ? 0.45 + t * 0.45
       : twilight
-        ? 0.32 + t * 0.35
+        ? 0.42 + t * 0.4
         : 0.18 + t * 0.22
 
   let stemHeight = Math.max(0.08, height * (kind === 'mushroom' || kind === 'succulent' ? 0.45 : 0.62))
