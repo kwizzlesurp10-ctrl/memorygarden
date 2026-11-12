@@ -5,7 +5,7 @@ import { SeededPlantSvg } from '@/components/plants/SeededPlantSvg'
 
 interface PlantArtStylePreviewProps {
   artStyle: ArtStyle
-  palette: ScenePalette
+  palette?: ScenePalette
   className?: string
 }
 
@@ -25,26 +25,27 @@ const PREVIEW_PALETTE: ScenePalette = {
   birds: '#2a3828',
 }
 
-/** Compact bloom flower used in PlantStyleCustomizer swatches. */
+/** Zoomed bloom canopy so filter differences read in the customizer cards. */
 export function PlantArtStylePreview({ artStyle, palette = PREVIEW_PALETTE, className }: PlantArtStylePreviewProps) {
   return (
     <svg
-      viewBox="0 0 88 72"
-      width={88}
-      height={56}
+      viewBox="12 8 52 62"
+      width="100%"
+      height={88}
       className={className}
       aria-hidden
       xmlns="http://www.w3.org/2000/svg"
+      preserveAspectRatio="xMidYMid slice"
     >
       <PlantArtStyleDefs />
-      <rect width="88" height="72" fill="oklch(0.94 0.02 95)" rx="6" />
-      <g transform="translate(44 58) scale(0.72)">
+      <rect x="0" y="0" width="76" height="78" fill="oklch(0.94 0.02 95)" />
+      <g transform="translate(38 66) scale(1.35)">
         <SeededPlantSvg
           variety="flower"
           stage="bloom"
           geneticsSeed="style-preview"
           palette={palette}
-          rimStrength={0.68}
+          rimStrength={0.72}
           motion={false}
           artStyle={artStyle}
         />

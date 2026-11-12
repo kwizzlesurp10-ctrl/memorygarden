@@ -1,35 +1,61 @@
+import { Fragment } from 'react'
 import type { ArtStyle } from '@/lib/types'
-import {
-  PLANT_ART_STYLES,
-  plantArtFilterId,
-} from '@/lib/garden/plant-art-style'
+import { PLANT_ART_STYLES, plantArtFilterId } from '@/lib/garden/plant-art-style'
 
+/** Default look: soft bleed + light wash — moderate step from unfiltered SVG, not invisible. */
 function WatercolorFilter({ id }: { id: string }) {
   return (
-    <filter id={id} x="-8%" y="-8%" width="116%" height="116%" colorInterpolationFilters="sRGB">
-      <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="1" result="noise" />
-      <feDisplacementMap in="SourceGraphic" in2="noise" scale="0.9" xChannelSelector="R" yChannelSelector="G" />
-      <feColorMatrix type="saturate" values="0.98" />
+    <filter id={id} x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.07 0.09" numOctaves="3" seed="2" result="grain" />
+      <feDisplacementMap
+        in="SourceGraphic"
+        in2="grain"
+        scale="4.2"
+        xChannelSelector="R"
+        yChannelSelector="G"
+        result="bleed"
+      />
+      <feGaussianBlur in="bleed" stdDeviation="0.85" result="soft" />
+      <feColorMatrix
+        in="soft"
+        type="matrix"
+        values="1 0 0 0 0.08  0 1 0 0 0.08  0 0 1 0 0.07  0 0 0 0.72 0"
+        result="wash"
+      />
+      <feBlend in="wash" in2="grain" mode="multiply" result="paper" />
+      <feColorMatrix in="paper" type="saturate" values="0.82" />
     </filter>
   )
 }
 
+/** Ink outlines + paper warmth; greens stay green (no full sepia). */
 function BotanicalFilter({ id }: { id: string }) {
   return (
-    <filter id={id} x="-6%" y="-6%" width="112%" height="112%" colorInterpolationFilters="sRGB">
+    <filter id={id} x="-12%" y="-12%" width="124%" height="124%" colorInterpolationFilters="sRGB">
       <feColorMatrix
         type="matrix"
-        values="0.34 0.38 0.28 0 0.03  0.27 0.32 0.24 0 0.02  0.19 0.24 0.18 0 0.02  0 0 0 1 0"
-        result="sepia"
+        values="0.96 0.03 0.02 0 0.02  0.02 1.08 0.02 0 0.01  0.02 0.02 0.9 0 0.02  0 0 0 1 0"
+        in="SourceGraphic"
+        result="tinted"
       />
-      <feComponentTransfer in="sepia">
-        <feFuncR type="linear" slope="1.22" intercept="-0.08" />
-        <feFuncG type="linear" slope="1.18" intercept="-0.07" />
-        <feFuncB type="linear" slope="1.14" intercept="-0.06" />
-      </feComponentTransfer>
+      <feGaussianBlur in="tinted" stdDeviation="0.15" result="smooth" />
+      <feMorphology in="smooth" operator="dilate" radius="1.05" result="dilated" />
+      <feMorphology in="smooth" operator="erode" radius="1.05" result="eroded" />
+      <feComposite in="dilated" in2="eroded" operator="out" result="edge" />
+      <feFlood floodColor="#0f1a12" floodOpacity="0.9" result="ink" />
+      <feComposite in="ink" in2="edge" operator="in" result="stroke" />
+      <feMerge result="lined">
+        <feMergeNode in="tinted" />
+        <feMergeNode in="stroke" />
+      </feMerge>
+      <feColorMatrix
+        in="lined"
+        type="matrix"
+        values="0.98 0.02 0 0 0  0.04 1.08 0.04 0 0  0 0.05 0.95 0 0  0 0 0 1 0"
+      />
       <feConvolveMatrix
         order="3"
-        kernelMatrix="0 -1 0 -1 5.5 -1 0 -1 0"
+        kernelMatrix="0 -0.55 0 -0.55 3 -0.55 0 -0.55 0"
         preserveAlpha
         edgeMode="duplicate"
       />
@@ -37,32 +63,42 @@ function BotanicalFilter({ id }: { id: string }) {
   )
 }
 
+/** Mosaic downsample — posterize mid-tones, no crushed blacks or blown highlights. */
 function PixelArtFilter({ id }: { id: string }) {
   return (
     <filter id={id} x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
-      <feMorphology operator="dilate" radius="0.65" in="SourceGraphic" result="chunky" />
-      <feGaussianBlur in="chunky" stdDeviation="0" />
-      <feComponentTransfer>
-        <feFuncR type="discrete" tableValues="0 0.33 0.66 1" />
-        <feFuncG type="discrete" tableValues="0 0.33 0.66 1" />
-        <feFuncB type="discrete" tableValues="0 0.33 0.66 1" />
+      <feFlood x="0" y="0" height="1" width="1" result="pt" />
+      <feComposite in="pt" in2="SourceGraphic" width="6" height="6" operator="over" result="slice" />
+      <feTile in="slice" result="tiles" />
+      <feComposite in="SourceGraphic" in2="tiles" operator="in" result="mosaic" />
+      <feMorphology in="mosaic" operator="dilate" radius="2.2" result="blocks" />
+      <feComponentTransfer in="blocks">
+        <feFuncR type="discrete" tableValues="0.18 0.34 0.5 0.66 0.82" />
+        <feFuncG type="discrete" tableValues="0.18 0.34 0.5 0.66 0.82" />
+        <feFuncB type="discrete" tableValues="0.18 0.34 0.5 0.66 0.82" />
       </feComponentTransfer>
-      <feMorphology operator="dilate" radius="1.1" />
     </filter>
   )
 }
 
 function OilPaintingFilter({ id }: { id: string }) {
   return (
-    <filter id={id} x="-10%" y="-10%" width="120%" height="120%" colorInterpolationFilters="sRGB">
-      <feTurbulence type="turbulence" baseFrequency="0.07" numOctaves="3" seed="4" result="tex" />
-      <feDisplacementMap in="SourceGraphic" in2="tex" scale="4.5" xChannelSelector="R" yChannelSelector="G" />
-      <feGaussianBlur stdDeviation="0.35" />
-      <feColorMatrix type="saturate" values="1.32" />
-      <feComponentTransfer>
-        <feFuncR type="linear" slope="1.05" intercept="0" />
-        <feFuncG type="linear" slope="1.02" intercept="0" />
-        <feFuncB type="linear" slope="0.98" intercept="0" />
+    <filter id={id} x="-25%" y="-25%" width="150%" height="150%" colorInterpolationFilters="sRGB">
+      <feTurbulence type="turbulence" baseFrequency="0.04" numOctaves="4" seed="7" result="brush" />
+      <feDisplacementMap
+        in="SourceGraphic"
+        in2="brush"
+        scale="16"
+        xChannelSelector="R"
+        yChannelSelector="G"
+        result="strokes"
+      />
+      <feGaussianBlur in="strokes" stdDeviation="0.2" result="smear" />
+      <feColorMatrix in="smear" type="saturate" values="1.48" result="rich" />
+      <feComponentTransfer in="rich">
+        <feFuncR type="linear" slope="0.92" intercept="-0.06" />
+        <feFuncG type="linear" slope="0.9" intercept="-0.07" />
+        <feFuncB type="linear" slope="0.88" intercept="-0.08" />
       </feComponentTransfer>
     </filter>
   )
@@ -70,33 +106,58 @@ function OilPaintingFilter({ id }: { id: string }) {
 
 function GhibliFilter({ id }: { id: string }) {
   return (
-    <filter id={id} x="-12%" y="-12%" width="124%" height="124%" colorInterpolationFilters="sRGB">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="1.1" result="glow" />
+    <filter id={id} x="-25%" y="-25%" width="150%" height="150%" colorInterpolationFilters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3.6" result="halo" />
       <feColorMatrix
-        in="glow"
+        in="halo"
         type="matrix"
-        values="1 0 0 0 0.04  0 0.95 0 0 0.03  0 0 0.88 0 0.01  0 0 0 0.45 0"
-        result="warmGlow"
+        values="1.22 0.12 0 0 0.1  0.08 1.18 0 0 0.08  0 0.02 1.05 0 0.04  0 0 0 0.85 0"
+        result="warmHalo"
       />
-      <feMerge>
-        <feMergeNode in="warmGlow" />
+      <feMerge result="lit">
+        <feMergeNode in="warmHalo" />
         <feMergeNode in="SourceGraphic" />
       </feMerge>
-      <feColorMatrix type="matrix" values="1.06 0 0 0 0.02  0 1.03 0 0 0.02  0 0 0.96 0 0  0 0 0 1 0" />
+      <feColorMatrix
+        in="lit"
+        type="matrix"
+        values="1.1 0.04 0 0 0.04  0.03 1.08 0 0 0.03  0 0.02 0.98 0 0.02  0 0 0 1 0"
+      />
+      <feColorMatrix type="saturate" values="1.38" />
     </filter>
   )
 }
 
 function PhotorealisticFilter({ id }: { id: string }) {
   return (
-    <filter id={id} x="-15%" y="-15%" width="130%" height="130%" colorInterpolationFilters="sRGB">
-      <feDropShadow dx="0.8" dy="1.6" stdDeviation="1.2" floodColor="#120a08" floodOpacity="0.38" />
-      <feComponentTransfer>
-        <feFuncR type="linear" slope="1.08" intercept="-0.03" />
-        <feFuncG type="linear" slope="1.07" intercept="-0.03" />
-        <feFuncB type="linear" slope="1.06" intercept="-0.03" />
-        <feFuncA type="linear" slope="1" intercept="0" />
-      </feComponentTransfer>
+    <filter id={id} x="-30%" y="-30%" width="160%" height="160%" colorInterpolationFilters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="0.4" result="alphaBlur" />
+      <feOffset in="SourceAlpha" dx="2.5" dy="4.5" result="offAlpha" />
+      <feGaussianBlur in="offAlpha" stdDeviation="3.2" result="shadowBlur" />
+      <feFlood floodColor="#050403" floodOpacity="0.72" result="shadowColor" />
+      <feComposite in="shadowColor" in2="shadowBlur" operator="in" result="shadow" />
+      <feMerge result="grounded">
+        <feMergeNode in="shadow" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+      <feSpecularLighting
+        in="alphaBlur"
+        surfaceScale="3"
+        specularConstant="0.55"
+        specularExponent="22"
+        lightingColor="#fff8ee"
+        result="spec"
+      >
+        <fePointLight x="-40" y="-60" z="90" />
+      </feSpecularLighting>
+      <feComposite in="spec" in2="SourceAlpha" operator="in" result="specMask" />
+      <feBlend in="grounded" in2="specMask" mode="screen" result="shaded" />
+      <feColorMatrix
+        in="shaded"
+        type="matrix"
+        values="1.04 0.01 0.01 0 0  0.01 1.04 0.01 0 0  0.01 0.01 1.04 0 0  0 0 0 1 0"
+      />
+      <feColorMatrix type="saturate" values="1.05" />
     </filter>
   )
 }
@@ -126,7 +187,9 @@ function filterForStyle(style: ArtStyle, id: string) {
 export function PlantArtStyleDefs() {
   return (
     <defs data-plant-art-filters="true">
-      {PLANT_ART_STYLES.map((style) => filterForStyle(style, plantArtFilterId(style)))}
+      {PLANT_ART_STYLES.map((style) => (
+        <Fragment key={style}>{filterForStyle(style, plantArtFilterId(style))}</Fragment>
+      ))}
     </defs>
   )
 }
