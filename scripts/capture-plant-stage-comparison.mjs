@@ -20,7 +20,7 @@ const STAGES = [
 async function captureVariety(browser, variety) {
   const viewport =
     variety === 'tree'
-      ? { width: 1320, height: 920 }
+      ? { width: 1320, height: 1040 }
       : { width: 1320, height: 900 }
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1 })
   await context.addInitScript((v) => {

@@ -137,9 +137,9 @@ export function treeMeshMetrics(stage: PlantStage, worldHeight: number): TreeMes
   const cwRatio = ELDER_TREE.cw > 0 ? st.cw / ELDER_TREE.cw : 0
   const bwRatio = ELDER_TREE.bw > 0 ? Math.max(0.12, st.bw / ELDER_TREE.bw) : 0.12
   const lateHeight =
-    idx >= 6 ? 1.08 + (idx - 6) * 0.1 : idx >= 5 ? 1.04 : 1
+    idx >= 7 ? 1.28 : idx >= 6 ? 1.14 : idx >= 5 ? 1.06 : 1
   const lateCanopy =
-    idx >= 6 ? 1.26 + (idx - 6) * 0.22 : idx >= 5 ? 1.12 : idx >= 4 ? 1.05 : 1
+    idx >= 7 ? 1.92 : idx >= 6 ? 1.52 : idx >= 5 ? 1.08 : idx >= 4 ? 1.03 : 1
   const stemHeight = Math.max(0.08, worldHeight * hRatio * lateHeight)
   const canopyRadius =
     cwRatio > 0

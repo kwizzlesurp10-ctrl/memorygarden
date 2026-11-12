@@ -77,18 +77,28 @@ export function mountStagePlantPreview(
   renderer.toneMappingExposure = (palette.starAlpha ?? 0) > 0.2 ? 1.42 : 1.12
   host.replaceChildren(renderer.domElement)
 
-  const camera = new THREE.PerspectiveCamera(36, width / height, 0.05, 40)
+  const stageIdx = plantStageToIndex(stage)
+  const camera = new THREE.PerspectiveCamera(variety === 'tree' ? 50 : 36, width / height, 0.05, 48)
   const box = new THREE.Box3().setFromObject(group)
   const size = box.getSize(new THREE.Vector3())
   const center = box.getCenter(new THREE.Vector3())
-  const stageIdx = plantStageToIndex(stage)
-  const maxDim = Math.max(size.x, size.y, size.z, 0.35)
-  const zoom =
-    variety === 'tree' ? Math.max(0.48, 0.94 - stageIdx * 0.055) : Math.max(0.62, 0.92 - stageIdx * 0.028)
-  const dist = (maxDim / Math.tan((camera.fov * Math.PI) / 360)) * zoom
-  const lookY = center.y + size.y * (variety === 'tree' ? 0.32 : 0.12)
-  camera.position.set(center.x + dist * 0.08, center.y + maxDim * 0.02, center.z + dist * 0.95)
-  camera.lookAt(center.x, lookY, center.z)
+  const maxDim = Math.max(size.x, size.y, size.z, 0.2)
+
+  let dist: number
+  if (variety === 'tree') {
+    // One shared camera for every tree stage so bloom → elder scale reads in the grid.
+    dist =
+      stageIdx >= 7 ? 6.95 : stageIdx >= 6 ? 5.65 : 5.15 + Math.max(0, stageIdx - 2) * 0.1
+    const lookY = center.y + size.y * 0.38
+    camera.position.set(center.x + dist * 0.14, Math.max(0.85, center.y * 0.22 + 0.72), center.z + dist)
+    camera.lookAt(center.x, lookY, center.z)
+  } else {
+    const zoom = Math.max(0.62, 0.92 - stageIdx * 0.028)
+    dist = (maxDim / Math.tan((camera.fov * Math.PI) / 360)) * zoom
+    const lookY = center.y + size.y * 0.12
+    camera.position.set(center.x + dist * 0.08, center.y + maxDim * 0.02, center.z + dist * 0.95)
+    camera.lookAt(center.x, lookY, center.z)
+  }
 
   const render = () => {
     renderer.render(scene, camera)
