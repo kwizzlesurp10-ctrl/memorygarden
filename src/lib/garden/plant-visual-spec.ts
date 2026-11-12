@@ -148,8 +148,8 @@ export function treeMeshMetrics(stage: PlantStage, worldHeight: number): TreeMes
   const trunkRadius = Math.max(0.028, worldHeight * 0.052 * bwRatio)
   const canopyLift =
     st.ch > 0 && ELDER_TREE.ch > 0
-      ? stemHeight * (0.66 + (st.ch / ELDER_TREE.ch) * 0.24)
-      : stemHeight * 0.88
+      ? stemHeight * (0.58 + (st.ch / ELDER_TREE.ch) * 0.3)
+      : stemHeight * 0.82
   return {
     stemHeight,
     trunkRadius,

@@ -5,7 +5,42 @@ import { plantHeight, plantRadius } from '@/lib/open-world/layout'
 import { plantRecipe } from '@/lib/open-world/plant-visual'
 import type { PlantStage, PlantVariety } from '@/lib/types'
 import { plantStageToIndex } from '@/lib/garden/stage'
+import {
+  FLOWER_STAGE_HEIGHT,
+  TREE_STAGE_METRICS,
+} from '@/lib/garden/plant-visual-spec'
 import type { WorldPlant } from './types'
+
+function stage2DVisualExtent(variety: PlantVariety, stageIdx: number): number {
+  if (variety === 'tree') {
+    const st = TREE_STAGE_METRICS[stageIdx] ?? TREE_STAGE_METRICS[7]
+    return Math.max(10, st.H + st.ch * 0.95 + st.cw * 0.4)
+  }
+  const h = FLOWER_STAGE_HEIGHT[stageIdx] ?? FLOWER_STAGE_HEIGHT[7]
+  return Math.max(10, h + 14)
+}
+
+function elder2DVisualExtent(variety: PlantVariety): number {
+  if (variety === 'tree') {
+    const st = TREE_STAGE_METRICS[7]
+    return st.H + st.ch * 0.95 + st.cw * 0.4
+  }
+  return FLOWER_STAGE_HEIGHT[7] + 14
+}
+
+function fitCameraDistance(
+  camera: THREE.PerspectiveCamera,
+  size: THREE.Vector3,
+  width: number,
+  height: number,
+  margin: number,
+): number {
+  const vFov = (camera.fov * Math.PI) / 180
+  const aspect = width / height
+  const distY = (size.y * 0.52) / Math.tan(vFov / 2)
+  const distX = (Math.max(size.x, size.z) * 0.52) / (Math.tan(vFov / 2) * aspect)
+  return Math.max(distY, distX, 0.35) * margin
+}
 
 export interface StagePreviewHandle {
   dispose: () => void
@@ -84,21 +119,35 @@ export function mountStagePlantPreview(
   const center = box.getCenter(new THREE.Vector3())
   const maxDim = Math.max(size.x, size.y, size.z, 0.2)
 
-  let dist: number
-  if (variety === 'tree') {
-    // One shared camera for every tree stage so bloom → elder scale reads in the grid.
-    dist =
-      stageIdx >= 7 ? 6.95 : stageIdx >= 6 ? 5.65 : 5.15 + Math.max(0, stageIdx - 2) * 0.1
-    const lookY = center.y + size.y * 0.38
-    camera.position.set(center.x + dist * 0.14, Math.max(0.85, center.y * 0.22 + 0.72), center.z + dist)
-    camera.lookAt(center.x, lookY, center.z)
+  const elderExtent = elder2DVisualExtent(variety)
+  const stageExtent = stage2DVisualExtent(variety, stageIdx)
+
+  const baseFit = fitCameraDistance(camera, size, width, height, 1.16)
+  const metricRatio = stageExtent / elderExtent
+  const tinySubject = size.y < (variety === 'tree' ? 1.15 : 0.85)
+
+  let finalDist: number
+  if (tinySubject && stageIdx <= 4) {
+    finalDist = variety === 'tree' ? 2.55 - stageIdx * 0.13 : 2.35 - stageIdx * 0.11
+  } else if (metricRatio < 0.5) {
+    finalDist = baseFit * (0.52 + metricRatio * 0.88)
   } else {
-    const zoom = Math.max(0.62, 0.92 - stageIdx * 0.028)
-    dist = (maxDim / Math.tan((camera.fov * Math.PI) / 360)) * zoom
-    const lookY = center.y + size.y * 0.12
-    camera.position.set(center.x + dist * 0.08, center.y + maxDim * 0.02, center.z + dist * 0.95)
-    camera.lookAt(center.x, lookY, center.z)
+    finalDist = baseFit * (0.8 + metricRatio * 0.26)
   }
+  if (variety === 'tree' && stageIdx >= 6) finalDist *= 0.88
+  if (variety === 'tree' && stageIdx >= 7) finalDist *= 0.76
+  if (variety === 'flower' && stageIdx >= 7) finalDist *= 0.84
+
+  const lookY =
+    variety === 'tree'
+      ? center.y + size.y * 0.36
+      : center.y + size.y * 0.14
+  camera.position.set(
+    center.x + finalDist * 0.12,
+    center.y + (variety === 'tree' ? size.y * 0.06 : maxDim * 0.02),
+    center.z + finalDist,
+  )
+  camera.lookAt(center.x, lookY, center.z)
 
   const render = () => {
     renderer.render(scene, camera)
