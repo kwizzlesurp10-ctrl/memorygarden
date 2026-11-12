@@ -128,14 +128,15 @@ export function mountStagePlantPreview(
 
   let finalDist: number
   if (tinySubject && stageIdx <= 4) {
-    finalDist = variety === 'tree' ? 2.55 - stageIdx * 0.13 : 2.35 - stageIdx * 0.11
+    finalDist = variety === 'tree' ? 1.92 - stageIdx * 0.11 : 1.82 - stageIdx * 0.09
   } else if (metricRatio < 0.5) {
     finalDist = baseFit * (0.52 + metricRatio * 0.88)
   } else {
     finalDist = baseFit * (0.8 + metricRatio * 0.26)
   }
-  if (variety === 'tree' && stageIdx >= 6) finalDist *= 0.88
-  if (variety === 'tree' && stageIdx >= 7) finalDist *= 0.76
+  if (variety === 'tree' && stageIdx === 5) finalDist *= 1.08
+  if (variety === 'tree' && stageIdx >= 6) finalDist *= 0.86
+  if (variety === 'tree' && stageIdx >= 7) finalDist *= 0.7
   if (variety === 'flower' && stageIdx >= 7) finalDist *= 0.84
 
   const lookY =
