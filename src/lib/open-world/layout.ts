@@ -21,7 +21,12 @@ import {
 } from './constants'
 import type { GardenWorld, Vec2, WorldBed, WorldPlant } from './types'
 import { memoryPrimaryLabel } from '@/lib/memory-display'
-import { applyDualStageRowCapture, isStageRowCapture } from './stage-capture-layout'
+import {
+  applyDualStageRowCapture,
+  applyYoungElderTreePair,
+  isStageRowCapture,
+  isYoungElderTreeCapture,
+} from './stage-capture-layout'
 import { applyWalkCaptureFocus, isWalkPlantFocusCapture } from './walk-capture-layout'
 
 const BEDS: WorldBed[] = [
@@ -278,10 +283,12 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
     }
     clampPlant(p, half)
   }
-  if (isWalkPlantFocusCapture() && !isStageRowCapture()) {
+  if (isWalkPlantFocusCapture() && !isStageRowCapture() && !isYoungElderTreeCapture()) {
     applyWalkCaptureFocus(plants)
   }
-  if (isStageRowCapture()) {
+  if (isYoungElderTreeCapture()) {
+    applyYoungElderTreePair(plants)
+  } else if (isStageRowCapture()) {
     applyDualStageRowCapture(plants)
   }
 
@@ -297,7 +304,8 @@ export function layoutGardenWorld(memories: Memory[], season: Season = 'spring')
 
   const bondCheck = hasActiveGardenBond()
   const groveMilestone = computeGroveMilestone(loadCommunityWateringCount(memories))
-  const fillerFlora = isStageRowCapture() ? [] : generateBedFillerFlora(BEDS, plants)
+  const fillerFlora =
+    isStageRowCapture() || isYoungElderTreeCapture() ? [] : generateBedFillerFlora(BEDS, plants)
 
   return {
     bounds: { minX: -half, maxX: half, minZ: -half, maxZ: half },

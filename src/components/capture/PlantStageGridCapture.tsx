@@ -3,6 +3,7 @@ import type { PlantStage, PlantVariety } from '@/lib/types'
 import { PLANT_STAGES_ORDER } from '@/lib/garden/plant-stages'
 import { todPalette } from '@/lib/garden/day-night'
 import { plantStageToIndex } from '@/lib/garden/stage'
+import { TREE_STAGE_METRICS } from '@/lib/garden/plant-visual-spec'
 import { buildSeededPlant } from '@/components/plants/seeded-builders'
 import type { SeededVariety } from '@/components/plants/types'
 import { gardenRng } from '@/lib/garden/prng'
@@ -36,17 +37,42 @@ function Stage2DCell({ variety, stage }: { variety: PlantVariety; stage: PlantSt
     motion: false,
     rng: gardenRng(variety === 'tree' ? 77 + plantStageToIndex(stage) : 99 + plantStageToIndex(stage)),
   })
-  const viewBox = variety === 'tree' ? '-60 -98 120 108' : '-52 -92 104 102'
+  const stageIndex = plantStageToIndex(stage)
+  let viewBox: string
+  let svgHeight: number
+  if (variety === 'tree') {
+    const st = TREE_STAGE_METRICS[stageIndex] ?? TREE_STAGE_METRICS[7]
+    const H = st.H
+    const cw = st.cw
+    const ch = st.ch
+    const canopyTop = H > 0 ? H + ch * 0.82 + cw * 0.42 + 10 : 14
+    const padTop = 26 + stageIndex * 4
+    const padBottom = 18
+    const minY = -(canopyTop + padTop)
+    const boxH = canopyTop + padTop + padBottom
+    const boxW = Math.max(156, cw * 2.85 + 48)
+    viewBox = `${-boxW / 2} ${minY} ${boxW} ${boxH}`
+    svgHeight = Math.min(128, 56 + boxH * 0.36)
+  } else {
+    viewBox = `-56 ${-108 - stageIndex * 9} 112 ${118 + stageIndex * 11}`
+    svgHeight = 134 + stageIndex * 9
+  }
   return h(
-    'svg',
-    {
-      xmlns: 'http://www.w3.org/2000/svg',
-      viewBox,
-      className: 'mx-auto block w-full max-w-[150px]',
-      height: 118,
-      'data-testid': `stage-2d-${variety}-${stage}`,
-    },
-    nodes,
+    'div',
+    { className: 'overflow-visible', style: { minHeight: svgHeight } },
+    h(
+      'svg',
+      {
+        xmlns: 'http://www.w3.org/2000/svg',
+        viewBox,
+        className: 'mx-auto block w-full max-w-[150px]',
+        height: svgHeight,
+        preserveAspectRatio: 'xMidYMid meet',
+        style: { overflow: 'visible' },
+        'data-testid': `stage-2d-${variety}-${stage}`,
+      },
+      nodes,
+    ),
   )
 }
 
@@ -64,7 +90,11 @@ function Stage3DCell({ variety, stage }: { variety: PlantVariety; stage: PlantSt
   return (
     <div
       ref={hostRef}
-      className="h-[180px] w-full overflow-hidden rounded-lg border border-white/10 bg-[#1a1224]"
+      className={
+        variety === 'tree'
+          ? 'h-[168px] w-full overflow-hidden rounded-lg border border-white/10 bg-[#1a1224]'
+          : 'h-[180px] w-full overflow-hidden rounded-lg border border-white/10 bg-[#1a1224]'
+      }
       data-testid={`stage-3d-${variety}-${stage}`}
     />
   )

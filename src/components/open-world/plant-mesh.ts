@@ -3,11 +3,14 @@ import { gardenRng, seedFromGenetics } from '@/lib/garden/prng'
 import { plantStageToIndex } from '@/lib/garden/stage'
 import type { PlantVisualRecipe } from '@/lib/open-world/plant-visual'
 import type { WorldPlant } from '@/lib/open-world/types'
+import type { PlantStage } from '@/lib/types'
+import { TRUNK_DAY } from '@/lib/garden/plant-visual-spec'
 
 const geo = {
   stem: new THREE.CylinderGeometry(1, 1, 1, 8),
   stemTaper: new THREE.CylinderGeometry(0.65, 1, 1, 8),
   blob: new THREE.IcosahedronGeometry(1, 0),
+  lump: new THREE.SphereGeometry(1, 8, 6),
   sphere: new THREE.SphereGeometry(1, 12, 10),
   cone: new THREE.ConeGeometry(1, 1, 8),
   cap: new THREE.SphereGeometry(1, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
@@ -15,6 +18,7 @@ const geo = {
   ring: new THREE.RingGeometry(0.72, 1, 20),
   torus: new THREE.TorusGeometry(1, 0.12, 8, 20),
   box: new THREE.BoxGeometry(1, 1, 1),
+  leafPlane: new THREE.PlaneGeometry(1, 1, 1, 1),
 }
 
 // Protect shared static geometries from disposal during plant mesh updates
@@ -50,52 +54,242 @@ function addTreeCanopyBlobs(
   blobCount: number,
   canopyRadius: number,
   canopyY: number,
+  trunkCapY: number,
   leafMat: THREE.MeshStandardMaterial,
   leafAltMat: THREE.MeshStandardMaterial,
   leafHighlightMat: THREE.MeshStandardMaterial,
   rng: () => number,
 ): void {
-  const blobs = Math.max(blobCount, canopyRadius > 0.12 ? 2 : 0)
-  if (blobs <= 0) return
+  const blobBase = Math.max(blobCount, canopyRadius > 0.12 ? 2 : 0)
+  if (blobBase <= 0) return
 
-  for (let j = 0; j < blobs; j++) {
-    const offX = (rng() - 0.5) * canopyRadius * 1.62
-    const offZ = (rng() - 0.5) * canopyRadius * 1.48
-    const bodyY = canopyY - rng() * canopyRadius * 0.38
-    const rr = canopyRadius * 0.44 * (0.46 + rng() * 0.48)
+  const lumpCount = Math.min(10, Math.max(7, blobBase + 3))
+  const domeCenterY = canopyY - canopyRadius * 0.05
+  const coreSurface = canopyRadius * 0.3
 
-    const body = new THREE.Mesh(geo.blob, j % 2 === 0 ? leafMat : leafAltMat)
-    body.scale.set(rr * 1.06, rr * 0.9, rr * 1.02)
-    body.position.set(offX, bodyY, offZ)
+  const core = new THREE.Mesh(geo.lump, leafMat)
+  core.scale.set(canopyRadius * 0.6, canopyRadius * 0.48, canopyRadius * 0.58)
+  core.position.set(0, domeCenterY, 0)
+  core.castShadow = true
+  g.add(core)
+
+  const trunkPad = new THREE.Mesh(geo.lump, leafAltMat)
+  trunkPad.scale.set(canopyRadius * 0.36, canopyRadius * 0.26, canopyRadius * 0.32)
+  trunkPad.position.set(0, trunkCapY + canopyRadius * 0.02, 0)
+  g.add(trunkPad)
+
+  const lumpTops: { x: number; y: number; z: number; rr: number }[] = []
+
+  for (let j = 0; j < lumpCount; j++) {
+    const theta = Math.PI * 2 * rng()
+    const phi = Math.acos(1 - rng() * 0.95)
+    const sinP = Math.sin(phi)
+    const nx = sinP * Math.cos(theta)
+    const ny = Math.cos(phi)
+    const nz = sinP * Math.sin(theta)
+    const rr = canopyRadius * (0.32 + rng() * 0.13)
+    const outward = coreSurface + rr * 0.5
+
+    const px = nx * outward
+    const py = domeCenterY + ny * outward
+    const pz = nz * outward
+
+    const topBand = ny > 0.2
+    const highlightLump = topBand && j >= lumpCount - 5
+    const bodyMat = highlightLump ? leafHighlightMat : j % 2 === 0 ? leafMat : leafAltMat
+
+    const body = new THREE.Mesh(geo.blob, bodyMat)
+    body.scale.set(rr * 1.02, rr * 0.88, rr * 0.98)
+    body.position.set(px, py, pz)
     body.castShadow = true
     g.add(body)
 
-    const crown = new THREE.Mesh(geo.blob, leafHighlightMat)
-    crown.scale.set(rr * 0.8, rr * 0.48, rr * 0.74)
-    crown.position.set(offX - rr * 0.15, bodyY + rr * 0.38, offZ + rr * 0.09)
-    crown.castShadow = true
-    g.add(crown)
+    if (highlightLump) {
+      const cap = new THREE.Mesh(geo.blob, leafHighlightMat)
+      const capR = rr * 0.42
+      cap.scale.set(capR, capR * 0.58, capR * 0.85)
+      cap.position.set(px, py + rr * 0.18, pz)
+      g.add(cap)
+    }
+
+    lumpTops.push({ x: px, y: py, z: pz, rr })
   }
 
-  const highlight = new THREE.Mesh(geo.blob, leafHighlightMat)
-  highlight.scale.set(canopyRadius * 0.44, canopyRadius * 0.28, canopyRadius * 0.38)
-  highlight.position.set(-canopyRadius * 0.3, canopyY + canopyRadius * 0.24, canopyRadius * 0.1)
-  g.add(highlight)
+  const topCount = Math.min(4, lumpTops.length)
+  const topLumps = [...lumpTops].sort((a, b) => b.y - a.y).slice(0, topCount)
+  for (const lump of topLumps) {
+    const dab = new THREE.Mesh(geo.blob, leafHighlightMat)
+    const r = lump.rr * 0.22
+    dab.scale.set(r * 1.05, r * 0.7, r)
+    dab.position.set(lump.x, lump.y + lump.rr * 0.12, lump.z)
+    g.add(dab)
+  }
+}
+
+function addTreeBranches(
+  g: THREE.Group,
+  stage: PlantStage,
+  stemHeight: number,
+  trunkRadius: number,
+  stemMat: THREE.MeshStandardMaterial,
+  rng: () => number,
+): void {
+  const stageIndex = plantStageToIndex(stage)
+  if (stageIndex < 3) return
+  const branchCount = Math.min(1 + stageIndex, 6)
+  for (let i = 0; i < branchCount; i++) {
+    const f = 0.45 + 0.48 * (i / Math.max(1, branchCount - 1))
+    const side = i % 2 === 0 ? -1 : 1
+    const attachY = stemHeight * f
+    const len = stemHeight * 0.26 * (1.08 - f * 0.32) * (0.85 + rng() * 0.3)
+    const branch = new THREE.Mesh(geo.stemTaper, stemMat)
+    branch.scale.set(trunkRadius * 0.42, len, trunkRadius * 0.38)
+    branch.position.set(side * trunkRadius * 0.92, attachY, 0)
+    branch.rotation.z = side * 0.82
+    branch.castShadow = true
+    g.add(branch)
+  }
+}
+
+function addTreeSeedSprout(
+  g: THREE.Group,
+  plant: WorldPlant,
+  recipe: PlantVisualRecipe,
+  stemMat: THREE.MeshStandardMaterial,
+  leafMat: THREE.MeshStandardMaterial,
+  leafAltMat: THREE.MeshStandardMaterial,
+  leafHighlightMat: THREE.MeshStandardMaterial,
+  soilMat: THREE.MeshStandardMaterial,
+  rng: () => number,
+): void {
+  const collar = new THREE.Mesh(geo.disk, soilMat)
+  collar.rotation.x = -Math.PI / 2
+  collar.scale.setScalar(0.09)
+  collar.position.y = 0.01
+  g.add(collar)
+
+  if (plant.stage === 'seed') {
+    const mound = new THREE.Mesh(geo.sphere, soilMat)
+    mound.scale.set(0.07, 0.028, 0.065)
+    mound.position.y = 0.022
+    g.add(mound)
+    const seedPod = new THREE.Mesh(geo.blob, leafMat)
+    seedPod.scale.set(0.032, 0.042, 0.028)
+    seedPod.position.set((rng() - 0.5) * 0.02, 0.05, (rng() - 0.5) * 0.015)
+    g.add(seedPod)
+    const dew = new THREE.Mesh(geo.sphere, leafHighlightMat)
+    dew.scale.setScalar(0.012)
+    dew.position.set(0.02, 0.058, 0.01)
+    g.add(dew)
+    return
+  }
+
+  let trunkTop = recipe.stemHeight
+  if (recipe.canopyBlobs > 0) {
+    trunkTop = Math.min(
+      recipe.stemHeight,
+      Math.max(recipe.stemHeight * 0.5, recipe.canopyLift - recipe.canopyRadius * 0.06),
+    )
+  }
+
+  const earlyStem = new THREE.Mesh(geo.stemTaper, stemMat)
+  earlyStem.castShadow = true
+  earlyStem.scale.set(recipe.stemRadius * 0.95, trunkTop, recipe.stemRadius * 1.35)
+  earlyStem.position.y = trunkTop / 2
+  g.add(earlyStem)
+
+  if (plant.stage === 'sprout') {
+    addSproutLeafPair(g, trunkTop, leafMat, leafHighlightMat)
+    return
+  }
+
+  if (recipe.canopyBlobs > 0) {
+    addTreeCanopyBlobs(
+      g,
+      recipe.canopyBlobs,
+      recipe.canopyRadius,
+      recipe.canopyLift,
+      trunkTop,
+      leafMat,
+      leafAltMat,
+      leafHighlightMat,
+      rng,
+    )
+  }
+}
+
+function addPairedStemLeaves(
+  g: THREE.Group,
+  attachY: number,
+  spread: number,
+  leafW: number,
+  leafH: number,
+  leafMat: THREE.MeshStandardMaterial,
+  leafAltMat: THREE.MeshStandardMaterial,
+): void {
+  for (const side of [-1, 1] as const) {
+    const leaf = new THREE.Mesh(geo.cone, side < 0 ? leafMat : leafAltMat)
+    leaf.scale.set(leafW * 1.55, leafH, leafW * 0.2)
+    leaf.position.set(side * spread, attachY + leafH * 0.35, side * spread * 0.1)
+    leaf.rotation.z = side * 0.82
+    leaf.rotation.x = -0.36
+    leaf.rotation.y = side * 0.14
+    g.add(leaf)
+  }
 }
 
 function addSproutLeafPair(
   g: THREE.Group,
   tipY: number,
   leafMat: THREE.MeshStandardMaterial,
-  leafAltMat: THREE.MeshStandardMaterial,
+  leafHighlightMat: THREE.MeshStandardMaterial,
 ): void {
-  for (const side of [-1, 1]) {
-    const leaf = new THREE.Mesh(geo.blob, side < 0 ? leafMat : leafAltMat)
-    leaf.scale.set(0.09, 0.06, 0.07)
-    leaf.position.set(side * 0.07, tipY + 0.03, 0)
-    leaf.rotation.z = side * 0.45
-    g.add(leaf)
+  addPairedStemLeaves(g, tipY, 0.042, 0.046, 0.072, leafMat, leafHighlightMat)
+}
+
+let flowerGlowTexture: THREE.CanvasTexture | null = null
+
+function getFlowerGlowTexture(): THREE.CanvasTexture {
+  if (!flowerGlowTexture) {
+    const c = document.createElement('canvas')
+    c.width = 256
+    c.height = 256
+    const ctx = c.getContext('2d')
+    if (ctx) {
+      const grd = ctx.createRadialGradient(128, 128, 0, 128, 128, 128)
+      grd.addColorStop(0, 'rgba(245, 255, 200, 1)')
+      grd.addColorStop(0.22, 'rgba(205, 245, 130, 0.78)')
+      grd.addColorStop(0.48, 'rgba(155, 215, 95, 0.32)')
+      grd.addColorStop(0.72, 'rgba(110, 180, 75, 0.08)')
+      grd.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = grd
+      ctx.fillRect(0, 0, 256, 256)
+    }
+    flowerGlowTexture = new THREE.CanvasTexture(c)
+    flowerGlowTexture.colorSpace = THREE.SRGBColorSpace
   }
+  return flowerGlowTexture
+}
+
+function flowerHeadGlowSprite(worldSize: number, spriteOpacity = 0.58): THREE.Sprite {
+  const mat = new THREE.SpriteMaterial({
+    map: getFlowerGlowTexture(),
+    transparent: true,
+    opacity: spriteOpacity,
+    depthTest: false,
+    depthWrite: false,
+    fog: false,
+    toneMapped: false,
+    blending: THREE.AdditiveBlending,
+    color: new THREE.Color('#fffadb'),
+  })
+  const sprite = new THREE.Sprite(mat)
+  sprite.scale.set(worldSize * 1.12, worldSize * 1.12, 1)
+  sprite.center.set(0.5, 0.5)
+  sprite.renderOrder = 12
+  sprite.frustumCulled = false
+  sprite.userData.isFlowerGlow = true
+  return sprite
 }
 
 function addFlowerStageMeshes(
@@ -106,14 +300,15 @@ function addFlowerStageMeshes(
   stemMat: THREE.MeshStandardMaterial,
   leafMat: THREE.MeshStandardMaterial,
   leafAltMat: THREE.MeshStandardMaterial,
-  bloomMat: THREE.MeshStandardMaterial,
+  petalMat: THREE.MeshStandardMaterial,
+  glowMat: THREE.MeshStandardMaterial,
   stamenMat: THREE.MeshStandardMaterial,
   rng: () => number,
 ): void {
   const stageIndex = plantStageToIndex(plant.stage)
   const stem = new THREE.Mesh(geo.stemTaper, stemMat)
   stem.castShadow = true
-  stem.scale.set(recipe.stemRadius, recipe.stemHeight, recipe.stemRadius * 1.05)
+  stem.scale.set(recipe.stemRadius * 0.95, recipe.stemHeight, recipe.stemRadius)
   stem.position.y = recipe.stemHeight / 2
   stem.rotation.z = (rng() - 0.5) * 0.12
   g.add(stem)
@@ -121,31 +316,25 @@ function addFlowerStageMeshes(
   const tipY = recipe.stemHeight
 
   if (stageIndex === 1) {
-    addSproutLeafPair(g, tipY, leafMat, leafAltMat)
+    addSproutLeafPair(g, tipY, leafMat, petalMat)
     return
   }
 
-  const leafCount = [0, 0, 2, 3, 4, 4, 5, 5][stageIndex] ?? 3
-  for (let i = 0; i < leafCount; i++) {
-    const t = 0.22 + 0.55 * (i / Math.max(1, leafCount - 1))
-    const side = i % 2 === 0 ? -1 : 1
-    const leaf = new THREE.Mesh(geo.blob, i % 2 ? leafAltMat : leafMat)
-    const ll = recipe.stemHeight * 0.22 * (1 - t * 0.35)
-    leaf.scale.set(ll * 0.9, ll * 0.55, ll * 0.45)
-    leaf.position.set(side * ll * 0.55, recipe.stemHeight * t, side * ll * 0.15)
-    leaf.rotation.z = side * 0.65
-    g.add(leaf)
-  }
-
-  if (stageIndex === 2 || stageIndex === 3) {
-    for (const side of [-1, 0, 1]) {
-      const tuft = new THREE.Mesh(geo.blob, leafMat)
-      const spread = side * recipe.canopyRadius * 0.55
-      tuft.scale.set(recipe.canopyRadius * 0.42, recipe.canopyRadius * 0.32, recipe.canopyRadius * 0.36)
-      tuft.position.set(spread, tipY + recipe.canopyRadius * 0.12, 0)
-      g.add(tuft)
-    }
-    return
+  const pairCount = [0, 0, 2, 3, 3, 3, 4, 4][stageIndex] ?? 2
+  const leafW = 0.05 + stageIndex * 0.004
+  const leafH = recipe.stemHeight * 0.13
+  for (let i = 0; i < pairCount; i++) {
+    const t = 0.16 + 0.58 * (i / Math.max(1, pairCount - 1))
+    const spread = recipe.stemRadius * (3.4 + stageIndex * 0.45)
+    addPairedStemLeaves(
+      g,
+      recipe.stemHeight * t,
+      spread,
+      leafW,
+      leafH,
+      leafMat,
+      leafAltMat,
+    )
   }
 
   if (stageIndex === 4) {
@@ -153,10 +342,6 @@ function addFlowerStageMeshes(
     bud.scale.set(recipe.canopyRadius * 0.55, recipe.canopyRadius * 0.72, recipe.canopyRadius * 0.52)
     bud.position.set(0, tipY + recipe.canopyRadius * 0.22, 0)
     g.add(bud)
-    const glow = new THREE.Mesh(geo.blob, bloomMat)
-    glow.scale.set(recipe.canopyRadius * 1.1, recipe.canopyRadius * 0.35, recipe.canopyRadius * 0.95)
-    glow.position.set(0, tipY + recipe.canopyRadius * 0.1, 0)
-    g.add(glow)
     return
   }
 
@@ -164,7 +349,7 @@ function addFlowerStageMeshes(
     stageIndex === 5 ? 6 : stageIndex === 6 ? 11 : stageIndex >= 7 ? 12 : 8
   for (let i = 0; i < petalCount; i++) {
     const ang = (i / petalCount) * Math.PI * 2 + (rng() - 0.5) * 0.15
-    const petal = new THREE.Mesh(geo.cone, bloomMat)
+    const petal = new THREE.Mesh(geo.cone, petalMat)
     const pr = recipe.canopyRadius * (stageIndex >= 7 ? 0.95 : 0.82)
     petal.scale.set(pr * 0.34, pr * 0.72, pr * 0.1)
     petal.position.set(Math.cos(ang) * pr * 0.55, canopyY + 0.02, Math.sin(ang) * pr * 0.55)
@@ -179,6 +364,11 @@ function addFlowerStageMeshes(
   head.position.y = canopyY + 0.03
   g.add(head)
 
+  const core = new THREE.Mesh(geo.sphere, glowMat)
+  core.scale.setScalar(recipe.canopyRadius * 0.18)
+  core.position.y = canopyY + 0.04
+  g.add(core)
+
   if (stageIndex >= 6) {
     const sideStem = new THREE.Mesh(geo.stem, stemMat)
     const sbH = recipe.stemHeight * 0.52
@@ -187,10 +377,56 @@ function addFlowerStageMeshes(
     sideStem.rotation.z = -0.32
     g.add(sideStem)
 
-    const sideBloom = new THREE.Mesh(geo.blob, bloomMat)
+    const sideBloom = new THREE.Mesh(geo.blob, petalMat)
     sideBloom.scale.setScalar(recipe.canopyRadius * 0.28)
     sideBloom.position.set(recipe.canopyRadius * 0.72, sbH * 0.82, recipe.canopyRadius * 0.28)
     g.add(sideBloom)
+  }
+
+  if (stageIndex >= 5) {
+    const bloomHeadRadius = recipe.canopyRadius * 0.38
+    const glowOpacity = stageIndex === 5 ? 0.62 : 0.54
+    const glowWorld = bloomHeadRadius * 3.1
+    const glowSprite = flowerHeadGlowSprite(glowWorld, glowOpacity)
+    glowSprite.position.set(0, canopyY + 0.035, 0.06)
+    g.add(glowSprite)
+
+    const haloMat = new THREE.MeshBasicMaterial({
+      map: getFlowerGlowTexture(),
+      transparent: true,
+      opacity: glowOpacity * 0.92,
+      depthTest: false,
+      depthWrite: false,
+      fog: false,
+      toneMapped: false,
+      blending: THREE.AdditiveBlending,
+      color: new THREE.Color('#f4ffd8'),
+      side: THREE.DoubleSide,
+    })
+    const haloPlane = new THREE.Mesh(new THREE.PlaneGeometry(glowWorld, glowWorld), haloMat)
+    haloPlane.position.set(0, canopyY + 0.035, 0.08)
+    haloPlane.renderOrder = 11
+    haloPlane.frustumCulled = false
+    haloPlane.userData.isFlowerGlow = true
+    g.add(haloPlane)
+
+    const auraMat = new THREE.MeshBasicMaterial({
+      color: '#eaffa8',
+      transparent: true,
+      opacity: 0.38,
+      depthTest: false,
+      depthWrite: false,
+      fog: false,
+      toneMapped: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.BackSide,
+    })
+    const auraShell = new THREE.Mesh(new THREE.SphereGeometry(bloomHeadRadius * 1.55, 14, 10), auraMat)
+    auraShell.position.set(0, canopyY + 0.04, 0)
+    auraShell.renderOrder = 10
+    auraShell.frustumCulled = false
+    auraShell.userData.isFlowerGlow = true
+    g.add(auraShell)
   }
 }
 
@@ -408,14 +644,14 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
   const isThriving = healthStatus === 'thriving'
   const isEternal = Boolean(plant.isEternal)
 
-  const trunkEmissive =
-    recipe.kind === 'tree' ? Math.max(0.08, recipe.emissiveIntensity * 0.22) : 0
-  const stemMat = mat(recipe.stem, {
-    roughness: 0.85,
-    emissive: recipe.stem,
+  const trunkEmissive = recipe.kind === 'tree' ? 0.14 : recipe.kind === 'flower' ? 0.12 : 0
+  const stemColor = recipe.kind === 'flower' ? recipe.foliage : recipe.kind === 'tree' ? TRUNK_DAY : recipe.stem
+  const stemMat = mat(stemColor, {
+    roughness: recipe.kind === 'flower' ? 0.78 : 0.86,
+    emissive: recipe.kind === 'tree' ? '#6b4a32' : stemColor,
     emissiveIntensity: trunkEmissive,
   })
-  const leafEmissive = Math.max(0.28, recipe.emissiveIntensity * 0.95)
+  const leafEmissive = Math.max(0.32, recipe.emissiveIntensity * 0.95)
   const leafMat = mat(recipe.foliage, {
     emissive: recipe.foliage,
     emissiveIntensity: leafEmissive,
@@ -423,27 +659,40 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
   })
   const leafAltMat = mat(recipe.foliageAlt, {
     emissive: recipe.foliageAlt,
-    emissiveIntensity: leafEmissive * 0.75,
+    emissiveIntensity: leafEmissive * 0.82,
     roughness: 0.54,
   })
-  const leafHighlightMat = mat(recipe.emissive, {
-    emissive: recipe.emissive,
-    emissiveIntensity: Math.max(leafEmissive, 0.42),
-    roughness: 0.44,
+  const leafHighlightMat = mat(recipe.foliageHighlight, {
+    emissive: recipe.foliageHighlight,
+    emissiveIntensity: Math.max(leafEmissive * 1.05, 0.48),
+    roughness: recipe.kind === 'tree' ? 0.84 : 0.44,
+    metalness: 0.02,
   })
-  if (recipe.kind === 'tree') {
+  if (recipe.kind === 'flower') {
     leafMat.flatShading = true
     leafAltMat.flatShading = true
     leafHighlightMat.flatShading = true
   }
   const bloomMat = mat(recipe.bloom, {
-    emissive: recipe.emissive,
-    emissiveIntensity: Math.max(0.08, recipe.emissiveIntensity),
+    emissive: recipe.foliageLight,
+    emissiveIntensity: Math.max(0.35, recipe.emissiveIntensity),
     roughness: 0.42,
+  })
+  const petalMat = mat(recipe.foliageLight, {
+    emissive: recipe.foliageLight,
+    emissiveIntensity: Math.max(0.58, recipe.emissiveIntensity * 1.1),
+    roughness: 0.4,
+  })
+  const glowMat = mat(recipe.foliageHighlight, {
+    emissive: '#b8e878',
+    emissiveIntensity: 0.72,
+    transparent: true,
+    opacity: 0.26,
+    roughness: 0.32,
   })
   const stamenMat = mat('#f6d860', {
     emissive: '#ffd700',
-    emissiveIntensity: 0.25,
+    emissiveIntensity: 0.55,
     roughness: 0.5,
   })
 
@@ -474,9 +723,27 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
     recipe.kind !== 'tree' &&
     recipe.kind !== 'flower'
   const isAdvanced = plant.stage === 'mature' || plant.stage === 'elder' || plant.isHybrid
+  const isTreeEarly =
+    recipe.kind === 'tree' &&
+    (plant.stage === 'seed' || plant.stage === 'sprout' || plant.stage === 'seedling')
+
+  if (isTreeEarly) {
+    addTreeSeedSprout(g, plant, recipe, stemMat, leafMat, leafAltMat, leafHighlightMat, soilMat, rng)
+    addGiftMeshes(g, plant, recipe)
+    g.position.set(plant.x, 0, plant.z)
+    g.userData.baseScale = 1
+    return g
+  }
 
   // Ground soil mound & garden pebble accent for non-lotus plants
-  if (recipe.kind !== 'lotus') {
+  if (recipe.kind === 'tree') {
+    const collar = new THREE.Mesh(geo.disk, soilMat)
+    collar.rotation.x = -Math.PI / 2
+    collar.scale.setScalar(Math.max(0.22, recipe.canopyRadius * 0.42))
+    collar.position.y = 0.012
+    collar.receiveShadow = true
+    g.add(collar)
+  } else if (recipe.kind !== 'lotus' && recipe.kind !== 'flower') {
     const moundRadius = Math.max(0.18, recipe.canopyRadius * 0.6)
     const mound = new THREE.Mesh(geo.cone, soilMat)
     mound.scale.set(moundRadius, 0.06, moundRadius)
@@ -484,7 +751,6 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
     mound.receiveShadow = true
     g.add(mound)
 
-    // Pebbles nestled in soil
     for (let p = 0; p < 3; p++) {
       const pebble = new THREE.Mesh(geo.sphere, stoneMat)
       const ang = rng() * Math.PI * 2
@@ -553,44 +819,16 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
     g.add(mistRing)
   }
 
-  if (recipe.kind === 'tree' && (plant.stage === 'seed' || plant.stage === 'sprout' || plant.stage === 'seedling')) {
-    if (plant.stage === 'seed') {
-      const shell = new THREE.Mesh(geo.sphere, stemMat)
-      shell.scale.set(0.09, 0.06, 0.07)
-      shell.position.y = 0.06
-      g.add(shell)
-    } else {
-      const earlyStem = new THREE.Mesh(geo.stemTaper, stemMat)
-      earlyStem.castShadow = true
-      earlyStem.scale.set(recipe.stemRadius * 1.1, recipe.stemHeight, recipe.stemRadius * 1.2)
-      earlyStem.position.y = recipe.stemHeight / 2
-      g.add(earlyStem)
-      if (plant.stage === 'sprout') {
-        addSproutLeafPair(g, recipe.stemHeight, leafMat, leafAltMat)
-      } else if (recipe.canopyBlobs > 0) {
-        addTreeCanopyBlobs(
-          g,
-          recipe.canopyBlobs,
-          recipe.canopyRadius,
-          recipe.canopyLift,
-          leafMat,
-          leafAltMat,
-          leafHighlightMat,
-          rng,
-        )
-      }
-    }
-    addGiftMeshes(g, plant, recipe)
-    g.position.set(plant.x, 0, plant.z)
-    g.userData.baseScale = 1
-    return g
-  }
-
   if (recipe.kind === 'flower' && plant.stage === 'seed') {
-    const shell = new THREE.Mesh(geo.sphere, stemMat)
-    shell.scale.set(0.07, 0.05, 0.05)
-    shell.position.y = 0.05
-    g.add(shell)
+    const collar = new THREE.Mesh(geo.disk, soilMat)
+    collar.rotation.x = -Math.PI / 2
+    collar.scale.setScalar(0.12)
+    collar.position.y = 0.01
+    g.add(collar)
+    const seedPod = new THREE.Mesh(geo.blob, leafMat)
+    seedPod.scale.set(0.034, 0.046, 0.03)
+    seedPod.position.y = 0.048
+    g.add(seedPod)
     addGiftMeshes(g, plant, recipe)
     g.position.set(plant.x, 0, plant.z)
     g.userData.baseScale = 1
@@ -609,7 +847,8 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
       stemMat,
       leafMat,
       leafAltMat,
-      bloomMat,
+      petalMat,
+      glowMat,
       stamenMat,
       rng,
     )
@@ -692,34 +931,42 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
 
   // Botanical species generator
   if (recipe.kind === 'tree') {
-    const trunkWide = recipe.stemRadius * (1.55 + Math.min(0.48, recipe.stemHeight * 0.1))
-    stem.scale.set(trunkWide, recipe.stemHeight, trunkWide)
+    const trunkWide = recipe.stemRadius * (1.38 + Math.min(0.28, recipe.stemHeight * 0.05))
+    const trunkTop = Math.min(
+      recipe.stemHeight,
+      Math.max(recipe.stemHeight * 0.55, canopyY - recipe.canopyRadius * 0.08),
+    )
+    stem.scale.set(trunkWide, trunkTop, trunkWide)
+    stem.position.y = trunkTop / 2
 
-    const rootCount = plant.stage === 'elder' || plant.stage === 'mature' ? 5 : 4
+    const rootCount = plant.stage === 'elder' || plant.stage === 'mature' ? 6 : 4
     for (let i = 0; i < rootCount; i++) {
       const root = new THREE.Mesh(geo.cone, stemMat)
       const ang = (i / rootCount) * Math.PI * 2 + (rng() - 0.5) * 0.22
-      const dist = recipe.stemRadius * 1.22
+      const dist = recipe.stemRadius * (1.15 + (plant.stage === 'elder' ? 0.22 : 0))
       root.scale.set(
-        recipe.stemRadius * 0.72,
-        recipe.stemHeight * 0.26,
-        recipe.stemRadius * 0.88,
+        recipe.stemRadius * 0.82,
+        recipe.stemHeight * 0.3,
+        recipe.stemRadius * 0.95,
       )
       root.position.set(
         Math.cos(ang) * dist,
-        (recipe.stemHeight * 0.26) / 2,
+        (recipe.stemHeight * 0.3) / 2,
         Math.sin(ang) * dist,
       )
-      root.rotation.x = Math.sin(ang) * 0.42
-      root.rotation.z = -Math.cos(ang) * 0.42
+      root.rotation.x = Math.sin(ang) * 0.48
+      root.rotation.z = -Math.cos(ang) * 0.48
       g.add(root)
     }
+
+    addTreeBranches(g, plant.stage, trunkTop, recipe.stemRadius, stemMat, rng)
 
     addTreeCanopyBlobs(
       g,
       recipe.canopyBlobs,
       recipe.canopyRadius,
       canopyY,
+      trunkTop,
       leafMat,
       leafAltMat,
       leafHighlightMat,
@@ -1078,6 +1325,12 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
 
 export function disposePlantGroup(group: THREE.Group): void {
   group.traverse((obj: THREE.Object3D) => {
+    if (obj instanceof THREE.Sprite) {
+      const sm = obj.material as THREE.SpriteMaterial
+      if (sm.map && sm.map !== flowerGlowTexture) sm.map.dispose()
+      sm.dispose()
+      return
+    }
     if (obj instanceof THREE.Mesh || obj instanceof THREE.Points) {
       if (obj.geometry && !obj.geometry.userData?.isSharedStatic && !obj.userData.isSharedStatic) {
         obj.geometry.dispose()
