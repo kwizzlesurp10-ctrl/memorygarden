@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Palette, Sparkle } from '@phosphor-icons/react'
 import type { GardenLandscapeView, PlantStylePreference, ArtStyle } from '@/lib/types'
 import { GardenViewPicker } from '@/components/garden/GardenViewPicker'
+import { PlantArtStylePreview } from '@/components/plants/PlantArtStylePreview'
 
 interface PlantStyleCustomizerProps {
   open: boolean
@@ -54,7 +55,7 @@ export function PlantStyleCustomizer({
             Plant Art Style
           </DialogTitle>
           <DialogDescription>
-            Choose how AI-generated plants will look in your garden. Plants will be generated in the background.
+            Choose a visual filter for your garden plants. The preview updates live as you pick a style.
           </DialogDescription>
         </DialogHeader>
 
@@ -74,6 +75,7 @@ export function PlantStyleCustomizer({
                       : 'border-border hover:border-primary/50'
                   }`}
                 >
+                  <PlantArtStylePreview artStyle={style.value} className="mb-2 w-full" />
                   <p className="text-sm font-medium">{style.label}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{style.description}</p>
                 </motion.button>
@@ -105,8 +107,8 @@ export function PlantStyleCustomizer({
           <div className="p-3 bg-muted/30 rounded-lg flex items-start gap-2">
             <Sparkle size={16} weight="duotone" className="text-primary mt-0.5 flex-shrink-0" />
             <p className="text-xs text-muted-foreground">
-              AI plant images are generated in the background using your chosen style.
-              SVG plants are shown instantly while images generate. Generated images are cached for each growth stage.
+              SVG plants in the garden use the selected filter immediately. Optional AI-generated images can
+              still layer on later and are cached per growth stage.
             </p>
           </div>
         </div>

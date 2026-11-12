@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
-import type { HybridGenome } from '@/lib/types'
+import type { ArtStyle, HybridGenome } from '@/lib/types'
+import { plantArtFilterUrl, resolvePlantArtStyle } from '@/lib/garden/plant-art-style'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { hybridPlantPalette, mergedPal } from '@/lib/garden/hybrid'
 import { gardenRng } from '@/lib/garden/prng'
@@ -365,6 +366,7 @@ export interface HybridPlantSvgProps {
   y?: number
   scale?: number
   swayIndex?: number
+  artStyle?: ArtStyle
 }
 
 export function HybridPlantSvg({
@@ -377,6 +379,7 @@ export function HybridPlantSvg({
   y = 460,
   scale = 1,
   swayIndex = 0,
+  artStyle,
 }: HybridPlantSvgProps) {
   const CH = hybridPlantPalette(genome, palette)
   const swayStyle: CSSProperties | undefined = motion
@@ -387,9 +390,13 @@ export function HybridPlantSvg({
       }
     : undefined
 
+  const plantFilter = plantArtFilterUrl(resolvePlantArtStyle(artStyle))
+
   return (
     <g transform={`translate(${x} ${y}) scale(${scale})`}>
-      <g style={swayStyle}>{buildHybrid(stage, CH, rimStrength, motion, genome)}</g>
+      <g style={swayStyle} filter={plantFilter}>
+        {buildHybrid(stage, CH, rimStrength, motion, genome)}
+      </g>
     </g>
   )
 }

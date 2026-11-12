@@ -1486,6 +1486,7 @@ function App() {
                     starterDecor={safePreferences.gardenStarterDecor}
                     searchHasNoMatches={gardenSearchHasNoMatches}
                     onClearSearch={clearSearchAndFilters}
+                    plantArtStyle={safePreferences.plantStylePreference?.artStyle}
                   />
                 </SectionErrorBoundary>
               </motion.div>

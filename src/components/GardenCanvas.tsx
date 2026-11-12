@@ -1,5 +1,15 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
-import type { GardenLandscapeView, GardenStarterDecor, Memory, Season, StorageShedData, ShedSeed, PlantedHybrid } from '@/lib/types'
+import type {
+  ArtStyle,
+  GardenLandscapeView,
+  GardenStarterDecor,
+  Memory,
+  Season,
+  StorageShedData,
+  ShedSeed,
+  PlantedHybrid,
+} from '@/lib/types'
+import { DEFAULT_PLANT_ART_STYLE } from '@/lib/garden/plant-art-style'
 import { resolveGardenLandscapeView } from '@/lib/garden/landscape-view'
 import { layoutMemoryPlantsForView } from '@/lib/garden/memory-scene-layout'
 import { frameMemoryPlantsForMobile } from '@/lib/garden/garden-mobile-framing'
@@ -49,6 +59,7 @@ interface GardenCanvasProps {
   /** True when filters/search are active but no memories match (garden view only). */
   searchHasNoMatches?: boolean
   onClearSearch?: () => void
+  plantArtStyle?: ArtStyle
 }
 
 export function GardenCanvas({
@@ -66,6 +77,7 @@ export function GardenCanvas({
   starterDecor,
   searchHasNoMatches = false,
   onClearSearch,
+  plantArtStyle = DEFAULT_PLANT_ART_STYLE,
 }: GardenCanvasProps) {
   const reducedMotion = useReducedMotion()
   const motion = !reducedMotion
@@ -283,6 +295,7 @@ export function GardenCanvas({
             onMemoryMove={onMemoryMove}
             onLensDetail={setDetailMemory}
             focusGardenPlant={focusGardenPlant}
+            plantArtStyle={plantArtStyle}
           />
         ),
       }
@@ -290,7 +303,20 @@ export function GardenCanvas({
       .filter((item): item is NonNullable<typeof item> => item !== null)
       .sort((a, b) => a.depth - b.depth)
       .map((item) => item.node)
-  ), [memories, activeLayout, highlightedMemoryIds, growingMemories, lensOn, palette, motion, draggingMemory, onMemoryClick, onMemoryMove, focusGardenPlant])
+  ), [
+    memories,
+    activeLayout,
+    highlightedMemoryIds,
+    growingMemories,
+    lensOn,
+    palette,
+    motion,
+    draggingMemory,
+    onMemoryClick,
+    onMemoryMove,
+    focusGardenPlant,
+    plantArtStyle,
+  ])
 
   const onLensMove = useCallback((e: React.PointerEvent) => {
     if (!lensOn || !sceneWrapRef.current) return
@@ -462,6 +488,7 @@ export function GardenCanvas({
             memoryPlants={memoryPlants}
             starterDecor={starterDecor}
             layerRefs={{ sky: skyRef, far: farRef, mid: midRef, foreground: fgRef }}
+            plantArtStyle={plantArtStyle}
           />
 
           {loupe && (
@@ -495,6 +522,7 @@ export function GardenCanvas({
                   planted={shedData.planted}
                   candles={shedData.candles}
                   memoryPlants={memoryPlants}
+                  plantArtStyle={plantArtStyle}
                 />
               </div>
             </div>

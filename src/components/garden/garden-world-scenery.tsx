@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { GardenLandscapeView, ShedStyle } from '@/lib/types'
+import type { ArtStyle, GardenLandscapeView, ShedStyle } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { projectWorldToScene } from '@/lib/garden/landscape-world'
 import {
@@ -28,6 +28,7 @@ export function buildWorldSceneryItems(
   shedStyle: ShedStyle,
   onShedClick?: () => void,
   options?: WorldSceneryOptions,
+  artStyle?: ArtStyle,
 ): WorldPlantRenderItem[] {
   const items: WorldPlantRenderItem[] = []
   const includeDistantTrees = options?.includeDistantTrees ?? true
@@ -48,6 +49,7 @@ export function buildWorldSceneryItems(
             motion={false}
             facing={proj.facing}
             scale={1}
+            artStyle={artStyle}
           />
         </g>
       ),

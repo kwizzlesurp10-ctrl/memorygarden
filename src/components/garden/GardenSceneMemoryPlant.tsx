@@ -1,4 +1,4 @@
-import type { Memory } from '@/lib/types'
+import type { ArtStyle, Memory } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import type { ResolvedMemoryScenePlacement } from '@/lib/garden/memory-scene-layout'
 import { GrowthCeremony } from '@/components/garden/GrowthCeremony'
@@ -32,6 +32,7 @@ interface GardenSceneMemoryPlantProps {
   onMemoryMove: (memoryId: string, newPosition: { x: number; y: number }) => void
   onLensDetail: (memory: Memory) => void
   focusGardenPlant: (memoryId: string) => void
+  plantArtStyle?: ArtStyle
 }
 
 export function GardenSceneMemoryPlant({
@@ -51,6 +52,7 @@ export function GardenSceneMemoryPlant({
   onMemoryMove,
   onLensDetail,
   focusGardenPlant,
+  plantArtStyle,
 }: GardenSceneMemoryPlantProps) {
   const sc = pos.plantScale
 
@@ -142,6 +144,7 @@ export function GardenSceneMemoryPlant({
               x={0}
               y={0}
               scale={1}
+              artStyle={plantArtStyle}
             />
           ) : (
             <SeededPlantSvg
@@ -153,6 +156,7 @@ export function GardenSceneMemoryPlant({
               motion={motion}
               facing={pos.facing}
               rimFromLeft={pos.rimFromLeft}
+              artStyle={plantArtStyle}
             />
           )}
         </g>

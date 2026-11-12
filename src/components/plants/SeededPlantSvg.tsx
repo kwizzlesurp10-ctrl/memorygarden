@@ -1,4 +1,5 @@
-import type { PlantStage } from '@/lib/types'
+import type { ArtStyle, PlantStage } from '@/lib/types'
+import { plantArtFilterUrl, resolvePlantArtStyle } from '@/lib/garden/plant-art-style'
 import type { PlantFacing } from '@/lib/garden/landscape-world'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { gardenRng, seedFromGenetics } from '@/lib/garden/prng'
@@ -17,6 +18,7 @@ export interface SeededPlantSvgProps {
   facing?: PlantFacing
   rimFromLeft?: boolean
   className?: string
+  artStyle?: ArtStyle
 }
 
 export function SeededPlantSvg({
@@ -30,6 +32,7 @@ export function SeededPlantSvg({
   facing = 'front',
   rimFromLeft = true,
   className,
+  artStyle,
 }: SeededPlantSvgProps) {
   const seedN = seedFromGenetics(geneticsSeed, `${variety}-${stage}`)
   const rng = gardenRng(seedN)
@@ -37,10 +40,14 @@ export function SeededPlantSvg({
   const ctx = { stageIndex, palette, rimStrength, motion, rng, facing, rimFromLeft, geneticsSeed }
   const nodes = buildSeededPlant(variety, ctx)
   const swayStyle = getSwayStyle(seedN, motion, variety === 'tree')
+  const resolvedStyle = resolvePlantArtStyle(artStyle)
+  const plantFilter = plantArtFilterUrl(resolvedStyle)
 
   return (
     <g className={className} transform={scale !== 1 ? `scale(${scale})` : undefined}>
-      <g style={swayStyle}>{nodes}</g>
+      <g style={swayStyle} filter={plantFilter}>
+        {nodes}
+      </g>
     </g>
   )
 }
