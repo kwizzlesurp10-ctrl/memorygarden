@@ -699,32 +699,46 @@ export class OpenWorldEngine {
     const H = box.max.y - ground
     const cx = (box.min.x + box.max.x) / 2
     const cz = (box.min.z + box.max.z) / 2
-    const aimY = ground + H * 0.52
+    const aimY = ground + H * 0.48
     const aim = new THREE.Vector3(cx, aimY, cz)
     let bestPose: WalkCapturePose | null = null
     let bestScore = Infinity
-    for (let pass = 0; pass < 56; pass++) {
-      const dist = 6.2 + (pass / 55) * 8.5
-      const yaw = -0.46 + (pass % 6) * 0.05
+    const yaws = [-Math.PI / 2, Math.PI / 2, -Math.PI / 4, Math.PI / 4]
+    for (let pass = 0; pass < 64; pass++) {
+      const dist = 10.8 + (pass / 63) * 4.2
+      const yaw = yaws[pass % yaws.length]!
       const camX = cx + Math.sin(yaw) * dist
       const camZ = cz + Math.cos(yaw) * dist
       const foot = this.terrainFootY(camX, camZ)
-      const eyeY = Math.max(foot + 1.95, ground + 2.1) + (pass % 4) * 0.06
+      const eyeY = foot + 1.82 + (pass % 5) * 0.04
       const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-      if (pose.pitch > 0.38) continue
-      this.setPlayerPose(camX, camZ, pose.yaw, pose.pitch, eyeY)
+      const pitch = Math.min(pose.pitch, -0.035)
+      if (pitch > 0.12) continue
+      this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
+      this.camera.rotation.x = pitch
+      this.camera.updateProjectionMatrix()
       this.renderOnce()
       const span = this.screenHeightFraction(box)
       const canopy = this.plantProjectedBoxScreenYFromBox(box)
       const top = canopy?.top ?? 0.5
-      if (top >= 0.07 && top <= 0.2 && span >= 0.64 && span <= 0.78) {
-        return { ...pose, x: camX, z: camZ, eyeY }
+      const proj = this.plantProjectedAabbScreenFromBox(box)
+      const widthSpan = proj ? proj.right - proj.left : 0
+      if (
+        top >= 0.06 &&
+        top <= 0.2 &&
+        span >= 0.66 &&
+        span <= 0.78 &&
+        widthSpan >= 0.38
+      ) {
+        return { ...pose, pitch, x: camX, z: camZ, eyeY }
       }
-      const topPen = top < 0.07 ? 6 + Math.abs(0.07 - top) * 6 : top > 0.22 ? (top - 0.22) * 8 : 0
-      const score = Math.abs(span - 0.7) + Math.abs(top - 0.12) * 2.5 + topPen
+      const clipPen = top < 0.05 ? 14 + Math.abs(top) * 12 : span > 0.8 ? 10 : 0
+      const topPen = top < 0.06 ? 6 + Math.abs(0.06 - top) * 6 : top > 0.22 ? (top - 0.22) * 8 : 0
+      const widthPen = widthSpan < 0.34 ? (0.34 - widthSpan) * 5 : 0
+      const score = Math.abs(span - 0.71) + Math.abs(top - 0.11) * 2.5 + topPen + widthPen + clipPen
       if (score < bestScore) {
         bestScore = score
-        bestPose = { ...pose, x: camX, z: camZ, eyeY }
+        bestPose = { ...pose, pitch, x: camX, z: camZ, eyeY }
       }
     }
     return bestPose

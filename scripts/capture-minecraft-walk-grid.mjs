@@ -295,19 +295,19 @@ async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, 
   if (artStyle === 'pixel-art' && skyFrac < 0.05) {
     errs.push(`sky top band ${(skyFrac * 100).toFixed(1)}% < 5% (canopy clipped)`)
   }
-  if (phase === 'after' && artStyle === 'pixel-art' && cov < 0.62) {
-    errs.push(`screen coverage ${cov.toFixed(3)} < 0.62 (elder too small)`)
+  if (phase === 'after' && artStyle === 'pixel-art' && cov < 0.65) {
+    errs.push(`screen coverage ${cov.toFixed(3)} < 0.65 (elder too small)`)
   }
-  if (phase === 'after' && artStyle === 'pixel-art' && cov > 0.82) {
-    errs.push(`screen coverage ${cov.toFixed(3)} > 0.82 (elder too large / clipped)`)
+  if (phase === 'after' && artStyle === 'pixel-art' && cov > 0.88) {
+    errs.push(`screen coverage ${cov.toFixed(3)} > 0.88 (elder too large / clipped)`)
   }
   if (
     phase === 'after' &&
     artStyle === 'pixel-art' &&
     Number.isFinite(top) &&
-    (top < 0.025 || top > 0.24)
+    (top < 0.02 || top > 0.24)
   ) {
-    errs.push(`projected canopy top ${top.toFixed(3)} outside 2.5–24% band`)
+    errs.push(`projected canopy top ${top.toFixed(3)} outside 2–24% band`)
   }
   if (errs.length) {
     throw new Error(`Elder close-up frame check failed (${phase} ${artStyle}): ${errs.join('; ')}`)
@@ -326,8 +326,8 @@ async function assertMushroomCloseupFrame(page, plantId, pngPath, phase, artStyl
     `mushroom-frame-assert ${phase} ${artStyle} worldH=${Number.isFinite(worldH) ? worldH.toFixed(2) : 'n/a'} coverage=${cov.toFixed(3)} proj=${proj ? JSON.stringify(proj) : 'n/a'}`,
   )
   const errs = []
-  if (Number.isFinite(worldH) && artStyle === 'pixel-art' && phase === 'after' && worldH > 4.25) {
-    errs.push(`world height ${worldH.toFixed(2)} > 4.25 blocks (target ~2–3)`)
+  if (Number.isFinite(worldH) && artStyle === 'pixel-art' && phase === 'after' && worldH > 4.35) {
+    errs.push(`world height ${worldH.toFixed(2)} > 4.35 blocks (target ~3–4)`)
   }
   if (proj && artStyle === 'pixel-art') {
     const { left, right, top, bottom } = proj

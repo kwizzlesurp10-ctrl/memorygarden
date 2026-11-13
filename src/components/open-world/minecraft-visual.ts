@@ -313,7 +313,6 @@ function placeOakSideBranches(
     [0, -1],
   ]
   for (let i = 0; i < dirs.length; i++) {
-    if (hash01(seed + i * 19.7) > 0.38) continue
     const [dx, dz] = dirs[i]!
     placeLeafLayerAt(g, dx, capY, dz, 1, leaf, true, seed + 60 + i, false)
     placeBlock(g, dx, capY + 1, dz, leaf)
@@ -346,9 +345,9 @@ function buildPixelArtOak(
   }
   const capY = trunkH
   if (elder) {
-    placeLeafLayer(g, capY, 3, leaf, true, seed + 40, true, 0.4)
-    placeLeafLayer(g, capY + 1, 3, leaf, true, seed + 41, true, 0.48)
-    placeLeafLayer(g, capY + 2, 3, leaf, true, seed + 42, true, 0.42)
+    placeLeafLayer(g, capY, 3, leaf, true, seed + 40, false)
+    placeLeafLayer(g, capY + 1, 3, leaf, true, seed + 41, false)
+    placeLeafLayer(g, capY + 2, 3, leaf, true, seed + 42, false)
     placeLeafLayer(g, capY + 3, 2, leaf, true, seed + 43, false)
     placeLeafLayer(g, capY + 4, 2, leaf, true, seed + 44, false)
     placeLeafLayer(g, capY + 5, 1, leaf, false, seed + 45, false)
@@ -361,44 +360,27 @@ function buildPixelArtOak(
   }
 }
 
-/** Short Minecraft-style red mushroom: pale stem column + domed cap with spots (cap material). */
+/** Short Minecraft-style red mushroom: pale stem column + symmetric flat cap + center dome (cap material). */
 function buildPixelArtMushroom(
   g: THREE.Group,
   stem: THREE.MeshBasicMaterial,
   cap: THREE.MeshBasicMaterial,
-  seed: number,
+  _seed: number,
 ): void {
   placeBlock(g, 0, 0, 0, stem)
   placeBlock(g, 0, 1, 0, stem)
 
   const capY = 2
-  for (let dx = -1; dx <= 1; dx++) {
-    for (let dz = -1; dz <= 1; dz++) {
+  for (let dx = -2; dx <= 2; dx++) {
+    for (let dz = -2; dz <= 2; dz++) {
       placeBlock(g, dx, capY, dz, cap)
     }
   }
-  const overhang: Array<[number, number]> = [
-    [0, -2],
-    [0, 2],
-    [-2, 0],
-    [2, 0],
-    [-1, -2],
-    [1, -2],
-    [-1, 2],
-    [1, 2],
-    [-2, -1],
-    [-2, 1],
-    [2, -1],
-    [2, 1],
-  ]
-  for (const [dx, dz] of overhang) {
-    if (hash01(seed + dx * 3.1 + dz * 5.7) > 0.28) {
-      placeBlock(g, dx, capY, dz, cap)
-    }
-  }
-  if (hash01(seed + 90) > 0.22) {
-    placeBlock(g, 0, capY + 1, 0, cap)
-  }
+  placeBlock(g, 0, capY + 1, 0, cap)
+  placeBlock(g, -1, capY + 1, 0, cap)
+  placeBlock(g, 1, capY + 1, 0, cap)
+  placeBlock(g, 0, capY + 1, -1, cap)
+  placeBlock(g, 0, capY + 1, 1, cap)
 }
 
 export function snapPlantGroupToTerrain(g: THREE.Group, terrainTop: number): void {

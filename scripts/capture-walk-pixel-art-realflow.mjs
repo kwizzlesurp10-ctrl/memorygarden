@@ -129,14 +129,6 @@ async function walkToward(page, ms, keys) {
   await page.waitForTimeout(800)
 }
 
-async function engageLook(page) {
-  const canvas = page.locator('[data-testid="open-world-garden"] canvas').first()
-  if (await canvas.isVisible().catch(() => false)) {
-    await canvas.click({ position: { x: 520, y: 360 }, timeout: 10_000 })
-    await page.waitForTimeout(350)
-  }
-}
-
 async function shotCanvas(page, file) {
   const path = resolve(outDir, file)
   const errors = await page.evaluate(() => {
@@ -185,6 +177,7 @@ try {
       )
       localStorage.setItem(`memorygarden:${payload.user.id}:memories`, JSON.stringify(payload.memories))
       sessionStorage.setItem('mg:walk-plant-focus', '1')
+      sessionStorage.setItem('mg:walk-capture', '1')
       const OriginalDate = Date
       // eslint-disable-next-line no-global-assign
       Date = class extends OriginalDate {
@@ -213,17 +206,13 @@ try {
   })
   await desktopPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 120_000 })
   await enterWalk(desktopPage)
-  await engageLook(desktopPage)
-  await desktopPage.keyboard.press('Escape')
-  await desktopPage.waitForTimeout(200)
-  await engageLook(desktopPage)
   await desktopPage.evaluate(() => {
-    const foot = window.__mgWalkFootAt?.(21.5, 12.8) ?? 0
+    const foot = window.__mgWalkFootAt?.(20.8, 11.5) ?? 0
     window.__mgWalkNudgePose?.({
-      x: 21.5,
-      z: 12.8,
-      yaw: 0.55,
-      pitch: -0.08,
+      x: 20.8,
+      z: 11.5,
+      yaw: -0.72,
+      pitch: -0.06,
       eyeY: foot + 1.62,
     })
   })
@@ -231,13 +220,13 @@ try {
   await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-elder.png')
 
   await desktopPage.evaluate(() => {
-    const foot = window.__mgWalkFootAt?.(2.2, 28.0) ?? 0
+    const foot = window.__mgWalkFootAt?.(0.85, 29.1) ?? 0
     window.__mgWalkNudgePose?.({
-      x: 2.2,
-      z: 28,
-      yaw: -0.15,
-      pitch: -0.1,
-      eyeY: foot + 1.58,
+      x: 0.85,
+      z: 29.1,
+      yaw: -0.82,
+      pitch: -0.2,
+      eyeY: foot + 1.46,
     })
   })
   await desktopPage.waitForTimeout(900)
