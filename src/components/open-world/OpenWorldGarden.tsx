@@ -252,6 +252,7 @@ export function OpenWorldGarden({
         pitch: number
         eyeY?: number
       }) => void
+      __mgWalkFootAt?: (x: number, z: number) => number
     }
     win.__mgWalkSceneReady = () => engine.sceneReady()
     win.__mgWalkNudgePose = (pose) =>
