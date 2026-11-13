@@ -396,9 +396,9 @@ function buildPixelArtMushroom(
       placeBlock(g, dx, capY, dz, cap)
     }
   }
-  placeBlock(g, 0, capY + 1, 0, cap)
-  if (hash01(seed + 91) > 0.35) placeBlock(g, 0, capY + 1, -1, cap)
-  if (hash01(seed + 92) > 0.35) placeBlock(g, 0, capY + 1, 1, cap)
+  if (hash01(seed + 90) > 0.22) {
+    placeBlock(g, 0, capY + 1, 0, cap)
+  }
 }
 
 export function snapPlantGroupToTerrain(g: THREE.Group, terrainTop: number): void {

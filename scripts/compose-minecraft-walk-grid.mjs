@@ -25,7 +25,7 @@ const rowFiles = [
 ]
 
 const columns = [
-  { header: 'before pixel-art\n(256ca59)', phase: 'before', style: 'pixel-art' },
+  { header: 'before pixel-art\n(main 312e660)', phase: 'before', style: 'pixel-art' },
   { header: 'after pixel-art', phase: 'after', style: 'pixel-art' },
   { header: 'after watercolor', phase: 'after', style: 'watercolor' },
 ]

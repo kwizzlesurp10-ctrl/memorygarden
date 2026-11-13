@@ -129,6 +129,14 @@ async function walkToward(page, ms, keys) {
   await page.waitForTimeout(800)
 }
 
+async function engageLook(page) {
+  const canvas = page.locator('[data-testid="open-world-garden"] canvas').first()
+  if (await canvas.isVisible().catch(() => false)) {
+    await canvas.click({ position: { x: 520, y: 360 }, timeout: 10_000 })
+    await page.waitForTimeout(350)
+  }
+}
+
 async function shotCanvas(page, file) {
   const path = resolve(outDir, file)
   const errors = await page.evaluate(() => {
@@ -205,28 +213,38 @@ try {
   })
   await desktopPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 120_000 })
   await enterWalk(desktopPage)
-  await walkToward(desktopPage, 1600, ['KeyW'])
-  await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-tree.png')
-
-  await walkToward(desktopPage, 3200, ['KeyW'])
-  await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-hill-step.png')
-
-  await walkToward(desktopPage, 2200, ['KeyA'])
-  await walkToward(desktopPage, 800, ['KeyW'])
-  const canvas = desktopPage.locator('[data-testid="open-world-garden"] canvas').first()
-  await canvas.click({ position: { x: 640, y: 400 }, force: true })
+  await engageLook(desktopPage)
+  await desktopPage.keyboard.press('Escape')
   await desktopPage.waitForTimeout(200)
+  await engageLook(desktopPage)
   await desktopPage.evaluate(() => {
+    const foot = window.__mgWalkFootAt?.(21.5, 12.8) ?? 0
     window.__mgWalkNudgePose?.({
-      x: -22.4567746653731,
-      z: 16.03001368630009,
-      yaw: 0.65,
-      pitch: -0.42,
-      eyeY: 2.44,
+      x: 21.5,
+      z: 12.8,
+      yaw: 0.55,
+      pitch: -0.08,
+      eyeY: foot + 1.62,
     })
   })
-  await desktopPage.waitForTimeout(800)
-  await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-flowers.png')
+  await desktopPage.waitForTimeout(900)
+  await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-elder.png')
+
+  await desktopPage.evaluate(() => {
+    const foot = window.__mgWalkFootAt?.(2.2, 28.0) ?? 0
+    window.__mgWalkNudgePose?.({
+      x: 2.2,
+      z: 28,
+      yaw: -0.15,
+      pitch: -0.1,
+      eyeY: foot + 1.58,
+    })
+  })
+  await desktopPage.waitForTimeout(900)
+  await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-mushroom.png')
+
+  await walkToward(desktopPage, 1200, ['KeyW'])
+  await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-hill-step.png')
   if (consoleErrors.length) console.log('desktop page errors', consoleErrors.slice(0, 3))
   await desktop.close()
 

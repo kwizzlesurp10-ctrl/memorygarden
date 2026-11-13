@@ -1,5 +1,5 @@
 /**
- * Build commit 256ca59 in a git worktree and print preview command for port 4173.
+ * Build main baseline (default 312e660) in a git worktree and preview on port 4173.
  * Usage: node scripts/prepare-walk-before-preview.mjs
  */
 import { execSync, spawn, spawnSync } from 'node:child_process'
@@ -7,7 +7,7 @@ import { existsSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const sha = process.env.BEFORE_SHA || '256ca59'
+const sha = process.env.BEFORE_SHA || '312e660'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const worktree = resolve(root, '..', `memorygarden-${sha}`)
 
