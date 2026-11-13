@@ -4,6 +4,7 @@ import type { ScenePalette } from '@/lib/garden/palettes'
 import type { GardenWorld } from '@/lib/open-world/types'
 import { isWalkCaptureSession } from '@/lib/open-world/walk-capture-bridge'
 import {
+  addWalkCaptureGrassField,
   minecraftGrassTexture,
   minecraftGrassTufts,
   minecraftPathTexture,
@@ -186,7 +187,14 @@ export function buildTerrain(
   )
   ground.rotation.x = -Math.PI / 2
   ground.receiveShadow = true
-  root.add(ground)
+  const walkCapture = isWalkCaptureSession()
+  if (!(minecraftMode && walkCapture)) {
+    root.add(ground)
+  }
+
+  if (minecraftMode && walkCapture) {
+    addWalkCaptureGrassField(world, palette, root, track)
+  }
 
   // ── Gentle Flowerbed Soil Berms ─────────────────────────────────────────
   const soilBermMat = track(
@@ -226,6 +234,7 @@ export function buildTerrain(
 
   for (const path of world.paths) {
     if (path.points.length < 2) continue
+    if (minecraftMode && walkCapture) continue
     const ribbon = new THREE.Mesh(track(pathRibbon(path.points, path.width)), pathMat)
     ribbon.receiveShadow = true
     root.add(ribbon)

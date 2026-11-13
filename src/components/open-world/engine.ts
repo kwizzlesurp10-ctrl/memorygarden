@@ -77,6 +77,7 @@ export class OpenWorldEngine {
 
   private cc0Scenery: Cc0SceneryLayer | null = null
   private captureBackdrop = false
+  private soloCapturePlantId: string | null = null
   private plantArtStyle: ArtStyle
 
   constructor(
@@ -361,9 +362,8 @@ export class OpenWorldEngine {
   }
 
   setSoloPlantFocus(plantId: string | null): void {
-    for (const [id, group] of this.plantGroups) {
-      group.visible = plantId === null || id === plantId
-    }
+    this.soloCapturePlantId = plantId
+    this.rebuildPlants()
     this.renderOnce()
   }
 
@@ -515,6 +515,39 @@ export class OpenWorldEngine {
     const box = this.plantWorldBox(plantId)
     const group = this.findPlantGroup(plantId)
     if (!box || !group) return null
+
+  if (isWalkCaptureSession() && plantId.endsWith('-walk')) {
+      const wp = this.world.plants.find((p) => p.id === plantId)
+      const size = box.getSize(new THREE.Vector3())
+      if (plantId.includes('tree')) {
+        if (!wp) return null
+        const elder = plantId.includes('elder')
+        const aimY = box.min.y + size.y * (elder ? 0.58 : 0.52)
+        const aim = new THREE.Vector3(wp.x, aimY, wp.z)
+        const dist = elder ? 7 : 6
+        const yaw = elder ? -0.85 : 2.15
+        const camX = wp.x + Math.sin(yaw) * dist
+        const camZ = wp.z + Math.cos(yaw) * dist
+        const eyeY = box.min.y + 2.05
+        return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+      }
+      if (wp) {
+        const aimY =
+          wp.variety === 'mushroom'
+            ? box.min.y + 2.2
+            : wp.variety === 'flower'
+              ? box.min.y + 1.65
+              : box.min.y + 1.55
+        const aim = new THREE.Vector3(wp.x, aimY, wp.z)
+        const dist =
+          wp.variety === 'mushroom' ? 2.8 : plantId.includes('sprout') ? 2.6 : 3.1
+        const yaw = wp.variety === 'flower' ? 0.65 : wp.variety === 'mushroom' ? -0.55 : -0.45
+        const camX = wp.x + Math.sin(yaw) * dist
+        const camZ = wp.z + Math.cos(yaw) * dist
+        const eyeY = box.min.y + (plantId.includes('sprout') ? 1.35 : 1.55)
+        return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+      }
+    }
 
     const sphere = box.getBoundingSphere(new THREE.Sphere())
     const c = sphere.center.clone()
@@ -765,6 +798,7 @@ export class OpenWorldEngine {
     this.clearPlants()
     const style = this.plantArtStyle
     for (const plant of this.world.plants) {
+      if (this.soloCapturePlantId && plant.id !== this.soloCapturePlantId) continue
       const recipe = plantRecipe(
         plant.variety,
         plant.stage,

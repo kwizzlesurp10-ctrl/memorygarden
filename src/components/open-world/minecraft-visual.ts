@@ -8,7 +8,7 @@ import { isWalkCaptureSession } from '@/lib/open-world/walk-capture-bridge'
 import type { GardenWorld, WorldPlant } from '@/lib/open-world/types'
 
 /** One voxel cube edge in world units (~Minecraft block scale). */
-export const VOXEL_BLOCK_SIZE = 0.72
+export const VOXEL_BLOCK_SIZE = 1
 const VOXEL = VOXEL_BLOCK_SIZE
 const boxGeo = new THREE.BoxGeometry(1, 1, 1)
 boxGeo.userData.isSharedStatic = true
@@ -29,7 +29,7 @@ function hash01(n: number): number {
   return x - Math.floor(x)
 }
 
-type BlockKind = 'grass' | 'dirt' | 'bark' | 'leaf' | 'gravel' | 'mushroom' | 'flower'
+type BlockKind = 'grass' | 'grass_side' | 'dirt' | 'bark' | 'leaf' | 'gravel' | 'mushroom' | 'flower'
 
 export function minecraftBlockTexture(
   base: string,
@@ -75,12 +75,20 @@ export function minecraftBlockTexture(
         ctx.fillRect(0, y, 16, 1)
       }
     }
-  } else if (kind === 'grass') {
+  } else if (kind === 'grass' || kind === 'grass_side') {
+    const dirtBrowns = ['#5a4332', '#4a3528', '#6b4e3a', '#3f2e22']
     for (let y = 0; y < 16; y++) {
       for (let x = 0; x < 16; x++) {
-        const n = hash01(seed + x * 9.1 + y * 14.7)
-        const idx = Math.floor(n * grassGreens.length) % grassGreens.length
-        ctx.fillStyle = grassGreens[idx] ?? base
+        const onTop = kind === 'grass' || y < 4
+        if (onTop) {
+          const n = hash01(seed + x * 9.1 + y * 14.7)
+          const idx = Math.floor(n * grassGreens.length) % grassGreens.length
+          ctx.fillStyle = grassGreens[idx] ?? base
+        } else {
+          const n = hash01(seed + x * 7.3 + y * 11.1)
+          const idx = Math.floor(n * dirtBrowns.length) % dirtBrowns.length
+          ctx.fillStyle = dirtBrowns[idx] ?? '#5a4332'
+        }
         ctx.fillRect(x, y, 1, 1)
       }
     }
@@ -293,6 +301,89 @@ function buildSproutSapling(
 
 const MINECRAFT_BLOCK_UNIT = 1
 
+function minecraftGrassBlockMaterials(
+  palette: ScenePalette,
+): THREE.MeshLambertMaterial[] {
+  const grassTop = configurePixelTexture(
+    minecraftBlockTexture('#5f9f35', '#7cbd4b', 42, 'grass'),
+  )
+  const grassSide = configurePixelTexture(
+    minecraftBlockTexture('#5f9f35', '#7cbd4b', 44, 'grass_side'),
+  )
+  const dirtBottom = configurePixelTexture(
+    minecraftBlockTexture('#5a4332', '#3f2e22', 5, 'dirt'),
+  )
+  grassTop.repeat.set(1, 1)
+  grassSide.repeat.set(1, 1)
+  dirtBottom.repeat.set(1, 1)
+  const white = new THREE.Color('#ffffff')
+  const mk = (tex: THREE.CanvasTexture) =>
+    new THREE.MeshLambertMaterial({ map: tex, color: white })
+  return [
+    mk(grassSide),
+    mk(grassSide),
+    mk(grassTop),
+    mk(dirtBottom),
+    mk(grassSide),
+    mk(grassSide),
+  ]
+}
+
+const WALK_CAPTURE_PINS: Array<{ x: number; z: number }> = [
+  { x: 0, z: 14 },
+  { x: 24, z: 14 },
+  { x: -24, z: 14 },
+  { x: 0, z: 30 },
+  { x: -24, z: 30 },
+]
+
+function walkCaptureFlatPad(ix: number, iz: number): boolean {
+  for (const pin of WALK_CAPTURE_PINS) {
+    if (Math.abs(ix - pin.x) <= 3 && Math.abs(iz - pin.z) <= 3) return true
+  }
+  return false
+}
+
+function walkCaptureColumnSurface(ix: number, iz: number): number {
+  if (Math.hypot(ix, iz) > 52) return 1
+  if (walkCaptureFlatPad(ix, iz)) return 1
+  return Math.abs((ix + iz) % 7) === 0 ? 2 : 1
+}
+
+export function walkCaptureGroundY(x: number, z: number): number {
+  const ix = Math.round(x)
+  const iz = Math.round(z)
+  return walkCaptureColumnSurface(ix, iz)
+}
+
+/** Stepped grass blocks for walk-capture screenshots (grass top + dirt sides). */
+export function addWalkCaptureGrassField(
+  world: GardenWorld,
+  palette: ScenePalette,
+  root: THREE.Group,
+  track: <T extends { dispose: () => void }>(o: T) => T,
+): void {
+  const mats = minecraftGrassBlockMaterials(palette)
+  for (const m of mats) track(m)
+  const blockGeo = track(new THREE.BoxGeometry(1, 1, 1))
+  const minX = Math.floor(world.bounds.minX) - 2
+  const maxX = Math.ceil(world.bounds.maxX) + 2
+  const minZ = Math.floor(world.bounds.minZ) - 2
+  const maxZ = Math.ceil(world.bounds.maxZ) + 2
+  for (let ix = minX; ix <= maxX; ix++) {
+    for (let iz = minZ; iz <= maxZ; iz++) {
+      const columnHeight = walkCaptureColumnSurface(ix, iz)
+      for (let y = 0; y < columnHeight; y++) {
+        const mesh = new THREE.Mesh(blockGeo, mats)
+        mesh.position.set(ix + 0.5, y + 0.5, iz + 0.5)
+        mesh.receiveShadow = true
+        mesh.castShadow = y === columnHeight - 1
+        root.add(mesh)
+      }
+    }
+  }
+}
+
 export function minecraftGrassTexture(
   palette: ScenePalette,
   planeW: number,
@@ -383,11 +474,23 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
       placeBlock(g, -1, 0, 0, dirt)
       placeBlock(g, 0, 0, -1, dirt)
     }
-  } else {
-    placeBlock(g, 0, 0, 0, dirt)
   }
 
-  if (recipe.kind === 'tree') {
+  if (walkSolo && plant.id === 'flower-bloom-walk') {
+    const poppy = voxelMaterial('#c43b3b', '#e85d5d', seedN + 7, 'flower', true)
+    placeBlock(g, 0, 1, 0, stemMat)
+    placeCrossSprite(g, 0, 2, 0, poppy, 2.0)
+  } else if (walkSolo && plant.id === 'mushroom-walk') {
+    placeBlock(g, 0, 1, 0, stemMat)
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dz = -1; dz <= 1; dz++) {
+        if (Math.abs(dx) === 1 && Math.abs(dz) === 1) continue
+        placeBlock(g, dx, 2, dz, cap)
+      }
+    }
+  } else if (walkSolo && plant.id === 'sprout-walk') {
+    placeCrossSprite(g, 0, 1, 0, leaf, 1.25)
+  } else if (recipe.kind === 'tree') {
     buildOakTree(g, bark, leaf, seedN, stage)
   } else if (recipe.kind === 'flower') {
     if (plant.id === 'sprout-walk' || plantStageToIndex(stage) <= 1) {
@@ -401,7 +504,8 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
     buildOakTree(g, bark, leaf, seedN + 19, stage)
   }
 
-  g.position.set(plant.x, 0, plant.z)
+  const groundY = isWalkCaptureSession() ? walkCaptureGroundY(plant.x, plant.z) : 0
+  g.position.set(plant.x, groundY, plant.z)
   return g
 }
 
