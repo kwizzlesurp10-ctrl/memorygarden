@@ -360,6 +360,13 @@ export class OpenWorldEngine {
     return this.findPlantGroup(plantId) !== null
   }
 
+  setSoloPlantFocus(plantId: string | null): void {
+    for (const [id, group] of this.plantGroups) {
+      group.visible = plantId === null || id === plantId
+    }
+    this.renderOnce()
+  }
+
   plantBoxSize(plantId: string): { x: number; y: number; z: number } | null {
     const box = this.plantWorldBox(plantId)
     if (!box) return null
@@ -373,7 +380,17 @@ export class OpenWorldEngine {
   ): { frac: number; centerX: number; centerY: number } | null {
     const box = this.plantWorldBox(plantId)
     if (!box) return null
-    return this.withCapturePose(pose, () => this.plantCaptureFit(box))
+    const saved = { ...this.player }
+    this.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
+    this.renderOnce()
+    const fit = this.plantCaptureFit(box)
+    this.player.x = saved.x
+    this.player.z = saved.z
+    this.player.y = saved.y
+    this.player.yaw = saved.yaw
+    this.player.pitch = saved.pitch
+    this.applyCamera()
+    return fit
   }
 
   plantCaptureFitNow(plantId: string): { frac: number; centerX: number; centerY: number } | null {
@@ -501,6 +518,16 @@ export class OpenWorldEngine {
 
     const sphere = box.getBoundingSphere(new THREE.Sphere())
     const c = sphere.center.clone()
+    const size = box.getSize(new THREE.Vector3())
+    const wp = this.world.plants.find((p) => p.id === plantId)
+    const aim = c.clone()
+    if (wp?.variety === 'tree') {
+      aim.y = box.min.y + size.y * 0.62
+    } else if (wp?.variety === 'mushroom') {
+      aim.y = box.min.y + size.y * 0.48
+    } else if (wp?.variety === 'flower') {
+      aim.y = box.min.y + size.y * 0.55
+    }
     let r = sphere.radius
     if (plantId.includes('sprout')) {
       r = Math.max(r, 0.25)
@@ -509,7 +536,6 @@ export class OpenWorldEngine {
     const fovRad = (this.camera.fov * Math.PI) / 180
     const standoff = (r / Math.sin(fovRad / 2)) * 1.15
     const terrainY = box.min.y
-    const wp = this.world.plants.find((p) => p.id === plantId)
     const baseDir = (() => {
       if (wp?.variety === 'flower') return new THREE.Vector3(-1, 0.4, 1)
       if (wp?.variety === 'mushroom') return new THREE.Vector3(0.85, 0.35, -1)
@@ -536,7 +562,7 @@ export class OpenWorldEngine {
       const camPos = c.clone().add(dir.multiplyScalar(standoff))
       camPos.y = Math.max(camPos.y, terrainY + 0.5)
 
-      const pose = this.poseLookAt(c, camPos, camPos.y)
+      const pose = this.poseLookAt(aim, camPos, camPos.y)
       const fit = this.plantCaptureFitAt(plantId, pose)
       const frac = fit?.frac ?? 0
       const centerPen = fit ? Math.min(1, Math.abs(fit.centerX) + Math.abs(fit.centerY)) : 1
@@ -548,7 +574,7 @@ export class OpenWorldEngine {
         fallback = labeled
       }
 
-      if (this.plantOccludedFrom(camPos, plantId, c)) continue
+      if (this.plantOccludedFrom(camPos, plantId, aim)) continue
       if (score > bestFrac) {
         bestFrac = score
         best = labeled
@@ -570,15 +596,15 @@ export class OpenWorldEngine {
     const plants = walkPlants.length > 0 ? walkPlants : this.world.plants
     const cx = plants.reduce((s, p) => s + p.x, 0) / Math.max(1, plants.length)
     const cz = plants.reduce((s, p) => s + p.z, 0) / Math.max(1, plants.length)
-    const camX = cx - 1.4
-    const camZ = cz + 1.0
-    const eyeY = 1.62
+    const camX = cx - 2.8
+    const camZ = cz + 5.5
+    const eyeY = 1.72
     const horiz = Math.hypot(cx - camX, cz - camZ)
     return {
       x: camX,
       z: camZ,
       yaw: Math.atan2(cx - camX, cz - camZ),
-      pitch: -Math.atan2(0.9, horiz),
+      pitch: -Math.atan2(1.2, horiz),
       eyeY,
     }
   }

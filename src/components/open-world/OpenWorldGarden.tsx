@@ -278,6 +278,7 @@ export function OpenWorldGarden({
         plantCaptureFitNow: (plantId) => engine.plantCaptureFitNow(plantId),
         hasPlantGroup: (plantId) => engine.hasPlantGroup(plantId),
         plantBoxSize: (plantId) => engine.plantBoxSize(plantId),
+        setSoloPlantFocus: (plantId) => engine.setSoloPlantFocus(plantId),
         cameraDebug: () => {
           const p = engine.getPlayer()
           return { y: p.y, pitch: p.pitch }

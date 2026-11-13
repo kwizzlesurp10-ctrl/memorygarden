@@ -41,6 +41,7 @@ export interface WalkCaptureBridge {
   ) => { frac: number; centerX: number; centerY: number } | null
   hasPlantGroup?: (plantId: string) => boolean
   plantBoxSize?: (plantId: string) => { x: number; y: number; z: number } | null
+  setSoloPlantFocus?: (plantId: string | null) => void
   plantCaptureFitNow?: (plantId: string) => { frac: number; centerX: number; centerY: number } | null
   cameraDebug?: () => { y: number; pitch: number }
 }

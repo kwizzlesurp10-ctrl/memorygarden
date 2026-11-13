@@ -213,9 +213,16 @@ async function deriveAllPoses(page) {
 
 async function captureShot(page, phase, artStyle, shot, pose) {
   await applyPose(page, pose)
+  await page.evaluate((plantId) => {
+    window.__mgWalkCapture?.setSoloPlantFocus?.(plantId ?? null)
+  }, shot.plantId ?? null)
+  await page.evaluate(async () => {
+    await window.__mgWalkCapture?.waitCaptureReady?.()
+  })
   const name = `minecraft-walk-${phase}-${artStyle}-${shot.file}-${viewportMode}.png`
   const file = resolve(outDir, name)
   await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
+  await page.evaluate(() => window.__mgWalkCapture?.setSoloPlantFocus?.(null))
   if (shot.plantId) {
     const cov = await page.evaluate(
       ({ id, p }) => window.__mgWalkCapture?.plantScreenCoverage?.(id, p) ?? 0,

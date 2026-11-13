@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { gardenRng } from '@/lib/garden/prng'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import type { GardenWorld } from '@/lib/open-world/types'
+import { isWalkCaptureSession } from '@/lib/open-world/walk-capture-bridge'
 import {
   minecraftGrassTexture,
   minecraftGrassTufts,
@@ -157,7 +158,7 @@ export function buildTerrain(
   const planeD = world.bounds.maxZ - world.bounds.minZ + 16
   const grassTex = track(
     minecraftMode
-      ? minecraftGrassTexture(palette, Math.max(planeW, planeD) / 16)
+      ? minecraftGrassTexture(palette, planeW, planeD)
       : grassTexture(palette),
   )
   const groundTint = new THREE.Color(palette.hills[1] ?? '#2c163c')
@@ -169,7 +170,7 @@ export function buildTerrain(
     minecraftMode
       ? new THREE.MeshLambertMaterial({
           map: grassTex,
-          color: groundTint,
+          color: new THREE.Color(isWalkCaptureSession() ? '#ffffff' : groundTint),
         })
       : new THREE.MeshStandardMaterial({
           map: grassTex,
@@ -378,6 +379,7 @@ export function buildTerrain(
     }
   }
 
+  const walkCaptureDecor = isWalkCaptureSession()
   // ── Wooden Garden Pergola / Trellis Arch near Gate ──────────────────────
   const wood = track(new THREE.MeshStandardMaterial({ color: '#543825', roughness: 0.82 }))
   const ivyLeafMat = track(new THREE.MeshStandardMaterial({ color: palette.silSoft, roughness: 0.7 }))
@@ -428,7 +430,7 @@ export function buildTerrain(
   }
 
   archGroup.position.set(0, 0, world.gate.z - 2.8)
-  root.add(archGroup)
+  if (!walkCaptureDecor) root.add(archGroup)
 
   // ── Crafted Wooden Garden Bench ─────────────────────────────────────────
   const benchGroup = new THREE.Group()
@@ -456,7 +458,7 @@ export function buildTerrain(
   // Position bench looking toward the pond
   benchGroup.position.set(world.pond.x + world.pond.radius + 1.8, 0, world.pond.z - 0.8)
   benchGroup.rotation.y = -Math.PI * 0.65
-  root.add(benchGroup)
+  if (!walkCaptureDecor) root.add(benchGroup)
 
   // ── Classical Stone Birdbath ────────────────────────────────────────────
   const birdbathGroup = new THREE.Group()
@@ -480,7 +482,7 @@ export function buildTerrain(
   birdbathGroup.add(bbWater)
 
   birdbathGroup.position.set(-8.5, 0, -4.5)
-  root.add(birdbathGroup)
+  if (!walkCaptureDecor) root.add(birdbathGroup)
 
   // ── Warm Garden Path Lanterns on Wooden Posts ───────────────────────────
   const lanternGlassMat = track(
@@ -502,28 +504,30 @@ export function buildTerrain(
     { x: 4.5, z: 12.0 },
   ]
 
-  lanternCoords.forEach((lc) => {
-    const lGroup = new THREE.Group()
-    const lPost = new THREE.Mesh(lanternPostGeo, wood)
-    lPost.position.y = 0.9
-    lPost.castShadow = true
-    lGroup.add(lPost)
+  if (!walkCaptureDecor) {
+    lanternCoords.forEach((lc) => {
+      const lGroup = new THREE.Group()
+      const lPost = new THREE.Mesh(lanternPostGeo, wood)
+      lPost.position.y = 0.9
+      lPost.castShadow = true
+      lGroup.add(lPost)
 
-    const arm = new THREE.Mesh(track(new THREE.BoxGeometry(0.35, 0.05, 0.05)), wood)
-    arm.position.set(0.15, 1.75, 0)
-    lGroup.add(arm)
+      const arm = new THREE.Mesh(track(new THREE.BoxGeometry(0.35, 0.05, 0.05)), wood)
+      arm.position.set(0.15, 1.75, 0)
+      lGroup.add(arm)
 
-    const glass = new THREE.Mesh(lanternCoreGeo, lanternGlassMat)
-    glass.position.set(0.28, 1.58, 0)
-    lGroup.add(glass)
+      const glass = new THREE.Mesh(lanternCoreGeo, lanternGlassMat)
+      glass.position.set(0.28, 1.58, 0)
+      lGroup.add(glass)
 
-    const cap = new THREE.Mesh(lanternCapGeo, wood)
-    cap.position.set(0.28, 1.72, 0)
-    lGroup.add(cap)
+      const cap = new THREE.Mesh(lanternCapGeo, wood)
+      cap.position.set(0.28, 1.72, 0)
+      lGroup.add(cap)
 
-    lGroup.position.set(lc.x, 0, lc.z)
-    root.add(lGroup)
-  })
+      lGroup.position.set(lc.x, 0, lc.z)
+      root.add(lGroup)
+    })
+  }
 
   // ── The Sanctuary Circle (Collaborative Plot) ──────────────────────────
   const scCenter = world.sanctuaryCircle ?? { x: 0, z: -25, radius: 7.0 }
