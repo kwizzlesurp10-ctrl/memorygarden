@@ -1,9 +1,10 @@
 import * as THREE from 'three'
+import type { ArtStyle, PlantStage } from '@/lib/types'
+import { createVoxelPlantGroup } from './minecraft-visual'
 import { gardenRng, seedFromGenetics } from '@/lib/garden/prng'
 import { plantStageToIndex } from '@/lib/garden/stage'
 import type { PlantVisualRecipe } from '@/lib/open-world/plant-visual'
 import type { WorldPlant } from '@/lib/open-world/types'
-import type { PlantStage } from '@/lib/types'
 import { TRUNK_DAY } from '@/lib/garden/plant-visual-spec'
 
 const geo = {
@@ -560,7 +561,17 @@ function addGiftMeshes(
   }
 }
 
-export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): THREE.Group {
+export function createPlantGroup(
+  plant: WorldPlant,
+  recipe: PlantVisualRecipe,
+  artStyle?: ArtStyle,
+): THREE.Group {
+  if (artStyle === 'pixel-art') {
+    const voxel = createVoxelPlantGroup(plant, recipe)
+    addGiftMeshes(voxel, plant, recipe)
+    return voxel
+  }
+
   const g = new THREE.Group()
   g.name = `plant:${plant.id}`
   g.userData.memoryId = plant.id
@@ -1324,6 +1335,7 @@ export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): 
 }
 
 export function disposePlantGroup(group: THREE.Group): void {
+  if (group.userData.voxelPlant) return
   group.traverse((obj: THREE.Object3D) => {
     if (obj instanceof THREE.Sprite) {
       const sm = obj.material as THREE.SpriteMaterial
@@ -1336,14 +1348,18 @@ export function disposePlantGroup(group: THREE.Group): void {
         obj.geometry.dispose()
       }
       const disposeMat = (m: THREE.Material) => {
+        if (!m || typeof m.dispose !== 'function') return
+        if (m.userData?.isSharedStatic) return
         const std = m as THREE.MeshStandardMaterial
-        std.map?.dispose()
+        if (std.map && typeof std.map.dispose === 'function' && !std.map.userData?.isSharedStatic) {
+          std.map.dispose()
+        }
         std.emissiveMap?.dispose()
         m.dispose()
       }
       const material = obj.material
       if (Array.isArray(material)) material.forEach(disposeMat)
-      else if (material) disposeMat(material)
+      else disposeMat(material as THREE.Material)
     }
   })
 }

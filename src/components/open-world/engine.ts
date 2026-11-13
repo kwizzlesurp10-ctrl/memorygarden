@@ -1,6 +1,7 @@
 import * as THREE from 'three'
-import type { Memory } from '@/lib/types'
-import { isWalkCaptureSession } from '@/lib/open-world/walk-capture-bridge'
+import type { ArtStyle, Memory } from '@/lib/types'
+import { resolvePlantArtStyle } from '@/lib/garden/plant-art-style'
+import { isWalkCaptureSession, type WalkCapturePose } from '@/lib/open-world/walk-capture-bridge'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { LOOK_SENSITIVITY } from '@/lib/open-world/constants'
 import { isTypingTarget, mergeMotion, motionFromKeys, type Stick } from '@/lib/open-world/input'
@@ -8,6 +9,7 @@ import { layoutGardenWorld } from '@/lib/open-world/layout'
 import { createPlayer, eyeOffset, findNearestPlant, stepPlayer } from '@/lib/open-world/locomotion'
 import { plantRecipe } from '@/lib/open-world/plant-visual'
 import type { GardenWorld, PlayerState, WorldPlant } from '@/lib/open-world/types'
+import { applyWatercolorWalkTint, snapPlantGroupToTerrain, walkCaptureGroundY } from './minecraft-visual'
 import { createPlantGroup, disposePlantGroup } from './plant-mesh'
 import { buildTerrain, type TerrainHandle } from './terrain'
 import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
@@ -75,16 +77,25 @@ export class OpenWorldEngine {
 
   private cc0Scenery: Cc0SceneryLayer | null = null
   private captureBackdrop = false
+  private soloCapturePlantId: string | null = null
+  private plantArtStyle: ArtStyle
+  private framesRendered = 0
 
   constructor(
     canvas: HTMLCanvasElement,
     memories: Memory[],
     palette: ScenePalette,
-    opts: { reducedMotion: boolean; coarsePointer?: boolean; hooks: EngineHooks },
+    opts: {
+      reducedMotion: boolean
+      coarsePointer?: boolean
+      hooks: EngineHooks
+      plantArtStyle?: ArtStyle
+    },
   ) {
     this.canvas = canvas
     this.hooks = opts.hooks
     this.reducedMotion = opts.reducedMotion
+    this.plantArtStyle = resolvePlantArtStyle(opts.plantArtStyle)
     this.palette = palette
     this.world = layoutGardenWorld(memories)
     this.player = createPlayer(this.world)
@@ -92,7 +103,7 @@ export class OpenWorldEngine {
     try {
       this.renderer = new THREE.WebGLRenderer({
         canvas,
-        antialias: true,
+        antialias: this.plantArtStyle !== 'pixel-art',
         alpha: false,
         powerPreference: 'high-performance',
       })
@@ -107,7 +118,9 @@ export class OpenWorldEngine {
     }
 
     const renderer = this.renderer
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+    renderer.setPixelRatio(
+      this.plantArtStyle === 'pixel-art' ? 1 : Math.min(window.devicePixelRatio || 1, 2),
+    )
     renderer.setClearColor(palette.sky[2] ?? '#20123a', 1)
     renderer.shadowMap.enabled = !opts.reducedMotion
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
@@ -129,9 +142,11 @@ export class OpenWorldEngine {
     this.rebuildPlants()
     const skipCc0 =
       typeof window !== 'undefined' &&
-      (sessionStorage.getItem('mg:walk-capture-baseline') === '1' ||
+      (isWalkCaptureSession() ||
+        sessionStorage.getItem('mg:walk-capture-baseline') === '1' ||
         sessionStorage.getItem('mg:stage-row-capture') === '1' ||
-        sessionStorage.getItem('mg:walk-plant-focus') === '1')
+        sessionStorage.getItem('mg:walk-plant-focus') === '1' ||
+        this.plantArtStyle === 'pixel-art')
     if (!this.failed && !skipCc0) {
       this.cc0Scenery = new Cc0SceneryLayer(this.scene, this.world, this.palette, {
         reducedMotion: opts.reducedMotion,
@@ -223,6 +238,19 @@ export class OpenWorldEngine {
     this.growing = ids
   }
 
+  setPlantArtStyle(style: ArtStyle | undefined): void {
+    const next = resolvePlantArtStyle(style)
+    if (next === this.plantArtStyle) return
+    this.plantArtStyle = next
+    this.applyLighting()
+    if (next === 'pixel-art' && this.cc0Scenery) {
+      this.cc0Scenery.dispose()
+      this.cc0Scenery = null
+    }
+    this.rebuildTerrain()
+    this.rebuildPlants()
+  }
+
   setPalette(palette: ScenePalette): void {
     this.palette = palette
     this.terrain?.recolor(palette)
@@ -272,16 +300,393 @@ export class OpenWorldEngine {
     return this.world
   }
 
+  countVoxelMeshes(): number {
+    let n = 0
+    this.plantsRoot.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && obj.userData.voxel) n++
+    })
+    return n
+  }
+
+  countVoxelPlantGroups(): number {
+    let n = 0
+    for (const group of this.plantGroups.values()) {
+      if (group.userData.voxelPlant) n++
+    }
+    return n
+  }
+
   getPlayer(): PlayerState {
     return this.player
   }
 
-  setPlayerPose(x: number, z: number, yaw: number, pitch: number): void {
+  setPlayerPose(x: number, z: number, yaw: number, pitch: number, eyeY?: number): void {
     this.player.x = x
     this.player.z = z
     this.player.yaw = yaw
     this.player.pitch = pitch
+    if (eyeY !== undefined) this.player.y = eyeY
     this.applyCamera()
+    if (isWalkCaptureSession()) {
+      this.renderOnce()
+    }
+  }
+
+  private findPlantGroup(plantId: string): THREE.Group | null {
+    const direct = this.plantGroups.get(plantId)
+    if (direct) return direct
+    for (const group of this.plantGroups.values()) {
+      if (group.userData.memoryId === plantId || group.name === `plant:${plantId}`) {
+        return group
+      }
+    }
+    let found: THREE.Group | null = null
+    this.plantsRoot.traverse((obj) => {
+      if (found) return
+      if (obj instanceof THREE.Group && (obj.userData.memoryId === plantId || obj.name === `plant:${plantId}`)) {
+        found = obj
+      }
+    })
+    return found
+  }
+
+  private plantWorldBox(plantId: string): THREE.Box3 | null {
+    const group = this.findPlantGroup(plantId)
+    if (!group) return null
+    group.updateWorldMatrix(true, true)
+    const box = new THREE.Box3().setFromObject(group)
+    return box.isEmpty() ? null : box
+  }
+
+  hasPlantGroup(plantId: string): boolean {
+    return this.findPlantGroup(plantId) !== null
+  }
+
+  setSoloPlantFocus(plantId: string | null): void {
+    this.soloCapturePlantId = plantId
+    this.rebuildPlants()
+    this.renderOnce()
+  }
+
+  plantBoxSize(plantId: string): { x: number; y: number; z: number } | null {
+    const box = this.plantWorldBox(plantId)
+    if (!box) return null
+    const size = box.getSize(new THREE.Vector3())
+    return { x: size.x, y: size.y, z: size.z }
+  }
+
+  plantCaptureFitAt(
+    plantId: string,
+    pose: WalkCapturePose,
+  ): { frac: number; centerX: number; centerY: number } | null {
+    const box = this.plantWorldBox(plantId)
+    if (!box) return null
+    const saved = { ...this.player }
+    this.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
+    this.renderOnce()
+    const fit = this.plantCaptureFit(box)
+    this.player.x = saved.x
+    this.player.z = saved.z
+    this.player.y = saved.y
+    this.player.yaw = saved.yaw
+    this.player.pitch = saved.pitch
+    this.applyCamera()
+    return fit
+  }
+
+  plantCaptureFitNow(plantId: string): { frac: number; centerX: number; centerY: number } | null {
+    const box = this.plantWorldBox(plantId)
+    if (!box) return null
+    this.renderOnce()
+    return this.plantCaptureFit(box)
+  }
+
+  plantScreenCoverage(plantId: string, pose?: WalkCapturePose): number {
+    const box = this.plantWorldBox(plantId)
+    if (!box) return 0
+    if (pose) {
+      return this.withCapturePose(pose, () => this.screenHeightFraction(box))
+    }
+    this.renderOnce()
+    return this.screenHeightFraction(box)
+  }
+
+  private projectBoxCenter(box: THREE.Box3): THREE.Vector3 {
+    const center = box.getCenter(new THREE.Vector3())
+    return center.clone().project(this.camera)
+  }
+
+  private screenHeightFraction(box: THREE.Box3): number {
+    const { min, max } = box
+    const cx = (min.x + max.x) / 2
+    const cz = (min.z + max.z) / 2
+    const samples = [
+      [cx, min.y, cz],
+      [cx, max.y, cz],
+      [min.x, min.y, min.z],
+      [max.x, max.y, max.z],
+      [min.x, max.y, max.z],
+      [max.x, min.y, min.z],
+    ]
+    let minNdcY = Infinity
+    let maxNdcY = -Infinity
+    for (const [x, y, z] of samples) {
+      const p = new THREE.Vector3(x, y, z).project(this.camera)
+      if (p.z < -1 || p.z > 1) continue
+      minNdcY = Math.min(minNdcY, p.y)
+      maxNdcY = Math.max(maxNdcY, p.y)
+    }
+    if (!Number.isFinite(minNdcY)) return 0
+    return Math.min(0.92, (maxNdcY - minNdcY) / 2)
+  }
+
+  private plantCaptureFit(box: THREE.Box3): { frac: number; centerX: number; centerY: number } {
+    const centerNdc = this.projectBoxCenter(box)
+    if (centerNdc.z < -1 || centerNdc.z > 1) {
+      return { frac: 0, centerX: centerNdc.x, centerY: centerNdc.y }
+    }
+    if (Math.abs(centerNdc.x) > 0.92 || Math.abs(centerNdc.y) > 0.92) {
+      return { frac: 0, centerX: centerNdc.x, centerY: centerNdc.y }
+    }
+    const frac = this.screenHeightFraction(box)
+    return { frac, centerX: centerNdc.x, centerY: centerNdc.y }
+  }
+
+  private withCapturePose(pose: WalkCapturePose, fn: () => number): number {
+    const saved = { ...this.player }
+    this.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
+    this.renderOnce()
+    const frac = fn()
+    this.player.x = saved.x
+    this.player.z = saved.z
+    this.player.y = saved.y
+    this.player.yaw = saved.yaw
+    this.player.pitch = saved.pitch
+    this.applyCamera()
+    return frac
+  }
+
+  private isDescendantOf(obj: THREE.Object3D, ancestor: THREE.Object3D): boolean {
+    let o: THREE.Object3D | null = obj
+    while (o) {
+      if (o === ancestor) return true
+      o = o.parent
+    }
+    return false
+  }
+
+  private isTerrainHit(obj: THREE.Object3D): boolean {
+    const root = this.terrain?.root
+    return root ? this.isDescendantOf(obj, root) : false
+  }
+
+  private plantOccludedFrom(cam: THREE.Vector3, plantId: string, target: THREE.Vector3): boolean {
+    const group = this.findPlantGroup(plantId)
+    if (!group) return true
+    const dir = target.clone().sub(cam)
+    const dist = dir.length()
+    if (dist < 0.01) return false
+    dir.normalize()
+    const ray = new THREE.Raycaster(cam, dir, 0.05, dist - 0.08)
+    const hits = ray.intersectObjects(this.scene.children, true)
+    for (const hit of hits) {
+      if (this.isDescendantOf(hit.object, group)) return false
+      if (this.isTerrainHit(hit.object)) continue
+      return true
+    }
+    return false
+  }
+
+  private poseLookAt(aim: THREE.Vector3, camPos: THREE.Vector3, eyeY: number): WalkCapturePose {
+    this.camera.position.set(camPos.x, eyeY, camPos.z)
+    this.camera.lookAt(aim)
+    this.camera.rotation.order = 'YXZ'
+    this.camera.updateMatrixWorld(true)
+    this.camera.updateProjectionMatrix()
+    return {
+      x: camPos.x,
+      z: camPos.z,
+      yaw: this.camera.rotation.y,
+      pitch: this.camera.rotation.x,
+      eyeY,
+    }
+  }
+
+  deterministicPlantCapturePose(plantId: string): WalkCapturePose | null {
+    const box = this.plantWorldBox(plantId)
+    const group = this.findPlantGroup(plantId)
+    if (!box || !group) return null
+
+  if (isWalkCaptureSession() && plantId.endsWith('-walk')) {
+      const wp = this.world.plants.find((p) => p.id === plantId)
+      const size = box.getSize(new THREE.Vector3())
+      if (plantId.includes('tree')) {
+        if (!wp) return null
+        const elder = plantId.includes('elder')
+        const ground = box.min.y
+        const aimY = ground + size.y * 0.68
+        const aim = new THREE.Vector3(wp.x, aimY, wp.z)
+        const dist = Math.max(elder ? 11.5 : 10.5, size.y * 1.15)
+        const yaw = elder ? -0.68 : 2.05
+        const camX = wp.x + Math.sin(yaw) * dist
+        const camZ = wp.z + Math.cos(yaw) * dist
+        const eyeY = ground + Math.min(size.y * 0.48, 4.5)
+        return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+      }
+      if (wp) {
+        const ground = box.min.y
+        if (plantId === 'sprout-walk') {
+          const aim = new THREE.Vector3(wp.x, ground + size.y * 0.5, wp.z)
+          const yaw = Math.PI / 4
+          const targetFrac = 0.25
+          let bestPose: WalkCapturePose | null = null
+          let bestDelta = Infinity
+          for (let pass = 0; pass < 18; pass++) {
+            const dist = 0.55 + (pass / 17) * 2.4
+            const camX = wp.x + Math.sin(yaw) * dist
+            const camZ = wp.z + Math.cos(yaw) * dist
+            const eyeY = ground + 0.92
+            const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+            const fit = this.plantCaptureFitAt(plantId, pose)
+            const frac = fit?.frac ?? 0
+            const centerPen =
+              fit ? Math.abs(fit.centerX) + Math.abs(fit.centerY) : 2
+            const delta = Math.abs(frac - targetFrac) + centerPen * 0.12
+            if (Math.abs(frac - targetFrac) < 0.05 && centerPen < 0.35) return pose
+            if (delta < bestDelta) {
+              bestDelta = delta
+              bestPose = pose
+            }
+          }
+          return bestPose
+        }
+        if (wp.variety === 'mushroom') {
+          const aim = new THREE.Vector3(wp.x, ground + 0.28, wp.z)
+          const yaw = -0.55
+          const dist = 2.75
+          const camX = wp.x + Math.sin(yaw) * dist
+          const camZ = wp.z + Math.cos(yaw) * dist
+          const eyeY = ground + 0.82
+          return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+        }
+        const aimY = wp.variety === 'flower' ? ground + 0.48 : ground + 0.42
+        const aim = new THREE.Vector3(wp.x, aimY, wp.z)
+        const yaw = wp.variety === 'flower' ? 0.65 : -0.45
+        const minFrac = plantId.includes('sprout') ? 0.27 : 0.34
+        const maxFrac = 0.88
+        const startDist = plantId.includes('sprout') ? 1.55 : 1.85
+        const endDist = plantId.includes('sprout') ? 0.95 : 1.05
+        let bestPose: WalkCapturePose | null = null
+        let bestFrac = 0
+        for (let pass = 0; pass < 10; pass++) {
+          const t = pass / 9
+          const d = startDist + (endDist - startDist) * t
+          const camX = wp.x + Math.sin(yaw) * d
+          const camZ = wp.z + Math.cos(yaw) * d
+          const eyeY = ground + 1.28
+          const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+          const fit = this.plantCaptureFitAt(plantId, pose)
+          const frac = fit?.frac ?? 0
+          const inBand = frac >= minFrac && frac <= maxFrac
+          if (inBand) return pose
+          if (frac > bestFrac && frac <= maxFrac) {
+            bestFrac = frac
+            bestPose = pose
+          } else if (!bestPose && frac > bestFrac) {
+            bestFrac = frac
+            bestPose = pose
+          }
+        }
+        return bestPose
+      }
+    }
+
+    const sphere = box.getBoundingSphere(new THREE.Sphere())
+    const c = sphere.center.clone()
+    const size = box.getSize(new THREE.Vector3())
+    const wp = this.world.plants.find((p) => p.id === plantId)
+    const aim = c.clone()
+    if (wp?.variety === 'tree') {
+      aim.y = box.min.y + size.y * 0.62
+    } else if (wp?.variety === 'mushroom') {
+      aim.y = box.min.y + size.y * 0.48
+    } else if (wp?.variety === 'flower') {
+      aim.y = box.min.y + size.y * 0.55
+    }
+    let r = sphere.radius
+    if (plantId.includes('sprout')) {
+      r = Math.max(r, 0.25)
+    }
+
+    const fovRad = (this.camera.fov * Math.PI) / 180
+    let standoff = (r / Math.sin(fovRad / 2)) * 1.15
+    if (wp?.variety === 'tree') {
+      standoff *= plantId.includes('elder') ? 1.3 : 1.15
+    }
+    const terrainY = box.min.y
+    const baseDir = (() => {
+      if (wp?.variety === 'flower') return new THREE.Vector3(-1, 0.4, 1)
+      if (wp?.variety === 'mushroom') return new THREE.Vector3(0.85, 0.35, -1)
+      if (wp?.variety === 'tree' && plantId.includes('elder')) return new THREE.Vector3(1, 0.35, 0.75)
+      if (wp?.variety === 'tree') return new THREE.Vector3(0.7, 0.35, 1)
+      return new THREE.Vector3(1, 0.35, 1)
+    })().normalize()
+
+    let best: (WalkCapturePose & { screenFrac?: number }) | null = null
+    let bestFrac = -1
+    let fallback: (WalkCapturePose & { screenFrac?: number }) | null = null
+    let fallbackFrac = -1
+
+    for (let step = 0; step < 8; step++) {
+      const ang = step * (Math.PI / 4)
+      const cos = Math.cos(ang)
+      const sin = Math.sin(ang)
+      const dir = new THREE.Vector3(
+        baseDir.x * cos - baseDir.z * sin,
+        baseDir.y,
+        baseDir.x * sin + baseDir.z * cos,
+      ).normalize()
+
+      const camPos = c.clone().add(dir.multiplyScalar(standoff))
+      camPos.y = Math.max(camPos.y, terrainY + 0.5)
+
+      const pose = this.poseLookAt(aim, camPos, camPos.y)
+      const fit = this.plantCaptureFitAt(plantId, pose)
+      const frac = fit?.frac ?? 0
+      const centerPen = fit ? Math.min(1, Math.abs(fit.centerX) + Math.abs(fit.centerY)) : 1
+      const score = frac * (1.15 - 0.35 * centerPen)
+      const labeled = { ...pose, screenFrac: frac }
+
+      if (score > fallbackFrac) {
+        fallbackFrac = score
+        fallback = labeled
+      }
+
+      if (this.plantOccludedFrom(camPos, plantId, aim)) continue
+      if (score > bestFrac) {
+        bestFrac = score
+        best = labeled
+      }
+    }
+
+    return best ?? fallback
+  }
+
+  capturePoseForPlant(plantId: string): WalkCapturePose | null {
+    return this.deterministicPlantCapturePose(plantId)
+  }
+
+
+  captureClusterOverviewPose(): WalkCapturePose {
+    const walkPlants = this.world.plants.filter(
+      (p) => p.id.endsWith('-walk') || p.id.includes('walk-'),
+    )
+    const plants = walkPlants.length > 0 ? walkPlants : this.world.plants
+    const cx = plants.reduce((s, p) => s + p.x, 0) / Math.max(1, plants.length)
+    const cz = plants.reduce((s, p) => s + p.z, 0) / Math.max(1, plants.length)
+    const aim = new THREE.Vector3(cx, 2.4, cz)
+    const camPos = new THREE.Vector3(cx + 11, 5.2, cz + 15)
+    return this.poseLookAt(aim, camPos, 5.2)
   }
 
   setWalkCaptureBackdrop(active: boolean): void {
@@ -312,6 +717,13 @@ export class OpenWorldEngine {
     this.setWalkCaptureBackdrop(modelId !== null)
     await this.cc0Scenery?.setShowcase(modelId)
     this.applyCamera()
+  }
+
+  renderOnce(): void {
+    const renderer = this.renderer
+    if (!renderer) return
+    this.applyCamera()
+    renderer.render(this.scene, this.camera)
   }
 
   dispose(): void {
@@ -393,6 +805,15 @@ export class OpenWorldEngine {
       }
     }
     renderer.render(this.scene, this.camera)
+    this.framesRendered++
+  }
+
+  sceneReady(): boolean {
+    return !this.failed && this.framesRendered >= 4
+  }
+
+  refreshCanvasSize(): void {
+    this.resize()
   }
 
   private applyCamera(): void {
@@ -401,6 +822,8 @@ export class OpenWorldEngine {
     this.camera.rotation.order = 'YXZ'
     this.camera.rotation.y = this.player.yaw
     this.camera.rotation.x = this.player.pitch
+    this.camera.updateMatrixWorld(true)
+    this.camera.updateProjectionMatrix()
   }
 
   private resize(): void {
@@ -419,13 +842,16 @@ export class OpenWorldEngine {
       this.scene.remove(this.terrain.root)
       this.terrain.dispose()
     }
-    this.terrain = buildTerrain(this.world, this.palette, this.reducedMotion)
+    const minecraftMode = this.plantArtStyle === 'pixel-art'
+    this.terrain = buildTerrain(this.world, this.palette, this.reducedMotion, minecraftMode)
     this.scene.add(this.terrain.root)
   }
 
   private rebuildPlants(): void {
     this.clearPlants()
+    const style = this.plantArtStyle
     for (const plant of this.world.plants) {
+      if (this.soloCapturePlantId && plant.id !== this.soloCapturePlantId) continue
       const recipe = plantRecipe(
         plant.variety,
         plant.stage,
@@ -434,7 +860,13 @@ export class OpenWorldEngine {
         plant.height,
         plant.isHybrid,
       )
-      const group = createPlantGroup(plant, recipe)
+      const group = createPlantGroup(plant, recipe, style)
+      if (style === 'watercolor') {
+        applyWatercolorWalkTint(group)
+      }
+      if (style === 'pixel-art') {
+        snapPlantGroupToTerrain(group, walkCaptureGroundY(plant.x, plant.z))
+      }
       this.plantsRoot.add(group)
       this.plantGroups.set(plant.id, group)
     }
@@ -454,7 +886,11 @@ export class OpenWorldEngine {
     for (const [id, group] of this.plantGroups) {
       const dim = ids !== null && !ids.has(id)
       group.traverse((obj: THREE.Object3D) => {
-        if (obj instanceof THREE.Mesh && obj.material instanceof THREE.MeshStandardMaterial) {
+        if (
+          obj instanceof THREE.Mesh &&
+          (obj.material instanceof THREE.MeshStandardMaterial ||
+            obj.material instanceof THREE.MeshLambertMaterial)
+        ) {
           obj.material.opacity = dim ? 0.22 : 1
           obj.material.transparent = dim
         }
@@ -567,6 +1003,40 @@ export class OpenWorldEngine {
   }
 
   private applyLighting(): void {
+    if (this.plantArtStyle === 'pixel-art') {
+      const star = this.palette.starAlpha ?? 0
+      const night = star > 0.22
+      if (!night) {
+        this.hemi.color.set('#c8e8ff')
+        this.hemi.groundColor.set('#6b9a48')
+        this.hemi.intensity = 1.12
+        this.fill.color.set('#e8f0ff')
+        this.fill.intensity = 0.48
+        this.sun.color.set('#fff8e8')
+        this.sun.intensity = 0.92
+        this.sun.position.set(18, 38, -14)
+        this.rim.position.set(-12, 22, 18)
+        this.rim.intensity = 0.06
+      } else {
+        const p = this.palette
+        const skyWash = new THREE.Color(p.sky[3] ?? p.sky[2] ?? '#88aacc')
+        this.hemi.color.set(p.sky[1] ?? '#88aacc').lerp(skyWash, 0.35)
+        const groundColor = new THREE.Color(p.hills[1] ?? p.bank)
+        groundColor.lerp(new THREE.Color(p.hills[0] ?? p.silSoft), 0.55 + star * 0.2)
+        this.hemi.groundColor.copy(groundColor)
+        this.hemi.intensity = 1.02 + star * 0.14
+        this.fill.color.set(p.glow ?? '#c8b8e8')
+        this.fill.intensity = 0.62 + star * 0.18
+        this.sun.color.set(p.sun?.disk ?? p.glow ?? '#fff4d8')
+        this.sun.intensity = 0.62 + star * 0.24
+        this.rim.intensity = 0.28 + star * 0.2
+        if (p.moon) {
+          this.sun.position.set((p.moon.x / 1200 - 0.5) * 40, 18, -12)
+          this.sun.color.set('#c9d8ea')
+        }
+      }
+      return
+    }
     const p = this.palette
     const star = p.starAlpha ?? 0
     const twilight = star > 0.22
