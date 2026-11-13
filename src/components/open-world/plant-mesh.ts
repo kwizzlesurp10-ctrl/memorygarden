@@ -1,4 +1,6 @@
 import * as THREE from 'three'
+import type { ArtStyle } from '@/lib/types'
+import { createVoxelPlantGroup } from './minecraft-visual'
 import { gardenRng, seedFromGenetics } from '@/lib/garden/prng'
 import { plantStageToIndex } from '@/lib/garden/stage'
 import type { PlantVisualRecipe } from '@/lib/open-world/plant-visual'
@@ -560,7 +562,17 @@ function addGiftMeshes(
   }
 }
 
-export function createPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): THREE.Group {
+export function createPlantGroup(
+  plant: WorldPlant,
+  recipe: PlantVisualRecipe,
+  artStyle?: ArtStyle,
+): THREE.Group {
+  if (artStyle === 'pixel-art') {
+    const voxel = createVoxelPlantGroup(plant, recipe)
+    addGiftMeshes(voxel, plant, recipe)
+    return voxel
+  }
+
   const g = new THREE.Group()
   g.name = `plant:${plant.id}`
   g.userData.memoryId = plant.id

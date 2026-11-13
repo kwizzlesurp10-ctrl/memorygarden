@@ -1,6 +1,7 @@
 import * as THREE from 'three'
-import type { Memory } from '@/lib/types'
-import { isWalkCaptureSession } from '@/lib/open-world/walk-capture-bridge'
+import type { ArtStyle, Memory } from '@/lib/types'
+import { resolvePlantArtStyle } from '@/lib/garden/plant-art-style'
+import { isWalkCaptureSession, type WalkCapturePose } from '@/lib/open-world/walk-capture-bridge'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { LOOK_SENSITIVITY } from '@/lib/open-world/constants'
 import { isTypingTarget, mergeMotion, motionFromKeys, type Stick } from '@/lib/open-world/input'
@@ -8,6 +9,7 @@ import { layoutGardenWorld } from '@/lib/open-world/layout'
 import { createPlayer, eyeOffset, findNearestPlant, stepPlayer } from '@/lib/open-world/locomotion'
 import { plantRecipe } from '@/lib/open-world/plant-visual'
 import type { GardenWorld, PlayerState, WorldPlant } from '@/lib/open-world/types'
+import { applyWatercolorWalkTint } from './minecraft-visual'
 import { createPlantGroup, disposePlantGroup } from './plant-mesh'
 import { buildTerrain, type TerrainHandle } from './terrain'
 import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
@@ -75,16 +77,23 @@ export class OpenWorldEngine {
 
   private cc0Scenery: Cc0SceneryLayer | null = null
   private captureBackdrop = false
+  private plantArtStyle: ArtStyle
 
   constructor(
     canvas: HTMLCanvasElement,
     memories: Memory[],
     palette: ScenePalette,
-    opts: { reducedMotion: boolean; coarsePointer?: boolean; hooks: EngineHooks },
+    opts: {
+      reducedMotion: boolean
+      coarsePointer?: boolean
+      hooks: EngineHooks
+      plantArtStyle?: ArtStyle
+    },
   ) {
     this.canvas = canvas
     this.hooks = opts.hooks
     this.reducedMotion = opts.reducedMotion
+    this.plantArtStyle = resolvePlantArtStyle(opts.plantArtStyle)
     this.palette = palette
     this.world = layoutGardenWorld(memories)
     this.player = createPlayer(this.world)
@@ -92,7 +101,7 @@ export class OpenWorldEngine {
     try {
       this.renderer = new THREE.WebGLRenderer({
         canvas,
-        antialias: true,
+        antialias: this.plantArtStyle !== 'pixel-art',
         alpha: false,
         powerPreference: 'high-performance',
       })
@@ -107,7 +116,9 @@ export class OpenWorldEngine {
     }
 
     const renderer = this.renderer
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+    renderer.setPixelRatio(
+      this.plantArtStyle === 'pixel-art' ? 1 : Math.min(window.devicePixelRatio || 1, 2),
+    )
     renderer.setClearColor(palette.sky[2] ?? '#20123a', 1)
     renderer.shadowMap.enabled = !opts.reducedMotion
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
@@ -129,9 +140,11 @@ export class OpenWorldEngine {
     this.rebuildPlants()
     const skipCc0 =
       typeof window !== 'undefined' &&
-      (sessionStorage.getItem('mg:walk-capture-baseline') === '1' ||
+      (isWalkCaptureSession() ||
+        sessionStorage.getItem('mg:walk-capture-baseline') === '1' ||
         sessionStorage.getItem('mg:stage-row-capture') === '1' ||
-        sessionStorage.getItem('mg:walk-plant-focus') === '1')
+        sessionStorage.getItem('mg:walk-plant-focus') === '1' ||
+        this.plantArtStyle === 'pixel-art')
     if (!this.failed && !skipCc0) {
       this.cc0Scenery = new Cc0SceneryLayer(this.scene, this.world, this.palette, {
         reducedMotion: opts.reducedMotion,
@@ -223,6 +236,19 @@ export class OpenWorldEngine {
     this.growing = ids
   }
 
+  setPlantArtStyle(style: ArtStyle | undefined): void {
+    const next = resolvePlantArtStyle(style)
+    if (next === this.plantArtStyle) return
+    this.plantArtStyle = next
+    this.applyLighting()
+    if (next === 'pixel-art' && this.cc0Scenery) {
+      this.cc0Scenery.dispose()
+      this.cc0Scenery = null
+    }
+    this.rebuildTerrain()
+    this.rebuildPlants()
+  }
+
   setPalette(palette: ScenePalette): void {
     this.palette = palette
     this.terrain?.recolor(palette)
@@ -272,16 +298,141 @@ export class OpenWorldEngine {
     return this.world
   }
 
+  countVoxelMeshes(): number {
+    let n = 0
+    this.plantsRoot.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && obj.userData.voxel) n++
+    })
+    return n
+  }
+
+  countVoxelPlantGroups(): number {
+    let n = 0
+    for (const group of this.plantGroups.values()) {
+      if (group.userData.voxelPlant) n++
+    }
+    return n
+  }
+
   getPlayer(): PlayerState {
     return this.player
   }
 
-  setPlayerPose(x: number, z: number, yaw: number, pitch: number): void {
+  setPlayerPose(x: number, z: number, yaw: number, pitch: number, eyeY?: number): void {
     this.player.x = x
     this.player.z = z
     this.player.yaw = yaw
     this.player.pitch = pitch
+    if (eyeY !== undefined) this.player.y = eyeY
     this.applyCamera()
+    if (isWalkCaptureSession() && eyeY !== undefined) {
+      this.camera.position.y = eyeY + (this.reducedMotion ? 0 : 0)
+    }
+  }
+
+  private plantVoxelBox(plantId: string): THREE.Box3 | null {
+    const group = this.plantGroups.get(plantId)
+    if (!group) return null
+    group.updateWorldMatrix(true, true)
+    const box = new THREE.Box3()
+    group.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && obj.userData.voxel) {
+        box.expandByObject(obj)
+      }
+    })
+    return box.isEmpty() ? null : box
+  }
+
+  private screenHeightFraction(box: THREE.Box3): number {
+    const { min, max } = box
+    const corners = [
+      new THREE.Vector3(min.x, min.y, min.z),
+      new THREE.Vector3(min.x, min.y, max.z),
+      new THREE.Vector3(min.x, max.y, min.z),
+      new THREE.Vector3(min.x, max.y, max.z),
+      new THREE.Vector3(max.x, min.y, min.z),
+      new THREE.Vector3(max.x, min.y, max.z),
+      new THREE.Vector3(max.x, max.y, min.z),
+      new THREE.Vector3(max.x, max.y, max.z),
+    ]
+    let minNdcY = Infinity
+    let maxNdcY = -Infinity
+    for (const c of corners) {
+      const p = c.clone().project(this.camera)
+      minNdcY = Math.min(minNdcY, p.y)
+      maxNdcY = Math.max(maxNdcY, p.y)
+    }
+    return (maxNdcY - minNdcY) / 2
+  }
+
+  private withCapturePose(pose: WalkCapturePose, fn: () => number): number {
+    const saved = { ...this.player }
+    this.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
+    const frac = fn()
+    this.player.x = saved.x
+    this.player.z = saved.z
+    this.player.y = saved.y
+    this.player.yaw = saved.yaw
+    this.player.pitch = saved.pitch
+    this.applyCamera()
+    return frac
+  }
+
+  capturePoseForPlant(plantId: string): WalkCapturePose | null {
+    const box = this.plantVoxelBox(plantId)
+    if (!box) return null
+    const center = box.getCenter(new THREE.Vector3())
+    const size = box.getSize(new THREE.Vector3())
+    const bboxRadius = Math.max(size.x, size.z) * 0.5
+    const viewDir = new THREE.Vector3(-0.74, 0, -0.67).normalize()
+    let standoff = Math.max(2.4, bboxRadius * 2.5)
+
+    let best: WalkCapturePose | null = null
+    let bestFrac = 0
+
+    for (let i = 0; i < 16; i++) {
+      const camPos = center.clone().addScaledVector(viewDir, standoff)
+      camPos.y = 1.55
+      if (box.containsPoint(camPos)) {
+        standoff += bboxRadius * 0.4
+        continue
+      }
+      const yaw = Math.atan2(center.x - camPos.x, center.z - camPos.z)
+      const horiz = Math.hypot(center.x - camPos.x, center.z - camPos.z)
+      const pitch = -Math.atan2(center.y + size.y * 0.08 - camPos.y, horiz)
+      const trial: WalkCapturePose = {
+        x: camPos.x,
+        z: camPos.z,
+        yaw,
+        pitch,
+        eyeY: camPos.y,
+      }
+      const frac = this.withCapturePose(trial, () => this.screenHeightFraction(box))
+      if (frac >= 0.4 && frac <= 0.72) {
+        return { ...trial, screenFrac: frac }
+      }
+      if (frac > bestFrac && frac <= 0.85) {
+        bestFrac = frac
+        best = { ...trial, screenFrac: frac }
+      }
+      standoff *= frac < 0.4 ? 0.86 : frac > 0.72 ? 1.18 : 1.05
+    }
+    return best
+  }
+
+  captureClusterOverviewPose(): WalkCapturePose {
+    const plants = this.world.plants
+    const cx = plants.reduce((s, p) => s + p.x, 0) / Math.max(1, plants.length)
+    const cz = plants.reduce((s, p) => s + p.z, 0) / Math.max(1, plants.length)
+    const camX = cx - 5.5
+    const camZ = cz + 7.2
+    return {
+      x: camX,
+      z: camZ,
+      yaw: Math.atan2(cx - camX, cz - camZ),
+      pitch: -0.1,
+      eyeY: 1.62,
+    }
   }
 
   setWalkCaptureBackdrop(active: boolean): void {
@@ -419,12 +570,14 @@ export class OpenWorldEngine {
       this.scene.remove(this.terrain.root)
       this.terrain.dispose()
     }
-    this.terrain = buildTerrain(this.world, this.palette, this.reducedMotion)
+    const minecraftMode = this.plantArtStyle === 'pixel-art'
+    this.terrain = buildTerrain(this.world, this.palette, this.reducedMotion, minecraftMode)
     this.scene.add(this.terrain.root)
   }
 
   private rebuildPlants(): void {
     this.clearPlants()
+    const style = this.plantArtStyle
     for (const plant of this.world.plants) {
       const recipe = plantRecipe(
         plant.variety,
@@ -434,7 +587,10 @@ export class OpenWorldEngine {
         plant.height,
         plant.isHybrid,
       )
-      const group = createPlantGroup(plant, recipe)
+      const group = createPlantGroup(plant, recipe, style)
+      if (style === 'watercolor') {
+        applyWatercolorWalkTint(group)
+      }
       this.plantsRoot.add(group)
       this.plantGroups.set(plant.id, group)
     }
@@ -454,7 +610,11 @@ export class OpenWorldEngine {
     for (const [id, group] of this.plantGroups) {
       const dim = ids !== null && !ids.has(id)
       group.traverse((obj: THREE.Object3D) => {
-        if (obj instanceof THREE.Mesh && obj.material instanceof THREE.MeshStandardMaterial) {
+        if (
+          obj instanceof THREE.Mesh &&
+          (obj.material instanceof THREE.MeshStandardMaterial ||
+            obj.material instanceof THREE.MeshLambertMaterial)
+        ) {
           obj.material.opacity = dim ? 0.22 : 1
           obj.material.transparent = dim
         }
@@ -567,6 +727,19 @@ export class OpenWorldEngine {
   }
 
   private applyLighting(): void {
+    if (this.plantArtStyle === 'pixel-art') {
+      this.hemi.color.set('#b8d4f8')
+      this.hemi.groundColor.set('#4f8a3e')
+      this.hemi.intensity = 1.28
+      this.fill.color.set('#e8f0ff')
+      this.fill.intensity = 0.52
+      this.sun.color.set('#fff6de')
+      this.sun.intensity = 0.95
+      this.rim.intensity = 0.08
+      this.sun.position.set(18, 38, -14)
+      this.rim.position.set(-12, 22, 18)
+      return
+    }
     const p = this.palette
     const star = p.starAlpha ?? 0
     const twilight = star > 0.22
