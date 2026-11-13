@@ -68,12 +68,20 @@ const memories = [
 
 const EYE_HEIGHT = 1.55
 
-function framePlant(plant, distance = 2.2, lookHeight = 1.65) {
-  const camX = plant.x - distance * 0.78
-  const camZ = plant.z - distance * 0.62
+function lookTargetY(plant) {
+  if (plant.variety === 'tree') return 3.4
+  if (plant.variety === 'mushroom') return 1.05
+  if (plant.variety === 'flower') return 1.35
+  return Math.max(0.9, (plant.height ?? 1.2) * 0.65)
+}
+
+function framePlant(plant, distance = 3.2) {
+  const lookY = lookTargetY(plant)
+  const camX = plant.x - distance * 0.72
+  const camZ = plant.z - distance * 0.68
   const yaw = Math.atan2(plant.x - camX, plant.z - camZ)
   const horiz = Math.hypot(plant.x - camX, plant.z - camZ)
-  const pitch = Math.atan2(lookHeight - EYE_HEIGHT, horiz)
+  const pitch = Math.atan2(lookY - EYE_HEIGHT, horiz)
   return { x: camX, z: camZ, yaw, pitch }
 }
 
@@ -107,6 +115,7 @@ async function captureWalk(page, artStyle, shots) {
       )
       localStorage.setItem(`memorygarden:${user.id}:memories`, JSON.stringify(seeded))
       sessionStorage.setItem('mg:walk-capture', '1')
+      sessionStorage.setItem('mg:walk-plant-focus', '1')
     },
     { user: demoUser, art: artStyle, seeded: memories },
   )
@@ -115,9 +124,25 @@ async function captureWalk(page, artStyle, shots) {
   await page.evaluate((art) => {
     window.__mgWalkCapture?.setPlantArtStyle?.(art)
   }, artStyle)
-  await page.waitForTimeout(1200)
+  await page.waitForTimeout(1800)
 
   const plants = (await page.evaluate(() => window.__mgWalkCapture?.worldPlants?.() ?? [])) ?? []
+  const plantCount = await page.evaluate(() => window.__mgWalkCapture?.plantCount?.() ?? 0)
+  const voxelGroups = await page.evaluate(() => window.__mgWalkCapture?.voxelPlantGroupCount?.() ?? -1)
+  const voxels = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? -1)
+
+  if (artStyle === 'pixel-art') {
+    if (voxelGroups !== plantCount) {
+      throw new Error(
+        `Voxel plant groups (${voxelGroups}) must equal plant count (${plantCount}) in pixel-art mode`,
+      )
+    }
+    if (voxels < plantCount * 12) {
+      throw new Error(`Too few voxel meshes (${voxels}) for ${plantCount} plants — expected chunky blocks`)
+    }
+    console.log('pixel-art voxel check OK:', { plantCount, voxelGroups, voxels })
+  }
+
   const tree = plants.find((p) => p.variety === 'tree')
   const flower = plants.find((p) => p.variety === 'flower')
   const mushroom = plants.find((p) => p.variety === 'mushroom')
@@ -127,37 +152,49 @@ async function captureWalk(page, artStyle, shots) {
     if (shot.kind === 'overview' && plants.length >= 1) {
       const cx = plants.reduce((s, p) => s + p.x, 0) / plants.length
       const cz = plants.reduce((s, p) => s + p.z, 0) / plants.length
-      const camX = cx - 2
-      const camZ = cz + 3.2
+      const camX = cx - 4.5
+      const camZ = cz + 5.8
       pose = {
         x: camX,
         z: camZ,
         yaw: Math.atan2(cx - camX, cz - camZ),
-        pitch: -0.18,
+        pitch: -0.14,
       }
     }
-    if (shot.kind === 'tree' && tree) pose = framePlant(tree, 2.4, 2.1)
+    if (shot.kind === 'tree' && tree) {
+      pose =
+        (await page.evaluate(
+          (id) => window.__mgWalkCapture?.plantCapturePose?.(id, 3.2),
+          tree.id,
+        )) ?? framePlant(tree, 3.1)
+    }
     if (shot.kind === 'flower' && flower) {
-      pose = framePlant(flower, 0.55, 0.38)
-      pose.pitch = -0.42
+      pose =
+        (await page.evaluate(
+          (id) => window.__mgWalkCapture?.plantCapturePose?.(id, 2.8),
+          flower.id,
+        )) ?? framePlant(flower, 2.9)
     }
     if (shot.kind === 'mushroom' && mushroom) {
-      pose = framePlant(mushroom, 0.5, 0.32)
-      pose.pitch = -0.48
+      pose =
+        (await page.evaluate(
+          (id) => window.__mgWalkCapture?.plantCapturePose?.(id, 2.6),
+          mushroom.id,
+        )) ?? framePlant(mushroom, 2.7)
     }
 
     await page.evaluate(async (p) => {
       await window.__mgWalkCapture?.showcaseModel?.(null)
       window.__mgWalkCapture?.setPose?.(p)
     }, pose)
-    await page.waitForTimeout(2800)
+    await page.waitForTimeout(3200)
     const file = resolve(outDir, shot.file)
     await page
       .locator('[data-testid="open-world-garden"] canvas')
       .first()
       .screenshot({ path: file })
-    const voxels = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? -1)
-    console.log('Wrote', file, shot.kind, 'voxels', voxels, 'pose', JSON.stringify(pose))
+  const vAfter = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? -1)
+    console.log('Wrote', file, shot.kind, 'voxels', vAfter, 'pose', JSON.stringify(pose))
   }
 }
 

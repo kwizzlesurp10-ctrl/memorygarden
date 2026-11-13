@@ -5,6 +5,7 @@ import type { GardenWorld } from '@/lib/open-world/types'
 import {
   minecraftGrassTexture,
   minecraftGrassTufts,
+  minecraftPathTexture,
   voxelRockCluster,
 } from './minecraft-visual'
 
@@ -129,7 +130,11 @@ export function buildTerrain(
   const twilight = starAlpha > 0.22
 
   // ── Ground Plane ────────────────────────────────────────────────────────
-  const grassTex = track(minecraftMode ? minecraftGrassTexture(palette) : grassTexture(palette))
+  const planeW = world.bounds.maxX - world.bounds.minX + 16
+  const planeD = world.bounds.maxZ - world.bounds.minZ + 16
+  const grassTex = track(
+    minecraftMode ? minecraftGrassTexture(palette, Math.max(planeW, planeD)) : grassTexture(palette),
+  )
   const groundTint = new THREE.Color(palette.hills[1] ?? '#2c163c')
   if (twilight) {
     groundTint.lerp(new THREE.Color(palette.hills[0] ?? palette.silSoft), 0.62 + starAlpha * 0.22)
@@ -158,27 +163,38 @@ export function buildTerrain(
   root.add(ground)
 
   // ── Gentle Flowerbed Soil Berms ─────────────────────────────────────────
-  const soilBermMat = track(new THREE.MeshStandardMaterial({ color: palette.hills[0] ?? '#3a1f33', roughness: 0.98 }))
-  const bermGeo = track(new THREE.SphereGeometry(1, 10, 8))
-  const bermPositions = [
-    { x: -14, z: -10, sx: 8.5, sz: 6.5 },
-    { x: 12, z: -16, sx: 9.0, sz: 7.0 },
-    { x: -18, z: 12, sx: 7.5, sz: 8.0 },
-    { x: 16, z: 8, sx: 8.0, sz: 7.5 },
-    { x: 0, z: -22, sx: 10.0, sz: 6.0 },
-  ]
-  for (const berm of bermPositions) {
-    const mesh = new THREE.Mesh(bermGeo, soilBermMat)
-    mesh.scale.set(berm.sx, 0.4, berm.sz)
-    mesh.position.set(berm.x, -0.15, berm.z)
-    mesh.receiveShadow = true
-    root.add(mesh)
+  const soilBermMat = track(
+    new THREE.MeshStandardMaterial({ color: palette.hills[0] ?? '#3a1f33', roughness: 0.98 }),
+  )
+  if (!minecraftMode) {
+    const bermGeo = track(new THREE.SphereGeometry(1, 10, 8))
+    const bermPositions = [
+      { x: -14, z: -10, sx: 8.5, sz: 6.5 },
+      { x: 12, z: -16, sx: 9.0, sz: 7.0 },
+      { x: -18, z: 12, sx: 7.5, sz: 8.0 },
+      { x: 16, z: 8, sx: 8.0, sz: 7.5 },
+      { x: 0, z: -22, sx: 10.0, sz: 6.0 },
+    ]
+    for (const berm of bermPositions) {
+      const mesh = new THREE.Mesh(bermGeo, soilBermMat)
+      mesh.scale.set(berm.sx, 0.4, berm.sz)
+      mesh.position.set(berm.x, -0.15, berm.z)
+      mesh.receiveShadow = true
+      root.add(mesh)
+    }
   }
 
   // ── Pathway Ribbon & Flagstone Stepping Stones ──────────────────────────
-  const pathMat = track(new THREE.MeshStandardMaterial({ color: palette.bank, roughness: 1 }))
+  const pathTex = minecraftMode ? track(minecraftPathTexture(palette, Math.max(planeW, planeD))) : null
+  const pathMat = track(
+    minecraftMode && pathTex
+      ? new THREE.MeshLambertMaterial({ map: pathTex, color: new THREE.Color('#ffffff') })
+      : new THREE.MeshStandardMaterial({ color: palette.bank, roughness: 1 }),
+  )
   const steppingStoneMat = track(
-    new THREE.MeshStandardMaterial({ color: palette.bank, roughness: 0.85, metalness: 0.05 }),
+    minecraftMode && pathTex
+      ? new THREE.MeshLambertMaterial({ map: pathTex, color: new THREE.Color('#ffffff') })
+      : new THREE.MeshStandardMaterial({ color: palette.bank, roughness: 0.85, metalness: 0.05 }),
   )
   const stoneGeo = track(new THREE.CylinderGeometry(0.38, 0.44, 0.04, 8))
 

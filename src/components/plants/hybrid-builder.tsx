@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { ArtStyle, HybridGenome, PlantStage } from '@/lib/types'
 import { plantArtFilterUrl, resolvePlantArtStyle } from '@/lib/garden/plant-art-style'
-import { PlantPixelArtFilterDef, plantPixelFilterLocalId } from './PlantPixelArtFilterDef'
+import { PlantPixelArtRasterLayer } from './PlantPixelArtRasterLayer'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { hybridPlantPalette, mergedPal } from '@/lib/garden/hybrid'
 import { gardenRng } from '@/lib/garden/prng'
@@ -394,25 +394,21 @@ export function HybridPlantSvg({
   const resolvedStyle = resolvePlantArtStyle(artStyle)
   const pixelArt = resolvedStyle === 'pixel-art'
   const hybridStage: PlantStage = 'mature'
-  const pixelFilterId = pixelArt ? plantPixelFilterLocalId('flower', hybridStage, scale) : ''
-  const plantFilter = pixelArt ? `url(#${pixelFilterId})` : plantArtFilterUrl(resolvedStyle)
+  const plantFilter = pixelArt ? undefined : plantArtFilterUrl(resolvedStyle)
   const hybridNodes = buildHybrid(stage, CH, rimStrength, motion, genome)
+  const useBrowserRaster = pixelArt && typeof document !== 'undefined'
 
   return (
     <g transform={`translate(${x} ${y}) scale(${scale})`}>
-      {pixelArt ? (
-        <defs>
-          <PlantPixelArtFilterDef
-            id={pixelFilterId}
-            variety="flower"
-            stage={hybridStage}
-            scale={scale}
-          />
-        </defs>
-      ) : null}
-      <g style={{ ...swayStyle, shapeRendering: pixelArt ? 'crispEdges' : undefined }} filter={plantFilter}>
-        {hybridNodes}
-      </g>
+      {pixelArt && useBrowserRaster ? (
+        <PlantPixelArtRasterLayer variety="flower" stage={hybridStage} scale={scale} swayStyle={swayStyle}>
+          {hybridNodes}
+        </PlantPixelArtRasterLayer>
+      ) : (
+        <g style={{ ...swayStyle, shapeRendering: pixelArt ? 'crispEdges' : undefined }} filter={plantFilter}>
+          {hybridNodes}
+        </g>
+      )}
     </g>
   )
 }

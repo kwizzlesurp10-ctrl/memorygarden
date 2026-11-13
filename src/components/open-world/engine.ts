@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type { ArtStyle, Memory } from '@/lib/types'
 import { resolvePlantArtStyle } from '@/lib/garden/plant-art-style'
-import { isWalkCaptureSession } from '@/lib/open-world/walk-capture-bridge'
+import { isWalkCaptureSession, type WalkCapturePose } from '@/lib/open-world/walk-capture-bridge'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { LOOK_SENSITIVITY } from '@/lib/open-world/constants'
 import { isTypingTarget, mergeMotion, motionFromKeys, type Stick } from '@/lib/open-world/input'
@@ -306,6 +306,14 @@ export class OpenWorldEngine {
     return n
   }
 
+  countVoxelPlantGroups(): number {
+    let n = 0
+    for (const group of this.plantGroups.values()) {
+      if (group.userData.voxelPlant) n++
+    }
+    return n
+  }
+
   getPlayer(): PlayerState {
     return this.player
   }
@@ -316,6 +324,29 @@ export class OpenWorldEngine {
     this.player.yaw = yaw
     this.player.pitch = pitch
     this.applyCamera()
+  }
+
+  capturePoseForPlant(plantId: string, distance = 3.4): WalkCapturePose | null {
+    const group = this.plantGroups.get(plantId)
+    if (!group) return null
+    group.updateWorldMatrix(true, true)
+    const box = new THREE.Box3()
+    group.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && obj.userData.voxel) {
+        box.expandByObject(obj)
+      }
+    })
+    if (box.isEmpty()) return null
+    const center = box.getCenter(new THREE.Vector3())
+    const size = box.getSize(new THREE.Vector3())
+    const standoff = distance
+    const camX = center.x - standoff * 0.74
+    const camZ = center.z - standoff * 0.66
+    const yaw = Math.atan2(center.x - camX, center.z - camZ)
+    const horiz = Math.hypot(center.x - camX, center.z - camZ)
+    const lookY = center.y + size.y * 0.05
+    const pitch = Math.min(0.42, Math.atan2(lookY - this.player.y, horiz))
+    return { x: camX, z: camZ, yaw, pitch }
   }
 
   setWalkCaptureBackdrop(active: boolean): void {

@@ -8,6 +8,8 @@ import { resolve } from 'node:path'
 import { createElement as h } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { Resvg } from '@resvg/resvg-js'
+import { pixelateFullPngRender, rasterizePlantSvgFragment } from './lib/plant-pixel-raster.mjs'
+import { plantPixelViewBox } from '../src/lib/garden/plant-art-pixel.ts'
 
 const outDir = process.env.ARTIFACT_DIR || '/opt/cursor/artifacts'
 mkdirSync(outDir, { recursive: true })
@@ -41,6 +43,16 @@ const STARTER_SEED = 42
 
 function renderPng(svg, width) {
   return new Resvg(svg, { fitTo: { mode: 'width', value: width } }).render()
+}
+
+function rasterPlantMarkup(SeededPlantSvg, props, effectiveScale) {
+  const vectorMarkup = renderToStaticMarkup(
+    h(SeededPlantSvg, { ...props, artStyle: 'watercolor', scale: effectiveScale, layoutScale: 1 }),
+  )
+  const box = plantPixelViewBox(props.variety, props.stage, effectiveScale)
+  const viewBox = `${box.minX} ${box.minY} ${box.width} ${box.height}`
+  const renderW = Math.max(24, Math.round(box.width * 2))
+  return rasterizePlantSvgFragment(vectorMarkup, viewBox, renderW)
 }
 
 /** Resvg panics on some cropped sceneViewBox renders — slice from the full raster instead. */
@@ -128,46 +140,44 @@ async function main() {
     )
     const svgPath = resolve(outDir, `garden-art-style-${artStyle}.svg`)
     writeFileSync(svgPath, body, 'utf8')
-    const full = renderPng(readFileSync(svgPath, 'utf8'), 960)
+    let full = renderPng(readFileSync(svgPath, 'utf8'), 960)
+    if (artStyle === 'pixel-art') {
+      full = pixelateFullPngRender(full)
+    }
     writeFileSync(resolve(outDir, `garden-art-style-${artStyle}.png`), full.asPng())
 
     const crop = cropFromFullRender(full, GARDEN_PLANT_CROP_VIEWBOX, 520)
     writeFileSync(resolve(outDir, `garden-art-style-crop-${artStyle}.png`), crop.asPng())
     pixelMaps[`crop:${artStyle}`] = crop
 
-  const treeMarkup = renderToStaticMarkup(
-      h(SeededPlantSvg, {
+    const treeProps = {
         variety: 'tree',
         stage: 'elder',
         geneticsSeed: `elder-${STARTER_SEED}`,
         palette,
         rimStrength: RIM,
         motion: false,
-        artStyle,
-      }),
-    )
-    const flowerMarkup = renderToStaticMarkup(
-      h(SeededPlantSvg, {
+      }
+    const flowerProps = {
         variety: 'flower',
         stage: 'bloom',
         geneticsSeed: 'closeup-flower',
         palette,
         rimStrength: RIM,
         motion: false,
-        artStyle,
-      }),
-    )
-    const mushMarkup = renderToStaticMarkup(
-      h(SeededPlantSvg, {
+      }
+    const mushProps = {
         variety: 'mushroom',
         stage: 'mature',
         geneticsSeed: 'closeup-mushroom',
         palette,
         rimStrength: RIM,
         motion: false,
-        artStyle,
-      }),
-    )
+      }
+    const closeStyle = artStyle === 'pixel-art' ? 'watercolor' : artStyle
+    const treeMarkup = renderToStaticMarkup(h(SeededPlantSvg, { ...treeProps, artStyle: closeStyle }))
+    const flowerMarkup = renderToStaticMarkup(h(SeededPlantSvg, { ...flowerProps, artStyle: closeStyle }))
+    const mushMarkup = renderToStaticMarkup(h(SeededPlantSvg, { ...mushProps, artStyle: closeStyle }))
     const closeSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 240" width="420" height="240">
   ${defs}
   <rect width="420" height="240" fill="#ebe6dc"/>
@@ -175,7 +185,10 @@ async function main() {
   <g transform="translate(318 208) scale(1.15)">${flowerMarkup}</g>
   <g transform="translate(228 218) scale(0.95)">${mushMarkup}</g>
 </svg>`
-    const close = renderPng(closeSvg, 420)
+    let close = renderPng(closeSvg, 420)
+    if (artStyle === 'pixel-art') {
+      close = pixelateFullPngRender(close)
+    }
     writeFileSync(resolve(outDir, `garden-art-style-closeup-${artStyle}.png`), close.asPng())
     pixelMaps[`close:${artStyle}`] = close
 
@@ -186,21 +199,19 @@ async function main() {
   const cellH = 176
 
   const cells = ART_STYLES.map((style, i) => {
-    const inner = renderToStaticMarkup(
-      h(
-        'g',
-        { transform: `translate(100 ${cellH - 8}) scale(1.35)` },
-        h(SeededPlantSvg, {
-          variety: 'flower',
-          stage: 'bloom',
-          geneticsSeed: 'grid-flower',
-          palette,
-          rimStrength: 0.7,
-          motion: false,
-          artStyle: style,
-        }),
-      ),
-    )
+    const gridProps = {
+      variety: 'flower',
+      stage: 'bloom',
+      geneticsSeed: 'grid-flower',
+      palette,
+      rimStrength: 0.7,
+      motion: false,
+    }
+    const flowerInner =
+      style === 'pixel-art'
+        ? rasterPlantMarkup(SeededPlantSvg, gridProps, 1.35)
+        : renderToStaticMarkup(h(SeededPlantSvg, { ...gridProps, artStyle: style }))
+  const inner = `<g transform="translate(100 ${cellH - 8}) scale(1.35)">${flowerInner}</g>`
     const label = STYLE_LABELS[style]
     return `<g transform="translate(${i * cellW} 0)">
       <rect width="${cellW - 6}" height="${cellH}" x="3" y="0" fill="#ebe6dc" rx="8"/>

@@ -256,8 +256,12 @@ export function OpenWorldGarden({
             z: p.z,
             variety: p.variety,
             stage: p.stage,
+            height: p.height,
           })),
         voxelMeshCount: () => engine.countVoxelMeshes(),
+        voxelPlantGroupCount: () => engine.countVoxelPlantGroups(),
+        plantCount: () => engine.getWorld().plants.length,
+        plantCapturePose: (plantId, distance) => engine.capturePoseForPlant(plantId, distance),
       })
       if (sessionStorage.getItem('mg:stage-row-capture') !== '1') {
         engine.setPlayerPose(

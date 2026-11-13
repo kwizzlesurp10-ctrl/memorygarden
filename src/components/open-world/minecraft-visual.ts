@@ -2,9 +2,12 @@ import * as THREE from 'three'
 import type { PlantVisualRecipe } from '@/lib/open-world/plant-visual'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { gardenRng, seedFromGenetics } from '@/lib/garden/prng'
+import { isWalkCaptureSession } from '@/lib/open-world/walk-capture-bridge'
 import type { GardenWorld, WorldPlant } from '@/lib/open-world/types'
 
-const VOXEL = 0.13
+/** One voxel cube edge in world units (~Minecraft block scale). */
+export const VOXEL_BLOCK_SIZE = 0.72
+const VOXEL = VOXEL_BLOCK_SIZE
 const boxGeo = new THREE.BoxGeometry(1, 1, 1)
 boxGeo.userData.isSharedStatic = true
 
@@ -26,80 +29,80 @@ export function minecraftBlockTexture(
   base: string,
   accent: string,
   seed: number,
-  kind: 'grass' | 'dirt' | 'bark' | 'leaf',
+  kind: 'grass' | 'dirt' | 'bark' | 'leaf' | 'gravel',
 ): THREE.CanvasTexture {
   const c = document.createElement('canvas')
   c.width = 16
   c.height = 16
   const ctx = c.getContext('2d')
   if (!ctx) return configurePixelTexture(new THREE.CanvasTexture(c))
+
+  const darkLeaf = '#1e4620'
+  const midLeaf = '#3d7a34'
+  const brightLeaf = '#5cab48'
+  const darkBark = '#4a3018'
+  const midBark = '#6b4423'
+  const lightBark = '#8b5a2b'
+
   ctx.fillStyle = base
   ctx.fillRect(0, 0, 16, 16)
 
   if (kind === 'bark') {
-    for (let y = 0; y < 16; y += 2) {
-      ctx.fillStyle = hash01(seed + y) > 0.5 ? accent : base
-      ctx.fillRect(0, y, 16, 1)
+    for (let x = 0; x < 16; x += 2) {
+      const stripe = x % 4 === 0 ? lightBark : x % 4 === 2 ? midBark : darkBark
+      ctx.fillStyle = stripe
+      ctx.fillRect(x, 0, 2, 16)
     }
-    for (let x = 0; x < 16; x++) {
-      if (hash01(seed + x * 7) > 0.7) {
-        ctx.fillStyle = '#00000022'
-        ctx.fillRect(x, 0, 1, 16)
-      }
+    for (let y = 0; y < 16; y += 4) {
+      ctx.fillStyle = hash01(seed + y) > 0.5 ? darkBark : midBark
+      ctx.fillRect(0, y, 16, 1)
     }
   } else if (kind === 'leaf') {
     for (let y = 0; y < 16; y++) {
       for (let x = 0; x < 16; x++) {
-        const n = hash01(seed + x * 17.3 + y * 31.1)
-        if (n > 0.78) {
-          ctx.clearRect(x, y, 1, 1)
-        } else if (n > 0.52) {
-          ctx.fillStyle = accent
-          ctx.globalAlpha = 0.35 + n * 0.35
-          ctx.fillRect(x, y, 1, 1)
-        }
+        const big = ((x >> 2) + (y >> 2)) % 2 === 0
+        const small = ((x >> 1) + (y >> 1)) % 2
+        let color = big ? midLeaf : brightLeaf
+        if (small === 0) color = darkLeaf
+        if (x % 5 === 0 && y % 5 === 0) color = darkLeaf
+        ctx.fillStyle = color
+        ctx.fillRect(x, y, 1, 1)
       }
     }
-    ctx.globalAlpha = 1
   } else if (kind === 'grass') {
+    const topGreen = accent
+    const soil = base
     for (let y = 0; y < 16; y++) {
       for (let x = 0; x < 16; x++) {
-        const n = hash01(seed + x * 9.1 + y * 14.7)
-        if (y > 10 && n > 0.45) {
-          ctx.fillStyle = accent
-          ctx.fillRect(x, y, 1, 1)
-        } else if (n > 0.68) {
-          ctx.fillStyle = accent
-          ctx.globalAlpha = 0.45
-          ctx.fillRect(x, y, 1, 1)
+        if (y < 4) {
+          const checker = ((x >> 2) + (y >> 1)) % 2
+          ctx.fillStyle = checker ? topGreen : brightLeaf
+        } else {
+          const shade = ((x >> 2) + (y >> 2)) % 3
+          ctx.fillStyle = shade === 0 ? soil : shade === 1 ? accent : topGreen
         }
+        ctx.fillRect(x, y, 1, 1)
       }
     }
-    ctx.strokeStyle = '#1a301880'
-    ctx.globalAlpha = 0.35
-    for (let i = 0; i <= 16; i += 4) {
-      ctx.beginPath()
-      ctx.moveTo(i, 0)
-      ctx.lineTo(i, 16)
-      ctx.stroke()
-      ctx.beginPath()
-      ctx.moveTo(0, i)
-      ctx.lineTo(16, i)
-      ctx.stroke()
+  } else if (kind === 'gravel') {
+    const g0 = base
+    const g1 = accent
+    const g2 = '#6a5d52'
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const t = (x % 3) + (y % 4)
+        ctx.fillStyle = t === 0 ? g2 : t < 3 ? g0 : g1
+        ctx.fillRect(x, y, 1, 1)
+      }
     }
-    ctx.globalAlpha = 1
   } else {
     for (let y = 0; y < 16; y++) {
       for (let x = 0; x < 16; x++) {
-        const n = hash01(seed + x * 11.7 + y * 19.3)
-        if (n > 0.58) {
-          ctx.fillStyle = accent
-          ctx.globalAlpha = 0.35 + n * 0.3
-          ctx.fillRect(x, y, 1, 1)
-        }
+        const checker = ((x >> 2) + (y >> 2)) % 2
+        ctx.fillStyle = checker ? accent : base
+        ctx.fillRect(x, y, 1, 1)
       }
     }
-    ctx.globalAlpha = 1
   }
 
   const tex = configurePixelTexture(new THREE.CanvasTexture(c))
@@ -113,7 +116,7 @@ function voxelMaterial(
   hex: string,
   accent: string,
   seed: number,
-  kind: 'grass' | 'dirt' | 'bark' | 'leaf',
+  kind: 'grass' | 'dirt' | 'bark' | 'leaf' | 'gravel',
   transparent = false,
 ): THREE.MeshBasicMaterial {
   const key = `${hex}-${accent}-${seed}-${kind}-${transparent}`
@@ -122,9 +125,9 @@ function voxelMaterial(
   const map = minecraftBlockTexture(hex, accent, seed, kind)
   const mat = new THREE.MeshBasicMaterial({
     map,
-    color: new THREE.Color(hex),
+    color: new THREE.Color('#ffffff'),
     transparent,
-    alphaTest: transparent ? 0.4 : 0,
+    alphaTest: transparent ? 0.15 : 0,
     side: THREE.DoubleSide,
   })
   mat.userData.isSharedStatic = true
@@ -168,11 +171,19 @@ function fillBox(
   }
 }
 
-export function minecraftGrassTexture(palette: ScenePalette): THREE.CanvasTexture {
+export function minecraftGrassTexture(palette: ScenePalette, repeatUnits: number): THREE.CanvasTexture {
   const base = palette.hills[1] ?? '#4a7c38'
   const accent = palette.hills[0] ?? '#6faa52'
   const tex = minecraftBlockTexture(base, accent, 42, 'grass')
-  tex.repeat.set(32, 32)
+  tex.repeat.set(repeatUnits, repeatUnits)
+  return tex
+}
+
+export function minecraftPathTexture(palette: ScenePalette, repeatUnits: number): THREE.CanvasTexture {
+  const base = palette.bank ?? '#8a7d72'
+  const accent = palette.hills[2] ?? '#6b5d52'
+  const tex = minecraftBlockTexture(base, accent, 17, 'gravel')
+  tex.repeat.set(Math.max(4, repeatUnits * 0.35), Math.max(4, repeatUnits * 0.35))
   return tex
 }
 
@@ -187,12 +198,12 @@ export function minecraftGrassTufts(
   )
   const rng = gardenRng(901)
   const span = 52
-  const count = 160
+  const count = isWalkCaptureSession() ? 28 : 120
   for (let i = 0; i < count; i++) {
     const x = (rng() * 2 - 1) * span
     const z = (rng() * 2 - 1) * span
     if (Math.hypot(x - world.pond.x, z - world.pond.z) < world.pond.radius + 0.35) continue
-    const h = rng() > 0.55 ? 2 : 1
+    const h = rng() > 0.5 ? 2 : 1
     for (let y = 0; y < h; y++) {
       const tuft = new THREE.Mesh(boxGeo, grassMat)
       tuft.position.set(x, (y + 0.5) * VOXEL, z)
@@ -233,7 +244,6 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
   g.userData.voxelPlant = true
   const seedKey = plant.geneticsSeed ?? plant.id
   const seedN = seedFromGenetics(seedKey, `${plant.variety}-${plant.stage}`)
-  const rng = gardenRng(seedN)
 
   const bark = voxelMaterial(recipe.stem, recipe.foliageAlt, seedN, 'bark')
   const leaf = voxelMaterial(recipe.foliage, recipe.foliageAlt, seedN + 3, 'leaf', true)
@@ -243,28 +253,31 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
 
   fillBox(g, -1, 0, -1, 1, 0, 1, dirt)
 
-  const stemH = Math.max(2, Math.round(recipe.stemHeight / VOXEL))
+  const sizeBoost = recipe.kind === 'tree' ? 1.85 : recipe.kind === 'flower' ? 1.35 : 1.25
+  const stemH = Math.max(4, Math.round((recipe.stemHeight * sizeBoost) / VOXEL))
   const stemW =
     recipe.kind === 'tree' ? 2 : recipe.kind === 'mushroom' ? 1 : Math.max(1, Math.round(recipe.stemRadius / VOXEL))
 
-  const stemCenter = recipe.kind === 'tree' ? 0 : 0
   for (let y = 1; y <= stemH; y++) {
     for (let dx = 0; dx < stemW; dx++) {
       for (let dz = 0; dz < stemW; dz++) {
-        placeBlock(g, stemCenter + dx - Math.floor(stemW / 2), y, dz - Math.floor(stemW / 2), bark)
+        placeBlock(g, dx - Math.floor(stemW / 2), y, dz - Math.floor(stemW / 2), bark)
       }
     }
   }
 
   const top = stemH + 1
-  const canopyR = Math.max(2, Math.round(recipe.canopyRadius / VOXEL))
+  const canopyR = Math.max(4, Math.round((recipe.canopyRadius * sizeBoost) / VOXEL))
 
   if (recipe.kind === 'mushroom') {
-    const capR = Math.max(2, Math.round(canopyR * 0.85))
+    const capR = Math.max(2, Math.round(canopyR * 0.95))
     for (let dx = -capR; dx <= capR; dx++) {
       for (let dz = -capR; dz <= capR; dz++) {
-        if (dx * dx + dz * dz <= capR * capR + 0.2) {
+        if (dx * dx + dz * dz <= capR * capR + 0.4) {
           placeBlock(g, dx, top, dz, capMat)
+          if (dx * dx + dz * dz <= (capR - 1) * (capR - 1)) {
+            placeBlock(g, dx, top + 1, dz, capMat)
+          }
         }
       }
     }
@@ -273,17 +286,17 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
     fillBox(g, -1, bloomY, -1, 1, bloomY, 1, bloom)
     for (let i = 0; i < 4; i++) {
       const ang = (i / 4) * Math.PI * 2
-      const px = Math.round(Math.cos(ang) * 2)
-      const pz = Math.round(Math.sin(ang) * 2)
+      const px = Math.round(Math.cos(ang) * 2.2)
+      const pz = Math.round(Math.sin(ang) * 2.2)
       placeBlock(g, px, bloomY, pz, bloom)
       placeBlock(g, px, bloomY + 1, pz, bloom)
     }
   } else if (recipe.kind === 'tree') {
-    for (let dy = 0; dy < canopyR; dy++) {
-      const sliceR = Math.max(1, canopyR - Math.floor(dy * 0.55))
+    for (let dy = 0; dy <= canopyR + 1; dy++) {
+      const sliceR = Math.max(2, canopyR - Math.floor(dy * 0.35))
       for (let dx = -sliceR; dx <= sliceR; dx++) {
         for (let dz = -sliceR; dz <= sliceR; dz++) {
-          if (dx * dx + dz * dz <= sliceR * sliceR + 0.5 && rng() > 0.12 + dy * 0.04) {
+          if (dx * dx + dz * dz <= sliceR * sliceR + 0.8) {
             placeBlock(g, dx, top + dy, dz, leaf)
           }
         }
@@ -293,8 +306,8 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
     for (let dx = -canopyR; dx <= canopyR; dx++) {
       for (let dy = 0; dy < canopyR; dy++) {
         for (let dz = -canopyR; dz <= canopyR; dz++) {
-          const d = Math.hypot(dx, dy * 0.9, dz)
-          if (d <= canopyR && rng() > 0.15) {
+          const d = Math.hypot(dx, dy * 0.85, dz)
+          if (d <= canopyR + 0.2) {
             placeBlock(g, dx, top + dy, dz, leaf)
           }
         }
@@ -303,7 +316,8 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
   }
 
   g.position.set(plant.x, 0, plant.z)
-  g.userData.baseScale = 1
+  g.scale.setScalar(1.55)
+  g.userData.baseScale = 1.55
   return g
 }
 

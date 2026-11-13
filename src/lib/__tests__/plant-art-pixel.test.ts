@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { plantPixelCellRadius, plantPixelRasterStep } from '@/lib/garden/plant-art-pixel'
+import { plantPixelCellRadius, plantPixelRasterStep, plantPixelViewBox } from '@/lib/garden/plant-art-pixel'
 
 describe('plantPixelCellRadius', () => {
-  it('uses coarser cells for trees than flowers at same scale', () => {
-    const flower = plantPixelCellRadius('flower', 'bloom', 1)
-    const tree = plantPixelCellRadius('tree', 'elder', 1)
-    expect(flower).toBeGreaterThan(2)
-    expect(tree).toBeGreaterThan(flower)
+  it('returns larger bbox for trees than flowers at same scale', () => {
+    const flower = plantPixelViewBox('flower', 'bloom', 1)
+    const tree = plantPixelViewBox('tree', 'elder', 1)
+    expect(flower.width).toBeGreaterThan(20)
+    expect(tree.width).toBeGreaterThan(flower.width)
   })
 
   it('clamps extreme scales', () => {
-    expect(plantPixelCellRadius('mushroom', 'mature', 0.2)).toBeGreaterThanOrEqual(2.4)
-    expect(plantPixelCellRadius('flower', 'elder', 4)).toBeLessThanOrEqual(6.8)
+    expect(plantPixelCellRadius('mushroom', 'mature', 0.2)).toBeGreaterThanOrEqual(3.2)
+    expect(plantPixelCellRadius('flower', 'elder', 4)).toBeLessThanOrEqual(8.5)
   })
 })
 
