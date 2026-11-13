@@ -570,8 +570,8 @@ export class OpenWorldEngine {
     const plants = walkPlants.length > 0 ? walkPlants : this.world.plants
     const cx = plants.reduce((s, p) => s + p.x, 0) / Math.max(1, plants.length)
     const cz = plants.reduce((s, p) => s + p.z, 0) / Math.max(1, plants.length)
-    const camX = cx - 2.6
-    const camZ = cz + 2.4
+    const camX = cx - 1.4
+    const camZ = cz + 1.0
     const eyeY = 1.62
     const horiz = Math.hypot(cx - camX, cz - camZ)
     return {
