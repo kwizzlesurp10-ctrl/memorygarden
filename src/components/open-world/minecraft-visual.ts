@@ -362,26 +362,17 @@ function buildPixelArtOak(
 
 const MUSHROOM_WALK_VOXEL_SCALE = 0.52
 
-/** Short Minecraft-style red mushroom: pale stem, symmetric 3×3 cap, plus dome (cap material). */
+/** Walk mushroom: 2-block stem (1×1), thin 3×3 cap with trimmed corners, small plus dome (no second cap layer). */
 function buildPixelArtMushroom(
   g: THREE.Group,
   stem: THREE.MeshBasicMaterial,
   cap: THREE.MeshBasicMaterial,
-  _seed: number,
+  seed: number,
 ): void {
   placeBlock(g, 0, 0, 0, stem)
-  const capY = 1
-  for (let dx = -1; dx <= 1; dx++) {
-    for (let dz = -1; dz <= 1; dz++) {
-      placeBlock(g, dx, capY, dz, cap)
-    }
-  }
-  const domeY = capY + 1
-  placeBlock(g, 0, domeY, 0, cap)
-  placeBlock(g, -1, domeY, 0, cap)
-  placeBlock(g, 1, domeY, 0, cap)
-  placeBlock(g, 0, domeY, -1, cap)
-  placeBlock(g, 0, domeY, 1, cap)
+  placeBlock(g, 0, 1, 0, stem)
+  const capY = 2
+  placeLeafLayer(g, capY, 1, cap, true, seed + 7, false)
 }
 
 export function snapPlantGroupToTerrain(g: THREE.Group, terrainTop: number): void {

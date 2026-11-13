@@ -528,14 +528,14 @@ export class OpenWorldEngine {
     const cx = (box.min.x + box.max.x) / 2
     const cz = (box.min.z + box.max.z) / 2
     const legacyCross = H < 1.25
-    const aimY = ground + H * 0.5
+    const aimY = ground + (legacyCross ? H * 0.5 : H * 0.42)
     const aim = new THREE.Vector3(cx, aimY, cz)
-    const targetSpan = legacyCross ? 0.22 : 0.42
+    const targetSpan = legacyCross ? 0.22 : 0.48
     const margin = 0.1
     let bestPose: WalkCapturePose | null = null
     let bestScore = Infinity
     const distMin = legacyCross ? 2.2 : 2.45
-    const distMax = legacyCross ? 4.2 : 3.05
+    const distMax = legacyCross ? 4.2 : 3.25
     for (let pass = 0; pass < 48; pass++) {
       const dist = distMin + (pass / 47) * (distMax - distMin)
       const yaw = 0.48 + (pass % 8) * 0.12
@@ -695,7 +695,7 @@ export class OpenWorldEngine {
     let bestScore = Infinity
     const yaws = [-Math.PI / 2, Math.PI / 2, -Math.PI / 4, Math.PI / 4]
     for (let pass = 0; pass < 64; pass++) {
-      const dist = 11.9 + (pass / 63) * 4.3
+      const dist = 11.25 + (pass / 63) * 3.95
       const yaw = yaws[pass % yaws.length]!
       const camX = cx + Math.sin(yaw) * dist
       const camZ = cz + Math.cos(yaw) * dist
@@ -716,8 +716,8 @@ export class OpenWorldEngine {
       if (
         top >= 0.04 &&
         top <= 0.2 &&
-        span >= 0.66 &&
-        span <= 0.77 &&
+        span >= 0.68 &&
+        span <= 0.8 &&
         widthSpan >= 0.38
       ) {
         return { ...pose, pitch, x: camX, z: camZ, eyeY }
@@ -727,26 +727,27 @@ export class OpenWorldEngine {
       const topPen = top < 0.06 ? 6 + Math.abs(0.06 - top) * 6 : top > 0.22 ? (top - 0.22) * 8 : 0
       const widthPen = widthSpan < 0.34 ? (0.34 - widthSpan) * 5 : 0
       const score = Math.abs(span - 0.71) + Math.abs(top - 0.11) * 2.5 + topPen + widthPen + clipPen
+      if (span > 0.85 || top < 0.03) continue
       if (score < bestScore) {
         bestScore = score
         bestPose = { ...pose, pitch, x: camX, z: camZ, eyeY }
       }
     }
-    if (bestPose) {
-      this.setPlayerPose(bestPose.x, bestPose.z, bestPose.yaw, bestPose.pitch, bestPose.eyeY)
-      this.camera.rotation.x = bestPose.pitch
-      this.renderOnce()
-      const span = this.screenHeightFraction(box)
-      const canopy = this.plantProjectedBoxScreenYFromBox(box)
-      const top = canopy?.top ?? 0.5
-      if (span <= 0.88 && top >= 0.02) return bestPose
-    }
-    const slack = this.elderCapturePoseAtSlack(box, 1.02, -0.04)
-    if (slack) {
-      const { screenSpan: _s, screenTop: _t, ...pose } = slack
-      return pose
-    }
-    return bestPose
+  if (bestPose) {
+    this.setPlayerPose(bestPose.x, bestPose.z, bestPose.yaw, bestPose.pitch, bestPose.eyeY)
+    this.camera.rotation.x = bestPose.pitch
+    this.renderOnce()
+    const span = this.screenHeightFraction(box)
+    const canopy = this.plantProjectedBoxScreenYFromBox(box)
+    const top = canopy?.top ?? 0.5
+    if (span <= 0.85 && top >= 0.04) return bestPose
+  }
+  const slack = this.elderCapturePoseAtSlack(box, 1.06, -0.04)
+  if (slack && slack.screenSpan <= 0.85 && slack.screenTop >= 0.04) {
+    const { screenSpan: _s, screenTop: _t, ...pose } = slack
+    return pose
+  }
+  return bestPose
   }
 
   private projectBoxVerticalInView(box: THREE.Box3): { minNdcY: number; maxNdcY: number } | null {

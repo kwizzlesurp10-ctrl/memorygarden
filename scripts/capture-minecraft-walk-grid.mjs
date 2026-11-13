@@ -347,8 +347,8 @@ async function assertMushroomCloseupFrame(page, plantId, pngPath, phase, artStyl
         )
       }
       const span = bottom - top
-      if (span < 0.22 || span > 0.62) {
-        errs.push(`vertical span ${span.toFixed(3)} outside 0.22–0.62`)
+      if (span < 0.22 || span > 0.74) {
+        errs.push(`vertical span ${span.toFixed(3)} outside 0.22–0.74`)
       }
     }
     if (phase === 'before' && Number.isFinite(worldH) && worldH < 1.25) {
