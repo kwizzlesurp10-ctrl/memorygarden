@@ -156,7 +156,9 @@ export function buildTerrain(
   const planeW = world.bounds.maxX - world.bounds.minX + 16
   const planeD = world.bounds.maxZ - world.bounds.minZ + 16
   const grassTex = track(
-    minecraftMode ? minecraftGrassTexture(palette, Math.max(planeW, planeD)) : grassTexture(palette),
+    minecraftMode
+      ? minecraftGrassTexture(palette, Math.max(planeW, planeD) / 16)
+      : grassTexture(palette),
   )
   const groundTint = new THREE.Color(palette.hills[1] ?? '#2c163c')
   if (twilight) {

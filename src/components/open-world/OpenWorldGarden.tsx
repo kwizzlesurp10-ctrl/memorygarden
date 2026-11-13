@@ -265,8 +265,16 @@ export function OpenWorldGarden({
         voxelMeshCount: () => engine.countVoxelMeshes(),
         voxelPlantGroupCount: () => engine.countVoxelPlantGroups(),
         plantCount: () => engine.getWorld().plants.length,
-        plantCapturePose: (plantId) => engine.capturePoseForPlant(plantId),
+        plantCapturePose: (plantId) => {
+          engine.renderOnce()
+          return engine.capturePoseForPlant(plantId)
+        },
         clusterOverviewPose: () => engine.captureClusterOverviewPose(),
+        plantScreenCoverage: (plantId, pose) => engine.plantScreenCoverage(plantId, pose),
+        plantCaptureFitAt: (plantId, pose) => engine.plantCaptureFitAt(plantId, pose),
+        plantCaptureFitNow: (plantId) => engine.plantCaptureFitNow(plantId),
+        hasPlantGroup: (plantId) => engine.hasPlantGroup(plantId),
+        plantBoxSize: (plantId) => engine.plantBoxSize(plantId),
         cameraDebug: () => {
           const p = engine.getPlayer()
           return { y: p.y, pitch: p.pitch }

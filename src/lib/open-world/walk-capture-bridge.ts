@@ -32,6 +32,14 @@ export interface WalkCaptureBridge {
   plantCount?: () => number
   plantCapturePose?: (plantId: string) => WalkCapturePose | null
   clusterOverviewPose?: () => WalkCapturePose | null
+  plantScreenCoverage?: (plantId: string, pose?: WalkCapturePose) => number
+  plantCaptureFitAt?: (
+    plantId: string,
+    pose: WalkCapturePose,
+  ) => { frac: number; centerX: number; centerY: number } | null
+  hasPlantGroup?: (plantId: string) => boolean
+  plantBoxSize?: (plantId: string) => { x: number; y: number; z: number } | null
+  plantCaptureFitNow?: (plantId: string) => { frac: number; centerX: number; centerY: number } | null
   cameraDebug?: () => { y: number; pitch: number }
 }
 

@@ -45,7 +45,7 @@ export function minecraftBlockTexture(
 
   const leafGreens = ['#1e4620', '#2d5a27', '#3d7a34', '#4a8f3a', '#5cab48']
   const barkBrowns = ['#3f2817', '#4a3018', '#6b4423', '#8b5a2b']
-  const grassGreens = ['#3d7a34', '#4a8f3a', '#2d5a27', '#5cab48', '#6faa52']
+  const grassGreens = ['#4a9f42', '#5cb848', '#3d8a35', '#6fce58', '#78d862', '#2f6b28']
 
   ctx.fillStyle = base
   ctx.fillRect(0, 0, 16, 16)
@@ -266,11 +266,14 @@ function buildMushroom(
   }
 }
 
-export function minecraftGrassTexture(palette: ScenePalette, repeatUnits: number): THREE.CanvasTexture {
-  const base = palette.hills[1] ?? '#4a7c38'
-  const accent = palette.hills[0] ?? '#6faa52'
-  const tex = minecraftBlockTexture(base, accent, 42, 'grass')
-  tex.repeat.set(repeatUnits, repeatUnits)
+export function minecraftGrassTexture(palette: ScenePalette, worldSpan: number): THREE.CanvasTexture {
+  const base = palette.hills[0] ?? '#5cb848'
+  const accent = palette.hills[1] ?? '#3d8a35'
+  const seed = 42 + Math.floor(hash01(worldSpan * 7.1) * 120)
+  const tex = minecraftBlockTexture(base, accent, seed, 'grass')
+  const tiles = Math.min(18, Math.max(10, worldSpan * 0.42))
+  tex.repeat.set(tiles, tiles)
+  tex.offset.set(hash01(902 + seed) * 0.85, hash01(441 + seed) * 0.85)
   return tex
 }
 
