@@ -587,9 +587,10 @@ export class OpenWorldEngine {
           const geomDist =
             (size.y / (0.68 * 2 * Math.tan(fovRad / 2))) *
             Math.max(1, size.x / Math.max(size.y, 0.01) / 1.15)
-          let bestPose: WalkCapturePose | null = null
+          let elderPose: WalkCapturePose | null = null
           let bestScore = -Infinity
-          const tryFrame = (minSky: number) => {
+          for (const minSky of [0.08, 0.05] as const) {
+            if (elderPose) break
             for (let dist = geomDist * 0.92; dist <= geomDist * 1.35; dist += 0.6) {
               for (let aimFrac = 0.42; aimFrac <= 0.56; aimFrac += 0.035) {
                 for (const pitch of [-0.2, -0.14, -0.08, -0.02, 0.04, 0.1, 0.16]) {
@@ -603,21 +604,19 @@ export class OpenWorldEngine {
                   this.camera.updateMatrixWorld(true)
                   this.renderOnce()
                   const score = this.elderCaptureFrameScore(box, minSky)
-                  const labeled = { ...pose, pitch }
+                  const labeled: WalkCapturePose = { ...pose, pitch }
                   if (score > bestScore) {
                     bestScore = score
-                    bestPose = labeled
+                    elderPose = labeled
                   }
                 }
               }
             }
           }
-          tryFrame(0.08)
-          if (!bestPose) tryFrame(0.05)
-          if (bestPose) {
-            this.setPlayerPose(bestPose.x, bestPose.z, bestPose.yaw, bestPose.pitch, bestPose.eyeY)
+          if (elderPose) {
+            this.setPlayerPose(elderPose.x, elderPose.z, elderPose.yaw, elderPose.pitch, elderPose.eyeY)
             this.applyCamera()
-            return bestPose
+            return elderPose
           }
         }
         const aimY = ground + size.y * 0.68
