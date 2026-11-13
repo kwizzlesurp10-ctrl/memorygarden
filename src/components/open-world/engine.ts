@@ -3,13 +3,19 @@ import type { ArtStyle, Memory } from '@/lib/types'
 import { resolvePlantArtStyle } from '@/lib/garden/plant-art-style'
 import { isWalkCaptureSession, type WalkCapturePose } from '@/lib/open-world/walk-capture-bridge'
 import type { ScenePalette } from '@/lib/garden/palettes'
-import { LOOK_SENSITIVITY } from '@/lib/open-world/constants'
+import { EYE_HEIGHT, LOOK_SENSITIVITY } from '@/lib/open-world/constants'
 import { isTypingTarget, mergeMotion, motionFromKeys, type Stick } from '@/lib/open-world/input'
 import { layoutGardenWorld } from '@/lib/open-world/layout'
 import { createPlayer, eyeOffset, findNearestPlant, stepPlayer } from '@/lib/open-world/locomotion'
 import { plantRecipe } from '@/lib/open-world/plant-visual'
 import type { GardenWorld, PlayerState, WorldPlant } from '@/lib/open-world/types'
-import { applyWatercolorWalkTint, snapPlantGroupToTerrain, walkCaptureGroundY } from './minecraft-visual'
+import {
+  applyVoxelPlantNightTint,
+  applyWatercolorWalkTint,
+  setWalkSurfaceHeightSampler,
+  snapPlantGroupToTerrain,
+  walkCaptureGroundY,
+} from './minecraft-visual'
 import { createPlantGroup, disposePlantGroup } from './plant-mesh'
 import { buildTerrain, type TerrainHandle } from './terrain'
 import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
@@ -254,6 +260,9 @@ export class OpenWorldEngine {
   setPalette(palette: ScenePalette): void {
     this.palette = palette
     this.terrain?.recolor(palette)
+    if (this.plantArtStyle === 'pixel-art' && this.terrain) {
+      applyVoxelPlantNightTint(this.terrain.root, palette)
+    }
     this.cc0Scenery?.setPalette(palette)
     this.applyLighting()
     this.renderer?.setClearColor(palette.sky[2] ?? '#20123a', 1)
@@ -440,6 +449,118 @@ export class OpenWorldEngine {
     return Math.min(0.92, (maxNdcY - minNdcY) / 2)
   }
 
+  plantWorldAabb(
+    plantId: string,
+  ): {
+    minX: number
+    minY: number
+    minZ: number
+    maxX: number
+    maxY: number
+    maxZ: number
+  } | null {
+    const box = this.plantWorldBox(plantId)
+    if (!box) return null
+    return {
+      minX: box.min.x,
+      minY: box.min.y,
+      minZ: box.min.z,
+      maxX: box.max.x,
+      maxY: box.max.y,
+      maxZ: box.max.z,
+    }
+  }
+
+  getCaptureCameraFov(): number {
+    return this.camera.fov
+  }
+
+  getCaptureCameraAspect(): number {
+    return this.camera.aspect
+  }
+
+  plantProjectedBoxScreenY(plantId: string): { top: number; bottom: number } | null {
+    const box = this.plantWorldBox(plantId)
+    if (!box) return null
+    this.renderOnce()
+    const cx = (box.min.x + box.max.x) / 2
+    const cz = (box.min.z + box.max.z) / 2
+    let minTopScreen = Infinity
+    let maxBotScreen = -Infinity
+    const { min, max } = box
+    const corners: Array<[number, number, number]> = [
+      [cx, max.y, cz],
+      [min.x, max.y, min.z],
+      [max.x, max.y, min.z],
+      [min.x, max.y, max.z],
+      [max.x, max.y, max.z],
+      [cx, min.y, cz],
+    ]
+    for (const [x, y, z] of corners) {
+      const p = new THREE.Vector3(x, y, z).project(this.camera)
+      if (p.z < -1 || p.z > 1) continue
+      const screenY = (1 - p.y) / 2
+      if (y >= max.y - 0.001) minTopScreen = Math.min(minTopScreen, screenY)
+      if (y <= min.y + 0.001) maxBotScreen = Math.max(maxBotScreen, screenY)
+    }
+    if (!Number.isFinite(minTopScreen)) return null
+    return {
+      top: minTopScreen,
+      bottom: maxBotScreen,
+    }
+  }
+
+  elderDeterministicCapturePose(plantId: string): WalkCapturePose | null {
+    const box = this.plantWorldBox(plantId)
+    const wp = this.world.plants.find((p) => p.id === plantId)
+    if (!box || !wp) return null
+    const groundY = box.min.y
+    const H = box.max.y - groundY
+    const cx = (box.min.x + box.max.x) / 2
+    const cz = (box.min.z + box.max.z) / 2
+    const size = box.getSize(new THREE.Vector3())
+    const R = Math.max(size.x, size.z) * 0.5
+    const fovRad = (this.camera.fov * Math.PI) / 180
+    const halfFovTan = Math.tan(fovRad / 2)
+    /** Corner + sky slack beyond the nominal 1.25 vertical fit factor. */
+    const aabbSlack = 1.98
+    const D_v = (((H * 1.25) / 2) / halfFovTan) * aabbSlack
+    const D_h = ((R * 1.25) / (halfFovTan * this.camera.aspect)) * 1.42
+    const D = Math.max(R * 2.2, D_v, D_h)
+    const yaw = -0.68
+    const camX = cx + Math.sin(yaw) * D
+    const camZ = cz + Math.cos(yaw) * D
+    const foot = this.terrainFootY(camX, camZ)
+    const aimY = groundY + H * 0.5
+    const eyeY = Math.max(foot + 0.08, aimY)
+    const aim = new THREE.Vector3(cx, aimY, cz)
+    return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+  }
+
+  private projectBoxVerticalInView(box: THREE.Box3): { minNdcY: number; maxNdcY: number } | null {
+    const { min, max } = box
+    const corners: Array<[number, number, number]> = [
+      [min.x, min.y, min.z],
+      [max.x, min.y, min.z],
+      [min.x, min.y, max.z],
+      [max.x, min.y, max.z],
+      [min.x, max.y, min.z],
+      [max.x, max.y, min.z],
+      [min.x, max.y, max.z],
+      [max.x, max.y, max.z],
+    ]
+    let minNdcY = Infinity
+    let maxNdcY = -Infinity
+    for (const [x, y, z] of corners) {
+      const p = new THREE.Vector3(x, y, z).project(this.camera)
+      if (p.z < -1 || p.z > 1) continue
+      minNdcY = Math.min(minNdcY, p.y)
+      maxNdcY = Math.max(maxNdcY, p.y)
+    }
+    if (!Number.isFinite(minNdcY)) return null
+    return { minNdcY, maxNdcY }
+  }
+
   private plantCaptureFit(box: THREE.Box3): { frac: number; centerX: number; centerY: number } {
     const centerNdc = this.projectBoxCenter(box)
     if (centerNdc.z < -1 || centerNdc.z > 1) {
@@ -497,6 +618,19 @@ export class OpenWorldEngine {
     return false
   }
 
+  getTerrainFootY(x: number, z: number): number {
+    return this.terrainFootY(x, z)
+  }
+
+  private terrainFootY(x: number, z: number): number {
+    if (this.plantArtStyle === 'pixel-art') return walkCaptureGroundY(x, z)
+    return 0
+  }
+
+  private eyeHeightAt(x: number, z: number, clearance: number): number {
+    return this.terrainFootY(x, z) + clearance
+  }
+
   private poseLookAt(aim: THREE.Vector3, camPos: THREE.Vector3, eyeY: number): WalkCapturePose {
     this.camera.position.set(camPos.x, eyeY, camPos.z)
     this.camera.lookAt(aim)
@@ -524,13 +658,17 @@ export class OpenWorldEngine {
         if (!wp) return null
         const elder = plantId.includes('elder')
         const ground = box.min.y
+        const yaw = elder ? -0.68 : 2.05
+        if (elder) {
+          return this.elderDeterministicCapturePose(plantId)
+        }
         const aimY = ground + size.y * 0.68
         const aim = new THREE.Vector3(wp.x, aimY, wp.z)
-        const dist = Math.max(elder ? 11.5 : 10.5, size.y * 1.15)
-        const yaw = elder ? -0.68 : 2.05
+        const dist = 10.75
         const camX = wp.x + Math.sin(yaw) * dist
         const camZ = wp.z + Math.cos(yaw) * dist
-        const eyeY = ground + Math.min(size.y * 0.48, 4.5)
+        const clearance = Math.min(size.y * 0.48, 4.5)
+        const eyeY = this.eyeHeightAt(camX, camZ, clearance)
         return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
       }
       if (wp) {
@@ -545,7 +683,7 @@ export class OpenWorldEngine {
             const dist = 0.55 + (pass / 17) * 2.4
             const camX = wp.x + Math.sin(yaw) * dist
             const camZ = wp.z + Math.cos(yaw) * dist
-            const eyeY = ground + 0.92
+            const eyeY = this.eyeHeightAt(camX, camZ, 0.92)
             const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
             const fit = this.plantCaptureFitAt(plantId, pose)
             const frac = fit?.frac ?? 0
@@ -566,38 +704,30 @@ export class OpenWorldEngine {
           const dist = 2.75
           const camX = wp.x + Math.sin(yaw) * dist
           const camZ = wp.z + Math.cos(yaw) * dist
-          const eyeY = ground + 0.82
+          const eyeY = this.eyeHeightAt(camX, camZ, 0.82)
           return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
         }
-        const aimY = wp.variety === 'flower' ? ground + 0.48 : ground + 0.42
-        const aim = new THREE.Vector3(wp.x, aimY, wp.z)
-        const yaw = wp.variety === 'flower' ? 0.65 : -0.45
-        const minFrac = plantId.includes('sprout') ? 0.27 : 0.34
-        const maxFrac = 0.88
-        const startDist = plantId.includes('sprout') ? 1.55 : 1.85
-        const endDist = plantId.includes('sprout') ? 0.95 : 1.05
-        let bestPose: WalkCapturePose | null = null
-        let bestFrac = 0
-        for (let pass = 0; pass < 10; pass++) {
-          const t = pass / 9
-          const d = startDist + (endDist - startDist) * t
-          const camX = wp.x + Math.sin(yaw) * d
-          const camZ = wp.z + Math.cos(yaw) * d
-          const eyeY = ground + 1.28
+        if (wp.variety === 'flower') {
+          const aimY = ground + 0.44
+          const aim = new THREE.Vector3(wp.x, aimY, wp.z)
+          const yaw = 0.65
+          const dist = 2.55
+          const camX = wp.x + Math.sin(yaw) * dist
+          const camZ = wp.z + Math.cos(yaw) * dist
+          const eyeY = this.eyeHeightAt(camX, camZ, 1.42)
           const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-          const fit = this.plantCaptureFitAt(plantId, pose)
-          const frac = fit?.frac ?? 0
-          const inBand = frac >= minFrac && frac <= maxFrac
-          if (inBand) return pose
-          if (frac > bestFrac && frac <= maxFrac) {
-            bestFrac = frac
-            bestPose = pose
-          } else if (!bestPose && frac > bestFrac) {
-            bestFrac = frac
-            bestPose = pose
-          }
+          this.camera.rotation.x = -0.42
+          this.camera.updateProjectionMatrix()
+          return { ...pose, pitch: -0.42 }
         }
-        return bestPose
+        const aimY = ground + 0.42
+        const aim = new THREE.Vector3(wp.x, aimY, wp.z)
+        const yaw = -0.45
+        const dist = 2.05
+        const camX = wp.x + Math.sin(yaw) * dist
+        const camZ = wp.z + Math.cos(yaw) * dist
+        const eyeY = this.eyeHeightAt(camX, camZ, 1.05)
+        return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
       }
     }
 
@@ -648,7 +778,8 @@ export class OpenWorldEngine {
       ).normalize()
 
       const camPos = c.clone().add(dir.multiplyScalar(standoff))
-      camPos.y = Math.max(camPos.y, terrainY + 0.5)
+      const foot = this.terrainFootY(camPos.x, camPos.z)
+      camPos.y = Math.max(camPos.y, foot + 0.5, terrainY + 0.5)
 
       const pose = this.poseLookAt(aim, camPos, camPos.y)
       const fit = this.plantCaptureFitAt(plantId, pose)
@@ -685,8 +816,12 @@ export class OpenWorldEngine {
     const cx = plants.reduce((s, p) => s + p.x, 0) / Math.max(1, plants.length)
     const cz = plants.reduce((s, p) => s + p.z, 0) / Math.max(1, plants.length)
     const aim = new THREE.Vector3(cx, 2.4, cz)
-    const camPos = new THREE.Vector3(cx + 11, 5.2, cz + 15)
-    return this.poseLookAt(aim, camPos, 5.2)
+    const camX = cx + 11
+    const camZ = cz + 15
+    const eyeY = this.eyeHeightAt(camX, camZ, 5.2)
+    const camPos = new THREE.Vector3(camX, eyeY, camZ)
+    const aimY = this.terrainFootY(cx, cz) + 2.4
+    return this.poseLookAt(new THREE.Vector3(cx, aimY, cz), camPos, eyeY)
   }
 
   setWalkCaptureBackdrop(active: boolean): void {
@@ -774,6 +909,11 @@ export class OpenWorldEngine {
         this.world,
         this.reducedMotion,
       )
+      if (this.plantArtStyle === 'pixel-art') {
+        this.player.y = walkCaptureGroundY(this.player.x, this.player.z) + EYE_HEIGHT
+      } else {
+        this.player.y = EYE_HEIGHT
+      }
       this.yawAcc = 0
       this.pitchAcc = 0
       this.applyCamera()
@@ -845,6 +985,12 @@ export class OpenWorldEngine {
     const minecraftMode = this.plantArtStyle === 'pixel-art'
     this.terrain = buildTerrain(this.world, this.palette, this.reducedMotion, minecraftMode)
     this.scene.add(this.terrain.root)
+    if (minecraftMode && this.terrain.surfaceY) {
+      setWalkSurfaceHeightSampler(this.terrain.surfaceY)
+      applyVoxelPlantNightTint(this.terrain.root, this.palette)
+    } else {
+      setWalkSurfaceHeightSampler(null)
+    }
   }
 
   private rebuildPlants(): void {
@@ -866,6 +1012,7 @@ export class OpenWorldEngine {
       }
       if (style === 'pixel-art') {
         snapPlantGroupToTerrain(group, walkCaptureGroundY(plant.x, plant.z))
+        applyVoxelPlantNightTint(group, this.palette)
       }
       this.plantsRoot.add(group)
       this.plantGroups.set(plant.id, group)

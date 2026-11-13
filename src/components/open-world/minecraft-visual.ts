@@ -74,6 +74,13 @@ export function minecraftBlockTexture(
         ctx.fillRect(x, y, 1, 1)
       }
     }
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const onBorder = x === 0 || y === 0 || x === 15 || y === 15
+        if (onBorder) ctx.fillRect(x, y, 1, 1)
+      }
+    }
   } else if (kind === 'bark') {
     for (let x = 0; x < 16; x++) {
       const stripe = Math.floor(x / 2) % barkBrowns.length
@@ -194,7 +201,8 @@ function voxelMaterial(
   kind: BlockKind,
   transparent = false,
 ): THREE.MeshBasicMaterial {
-  const key = `${hex}-${accent}-${seed}-${kind}-${transparent}`
+  const leafTag = kind === 'leaf' ? '-leafv4' : ''
+  const key = `${hex}-${accent}-${seed}-${kind}-${transparent}${leafTag}`
   const hit = matCache.get(key)
   if (hit) return hit
   const map = minecraftBlockTexture(hex, accent, seed, kind)
@@ -263,6 +271,55 @@ function placeCrossPlantSprite(
   }
 }
 
+function placeLeafLayerAt(
+  g: THREE.Group,
+  ox: number,
+  oy: number,
+  oz: number,
+  radius: number,
+  leaf: THREE.MeshBasicMaterial,
+  trimCorners: boolean,
+  cornerSeed = 0,
+  sparseEdges = true,
+): void {
+  for (let dx = -radius; dx <= radius; dx++) {
+    for (let dz = -radius; dz <= radius; dz++) {
+      if (trimCorners && Math.abs(dx) === radius && Math.abs(dz) === radius) continue
+      if (
+        sparseEdges &&
+        trimCorners &&
+        radius >= 2 &&
+        (Math.abs(dx) === radius || Math.abs(dz) === radius) &&
+        hash01(cornerSeed + dx * 17.3 + dz * 23.1) > 0.58
+      ) {
+        continue
+      }
+      placeBlock(g, ox + dx, oy, oz + dz, leaf)
+    }
+  }
+}
+
+function placeOakSideBranches(
+  g: THREE.Group,
+  capY: number,
+  _bark: THREE.MeshBasicMaterial,
+  leaf: THREE.MeshBasicMaterial,
+  seed: number,
+): void {
+  const dirs: Array<[number, number]> = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ]
+  for (let i = 0; i < dirs.length; i++) {
+    if (hash01(seed + i * 19.7) > 0.38) continue
+    const [dx, dz] = dirs[i]!
+    placeLeafLayerAt(g, dx, capY, dz, 1, leaf, true, seed + 60 + i, false)
+    placeBlock(g, dx, capY + 1, dz, leaf)
+  }
+}
+
 function placeOakPlusCap(g: THREE.Group, capY: number, leaf: THREE.MeshBasicMaterial): void {
   const arms: Array<[number, number]> = [
     [0, 0],
@@ -281,6 +338,7 @@ function buildPixelArtOak(
   bark: THREE.MeshBasicMaterial,
   leaf: THREE.MeshBasicMaterial,
   elder: boolean,
+  seed: number,
 ): void {
   const trunkH = elder ? 6 : 5
   for (let y = 0; y < trunkH; y++) {
@@ -288,17 +346,18 @@ function buildPixelArtOak(
   }
   const capY = trunkH
   if (elder) {
-    placeLeafLayer(g, capY, 3, leaf, true)
-    placeLeafLayer(g, capY + 1, 3, leaf, true)
-    placeLeafLayer(g, capY + 2, 2, leaf, true)
-    placeLeafLayer(g, capY + 3, 2, leaf, false)
-    placeOakPlusCap(g, capY + 4, leaf)
+    placeLeafLayer(g, capY, 3, leaf, true, seed + 40, true, 0.4)
+    placeLeafLayer(g, capY + 1, 3, leaf, true, seed + 41, true, 0.48)
+    placeLeafLayer(g, capY + 2, 3, leaf, true, seed + 42, true, 0.42)
+    placeLeafLayer(g, capY + 3, 2, leaf, true, seed + 43, false)
+    placeLeafLayer(g, capY + 4, 2, leaf, true, seed + 44, false)
+    placeLeafLayer(g, capY + 5, 1, leaf, false, seed + 45, false)
+    placeOakSideBranches(g, capY, bark, leaf, seed)
   } else {
-    placeLeafLayer(g, capY, 2, leaf, true)
-    placeLeafLayer(g, capY + 1, 2, leaf, true)
-    placeLeafLayer(g, capY + 2, 1, leaf, false)
-    placeLeafLayer(g, capY + 3, 1, leaf, false)
-    placeOakPlusCap(g, capY + 4, leaf)
+    placeLeafLayer(g, capY, 2, leaf, true, seed + 20)
+    placeLeafLayer(g, capY + 1, 2, leaf, true, seed + 21)
+    placeLeafLayer(g, capY + 2, 1, leaf, false, seed + 22)
+    placeOakPlusCap(g, capY + 3, leaf)
   }
 }
 
@@ -327,10 +386,22 @@ function placeLeafLayer(
   radius: number,
   leaf: THREE.MeshBasicMaterial,
   trimCorners: boolean,
+  cornerSeed = 0,
+  sparseEdges = true,
+  edgeTrim = 0.58,
 ): void {
   for (let dx = -radius; dx <= radius; dx++) {
     for (let dz = -radius; dz <= radius; dz++) {
       if (trimCorners && Math.abs(dx) === radius && Math.abs(dz) === radius) continue
+      if (
+        sparseEdges &&
+        trimCorners &&
+        radius >= 2 &&
+        (Math.abs(dx) === radius || Math.abs(dz) === radius) &&
+        hash01(cornerSeed + dx * 17.3 + dz * 23.1) > edgeTrim
+      ) {
+        continue
+      }
       placeBlock(g, dx, capY, dz, leaf)
     }
   }
@@ -344,30 +415,24 @@ function buildOakTree(
   stage: PlantStage,
 ): void {
   const idx = plantStageToIndex(stage)
-  const rng = gardenRng(seed)
   if (idx <= 1) {
     const sapling = voxelMaterial('#5fa037', '#7ed65a', seed + 3, 'sapling', true)
     placeCrossPlantSprite(g, 0, 0, 0, 0.8, 0.56, sapling)
     return
   }
   if (idx >= 7) {
-    buildPixelArtOak(g, bark, leaf, true)
+    buildPixelArtOak(g, bark, leaf, true, seed)
     return
   }
-  if (idx >= 6) {
-    buildPixelArtOak(g, bark, leaf, false)
+  if (idx >= 4) {
+    buildPixelArtOak(g, bark, leaf, false, seed)
     return
   }
-  const trunkH = idx >= 4 ? 4 : 3
+  const trunkH = 3
   for (let y = 0; y < trunkH; y++) {
     placeBlock(g, 0, y, 0, bark)
   }
-  const capY = trunkH
-  {
-    const radius = idx >= 4 ? 2 : 1
-    placeLeafLayer(g, capY, radius, leaf, true)
-    if (idx >= 4) placeLeafLayer(g, capY + 1, 1, leaf, false)
-  }
+  placeLeafLayer(g, trunkH, 1, leaf, true)
 }
 
 function buildFlower(
@@ -378,7 +443,6 @@ function buildFlower(
   stage: PlantStage,
 ): void {
   const idx = plantStageToIndex(stage)
-  const rng = gardenRng(seed)
   if (idx <= 0) {
     placeBlock(g, 0, 1, 0, stem)
     return
@@ -418,9 +482,82 @@ function buildMushroom(
 
 const MINECRAFT_BLOCK_UNIT = 1
 
-/** Grass plane height for voxel plants (ground-aligned models). */
-export function walkCaptureGroundY(_x: number, _z: number): number {
-  return 0
+type SurfaceHeightFn = (x: number, z: number) => number
+
+let walkSurfaceHeight: SurfaceHeightFn = () => 0
+
+export function setWalkSurfaceHeightSampler(fn: SurfaceHeightFn | null): void {
+  walkSurfaceHeight = fn ?? (() => 0)
+}
+
+/** World Y of the stepped terrain block top at x,z for voxel plants. */
+export function walkCaptureGroundY(x: number, z: number): number {
+  return walkSurfaceHeight(x, z) * VOXEL
+}
+
+const WALK_HEIGHT_BUMPS = [
+  { x: -14, z: -10, rx: 8.5, rz: 6.5, peak: 2 },
+  { x: 12, z: -16, rx: 9, rz: 7, peak: 2 },
+  { x: -18, z: 12, rx: 7.5, rz: 8, peak: 2 },
+  { x: 16, z: 8, rx: 8, rz: 7.5, peak: 2 },
+  { x: 0, z: -22, rx: 10, rz: 6, peak: 2 },
+  { x: -32, z: -44, rx: 18, rz: 15, peak: 5 },
+  { x: 8, z: -48, rx: 22, rz: 18, peak: 6 },
+  { x: 36, z: -40, rx: 16, rz: 14, peak: 5 },
+  { x: -40, z: 12, rx: 15, rz: 12, peak: 4 },
+  { x: 42, z: 18, rx: 17, rz: 14, peak: 5 },
+]
+
+export function minecraftAnalyticSurfaceY(x: number, z: number): number {
+  let h = 0
+  for (const b of WALK_HEIGHT_BUMPS) {
+    const dx = (x - b.x) / b.rx
+    const dz = (z - b.z) / b.rz
+    const t = 1 - dx * dx - dz * dz
+    if (t > 0) h = Math.max(h, b.peak * t)
+  }
+  return Math.max(0, Math.round(h))
+}
+
+export function applyVoxelPlantNightTint(root: THREE.Object3D, palette: ScenePalette): void {
+  const star = palette.starAlpha ?? 0
+  const twilight = star > 0.22
+  const tint = new THREE.Color(twilight ? '#5a6e62' : '#ffffff')
+  root.traverse((obj) => {
+    if (!(obj instanceof THREE.Mesh)) return
+    const mat = obj.material
+    if (!(mat instanceof THREE.MeshBasicMaterial)) return
+    if (!obj.userData.voxel) return
+    mat.color.copy(tint)
+  })
+}
+
+export function buildMinecraftSteppedHills(
+  root: THREE.Group,
+  track: <T extends { dispose: () => void }>(o: T) => T,
+  _palette: ScenePalette,
+): SurfaceHeightFn {
+  const span = 52
+  const grassTop = track(voxelMaterial('#62b53a', '#7ed64f', 91, 'grass'))
+  const dirt = track(voxelMaterial('#5a4332', '#3f2e22', 93, 'dirt'))
+  const hillGroup = new THREE.Group()
+  hillGroup.name = 'minecraft-hills'
+  for (let ix = -span; ix <= span; ix++) {
+    for (let iz = -span; iz <= span; iz++) {
+      const hy = minecraftAnalyticSurfaceY(ix, iz)
+      if (hy <= 0) continue
+      for (let y = 0; y < hy; y++) {
+        const mat = y === hy - 1 ? grassTop : dirt
+        const mesh = new THREE.Mesh(boxGeo, mat)
+        mesh.position.set(ix * VOXEL, (y + 0.5) * VOXEL, iz * VOXEL)
+        mesh.scale.setScalar(VOXEL)
+        mesh.userData.voxel = true
+        hillGroup.add(mesh)
+      }
+    }
+  }
+  root.add(hillGroup)
+  return (x, z) => minecraftAnalyticSurfaceY(Math.round(x), Math.round(z))
 }
 
 export function minecraftGrassTexture(
