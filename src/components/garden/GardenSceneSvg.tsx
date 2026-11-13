@@ -5,7 +5,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react'
-import type { Candle, GardenLandscapeView, GardenStarterDecor, PlantedHybrid, ShedStyle } from '@/lib/types'
+import type { ArtStyle, Candle, GardenLandscapeView, GardenStarterDecor, PlantedHybrid, ShedStyle } from '@/lib/types'
 import { buildStarterWorldPlants, sortWorldLayer } from '@/components/garden/garden-world-plants'
 import { buildWorldSceneryItems } from '@/components/garden/garden-world-scenery'
 import { VIEW_FRAME, projectWorldToSky } from '@/lib/garden/landscape-world'
@@ -38,6 +38,8 @@ import { SeededPlantSvg } from '@/components/plants/SeededPlantSvg'
 import { HybridPlantSvg } from '@/components/plants/hybrid-builder'
 import type { SeededVariety } from '@/components/plants/types'
 import { candle, cattail } from './scenery'
+import { PlantArtStyleDefs } from '@/components/plants/PlantArtStyleDefs'
+import { resolvePlantArtStyle } from '@/lib/garden/plant-art-style'
 export { SCENE_W, SCENE_H, SCENE_HZ } from '@/lib/garden/scene-constants'
 import { SCENE_H, SCENE_HZ, SCENE_W } from '@/lib/garden/scene-constants'
 export interface GardenSceneSvgProps {
@@ -60,6 +62,7 @@ export interface GardenSceneSvgProps {
     mid: RefObject<SVGGElement | null>
     foreground: RefObject<SVGGElement | null>
   }
+  plantArtStyle?: ArtStyle
 }
 
 interface PlantAtProps {
@@ -72,9 +75,10 @@ interface PlantAtProps {
   seedN: number
   rim: number
   motion: boolean
+  artStyle?: ArtStyle
 }
 
-function PlantAt({ variety, stage, palette, x, y, sc, seedN, rim, motion }: PlantAtProps) {
+function PlantAt({ variety, stage, palette, x, y, sc, seedN, rim, motion, artStyle }: PlantAtProps) {
   return (
     <g transform={`translate(${x} ${y})`}>
       <SeededPlantSvg
@@ -85,6 +89,7 @@ function PlantAt({ variety, stage, palette, x, y, sc, seedN, rim, motion }: Plan
         rimStrength={rim}
         motion={motion}
         scale={sc}
+        artStyle={artStyle}
       />
     </g>
   )
@@ -496,11 +501,13 @@ function PlantedHybridsContent({
   rimStrength: rim,
   motion,
   planted,
+  artStyle,
 }: {
   palette: ScenePalette
   rimStrength: number
   motion: boolean
   planted: PlantedHybrid[]
+  artStyle?: ArtStyle
 }) {
   return (
     <g>
@@ -516,6 +523,7 @@ function PlantedHybridsContent({
           y={p.y ?? 460}
           scale={p.sc}
           swayIndex={i}
+          artStyle={artStyle}
         />
       ))}
     </g>
@@ -529,13 +537,14 @@ function ReflectLandContent({
   motion,
   planted,
   landscapeView,
-}: GardenLandProps & { planted: PlantedHybrid[]; landscapeView: GardenLandscapeView }) {
+  artStyle,
+}: GardenLandProps & { planted: PlantedHybrid[]; landscapeView: GardenLandscapeView; artStyle?: ArtStyle }) {
   return (
     <>
       <FarLandContent palette={C} gardenSeed={seed} rimStrength={rim} motion={motion} landscapeView={landscapeView} />
       <MidHillTerrainShapes palette={C} landscapeView={landscapeView} />
       <MidHillPlants palette={C} gardenSeed={seed} rimStrength={rim} motion={motion} />
-      <PlantedHybridsContent palette={C} rimStrength={rim} motion={motion} planted={planted} />
+      <PlantedHybridsContent palette={C} rimStrength={rim} motion={motion} planted={planted} artStyle={artStyle} />
     </>
   )
 }
@@ -554,6 +563,7 @@ export interface GardenMidWaterLayerProps {
   shedStyle: ShedStyle
   onShedClick?: () => void
   rngData: SceneRngData
+  plantArtStyle?: ArtStyle
 }
 
 export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerProps>(function GardenMidWaterLayer(
@@ -571,18 +581,28 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
     shedStyle,
     onShedClick,
     rngData,
+    plantArtStyle,
   },
   ref,
 ) {
+  const artStyle = resolvePlantArtStyle(plantArtStyle)
   const worldLayer = useMemo(() => {
     const items = [
-      ...buildStarterWorldPlants(starterDecor, landscapeView, C, rim, motion),
-      ...buildWorldSceneryItems(landscapeView, C, rim, motion, seed, shedStyle, onShedClick, {
-        includeDistantTrees: !starterDecor,
-      }),
+      ...buildStarterWorldPlants(starterDecor, landscapeView, C, rim, motion, artStyle),
+      ...buildWorldSceneryItems(
+        landscapeView,
+        C,
+        rim,
+        motion,
+        seed,
+        shedStyle,
+        onShedClick,
+        { includeDistantTrees: !starterDecor },
+        artStyle,
+      ),
     ].sort((a, b) => a.depth - b.depth)
     return sortWorldLayer(items)
-  }, [starterDecor, landscapeView, C, rim, motion, seed, shedStyle, onShedClick])
+  }, [starterDecor, landscapeView, C, rim, motion, seed, shedStyle, onShedClick, artStyle])
   const sortedCandles = useMemo(() => [...candles].sort((a, b) => a.y - b.y), [candles])
   const pondGeom = useMemo(() => getPondGeometry(landscapeView), [landscapeView])
   const waterTopY = pondGeom.bandWater ? pondGeom.waterTopY : LANDSCAPE_HORIZON_Y
@@ -600,7 +620,7 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
       <g transform={`translate(${hillPanX(landscapeView)} 0)`}>
         <MidHillTerrainShapes palette={C} landscapeView={landscapeView} />
       </g>
-      <PlantedHybridsContent palette={C} rimStrength={rim} motion={motion} planted={planted} />
+      <PlantedHybridsContent palette={C} rimStrength={rim} motion={motion} planted={planted} artStyle={artStyle} />
       <g data-layer="world-scenery">{worldLayer}</g>
       {memoryPlants}
       <AtmosphericGroundDetail palette={C} gardenSeed={seed} rimStrength={rim} view={landscapeView} />
@@ -631,6 +651,7 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
                 motion={motion}
                 planted={planted}
                 landscapeView={landscapeView}
+                artStyle={artStyle}
               />
             </g>
           </g>
@@ -716,6 +737,7 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
               seedN={seed + 19}
               rim={rim}
               motion={motion}
+              artStyle={artStyle}
             />
             <PlantAt
               variety="lotus"
@@ -727,11 +749,23 @@ export const GardenMidWaterLayer = forwardRef<SVGGElement, GardenMidWaterLayerPr
               seedN={seed + 20}
               rim={rim}
               motion={motion}
+              artStyle={artStyle}
             />
           </>
         ) : (
           <g>
-            <PlantAt variety="lotus" stage={3} palette={C} x={178} y={658} sc={0.72} seedN={seed + 21} rim={rim} motion={motion} />
+            <PlantAt
+              variety="lotus"
+              stage={3}
+              palette={C}
+              x={178}
+              y={658}
+              sc={0.72}
+              seedN={seed + 21}
+              rim={rim}
+              motion={motion}
+              artStyle={artStyle}
+            />
           </g>
         )}
       </g>
@@ -929,8 +963,10 @@ export function GardenSceneSvg({
   memoryPlants,
   starterDecor,
   layerRefs,
+  plantArtStyle,
 }: GardenSceneSvgProps) {
   const resolvedView = resolveGardenLandscapeView(landscapeView)
+  const resolvedArtStyle = resolvePlantArtStyle(plantArtStyle)
   const rngData = useMemo(
     () => computeSceneRngData(gardenSeed, sceneKey, palette, motion),
     [gardenSeed, sceneKey, palette, motion],
@@ -947,6 +983,7 @@ export function GardenSceneSvg({
       role="group"
       aria-label="Garden landscape"
     >
+      <PlantArtStyleDefs />
       <GardenSkyLayer
         ref={layerRefs?.sky}
         palette={palette}
@@ -978,6 +1015,7 @@ export function GardenSceneSvg({
         shedStyle={shedStyle}
         onShedClick={onShedClick}
         rngData={rngData}
+        plantArtStyle={resolvedArtStyle}
       />
       <GardenForegroundLayer
         ref={layerRefs?.foreground}

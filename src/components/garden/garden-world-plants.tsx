@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { GardenLandscapeView, GardenStarterDecor } from '@/lib/types'
+import type { ArtStyle, GardenLandscapeView, GardenStarterDecor } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { projectWorldToScene } from '@/lib/garden/landscape-world'
 import {
@@ -21,6 +21,7 @@ export function buildStarterWorldPlants(
   palette: ScenePalette,
   rim: number,
   motion: boolean,
+  artStyle?: ArtStyle,
 ): WorldPlantRenderItem[] {
   if (!decor) return []
   const items: WorldPlantRenderItem[] = []
@@ -39,8 +40,10 @@ export function buildStarterWorldPlants(
           rimStrength={rim}
           motion={motion}
           scale={decor.elderTree.scale}
+          layoutScale={elder.scale}
           facing={elder.facing}
           rimFromLeft={elder.rimFromLeft}
+          artStyle={artStyle}
         />
       </g>
     ),
@@ -63,9 +66,11 @@ export function buildStarterWorldPlants(
             palette={palette}
             rimStrength={rim}
             motion={motion}
-            scale={1}
+            scale={shroom.scale}
+            layoutScale={proj.scale * drawScale}
             facing={proj.facing}
             rimFromLeft={proj.rimFromLeft}
+            artStyle={artStyle}
           />
         </g>
       ),
