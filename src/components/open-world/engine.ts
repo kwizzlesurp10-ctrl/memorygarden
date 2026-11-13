@@ -9,7 +9,7 @@ import { layoutGardenWorld } from '@/lib/open-world/layout'
 import { createPlayer, eyeOffset, findNearestPlant, stepPlayer } from '@/lib/open-world/locomotion'
 import { plantRecipe } from '@/lib/open-world/plant-visual'
 import type { GardenWorld, PlayerState, WorldPlant } from '@/lib/open-world/types'
-import { applyWatercolorWalkTint } from './minecraft-visual'
+import { applyWatercolorWalkTint, snapPlantGroupToTerrain, walkCaptureGroundY } from './minecraft-visual'
 import { createPlantGroup, disposePlantGroup } from './plant-mesh'
 import { buildTerrain, type TerrainHandle } from './terrain'
 import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
@@ -522,29 +522,31 @@ export class OpenWorldEngine {
       if (plantId.includes('tree')) {
         if (!wp) return null
         const elder = plantId.includes('elder')
-        const aimY = box.min.y + size.y * (elder ? 0.58 : 0.52)
+        const ground = box.min.y
+        const aimY = ground + size.y * 0.68
         const aim = new THREE.Vector3(wp.x, aimY, wp.z)
-        const dist = elder ? 7 : 6
-        const yaw = elder ? -0.85 : 2.15
+        const dist = Math.max(elder ? 11.5 : 10.5, size.y * 1.15)
+        const yaw = elder ? -0.68 : 2.05
         const camX = wp.x + Math.sin(yaw) * dist
         const camZ = wp.z + Math.cos(yaw) * dist
-        const eyeY = box.min.y + 2.05
+        const eyeY = ground + Math.min(size.y * 0.48, 4.5)
         return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
       }
       if (wp) {
+        const ground = box.min.y
         const aimY =
           wp.variety === 'mushroom'
-            ? box.min.y + 2.2
+            ? ground + 0.55
             : wp.variety === 'flower'
-              ? box.min.y + 1.65
-              : box.min.y + 1.55
+              ? ground + 0.48
+              : ground + 0.42
         const aim = new THREE.Vector3(wp.x, aimY, wp.z)
         const dist =
-          wp.variety === 'mushroom' ? 2.8 : plantId.includes('sprout') ? 2.6 : 3.1
+          wp.variety === 'mushroom' ? 2.3 : plantId.includes('sprout') ? 2.1 : 2.5
         const yaw = wp.variety === 'flower' ? 0.65 : wp.variety === 'mushroom' ? -0.55 : -0.45
         const camX = wp.x + Math.sin(yaw) * dist
         const camZ = wp.z + Math.cos(yaw) * dist
-        const eyeY = box.min.y + (plantId.includes('sprout') ? 1.35 : 1.55)
+        const eyeY = ground + 1.28
         return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
       }
     }
@@ -632,15 +634,15 @@ export class OpenWorldEngine {
     const plants = walkPlants.length > 0 ? walkPlants : this.world.plants
     const cx = plants.reduce((s, p) => s + p.x, 0) / Math.max(1, plants.length)
     const cz = plants.reduce((s, p) => s + p.z, 0) / Math.max(1, plants.length)
-    const camX = cx - 2.8
-    const camZ = cz + 5.5
-    const eyeY = 1.72
+    const camX = cx - 6
+    const camZ = cz + 18
+    const eyeY = 6.2
     const horiz = Math.hypot(cx - camX, cz - camZ)
     return {
       x: camX,
       z: camZ,
       yaw: Math.atan2(cx - camX, cz - camZ),
-      pitch: -Math.atan2(1.2, horiz),
+      pitch: -Math.atan2(3.6, horiz),
       eyeY,
     }
   }
@@ -810,6 +812,9 @@ export class OpenWorldEngine {
       const group = createPlantGroup(plant, recipe, style)
       if (style === 'watercolor') {
         applyWatercolorWalkTint(group)
+      }
+      if (isWalkCaptureSession()) {
+        snapPlantGroupToTerrain(group, walkCaptureGroundY(plant.x, plant.z))
       }
       this.plantsRoot.add(group)
       this.plantGroups.set(plant.id, group)

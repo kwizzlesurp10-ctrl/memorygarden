@@ -48,7 +48,7 @@ runConvert([
 
 const headerParts = [spacer]
 for (const col of columns) {
-  const hp = resolve(tmp, `hdr-${col.style}.png`)
+  const hp = resolve(tmp, `hdr-${col.phase}-${col.style}.png`)
   runConvert([
     '-size',
     `${cellW}x${headerH}`,

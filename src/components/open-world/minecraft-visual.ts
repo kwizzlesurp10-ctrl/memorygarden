@@ -29,7 +29,19 @@ function hash01(n: number): number {
   return x - Math.floor(x)
 }
 
-type BlockKind = 'grass' | 'grass_side' | 'dirt' | 'bark' | 'leaf' | 'gravel' | 'mushroom' | 'flower'
+type BlockKind =
+  | 'grass'
+  | 'grass_side'
+  | 'dirt'
+  | 'bark'
+  | 'leaf'
+  | 'gravel'
+  | 'mushroom'
+  | 'mushroom_stem'
+  | 'mushroom_cap'
+  | 'flower'
+  | 'poppy'
+  | 'sapling'
 
 export function minecraftBlockTexture(
   base: string,
@@ -109,6 +121,52 @@ export function minecraftBlockTexture(
         ctx.fillRect(x, y, 1, 1)
       }
     }
+  } else if (kind === 'poppy' || kind === 'sapling') {
+    ctx.clearRect(0, 0, 16, 16)
+    const cx = 7.5
+    const cy = kind === 'sapling' ? 8 : 9
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const dy = y - cy
+        const dx = x - cx
+        if (y >= 12 && Math.abs(dx) <= 1) {
+          ctx.fillStyle = hash01(seed + x + y) > 0.4 ? '#3d7a34' : '#2d5a27'
+          ctx.fillRect(x, y, 1, 1)
+          continue
+        }
+        const r = Math.hypot(dx * 0.95, dy * (kind === 'sapling' ? 1.2 : 1))
+        if (kind === 'poppy' && r < 5.5 && y < 13) {
+          if (hash01(seed + x * 13 + y * 17) > 0.92) continue
+          ctx.fillStyle =
+            r < 2.2
+              ? '#5a2020'
+              : hash01(seed + x + y * 3) > 0.55
+                ? '#d84848'
+                : '#c43b3b'
+          ctx.fillRect(x, y, 1, 1)
+        } else if (kind === 'sapling' && Math.abs(dx) <= 1 && y >= 6 && y <= 13) {
+          ctx.fillStyle = hash01(seed + x + y) > 0.5 ? '#4a8f3a' : '#3d7a34'
+          ctx.fillRect(x, y, 1, 1)
+        }
+      }
+    }
+  } else if (kind === 'mushroom_stem') {
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        if (x < 6 || x > 9) continue
+        const n = hash01(seed + x + y * 5)
+        ctx.fillStyle = n > 0.5 ? '#e8dcc8' : '#d9c8ad'
+        ctx.fillRect(x, y, 1, 1)
+      }
+    }
+  } else if (kind === 'mushroom_cap') {
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const spot = hash01(seed + x * 7 + y * 11) > 0.86
+        ctx.fillStyle = spot ? '#f2e8dc' : hash01(seed + x + y) > 0.45 ? '#b53838' : '#c44a4a'
+        ctx.fillRect(x, y, 1, 1)
+      }
+    }
   } else {
     for (let y = 0; y < 16; y++) {
       for (let x = 0; x < 16; x++) {
@@ -179,6 +237,77 @@ function placeCrossSprite(
     plane.rotation.y = rotY
     plane.userData.voxel = true
     group.add(plane)
+  }
+}
+
+function placeCrossPlantSprite(
+  group: THREE.Group,
+  ix: number,
+  iz: number,
+  baseY: number,
+  height: number,
+  width: number,
+  mat: THREE.MeshBasicMaterial,
+): void {
+  const yCenter = baseY + height / 2
+  for (const rotY of [0, Math.PI / 2]) {
+    const plane = new THREE.Mesh(planeGeo, mat)
+    plane.position.set(ix * VOXEL, yCenter, iz * VOXEL)
+    plane.scale.set(width, height, 1)
+    plane.rotation.y = rotY
+    plane.userData.voxel = true
+    group.add(plane)
+  }
+}
+
+function buildWalkCaptureOak(
+  g: THREE.Group,
+  bark: THREE.MeshBasicMaterial,
+  leaf: THREE.MeshBasicMaterial,
+  elder: boolean,
+): void {
+  const trunkH = elder ? 6 : 5
+  for (let y = 0; y < trunkH; y++) {
+    placeBlock(g, 0, y, 0, bark)
+  }
+  const capY = trunkH
+  if (elder) {
+    placeLeafLayer(g, capY, 3, leaf, true)
+    placeLeafLayer(g, capY + 1, 3, leaf, true)
+    placeLeafLayer(g, capY + 2, 2, leaf, true)
+    placeLeafLayer(g, capY + 3, 2, leaf, false)
+  } else {
+    placeLeafLayer(g, capY, 2, leaf, true)
+    placeLeafLayer(g, capY + 1, 2, leaf, true)
+    placeLeafLayer(g, capY + 2, 1, leaf, false)
+    placeLeafLayer(g, capY + 3, 1, leaf, false)
+  }
+}
+
+function buildWalkCaptureMushroom(
+  g: THREE.Group,
+  stem: THREE.MeshBasicMaterial,
+  cap: THREE.MeshBasicMaterial,
+): void {
+  const stemMesh = new THREE.Mesh(boxGeo, stem)
+  stemMesh.position.set(0, 0.16, 0)
+  stemMesh.scale.set(0.16, 0.3, 0.16)
+  stemMesh.userData.voxel = true
+  g.add(stemMesh)
+  const capMesh = new THREE.Mesh(boxGeo, cap)
+  capMesh.position.set(0, 0.46, 0)
+  capMesh.scale.set(0.48, 0.22, 0.48)
+  capMesh.userData.voxel = true
+  g.add(capMesh)
+}
+
+export function snapPlantGroupToTerrain(g: THREE.Group, terrainTop: number): void {
+  g.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(g)
+  if (box.isEmpty()) return
+  const dy = terrainTop - box.min.y
+  if (Math.abs(dy) > 0.0005) {
+    g.position.y += dy
   }
 }
 
@@ -344,16 +473,13 @@ function walkCaptureFlatPad(ix: number, iz: number): boolean {
   return false
 }
 
-function walkCaptureColumnSurface(ix: number, iz: number): number {
-  if (Math.hypot(ix, iz) > 52) return 1
-  if (walkCaptureFlatPad(ix, iz)) return 1
-  return Math.abs((ix + iz) % 7) === 0 ? 2 : 1
+function walkCaptureColumnSurface(_ix: number, _iz: number): number {
+  return 1
 }
 
-export function walkCaptureGroundY(x: number, z: number): number {
-  const ix = Math.round(x)
-  const iz = Math.round(z)
-  return walkCaptureColumnSurface(ix, iz)
+/** World Y of the walk-capture grass surface (top face under plants). */
+export function walkCaptureGroundY(_x: number, _z: number): number {
+  return 0
 }
 
 /** Stepped grass blocks for walk-capture screenshots (grass top + dirt sides). */
@@ -375,7 +501,7 @@ export function addWalkCaptureGrassField(
       const columnHeight = walkCaptureColumnSurface(ix, iz)
       for (let y = 0; y < columnHeight; y++) {
         const mesh = new THREE.Mesh(blockGeo, mats)
-        mesh.position.set(ix + 0.5, y + 0.5, iz + 0.5)
+        mesh.position.set(ix + 0.5, y - columnHeight + 0.5, iz + 0.5)
         mesh.receiveShadow = true
         mesh.castShadow = y === columnHeight - 1
         root.add(mesh)
@@ -476,20 +602,21 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
     }
   }
 
+  const walkCaptureTree =
+    isWalkCaptureSession() && plant.id.endsWith('-walk') && recipe.kind === 'tree'
+
   if (walkSolo && plant.id === 'flower-bloom-walk') {
-    const poppy = voxelMaterial('#c43b3b', '#e85d5d', seedN + 7, 'flower', true)
-    placeBlock(g, 0, 1, 0, stemMat)
-    placeCrossSprite(g, 0, 2, 0, poppy, 2.0)
+    const poppy = voxelMaterial('#c43b3b', '#e85d5d', seedN + 7, 'poppy', true)
+    placeCrossPlantSprite(g, 0, 0, 0, 0.72, 0.55, poppy)
   } else if (walkSolo && plant.id === 'mushroom-walk') {
-    placeBlock(g, 0, 1, 0, stemMat)
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dz = -1; dz <= 1; dz++) {
-        if (Math.abs(dx) === 1 && Math.abs(dz) === 1) continue
-        placeBlock(g, dx, 2, dz, cap)
-      }
-    }
+    const stem = voxelMaterial('#e8dcc8', '#d9c8ad', seedN + 5, 'mushroom_stem')
+    const capSmall = voxelMaterial('#c44a4a', '#f2e8dc', seedN + 13, 'mushroom_cap')
+    buildWalkCaptureMushroom(g, stem, capSmall)
   } else if (walkSolo && plant.id === 'sprout-walk') {
-    placeCrossSprite(g, 0, 1, 0, leaf, 1.25)
+    const sapling = voxelMaterial('#4a8f3a', '#3d7a34', seedN + 3, 'sapling', true)
+    placeCrossPlantSprite(g, 0, 0, 0, 0.6, 0.5, sapling)
+  } else if (walkCaptureTree) {
+    buildWalkCaptureOak(g, bark, leaf, plant.id.includes('elder'))
   } else if (recipe.kind === 'tree') {
     buildOakTree(g, bark, leaf, seedN, stage)
   } else if (recipe.kind === 'flower') {
@@ -504,8 +631,11 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
     buildOakTree(g, bark, leaf, seedN + 19, stage)
   }
 
-  const groundY = isWalkCaptureSession() ? walkCaptureGroundY(plant.x, plant.z) : 0
-  g.position.set(plant.x, groundY, plant.z)
+  const terrainTop = isWalkCaptureSession() ? walkCaptureGroundY(plant.x, plant.z) : 0
+  g.position.set(plant.x, terrainTop, plant.z)
+  if (isWalkCaptureSession()) {
+    snapPlantGroupToTerrain(g, terrainTop)
+  }
   return g
 }
 
