@@ -303,16 +303,13 @@ function buildPixelArtMushroom(
   stem: THREE.MeshBasicMaterial,
   cap: THREE.MeshBasicMaterial,
 ): void {
-  const stemMesh = new THREE.Mesh(boxGeo, stem)
-  stemMesh.position.set(0, 0.16, 0)
-  stemMesh.scale.set(0.16, 0.3, 0.16)
-  stemMesh.userData.voxel = true
-  g.add(stemMesh)
-  const capMesh = new THREE.Mesh(boxGeo, cap)
-  capMesh.position.set(0, 0.46, 0)
-  capMesh.scale.set(0.48, 0.22, 0.48)
-  capMesh.userData.voxel = true
-  g.add(capMesh)
+  placeBlock(g, 0, 0, 0, stem)
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+      if (Math.abs(dx) === 1 && Math.abs(dz) === 1) continue
+      placeBlock(g, dx, 1, dz, cap)
+    }
+  }
 }
 
 export function snapPlantGroupToTerrain(g: THREE.Group, terrainTop: number): void {

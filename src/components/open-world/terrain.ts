@@ -3,12 +3,7 @@ import { gardenRng } from '@/lib/garden/prng'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import type { GardenWorld } from '@/lib/open-world/types'
 import { isWalkCaptureSession } from '@/lib/open-world/walk-capture-bridge'
-import {
-  minecraftGrassTexture,
-  minecraftGrassTufts,
-  minecraftPathTexture,
-  voxelRockCluster,
-} from './minecraft-visual'
+import { minecraftGrassTexture, minecraftPathTexture, voxelRockCluster } from './minecraft-visual'
 
 export interface TerrainHandle {
   root: THREE.Group
@@ -170,7 +165,7 @@ export function buildTerrain(
     minecraftMode
       ? new THREE.MeshLambertMaterial({
           map: grassTex,
-          color: new THREE.Color(isWalkCaptureSession() ? '#ffffff' : groundTint),
+          color: new THREE.Color('#ffffff'),
         })
       : new THREE.MeshStandardMaterial({
           map: grassTex,
@@ -860,9 +855,7 @@ export function buildTerrain(
   }
 
   // ── Grass Tufts ─────────────────────────────────────────────────────────
-  if (minecraftMode) {
-    minecraftGrassTufts(world, palette, root, track)
-  } else if (!reducedMotion) {
+  if (!minecraftMode && !reducedMotion) {
     const tuftGeo = track(new THREE.ConeGeometry(0.07, 0.28, 5))
     const tuftMat = track(new THREE.MeshStandardMaterial({ color: palette.hills[0] ?? '#4e2749', roughness: 1 }))
     const count = 480

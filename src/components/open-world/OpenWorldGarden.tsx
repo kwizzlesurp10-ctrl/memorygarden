@@ -243,6 +243,9 @@ export function OpenWorldGarden({
     engineRef.current = engine
     setFailed(engine.failed)
     setWorld(engine.getWorld())
+    const win = window as Window & { __mgWalkSceneReady?: () => boolean }
+    win.__mgWalkSceneReady = () => engine.sceneReady()
+    requestAnimationFrame(() => engine.refreshCanvasSize())
     if (captureMode) {
       engine.setPaused(true)
       registerWalkCaptureBridge({
@@ -308,6 +311,7 @@ export function OpenWorldGarden({
       }
     }
     return () => {
+      delete win.__mgWalkSceneReady
       registerWalkCaptureBridge(null)
       engine.dispose()
       engineRef.current = null

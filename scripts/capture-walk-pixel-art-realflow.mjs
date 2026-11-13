@@ -1,6 +1,6 @@
 /**
- * Pixel-art Walk screenshots via normal UI — no mg:walk-capture bridge.
- * No sessionStorage capture flags — only localStorage prefs and UI Walk entry.
+ * Pixel-art Walk via normal UI — no mg:walk-capture.
+ * Uses addInitScript so getLocalUser() reads the seeded profile on first load.
  */
 import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -12,12 +12,28 @@ const outDir = process.env.ARTIFACT_DIR || '/opt/cursor/artifacts'
 mkdirSync(outDir, { recursive: true })
 
 const demoUser = {
-  id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-  login: 'pixel-walk-realflow',
+  id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  login: 'minecraft-walk-realflow',
   avatarUrl: '',
 }
 
 const memories = [
+  {
+    id: 'tree-elder-walk',
+    photoUrl:
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    text: 'Elder oak',
+    date: '2025-06-01',
+    plantedAt: '2025-06-02T12:00:00.000Z',
+    position: { x: 455, y: 400 },
+    emotionalTone: 'peaceful',
+    plantStage: 'elder',
+    plantVariety: 'tree',
+    visitCount: 6,
+    reflections: [],
+    audioRecordings: [],
+    geneticsSeed: 'walk-tree-elder',
+  },
   {
     id: 'tree-mature-walk',
     photoUrl:
@@ -68,24 +84,26 @@ const memories = [
   },
 ]
 
-async function seedPage(page, viewport) {
-  await page.setViewportSize(viewport)
-  await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 120_000 })
-  await page.evaluate(
-    ({ user, seeded }) => {
-      localStorage.setItem('memorygarden:user', JSON.stringify(user))
-      localStorage.setItem(
-        `memorygarden:${user.id}:preferences`,
-        JSON.stringify({
-          hasCompletedOnboarding: true,
-          plantStylePreference: { artStyle: 'pixel-art' },
-        }),
+const seedPayload = { user: demoUser, memories }
+
+async function waitWalkScene(page) {
+  await page.waitForFunction(
+    () => {
+      const canvas = document.querySelector(
+        '[data-testid="open-world-garden"] canvas[data-engine="three.js r184"]',
       )
-      localStorage.setItem(`memorygarden:${user.id}:memories`, JSON.stringify(seeded))
+      if (!(canvas instanceof HTMLCanvasElement)) return false
+      if (canvas.clientWidth < 80 || canvas.clientHeight < 80) return false
+      return typeof window.__mgWalkSceneReady === 'function' && window.__mgWalkSceneReady() === true
     },
-    { user: demoUser, seeded: memories },
+    undefined,
+    { timeout: 120_000 },
   )
-  await page.reload({ waitUntil: 'networkidle', timeout: 120_000 })
+  await page.evaluate(async () => {
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+    })
+  })
 }
 
 async function enterWalk(page) {
@@ -93,52 +111,85 @@ async function enterWalk(page) {
     await page.keyboard.press('Escape')
     await page.waitForTimeout(30)
   }
-  await page.evaluate(() => {
-    const btn = document.querySelector('[data-testid="enter-walk-button"]')
-    if (btn instanceof HTMLElement) btn.click()
-  })
-  const canvas = page.locator('[data-testid="open-world-garden"] canvas').first()
-  await canvas.waitFor({ state: 'visible', timeout: 90_000 })
-  await page.waitForTimeout(2500)
-  await canvas.click({ position: { x: 200, y: 300 } })
-  await page.waitForTimeout(400)
+  const enterBtn = page.getByTestId('enter-walk-button')
+  if (await enterBtn.isVisible().catch(() => false)) {
+    await enterBtn.click({ timeout: 30_000 })
+  } else {
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-testid="enter-walk-button"]')
+      if (btn instanceof HTMLElement) btn.click()
+    })
+  }
+  await waitWalkScene(page)
 }
 
 async function walkToward(page, ms, keys) {
   for (const code of keys) await page.keyboard.down(code)
   await page.waitForTimeout(ms)
   for (const code of keys) await page.keyboard.up(code)
-  await page.waitForTimeout(600)
+  await page.waitForTimeout(800)
 }
 
-async function shot(page, file) {
+async function shotCanvas(page, file) {
   const path = resolve(outDir, file)
-  await page.locator('[data-testid="open-world-garden"]').first().screenshot({ path })
+  const errors = await page.evaluate(() => {
+    const failed = document.body.innerText.includes('hit a snag')
+    return { failed, webglFailed: !!document.querySelector('[data-testid="open-world-garden"]')?.textContent?.includes('WebGL') }
+  })
+  if (errors.failed) {
+    throw new Error(`Open-world walk error before shot ${file}`)
+  }
+  const canvas = page.locator('[data-testid="open-world-garden"] canvas[data-engine="three.js r184"]')
+  await canvas.screenshot({ path })
   console.log('Wrote', path)
 }
 
 const browser = await chromium.launch({ headless: true })
+
 try {
-  const desktop = await browser.newContext({ viewport: { width: 1280, height: 800 } })
+  const makeContext = async (viewport, mobile) => {
+    const context = await browser.newContext({
+      viewport,
+      isMobile: mobile,
+      hasTouch: mobile,
+    })
+    await context.addInitScript((payload) => {
+      localStorage.setItem('memorygarden:user', JSON.stringify(payload.user))
+      localStorage.setItem(
+        `memorygarden:${payload.user.id}:preferences`,
+        JSON.stringify({
+          hasCompletedOnboarding: true,
+          plantStylePreference: { artStyle: 'pixel-art' },
+        }),
+      )
+      localStorage.setItem(`memorygarden:${payload.user.id}:memories`, JSON.stringify(payload.memories))
+      sessionStorage.setItem('mg:walk-plant-focus', '1')
+    }, seedPayload)
+    await context.route('**/api/**', (route) =>
+      route.fulfill({ status: 503, body: '{}', contentType: 'application/json' }),
+    )
+    return context
+  }
+
+  const desktop = await makeContext({ width: 1280, height: 800 }, false)
   const desktopPage = await desktop.newPage()
-  await seedPage(desktopPage, { width: 1280, height: 800 })
+  const consoleErrors = []
+  desktopPage.on('pageerror', (e) => consoleErrors.push(String(e)))
+  await desktopPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 120_000 })
   await enterWalk(desktopPage)
-  await walkToward(desktopPage, 5200, ['KeyW'])
-  await shot(desktopPage, 'minecraft-walk-realflow-desktop-near-tree.png')
-  await walkToward(desktopPage, 2200, ['KeyA', 'KeyW'])
-  await shot(desktopPage, 'minecraft-walk-realflow-desktop-near-flowers.png')
+  await walkToward(desktopPage, 1600, ['KeyW'])
+  await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-tree.png')
+  await walkToward(desktopPage, 900, ['KeyA', 'KeyW'])
+  await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-flowers.png')
+  if (consoleErrors.length) console.log('desktop page errors', consoleErrors.slice(0, 3))
   await desktop.close()
 
-  const mobile = await browser.newContext({
-    viewport: { width: 390, height: 844 },
-    isMobile: true,
-    hasTouch: true,
-  })
+  const mobile = await makeContext({ width: 390, height: 844 }, true)
   const mobilePage = await mobile.newPage()
-  await seedPage(mobilePage, { width: 390, height: 844 })
+  await mobilePage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 120_000 })
   await enterWalk(mobilePage)
-  await walkToward(mobilePage, 4800, ['KeyW'])
-  await shot(mobilePage, 'minecraft-walk-realflow-mobile-walk-height.png')
+  await walkToward(mobilePage, 2600, ['KeyW'])
+  await shotCanvas(mobilePage, 'minecraft-walk-realflow-mobile-walk-height.png')
   await mobile.close()
 } finally {
   await browser.close()

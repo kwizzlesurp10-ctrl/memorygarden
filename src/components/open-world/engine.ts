@@ -79,6 +79,7 @@ export class OpenWorldEngine {
   private captureBackdrop = false
   private soloCapturePlantId: string | null = null
   private plantArtStyle: ArtStyle
+  private framesRendered = 0
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -278,6 +279,10 @@ export class OpenWorldEngine {
   private applyRendererExposure(): void {
     if (!this.renderer) return
     const star = this.palette.starAlpha ?? 0
+    if (this.plantArtStyle === 'pixel-art') {
+      this.renderer.toneMappingExposure = star > 0.22 ? 1.28 + star * 0.32 : 1.22
+      return
+    }
     if (star > 0.22) {
       this.renderer.toneMappingExposure = 1.18 + star * 0.42
     } else {
@@ -536,30 +541,38 @@ export class OpenWorldEngine {
         const ground = box.min.y
         const aimY =
           wp.variety === 'mushroom'
-            ? ground + 0.55
+            ? ground + 1.05
             : wp.variety === 'flower'
               ? ground + 0.48
               : ground + 0.42
         const aim = new THREE.Vector3(wp.x, aimY, wp.z)
-        const dist =
-          wp.variety === 'mushroom' ? 1.05 : plantId.includes('sprout') ? 0.92 : 1.15
         const yaw = wp.variety === 'flower' ? 0.65 : wp.variety === 'mushroom' ? -0.55 : -0.45
         const minFrac = plantId.includes('sprout') ? 0.27 : 0.34
+        const maxFrac = wp.variety === 'mushroom' ? 0.42 : 0.88
+        const startDist =
+          wp.variety === 'mushroom' ? 3.6 : plantId.includes('sprout') ? 1.55 : 1.85
+        const endDist =
+          wp.variety === 'mushroom' ? 2.1 : plantId.includes('sprout') ? 0.62 : 1.05
         let bestPose: WalkCapturePose | null = null
         let bestFrac = 0
-        for (let pass = 0; pass < 9; pass++) {
-          const d = dist * Math.pow(0.9, pass)
+        for (let pass = 0; pass < 10; pass++) {
+          const t = pass / 9
+          const d = startDist + (endDist - startDist) * t
           const camX = wp.x + Math.sin(yaw) * d
           const camZ = wp.z + Math.cos(yaw) * d
-          const eyeY = ground + 1.28
+          const eyeY = ground + (wp.variety === 'mushroom' ? 1.42 : 1.28)
           const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
           const fit = this.plantCaptureFitAt(plantId, pose)
           const frac = fit?.frac ?? 0
-          if (frac > bestFrac) {
+          const inBand = frac >= minFrac && frac <= maxFrac
+          if (inBand) return pose
+          if (frac > bestFrac && frac <= maxFrac) {
+            bestFrac = frac
+            bestPose = pose
+          } else if (!bestPose && frac > bestFrac) {
             bestFrac = frac
             bestPose = pose
           }
-          if (frac >= minFrac) return pose
         }
         return bestPose
       }
@@ -648,17 +661,9 @@ export class OpenWorldEngine {
     const plants = walkPlants.length > 0 ? walkPlants : this.world.plants
     const cx = plants.reduce((s, p) => s + p.x, 0) / Math.max(1, plants.length)
     const cz = plants.reduce((s, p) => s + p.z, 0) / Math.max(1, plants.length)
-    const camX = cx
-    const camZ = cz + 22
-    const eyeY = 5.8
-    const horiz = Math.hypot(cx - camX, cz - camZ)
-    return {
-      x: camX,
-      z: camZ,
-      yaw: Math.atan2(cx - camX, cz - camZ),
-      pitch: -Math.atan2(3.6, horiz),
-      eyeY,
-    }
+    const aim = new THREE.Vector3(cx, 2.4, cz)
+    const camPos = new THREE.Vector3(cx + 11, 5.2, cz + 15)
+    return this.poseLookAt(aim, camPos, 5.2)
   }
 
   setWalkCaptureBackdrop(active: boolean): void {
@@ -777,6 +782,15 @@ export class OpenWorldEngine {
       }
     }
     renderer.render(this.scene, this.camera)
+    this.framesRendered++
+  }
+
+  sceneReady(): boolean {
+    return !this.failed && this.framesRendered >= 4
+  }
+
+  refreshCanvasSize(): void {
+    this.resize()
   }
 
   private applyCamera(): void {
