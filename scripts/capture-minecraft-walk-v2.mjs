@@ -124,12 +124,15 @@ async function enterWalk(page) {
     const btn = document.querySelector('[data-testid="enter-walk-button"]')
     if (btn instanceof HTMLElement) btn.click()
   })
-  await page.waitForTimeout(1500)
-  await page
-    .locator('[data-testid="open-world-garden"] canvas')
-    .first()
-    .waitFor({ state: 'visible', timeout: 45_000 })
-  await page.waitForTimeout(700)
+  await page.waitForTimeout(2000)
+  const canvas = page.locator('[data-testid="open-world-garden"] canvas').first()
+  await canvas.waitFor({ state: 'visible', timeout: 90_000 })
+  await page.waitForFunction(
+    () => (window.__mgWalkCapture?.worldPlants?.() ?? []).length >= 3,
+    undefined,
+    { timeout: 90_000 },
+  )
+  await page.waitForTimeout(1200)
 }
 
 async function captureSet(page, artStyle) {
@@ -156,15 +159,51 @@ async function captureSet(page, artStyle) {
   }, artStyle)
   await page.waitForTimeout(1200)
 
+  if (artStyle === 'pixel-art' && phase === 'after') {
+    const check = await page.evaluate(() => ({
+      v: window.__mgWalkCapture?.voxelMeshCount?.() ?? -1,
+      g: window.__mgWalkCapture?.voxelPlantGroupCount?.() ?? -1,
+      p: window.__mgWalkCapture?.plantCount?.() ?? -1,
+    }))
+    if (check.v < 8) {
+      throw new Error(`Pixel-art walk expected voxel meshes; got ${JSON.stringify(check)}`)
+    }
+    console.log('voxel check', check)
+  }
+
   for (const shot of shots) {
     let pose = null
     if (shot.kind === 'overview') {
       pose = await page.evaluate(() => window.__mgWalkCapture?.clusterOverviewPose?.() ?? null)
+      if (!pose) {
+        const plants = (await page.evaluate(() => window.__mgWalkCapture?.worldPlants?.() ?? [])) ?? []
+        const cx = plants.reduce((s, p) => s + p.x, 0) / Math.max(1, plants.length)
+        const cz = plants.reduce((s, p) => s + p.z, 0) / Math.max(1, plants.length)
+        pose = { x: cx - 5.5, z: cz + 7.2, yaw: Math.atan2(cx - (cx - 5.5), cz - (cz + 7.2)), pitch: -0.1, eyeY: 1.62 }
+      }
     } else if (shot.plantId) {
       pose = await page.evaluate(
         (id) => window.__mgWalkCapture?.plantCapturePose?.(id) ?? null,
         shot.plantId,
       )
+      if (!pose) {
+        const plants = (await page.evaluate(() => window.__mgWalkCapture?.worldPlants?.() ?? [])) ?? []
+        const p = plants.find((pl) => pl.id === shot.plantId)
+        if (p) {
+          const lookY = p.variety === 'tree' ? 3.2 : p.variety === 'mushroom' ? 1.1 : 1.3
+          const dist = 3.1
+          const camX = p.x - dist * 0.72
+          const camZ = p.z - dist * 0.68
+          const horiz = Math.hypot(p.x - camX, p.z - camZ)
+          pose = {
+            x: camX,
+            z: camZ,
+            yaw: Math.atan2(p.x - camX, p.z - camZ),
+            pitch: -Math.atan2(lookY - 1.62, horiz),
+            eyeY: 1.62,
+          }
+        }
+      }
     }
     if (!pose) throw new Error(`No pose for ${shot.file}`)
     await page.evaluate(async (p) => {
@@ -183,6 +222,8 @@ const browser = await chromium.launch({ headless: true })
 try {
   const context = await browser.newContext({ viewport: viewports[viewportMode] ?? viewports.desktop })
   await context.addInitScript(({ user, memories: seeded }) => {
+    sessionStorage.setItem('mg:walk-capture', '1')
+    sessionStorage.setItem('mg:walk-plant-focus', '1')
     localStorage.setItem('memorygarden:user', JSON.stringify(user))
     localStorage.setItem(
       `memorygarden:${user.id}:preferences`,

@@ -1,11 +1,10 @@
 import * as THREE from 'three'
-import type { ArtStyle } from '@/lib/types'
+import type { ArtStyle, PlantStage } from '@/lib/types'
 import { createVoxelPlantGroup } from './minecraft-visual'
 import { gardenRng, seedFromGenetics } from '@/lib/garden/prng'
 import { plantStageToIndex } from '@/lib/garden/stage'
 import type { PlantVisualRecipe } from '@/lib/open-world/plant-visual'
 import type { WorldPlant } from '@/lib/open-world/types'
-import type { PlantStage } from '@/lib/types'
 import { TRUNK_DAY } from '@/lib/garden/plant-visual-spec'
 
 const geo = {

@@ -335,11 +335,15 @@ export class OpenWorldEngine {
     if (!group) return null
     group.updateWorldMatrix(true, true)
     const box = new THREE.Box3()
-    group.traverse((obj) => {
-      if (obj instanceof THREE.Mesh && obj.userData.voxel) {
-        box.expandByObject(obj)
-      }
-    })
+    if (group.userData.voxelPlant) {
+      box.setFromObject(group)
+    } else {
+      group.traverse((obj) => {
+        if (obj instanceof THREE.Mesh && obj.userData.voxel) {
+          box.expandByObject(obj)
+        }
+      })
+    }
     return box.isEmpty() ? null : box
   }
 
