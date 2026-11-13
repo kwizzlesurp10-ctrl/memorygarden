@@ -9,7 +9,7 @@ const baseline = process.env.WALK_CAPTURE_BASELINE === '1'
 mkdirSync(outDir, { recursive: true })
 
 const WALK_CAPTURE_POSE = { x: 1.2, z: 34.5, yaw: 0, pitch: 0.12 }
-const OVERVIEW_CAPTURE_POSE = { x: 0.5, z: 28, yaw: 0.45, pitch: 0.42 }
+const OVERVIEW_CAPTURE_POSE = { x: -0.6, z: 15.5, yaw: 0.22, pitch: 0.3 }
 
 const seedMemories = [
   {
@@ -115,8 +115,14 @@ async function applyCaptureFraming(page, mode) {
     pose.yaw = 0.05
   }
   if (mode === 'overview') {
+    pose = await poseNearVariety(page, 'tree', 9.5)
     pose.pitch = 0.34
     pose.yaw = -0.15
+  }
+  if (mode === 'flower-glow') {
+    pose = await poseNearVariety(page, 'flower', 2.6)
+    pose.pitch = 0.2
+    pose.yaw = 0.02
   }
   await page.evaluate(({ p }) => window.__mgWalkCapture?.setPose(p), { p: pose })
   await page.waitForTimeout(2600)
@@ -158,6 +164,12 @@ try {
       await canvas.screenshot({
         path: resolve(outDir, `${prefix}-cc0-garden-overview-${label}-${suffix}.png`),
       })
+      if (label === 'desktop' && suffix === 'dusk') {
+        await applyCaptureFraming(page, 'flower-glow')
+        await canvas.screenshot({
+          path: resolve(outDir, `${prefix}-flower-bloom-inworld-dusk.png`),
+        })
+      }
       await ctx.close()
     }
   }

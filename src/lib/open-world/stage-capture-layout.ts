@@ -3,6 +3,9 @@ import { PLANT_STAGES_ORDER } from '@/lib/garden/plant-stages'
 import type { WorldPlant } from './types'
 
 export const STAGE_ROW_CAPTURE_KEY = 'mg:stage-row-capture'
+export const TREE_YOUNG_ELDER_CAPTURE_KEY = 'mg:tree-young-elder-capture'
+
+export const TREE_YOUNG_ELDER_CAMERA_POSE = { x: 0, z: 15.2, yaw: 0, pitch: 0.14 } as const
 
 /** Default walk camera for stage-row screenshots (south of row, looking north). */
 export const STAGE_ROW_CAMERA_POSE = { x: 0, z: 10.2, yaw: 0, pitch: 0.2 } as const
@@ -11,6 +14,13 @@ export function isStageRowCapture(): boolean {
   return (
     typeof sessionStorage !== 'undefined' &&
     sessionStorage.getItem(STAGE_ROW_CAPTURE_KEY) === '1'
+  )
+}
+
+export function isYoungElderTreeCapture(): boolean {
+  return (
+    typeof sessionStorage !== 'undefined' &&
+    sessionStorage.getItem(TREE_YOUNG_ELDER_CAPTURE_KEY) === '1'
   )
 }
 
@@ -28,4 +38,18 @@ export function applyStageRowLayout(plants: WorldPlant[], variety: PlantVariety,
 export function applyDualStageRowCapture(plants: WorldPlant[]): void {
   applyStageRowLayout(plants, 'tree', 9)
   applyStageRowLayout(plants, 'flower', 10.6)
+}
+
+/** Pair young and elder trees side by side (synthetic capture only). */
+export function applyYoungElderTreePair(plants: WorldPlant[]): void {
+  const young = plants.find((p) => p.variety === 'tree' && p.stage === 'young')
+  const elder = plants.find((p) => p.variety === 'tree' && p.stage === 'elder')
+  if (young) {
+    young.x = -2.8
+    young.z = 7.6
+  }
+  if (elder) {
+    elder.x = 2.9
+    elder.z = 7.6
+  }
 }

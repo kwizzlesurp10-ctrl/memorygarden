@@ -2,12 +2,6 @@ import * as THREE from 'three'
 import { gardenRng } from '@/lib/garden/prng'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import type { GardenWorld } from '@/lib/open-world/types'
-import {
-  minecraftGrassTexture,
-  minecraftGrassTufts,
-  minecraftPathTexture,
-  voxelRockCluster,
-} from './minecraft-visual'
 
 export interface TerrainHandle {
   root: THREE.Group
@@ -22,6 +16,29 @@ export interface TerrainHandle {
 
 function hexColor(hex: string): THREE.Color {
   return new THREE.Color(hex)
+}
+
+function twilightSceneryColor(palette: ScenePalette, base: string, twilight: boolean): THREE.Color {
+  const color = new THREE.Color(base)
+  if (!twilight) return color
+  color.lerp(new THREE.Color(palette.hills[0] ?? palette.silSoft), 0.62)
+  color.lerp(new THREE.Color(palette.hills[1] ?? palette.silSoft), 0.28)
+  return color
+}
+
+function twilightSceneryMat(
+  palette: ScenePalette,
+  base: string,
+  twilight: boolean,
+  starAlpha: number,
+  roughness = 0.88,
+): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({
+    color: twilightSceneryColor(palette, base, twilight),
+    roughness,
+    emissive: twilight ? (palette.hills[0] ?? palette.glow ?? palette.silSoft) : '#000000',
+    emissiveIntensity: twilight ? 0.22 + starAlpha * 0.24 : 0,
+  })
 }
 
 function grassTexture(palette: ScenePalette): THREE.CanvasTexture {
@@ -115,7 +132,6 @@ export function buildTerrain(
   world: GardenWorld,
   palette: ScenePalette,
   reducedMotion: boolean,
-  minecraftMode = false,
 ): TerrainHandle {
   const root = new THREE.Group()
   root.name = 'terrain'
@@ -130,29 +146,20 @@ export function buildTerrain(
   const twilight = starAlpha > 0.22
 
   // ── Ground Plane ────────────────────────────────────────────────────────
-  const planeW = world.bounds.maxX - world.bounds.minX + 16
-  const planeD = world.bounds.maxZ - world.bounds.minZ + 16
-  const grassTex = track(
-    minecraftMode ? minecraftGrassTexture(palette, Math.max(planeW, planeD)) : grassTexture(palette),
-  )
+  const grassTex = track(grassTexture(palette))
   const groundTint = new THREE.Color(palette.hills[1] ?? '#2c163c')
   if (twilight) {
     groundTint.lerp(new THREE.Color(palette.hills[0] ?? palette.silSoft), 0.62 + starAlpha * 0.22)
     groundTint.lerp(new THREE.Color(palette.hills[2] ?? palette.hills[1] ?? '#5a3d52'), 0.18)
   }
   const groundMat = track(
-    minecraftMode
-      ? new THREE.MeshLambertMaterial({
-          map: grassTex,
-          color: groundTint,
-        })
-      : new THREE.MeshStandardMaterial({
-          map: grassTex,
-          color: groundTint,
-          roughness: twilight ? 0.84 : 0.95,
-          emissive: twilight ? (palette.hills[0] ?? palette.glow ?? palette.silSoft) : '#000000',
-          emissiveIntensity: twilight ? 0.22 + starAlpha * 0.22 : 0,
-        }),
+    new THREE.MeshStandardMaterial({
+      map: grassTex,
+      color: groundTint,
+      roughness: twilight ? 0.84 : 0.95,
+      emissive: twilight ? (palette.hills[0] ?? palette.glow ?? palette.silSoft) : '#000000',
+      emissiveIntensity: twilight ? 0.22 + starAlpha * 0.22 : 0,
+    }),
   )
   const ground = new THREE.Mesh(
     track(new THREE.PlaneGeometry(world.bounds.maxX - world.bounds.minX + 16, world.bounds.maxZ - world.bounds.minZ + 16)),
@@ -163,38 +170,27 @@ export function buildTerrain(
   root.add(ground)
 
   // ── Gentle Flowerbed Soil Berms ─────────────────────────────────────────
-  const soilBermMat = track(
-    new THREE.MeshStandardMaterial({ color: palette.hills[0] ?? '#3a1f33', roughness: 0.98 }),
-  )
-  if (!minecraftMode) {
-    const bermGeo = track(new THREE.SphereGeometry(1, 10, 8))
-    const bermPositions = [
-      { x: -14, z: -10, sx: 8.5, sz: 6.5 },
-      { x: 12, z: -16, sx: 9.0, sz: 7.0 },
-      { x: -18, z: 12, sx: 7.5, sz: 8.0 },
-      { x: 16, z: 8, sx: 8.0, sz: 7.5 },
-      { x: 0, z: -22, sx: 10.0, sz: 6.0 },
-    ]
-    for (const berm of bermPositions) {
-      const mesh = new THREE.Mesh(bermGeo, soilBermMat)
-      mesh.scale.set(berm.sx, 0.4, berm.sz)
-      mesh.position.set(berm.x, -0.15, berm.z)
-      mesh.receiveShadow = true
-      root.add(mesh)
-    }
+  const soilBermMat = track(new THREE.MeshStandardMaterial({ color: palette.hills[0] ?? '#3a1f33', roughness: 0.98 }))
+  const bermGeo = track(new THREE.SphereGeometry(1, 10, 8))
+  const bermPositions = [
+    { x: -14, z: -10, sx: 8.5, sz: 6.5 },
+    { x: 12, z: -16, sx: 9.0, sz: 7.0 },
+    { x: -18, z: 12, sx: 7.5, sz: 8.0 },
+    { x: 16, z: 8, sx: 8.0, sz: 7.5 },
+    { x: 0, z: -22, sx: 10.0, sz: 6.0 },
+  ]
+  for (const berm of bermPositions) {
+    const mesh = new THREE.Mesh(bermGeo, soilBermMat)
+    mesh.scale.set(berm.sx, 0.4, berm.sz)
+    mesh.position.set(berm.x, -0.15, berm.z)
+    mesh.receiveShadow = true
+    root.add(mesh)
   }
 
   // ── Pathway Ribbon & Flagstone Stepping Stones ──────────────────────────
-  const pathTex = minecraftMode ? track(minecraftPathTexture(palette, Math.max(planeW, planeD))) : null
-  const pathMat = track(
-    minecraftMode && pathTex
-      ? new THREE.MeshLambertMaterial({ map: pathTex, color: new THREE.Color('#ffffff') })
-      : new THREE.MeshStandardMaterial({ color: palette.bank, roughness: 1 }),
-  )
+  const pathMat = track(new THREE.MeshStandardMaterial({ color: palette.bank, roughness: 1 }))
   const steppingStoneMat = track(
-    minecraftMode && pathTex
-      ? new THREE.MeshLambertMaterial({ map: pathTex, color: new THREE.Color('#ffffff') })
-      : new THREE.MeshStandardMaterial({ color: palette.bank, roughness: 0.85, metalness: 0.05 }),
+    new THREE.MeshStandardMaterial({ color: palette.bank, roughness: 0.85, metalness: 0.05 }),
   )
   const stoneGeo = track(new THREE.CylinderGeometry(0.38, 0.44, 0.04, 8))
 
@@ -327,7 +323,7 @@ export function buildTerrain(
   })
 
   // ── Mossy River Boulders & Garden Rocks ──────────────────────────────────
-  const rockMat = track(new THREE.MeshStandardMaterial({ color: palette.bank, roughness: 0.9 }))
+  const rockMat = track(twilightSceneryMat(palette, palette.bank, twilight, starAlpha, 0.9))
   const rockGeo = track(new THREE.DodecahedronGeometry(1, 1))
   const rockPositions = [
     { x: world.pond.x + world.pond.radius * 0.95, z: world.pond.z - 0.5, s: 0.65 },
@@ -338,19 +334,14 @@ export function buildTerrain(
     { x: -12, z: 18, s: 0.75 },
     { x: 14, z: 16, s: 0.85 },
   ]
-  for (let ri = 0; ri < rockPositions.length; ri++) {
-    const rp = rockPositions[ri]
-    if (minecraftMode) {
-      voxelRockCluster(rp.x, rp.z, 300 + ri * 17, palette, root, track)
-    } else {
-      const rMesh = new THREE.Mesh(rockGeo, rockMat)
-      rMesh.scale.set(rp.s * 1.2, rp.s * 0.7, rp.s * 0.9)
-      rMesh.position.set(rp.x, rp.s * 0.35, rp.z)
-      rMesh.rotation.set(rp.s * 1.5, rp.s * 2.3, rp.s)
-      rMesh.castShadow = true
-      rMesh.receiveShadow = true
-      root.add(rMesh)
-    }
+  for (const rp of rockPositions) {
+    const rMesh = new THREE.Mesh(rockGeo, rockMat)
+    rMesh.scale.set(rp.s * 1.2, rp.s * 0.7, rp.s * 0.9)
+    rMesh.position.set(rp.x, rp.s * 0.35, rp.z)
+    rMesh.rotation.set(rp.s * 1.5, rp.s * 2.3, rp.s)
+    rMesh.castShadow = true
+    rMesh.receiveShadow = true
+    root.add(rMesh)
   }
 
   // ── Wooden Garden Pergola / Trellis Arch near Gate ──────────────────────
@@ -701,14 +692,10 @@ export function buildTerrain(
   root.add(sanctuaryGroup)
 
   // ── Negative-Space Masking: Bed Filler Flora (Wild Clover & Ferns) ──────
-  if (!minecraftMode && world.fillerFlora && world.fillerFlora.length > 0) {
+  let fillerMat: THREE.MeshStandardMaterial | null = null
+  if (world.fillerFlora && world.fillerFlora.length > 0) {
     const fillerGeo = track(new THREE.ConeGeometry(0.14, 0.22, 6))
-    const fillerMat = track(
-      new THREE.MeshStandardMaterial({
-        color: palette.silSoft ?? '#2c163c',
-        roughness: 0.92,
-      }),
-    )
+    fillerMat = track(twilightSceneryMat(palette, palette.silSoft ?? '#3e6b3f', twilight, starAlpha, 0.92))
     const fillerInst = new THREE.InstancedMesh(fillerGeo, fillerMat, world.fillerFlora.length)
     const fDummy = new THREE.Object3D()
     world.fillerFlora.forEach((fl, i) => {
@@ -762,7 +749,9 @@ export function buildTerrain(
   root.add(shed)
 
   // ── Perimeter Fence & Gate ──────────────────────────────────────────────
-  const hedgeMat = track(new THREE.MeshStandardMaterial({ color: palette.hills[2] ?? palette.sil, roughness: 0.9 }))
+  const hedgeMat = track(
+    twilightSceneryMat(palette, palette.hills[2] ?? palette.silSoft ?? palette.sil, twilight, starAlpha, 0.9),
+  )
   const postGeo = track(new THREE.BoxGeometry(0.28, 1.35, 0.28))
   const railGeo = track(new THREE.BoxGeometry(1, 0.12, 0.1))
   const addFence = (ax: number, az: number, bx: number, bz: number) => {
@@ -819,19 +808,15 @@ export function buildTerrain(
     { x: -40, z: 12, s: 15 },
     { x: 42, z: 18, s: 17 },
   ]
-  if (!minecraftMode) {
-    for (const h of hills) {
-      const mesh = new THREE.Mesh(hillGeo, hillMat)
-      mesh.scale.set(h.s, h.s * 0.42, h.s * 0.85)
-      mesh.position.set(h.x, -1.2, h.z)
-      root.add(mesh)
-    }
+  for (const h of hills) {
+    const mesh = new THREE.Mesh(hillGeo, hillMat)
+    mesh.scale.set(h.s, h.s * 0.42, h.s * 0.85)
+    mesh.position.set(h.x, -1.2, h.z)
+    root.add(mesh)
   }
 
   // ── Grass Tufts ─────────────────────────────────────────────────────────
-  if (minecraftMode) {
-    minecraftGrassTufts(world, palette, root, track)
-  } else if (!reducedMotion) {
+  if (!reducedMotion) {
     const tuftGeo = track(new THREE.ConeGeometry(0.07, 0.28, 5))
     const tuftMat = track(new THREE.MeshStandardMaterial({ color: palette.hills[0] ?? '#4e2749', roughness: 1 }))
     const count = 480
@@ -987,20 +972,17 @@ export function buildTerrain(
         ground.lerp(new THREE.Color(next.bank), 0.12)
       }
       groundMat.color.copy(ground)
-      if (groundMat instanceof THREE.MeshStandardMaterial) {
-        if (twilight) {
-          groundMat.emissive.set(next.hills[0] ?? next.glow ?? next.silSoft)
-          groundMat.emissiveIntensity = 0.24 + star * 0.24
-          groundMat.roughness = 0.86
-        } else {
-          groundMat.emissive.set('#000000')
-          groundMat.emissiveIntensity = 0
-          groundMat.roughness = 0.95
-        }
+      if (twilight) {
+        groundMat.emissive.set(next.hills[0] ?? next.glow ?? next.silSoft)
+        groundMat.emissiveIntensity = 0.24 + star * 0.24
+        groundMat.roughness = 0.86
+      } else {
+        groundMat.emissive.set('#000000')
+        groundMat.emissiveIntensity = 0
+        groundMat.roughness = 0.95
       }
       waterMat.color.set(next.waterTint[1] ?? '#1a0f2b')
       waterMat.emissive.set(next.ripple)
-      hedgeMat.color.set(next.hills[1] ?? next.hills[0] ?? next.silSoft)
       const nextHill = next.hills[1] ?? next.hills[0] ?? next.silSoft
       hillMat.color.set(nextHill)
       if (twilight) {
@@ -1012,7 +994,34 @@ export function buildTerrain(
       }
       soilBermMat.color.set(next.hills[0] ?? '#3a1f33')
       steppingStoneMat.color.set(next.bank)
-      rockMat.color.set(next.bank)
+      const nextTwilight = star > 0.22
+      const sceneryRock = twilightSceneryColor(next, next.bank, nextTwilight)
+      rockMat.color.copy(sceneryRock)
+      if (nextTwilight) {
+        rockMat.emissive.set(next.hills[0] ?? next.glow ?? next.silSoft)
+        rockMat.emissiveIntensity = 0.14 + star * 0.16
+      } else {
+        rockMat.emissive.set('#000000')
+        rockMat.emissiveIntensity = 0
+      }
+      hedgeMat.color.copy(twilightSceneryColor(next, next.hills[2] ?? next.silSoft ?? next.sil, nextTwilight))
+      if (nextTwilight) {
+        hedgeMat.emissive.set(next.hills[0] ?? next.glow ?? next.silSoft)
+        hedgeMat.emissiveIntensity = 0.14 + star * 0.16
+      } else {
+        hedgeMat.emissive.set('#000000')
+        hedgeMat.emissiveIntensity = 0
+      }
+      if (fillerMat) {
+        fillerMat.color.copy(twilightSceneryColor(next, next.silSoft ?? '#3e6b3f', nextTwilight))
+        if (nextTwilight) {
+          fillerMat.emissive.set(next.hills[0] ?? next.glow ?? next.silSoft)
+          fillerMat.emissiveIntensity = 0.14 + star * 0.16
+        } else {
+          fillerMat.emissive.set('#000000')
+          fillerMat.emissiveIntensity = 0
+        }
+      }
       ivyLeafMat.color.set(next.silSoft)
       lilyPadMat.color.set(next.silSoft)
       candleFlameMat.emissive.set(next.glow ?? '#ffd700')

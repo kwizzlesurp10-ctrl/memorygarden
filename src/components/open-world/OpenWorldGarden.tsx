@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import type { ArtStyle, GardenGiftType, GardenStreak, Memory, Season } from '@/lib/types'
+import type { GardenGiftType, GardenStreak, Memory, Season } from '@/lib/types'
 import { todPalette, realClockTod } from '@/lib/garden/day-night'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import type { PlayerState, WorldPlant } from '@/lib/open-world/types'
@@ -45,7 +45,10 @@ import {
 } from '@/lib/open-world/walk-capture-bridge'
 import { CC0_MODEL_BY_ID, type Cc0ModelId } from '@/lib/open-world/cc0-catalog'
 import { CC0_WALK_CAPTURE_POSE, cc0ShowcaseCapturePose } from '@/lib/open-world/cc0-placement'
-import { STAGE_ROW_CAMERA_POSE } from '@/lib/open-world/stage-capture-layout'
+import {
+  STAGE_ROW_CAMERA_POSE,
+  TREE_YOUNG_ELDER_CAMERA_POSE,
+} from '@/lib/open-world/stage-capture-layout'
 import { OpenWorldEngine } from './engine'
 import { OpenWorldHud } from './OpenWorldHud'
 
@@ -58,7 +61,6 @@ export interface OpenWorldGardenProps {
   onMemoryClick: (memory: Memory) => void
   onWaterMemory?: (memoryId: string, result: WateringResult) => void
   onExit: () => void
-  plantArtStyle?: ArtStyle
 }
 
 export function OpenWorldGarden({
@@ -70,7 +72,6 @@ export function OpenWorldGarden({
   onMemoryClick,
   onWaterMemory,
   onExit,
-  plantArtStyle,
 }: OpenWorldGardenProps) {
   const reducedMotion = useReducedMotion()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -223,7 +224,6 @@ export function OpenWorldGarden({
     const engine = new OpenWorldEngine(canvas, memories, palette, {
       reducedMotion,
       coarsePointer: coarse,
-      plantArtStyle,
       hooks: {
         onProximity,
         onPlayer,
@@ -242,10 +242,8 @@ export function OpenWorldGarden({
     setWorld(engine.getWorld())
     if (captureMode) {
       registerWalkCaptureBridge({
-        setPose: (pose) =>
-          engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY),
+        setPose: (pose) => engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch),
         setPalette: (palette) => engine.setPalette(palette),
-        setPlantArtStyle: (style) => engine.setPlantArtStyle(style),
         showcaseModel: (id: Cc0ModelId | null) => engine.setCc0Showcase(id),
         showcasePoseFor: (id: Cc0ModelId) =>
           cc0ShowcaseCapturePose(CC0_MODEL_BY_ID[id].targetHeight),
@@ -257,19 +255,16 @@ export function OpenWorldGarden({
             z: p.z,
             variety: p.variety,
             stage: p.stage,
-            height: p.height,
           })),
-        voxelMeshCount: () => engine.countVoxelMeshes(),
-        voxelPlantGroupCount: () => engine.countVoxelPlantGroups(),
-        plantCount: () => engine.getWorld().plants.length,
-        plantCapturePose: (plantId) => engine.capturePoseForPlant(plantId),
-        clusterOverviewPose: () => engine.captureClusterOverviewPose(),
-        cameraDebug: () => {
-          const p = engine.getPlayer()
-          return { y: p.y, pitch: p.pitch }
-        },
       })
-      if (sessionStorage.getItem('mg:stage-row-capture') !== '1') {
+      if (sessionStorage.getItem('mg:tree-young-elder-capture') === '1') {
+        engine.setPlayerPose(
+          TREE_YOUNG_ELDER_CAMERA_POSE.x,
+          TREE_YOUNG_ELDER_CAMERA_POSE.z,
+          TREE_YOUNG_ELDER_CAMERA_POSE.yaw,
+          TREE_YOUNG_ELDER_CAMERA_POSE.pitch,
+        )
+      } else if (sessionStorage.getItem('mg:stage-row-capture') !== '1') {
         engine.setPlayerPose(
           CC0_WALK_CAPTURE_POSE.x,
           CC0_WALK_CAPTURE_POSE.z,
@@ -311,10 +306,6 @@ export function OpenWorldGarden({
   useEffect(() => {
     engineRef.current?.setPaused(paused)
   }, [paused])
-
-  useEffect(() => {
-    engineRef.current?.setPlantArtStyle(plantArtStyle ?? 'watercolor')
-  }, [plantArtStyle])
 
   useEffect(() => {
     const id = window.setInterval(() => {

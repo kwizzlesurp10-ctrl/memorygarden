@@ -1518,7 +1518,6 @@ function App() {
                         onMemoryClick={handleMemoryClick}
                         onWaterMemory={handleWaterMemory}
                         onExit={handleExitWalk}
-                        plantArtStyle={safePreferences.plantStylePreference?.artStyle}
                       />
                     </Suspense>
                   </SectionErrorBoundary>

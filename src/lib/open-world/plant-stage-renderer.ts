@@ -4,7 +4,43 @@ import type { ScenePalette } from '@/lib/garden/palettes'
 import { plantHeight, plantRadius } from '@/lib/open-world/layout'
 import { plantRecipe } from '@/lib/open-world/plant-visual'
 import type { PlantStage, PlantVariety } from '@/lib/types'
+import { plantStageToIndex } from '@/lib/garden/stage'
+import {
+  FLOWER_STAGE_HEIGHT,
+  TREE_STAGE_METRICS,
+} from '@/lib/garden/plant-visual-spec'
 import type { WorldPlant } from './types'
+
+function stage2DVisualExtent(variety: PlantVariety, stageIdx: number): number {
+  if (variety === 'tree') {
+    const st = TREE_STAGE_METRICS[stageIdx] ?? TREE_STAGE_METRICS[7]
+    return Math.max(10, st.H + st.ch * 0.95 + st.cw * 0.4)
+  }
+  const h = FLOWER_STAGE_HEIGHT[stageIdx] ?? FLOWER_STAGE_HEIGHT[7]
+  return Math.max(10, h + 14)
+}
+
+function elder2DVisualExtent(variety: PlantVariety): number {
+  if (variety === 'tree') {
+    const st = TREE_STAGE_METRICS[7]
+    return st.H + st.ch * 0.95 + st.cw * 0.4
+  }
+  return FLOWER_STAGE_HEIGHT[7] + 14
+}
+
+function fitCameraDistance(
+  camera: THREE.PerspectiveCamera,
+  size: THREE.Vector3,
+  width: number,
+  height: number,
+  margin: number,
+): number {
+  const vFov = (camera.fov * Math.PI) / 180
+  const aspect = width / height
+  const distY = (size.y * 0.52) / Math.tan(vFov / 2)
+  const distX = (Math.max(size.x, size.z) * 0.52) / (Math.tan(vFov / 2) * aspect)
+  return Math.max(distY, distX, 0.35) * margin
+}
 
 export interface StagePreviewHandle {
   dispose: () => void
@@ -73,24 +109,59 @@ export function mountStagePlantPreview(
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
   renderer.setSize(width, height, false)
   renderer.outputColorSpace = THREE.SRGBColorSpace
+  renderer.toneMapping = THREE.NoToneMapping
   renderer.toneMappingExposure = (palette.starAlpha ?? 0) > 0.2 ? 1.42 : 1.12
-  host.replaceChildren(renderer.domElement)
+  const canvas = renderer.domElement
+  canvas.style.display = 'block'
+  canvas.style.width = '100%'
+  canvas.style.height = '100%'
+  host.replaceChildren(canvas)
 
-  const camera = new THREE.PerspectiveCamera(36, width / height, 0.05, 40)
+  const stageIdx = plantStageToIndex(stage)
+  const camera = new THREE.PerspectiveCamera(variety === 'tree' ? 50 : 36, width / height, 0.05, 48)
   const box = new THREE.Box3().setFromObject(group)
   const size = box.getSize(new THREE.Vector3())
   const center = box.getCenter(new THREE.Vector3())
-  const maxDim = Math.max(size.x, size.y, size.z, 0.35)
-  const zoom = variety === 'tree' ? 0.68 : 0.88
-  const dist = (maxDim / Math.tan((camera.fov * Math.PI) / 360)) * zoom
-  const lookY = center.y + size.y * (variety === 'tree' ? 0.32 : 0.12)
-  camera.position.set(center.x + dist * 0.08, center.y + maxDim * 0.02, center.z + dist * 0.95)
+  const maxDim = Math.max(size.x, size.y, size.z, 0.2)
+
+  const elderExtent = elder2DVisualExtent(variety)
+  const stageExtent = stage2DVisualExtent(variety, stageIdx)
+  const metricRatio = stageExtent / elderExtent
+
+  let finalDist: number
+  if (variety === 'tree') {
+    const baseFit = fitCameraDistance(camera, size, width, height, 1.38)
+    const monoDenom = 0.38 + metricRatio * 1.04
+    const earlySoft = stageIdx <= 2 ? 0.84 + stageIdx * 0.05 : 1
+    const stagePull = [1.1, 1.08, 1.05, 1.36, 1.24, 1.28, 0.86, 0.9]
+    finalDist = (baseFit * (stagePull[stageIdx] ?? 1.06)) / (monoDenom * earlySoft)
+  } else if (stageIdx <= 3) {
+    finalDist = 1.78 - stageIdx * 0.1
+  } else {
+    const baseFit = fitCameraDistance(camera, size, width, height, 1.14)
+    finalDist =
+      metricRatio < 0.5
+        ? baseFit * (0.52 + metricRatio * 0.88)
+        : baseFit * (0.8 + metricRatio * 0.26)
+    if (stageIdx >= 7) finalDist *= 0.84
+  }
+
+  const lookY =
+    variety === 'tree'
+      ? center.y + size.y * 0.36
+      : center.y + size.y * 0.14
+  camera.position.set(
+    center.x + finalDist * 0.12,
+    center.y + (variety === 'tree' ? size.y * 0.06 : maxDim * 0.02),
+    center.z + finalDist,
+  )
   camera.lookAt(center.x, lookY, center.z)
 
   const render = () => {
     renderer.render(scene, camera)
   }
   render()
+  host.dataset.stagePreviewReady = '1'
 
   return {
     render,

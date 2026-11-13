@@ -32,7 +32,8 @@ function hashString(s: string): number {
 }
 
 export function paletteToCc0Tokens(palette: ScenePalette): Cc0TintTokens {
-  const nightStrength = Math.max(0, (palette.starAlpha ?? 0) - 0.2)
+  const dim = palette.plantDimBlend ?? 0
+  const nightStrength = Math.max(0.28, (palette.starAlpha ?? 0) - 0.08 + dim * 0.08)
   const rim = new THREE.Color(palette.rim)
   const glow = new THREE.Color(palette.glow)
   const hills0 = new THREE.Color(palette.hills[0] ?? palette.silSoft)
@@ -273,7 +274,7 @@ function applyNightRoleTint(
       : role === 'bark' || role === 'wood'
         ? 0.14 + t * 0.06
         : role === 'rock'
-          ? 0.18 + t * 0.08
+          ? 0.34 + t * 0.18
           : role === 'mushroom_cap'
             ? 0.26 + t * 0.12
             : 0.16 + t * 0.06
@@ -291,14 +292,16 @@ function roleEmissiveStrength(role: Cc0MaterialRole, night: number): number {
       return 0.18 + night * 0.2
     case 'foliage':
     case 'moss':
-      return 0.1 + night * 0.12
+      return 0.16 + night * 0.22
     case 'berry':
       return 0.08 + night * 0.06
     case 'bark':
     case 'wood':
       return 0.015 + night * 0.01
     case 'rock':
-      return 0.025 + night * 0.02
+      return 0.16 + night * 0.28
+    case 'generic':
+      return 0.08 + night * 0.14
     default:
       return 0.02 + night * 0.02
   }
