@@ -449,6 +449,94 @@ export class OpenWorldEngine {
     return Math.min(0.92, (maxNdcY - minNdcY) / 2)
   }
 
+  plantWorldAabb(
+    plantId: string,
+  ): {
+    minX: number
+    minY: number
+    minZ: number
+    maxX: number
+    maxY: number
+    maxZ: number
+  } | null {
+    const box = this.plantWorldBox(plantId)
+    if (!box) return null
+    return {
+      minX: box.min.x,
+      minY: box.min.y,
+      minZ: box.min.z,
+      maxX: box.max.x,
+      maxY: box.max.y,
+      maxZ: box.max.z,
+    }
+  }
+
+  getCaptureCameraFov(): number {
+    return this.camera.fov
+  }
+
+  getCaptureCameraAspect(): number {
+    return this.camera.aspect
+  }
+
+  plantProjectedBoxScreenY(plantId: string): { top: number; bottom: number } | null {
+    const box = this.plantWorldBox(plantId)
+    if (!box) return null
+    this.renderOnce()
+    const cx = (box.min.x + box.max.x) / 2
+    const cz = (box.min.z + box.max.z) / 2
+    let minTopScreen = Infinity
+    let maxBotScreen = -Infinity
+    const { min, max } = box
+    const corners: Array<[number, number, number]> = [
+      [cx, max.y, cz],
+      [min.x, max.y, min.z],
+      [max.x, max.y, min.z],
+      [min.x, max.y, max.z],
+      [max.x, max.y, max.z],
+      [cx, min.y, cz],
+    ]
+    for (const [x, y, z] of corners) {
+      const p = new THREE.Vector3(x, y, z).project(this.camera)
+      if (p.z < -1 || p.z > 1) continue
+      const screenY = (1 - p.y) / 2
+      if (y >= max.y - 0.001) minTopScreen = Math.min(minTopScreen, screenY)
+      if (y <= min.y + 0.001) maxBotScreen = Math.max(maxBotScreen, screenY)
+    }
+    if (!Number.isFinite(minTopScreen)) return null
+    return {
+      top: minTopScreen,
+      bottom: maxBotScreen,
+    }
+  }
+
+  elderDeterministicCapturePose(plantId: string): WalkCapturePose | null {
+    const box = this.plantWorldBox(plantId)
+    const wp = this.world.plants.find((p) => p.id === plantId)
+    if (!box || !wp) return null
+    const groundY = box.min.y
+    const H = box.max.y - groundY
+    const cx = (box.min.x + box.max.x) / 2
+    const cz = (box.min.z + box.max.z) / 2
+    const size = box.getSize(new THREE.Vector3())
+    const R = Math.max(size.x, size.z) * 0.5
+    const fovRad = (this.camera.fov * Math.PI) / 180
+    const halfFovTan = Math.tan(fovRad / 2)
+    /** Corner + sky slack beyond the nominal 1.25 vertical fit factor. */
+    const aabbSlack = 1.98
+    const D_v = (((H * 1.25) / 2) / halfFovTan) * aabbSlack
+    const D_h = ((R * 1.25) / (halfFovTan * this.camera.aspect)) * 1.42
+    const D = Math.max(R * 2.2, D_v, D_h)
+    const yaw = -0.68
+    const camX = cx + Math.sin(yaw) * D
+    const camZ = cz + Math.cos(yaw) * D
+    const foot = this.terrainFootY(camX, camZ)
+    const aimY = groundY + H * 0.5
+    const eyeY = Math.max(foot + 0.08, aimY)
+    const aim = new THREE.Vector3(cx, aimY, cz)
+    return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+  }
+
   private projectBoxVerticalInView(box: THREE.Box3): { minNdcY: number; maxNdcY: number } | null {
     const { min, max } = box
     const corners: Array<[number, number, number]> = [
@@ -471,17 +559,6 @@ export class OpenWorldEngine {
     }
     if (!Number.isFinite(minNdcY)) return null
     return { minNdcY, maxNdcY }
-  }
-
-  private elderCaptureFrameScore(box: THREE.Box3, minSkyMargin = 0.08): number {
-    const ext = this.projectBoxVerticalInView(box)
-    if (!ext) return -1
-    const skyMargin = 0.81 - ext.maxNdcY
-    if (skyMargin < minSkyMargin) return -1
-    const trunkBand = -0.33
-    const botPen = Math.abs(ext.minNdcY - trunkBand)
-    const span = ext.maxNdcY - ext.minNdcY
-    return skyMargin * 6 + span * 0.5 - botPen * 1.5
   }
 
   private plantCaptureFit(box: THREE.Box3): { frac: number; centerX: number; centerY: number } {
@@ -583,41 +660,7 @@ export class OpenWorldEngine {
         const ground = box.min.y
         const yaw = elder ? -0.68 : 2.05
         if (elder) {
-          const fovRad = (this.camera.fov * Math.PI) / 180
-          const geomDist =
-            (size.y / (0.68 * 2 * Math.tan(fovRad / 2))) *
-            Math.max(1, size.x / Math.max(size.y, 0.01) / 1.15)
-          let elderPose: WalkCapturePose | null = null
-          let bestScore = -Infinity
-          for (const minSky of [0.08, 0.05] as const) {
-            if (elderPose) break
-            for (let dist = geomDist * 0.92; dist <= geomDist * 1.35; dist += 0.6) {
-              for (let aimFrac = 0.42; aimFrac <= 0.56; aimFrac += 0.035) {
-                for (const pitch of [-0.2, -0.14, -0.08, -0.02, 0.04, 0.1, 0.16]) {
-                  const aimY = ground + size.y * aimFrac
-                  const aim = new THREE.Vector3(wp.x, aimY, wp.z)
-                  const camX = wp.x + Math.sin(yaw) * dist
-                  const camZ = wp.z + Math.cos(yaw) * dist
-                  const eyeY = this.eyeHeightAt(camX, camZ, Math.min(size.y * 0.42, 4.8))
-                  const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-                  this.camera.rotation.x = pitch
-                  this.camera.updateMatrixWorld(true)
-                  this.renderOnce()
-                  const score = this.elderCaptureFrameScore(box, minSky)
-                  const labeled: WalkCapturePose = { ...pose, pitch }
-                  if (score > bestScore) {
-                    bestScore = score
-                    elderPose = labeled
-                  }
-                }
-              }
-            }
-          }
-          if (elderPose) {
-            this.setPlayerPose(elderPose.x, elderPose.z, elderPose.yaw, elderPose.pitch, elderPose.eyeY)
-            this.applyCamera()
-            return elderPose
-          }
+          return this.elderDeterministicCapturePose(plantId)
         }
         const aimY = ground + size.y * 0.68
         const aim = new THREE.Vector3(wp.x, aimY, wp.z)

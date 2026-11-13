@@ -45,6 +45,20 @@ export interface WalkCaptureBridge {
   plantCaptureFitNow?: (plantId: string) => { frac: number; centerX: number; centerY: number } | null
   cameraDebug?: () => { y: number; pitch: number }
   footAt?: (x: number, z: number) => number
+  plantWorldAabb?: (
+    plantId: string,
+  ) => {
+    minX: number
+    minY: number
+    minZ: number
+    maxX: number
+    maxY: number
+    maxZ: number
+  } | null
+  captureCameraFov?: () => number
+  captureCameraAspect?: () => number
+  elderCloseupPose?: (plantId: string) => WalkCapturePose | null
+  plantProjectedBoxScreenY?: (plantId: string) => { top: number; bottom: number } | null
 }
 
 export const WALK_CAPTURE_SESSION_KEY = 'mg:walk-capture'

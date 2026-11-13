@@ -3,15 +3,20 @@
  * Env: AFTER_URL, BEFORE_URL (256ca59 preview on 4173 — see prepare-walk-before-preview.mjs),
  *       ARTIFACT_DIR, VIEWPORT=desktop|mobile, MODE=full|overview
  */
+import { createRequire } from 'node:module'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { chromium } from 'playwright'
+
+const require = createRequire(import.meta.url)
+const { PNG } = require('pngjs')
 
 const afterUrl = process.env.AFTER_URL || 'http://127.0.0.1:4174'
 const beforeUrl = process.env.BEFORE_URL || 'http://127.0.0.1:4173'
 const outDir = process.env.ARTIFACT_DIR || '/opt/cursor/artifacts'
 const viewportMode = process.env.VIEWPORT || 'desktop'
 const mode = process.env.MODE || 'full'
+const captureOnly = process.env.CAPTURE_ONLY || ''
 const covThreshold = 0.15
 
 mkdirSync(outDir, { recursive: true })
@@ -126,7 +131,10 @@ const allShots = [
   { kind: 'sprout', plantId: 'sprout-walk', file: 'walk-sprout-closeup', label: 'sprout' },
 ]
 
-const shots = mode === 'overview' ? allShots.filter((s) => s.file === 'walk-overview') : allShots
+let shots = mode === 'overview' ? allShots.filter((s) => s.file === 'walk-overview') : allShots
+if (captureOnly === 'elder') {
+  shots = shots.filter((s) => s.file === 'walk-tree-elder-closeup')
+}
 
 async function enterWalk(page) {
   for (let i = 0; i < 4; i++) {
@@ -182,6 +190,103 @@ async function bootstrapWalk(page, baseUrl, artStyle) {
   }
 }
 
+async function elderCloseupPoseForPage(page, plantId) {
+  return page.evaluate((id) => {
+    const b = window.__mgWalkCapture
+    if (!b) return null
+    if (typeof b.elderCloseupPose === 'function') {
+      return b.elderCloseupPose(id)
+    }
+    const aabb = typeof b.plantWorldAabb === 'function' ? b.plantWorldAabb(id) : null
+    let box = aabb
+    if (!box) {
+      const size = b.plantBoxSize?.(id)
+      const wp = b.worldPlants?.().find((p) => p.id === id)
+      if (!size || !wp) return null
+      const foot = b.footAt?.(wp.x, wp.z) ?? 0
+      box = {
+        minX: wp.x - size.x / 2,
+        maxX: wp.x + size.x / 2,
+        minZ: wp.z - size.z / 2,
+        maxZ: wp.z + size.z / 2,
+        minY: foot,
+        maxY: foot + size.y,
+      }
+    }
+    const groundY = box.minY
+    const H = box.maxY - groundY
+    const cx = (box.minX + box.maxX) / 2
+    const cz = (box.minZ + box.maxZ) / 2
+    const R = Math.max(box.maxX - box.minX, box.maxZ - box.minZ) * 0.5
+    const fov = typeof b.captureCameraFov === 'function' ? b.captureCameraFov() : 68
+    const fovRad = (fov * Math.PI) / 180
+    const halfFovTan = Math.tan(fovRad / 2)
+    const D_v = (((H * 1.25) / 2) / halfFovTan) * 1.98
+    const D_h = ((R * 1.25) / (halfFovTan * (b.captureCameraAspect?.() ?? 1.6))) * 1.42
+    const D = Math.max(R * 2.2, D_v, D_h)
+    const yaw = -0.68
+    const x = cx + Math.sin(yaw) * D
+    const z = cz + Math.cos(yaw) * D
+    const foot = b.footAt?.(x, z) ?? 0
+    const aimY = groundY + H * 0.5
+    const eyeY = Math.max(foot + 0.08, aimY)
+    return { x, z, yaw, pitch: 0, eyeY }
+  }, plantId)
+}
+
+function isSkyPixel(r, g, b) {
+  return b >= 140 && g >= 110 && r >= 90 && b >= g - 25 && b > r
+}
+
+function skyFractionTopBand(pngPath, topFraction = 0.06) {
+  const png = PNG.sync.read(readFileSync(pngPath))
+  const topRows = Math.max(1, Math.ceil(png.height * topFraction))
+  let sky = 0
+  let total = 0
+  for (let y = 0; y < topRows; y++) {
+    for (let x = 0; x < png.width; x++) {
+      const i = (png.width * y + x) * 4
+      const r = png.data[i]
+      const g = png.data[i + 1]
+      const b = png.data[i + 2]
+      if (isSkyPixel(r, g, b)) sky++
+      total++
+    }
+  }
+  return total > 0 ? sky / total : 0
+}
+
+async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle) {
+  const proj = await page.evaluate((id) => {
+    const b = window.__mgWalkCapture
+    if (typeof b?.plantProjectedBoxScreenY === 'function') {
+      return b.plantProjectedBoxScreenY(id)
+    }
+    return null
+  }, plantId)
+  const skyFrac = skyFractionTopBand(pngPath)
+  const top = proj?.top ?? NaN
+  const bottom = proj?.bottom ?? NaN
+  const topStr = Number.isFinite(top) ? top.toFixed(3) : 'n/a'
+  const botStr = Number.isFinite(bottom) ? bottom.toFixed(3) : 'n/a'
+  console.log(
+    `elder-frame-assert ${phase} ${artStyle} skyTop6=${(skyFrac * 100).toFixed(1)}% projectedTop=${topStr} projectedBottom=${botStr}`,
+  )
+  const errs = []
+  if (skyFrac < 0.9) errs.push(`sky top band ${(skyFrac * 100).toFixed(1)}% < 90%`)
+  if (proj) {
+    if (top < 0.05 || top > 0.95) errs.push(`projectedTop ${top.toFixed(3)} outside [0.05,0.95]`)
+    if (bottom < 0.05 || bottom > 0.95) {
+      errs.push(`projectedBottom ${bottom.toFixed(3)} outside [0.05,0.95]`)
+    }
+  } else {
+    console.warn(`elder-frame-assert ${phase} ${artStyle}: plantProjectedBoxScreenY unavailable — sky band only`)
+  }
+  if (errs.length) {
+    throw new Error(`Elder close-up frame check failed (${phase} ${artStyle}): ${errs.join('; ')}`)
+  }
+}
+
 async function poseForShot(page, shot) {
   return page.evaluate(async (s) => {
     await window.__mgWalkCapture?.waitCaptureReady?.()
@@ -229,6 +334,9 @@ async function captureShot(page, phase, artStyle, shot, pose) {
   const name = `minecraft-walk-${phase}-${artStyle}-${shot.file}-${viewportMode}.png`
   const file = resolve(outDir, name)
   await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
+  if (shot.file === 'walk-tree-elder-closeup' && shot.plantId) {
+    await assertElderCloseupFrame(page, shot.plantId, file, phase, artStyle)
+  }
   await page.evaluate(() => window.__mgWalkCapture?.setSoloPlantFocus?.(null))
   if (shot.plantId) {
     const has = await page.evaluate((id) => window.__mgWalkCapture?.hasPlantGroup?.(id) === true, shot.plantId)
@@ -288,21 +396,15 @@ try {
     throw new Error(`Missing ${posePath} — run desktop full capture first`)
   }
 
-  if (!poses) {
-    await bootstrapWalk(page, afterUrl, 'pixel-art')
-    const v = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? 0)
-    if (v < 40) throw new Error(`Expected voxels on AFTER build, got ${v}`)
-    poses = await deriveAllPoses(page)
-  } else {
-    await bootstrapWalk(page, afterUrl, 'pixel-art')
-    for (const shot of shots.filter((s) => s.file === 'walk-tree-elder-closeup')) {
-      const pose = await poseForShot(page, shot)
-      if (!pose) throw new Error(`No deterministic pose for ${shot.file}`)
-      poses[shot.file] = pose
-      console.log('refreshed pose', shot.file, JSON.stringify(pose))
-    }
-    if (viewportMode === 'desktop' && mode === 'full') {
-      writeFileSync(posePath, JSON.stringify(poses, null, 2))
+  if (!poses) poses = {}
+  if (captureOnly !== 'elder') {
+    const missing = shots.filter((s) => !poses[s.file] && s.file !== 'walk-tree-elder-closeup')
+    if (missing.length) {
+      await bootstrapWalk(page, afterUrl, 'pixel-art')
+      const v = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? 0)
+      if (v < 40) throw new Error(`Expected voxels on AFTER build, got ${v}`)
+      const derived = await deriveAllPoses(page)
+      poses = { ...poses, ...derived }
     }
   }
 
@@ -318,14 +420,43 @@ try {
         ]
 
   for (const run of runs) {
+    let elderPoseForRun = null
+    await bootstrapWalk(page, run.url, 'pixel-art')
+    for (const shot of shots) {
+      if (shot.file === 'walk-tree-elder-closeup') {
+        await page.evaluate((plantId) => {
+          window.__mgWalkCapture?.setSoloPlantFocus?.(plantId ?? null)
+        }, shot.plantId)
+        await page.evaluate(async () => {
+          await window.__mgWalkCapture?.waitCaptureReady?.()
+        })
+        elderPoseForRun = await elderCloseupPoseForPage(page, shot.plantId)
+        if (!elderPoseForRun) throw new Error(`No elder close-up pose for ${run.url}`)
+        poses[shot.file] = elderPoseForRun
+        const dims = await page.evaluate((id) => {
+          const a = window.__mgWalkCapture?.plantWorldAabb?.(id)
+          return a
+            ? { H: a.maxY - a.minY, R: Math.max(a.maxX - a.minX, a.maxZ - a.minZ) * 0.5 }
+            : null
+        }, shot.plantId)
+        console.log(`elder pose (${run.phase})`, JSON.stringify(elderPoseForRun), dims ?? '')
+        await page.evaluate(() => window.__mgWalkCapture?.setSoloPlantFocus?.(null))
+      }
+    }
     for (const artStyle of run.styles) {
       await bootstrapWalk(page, run.url, artStyle)
       for (const shot of shots) {
-        const pose = poses[shot.file]
+        let pose = poses[shot.file]
+        if (shot.file === 'walk-tree-elder-closeup') {
+          pose = elderPoseForRun
+        }
         if (!pose) throw new Error(`Missing pose for ${shot.file}`)
         await captureShot(page, run.phase, artStyle, shot, pose)
       }
     }
+  }
+  if (viewportMode === 'desktop' && poses['walk-tree-elder-closeup']) {
+    writeFileSync(posePath, JSON.stringify(poses, null, 2))
   }
 } finally {
   await browser.close()

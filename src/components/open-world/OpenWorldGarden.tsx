@@ -300,6 +300,11 @@ export function OpenWorldGarden({
           return { y: p.y, pitch: p.pitch }
         },
         footAt: (x, z) => engine.getTerrainFootY(x, z),
+        plantWorldAabb: (plantId) => engine.plantWorldAabb(plantId),
+        captureCameraFov: () => engine.getCaptureCameraFov(),
+        captureCameraAspect: () => engine.getCaptureCameraAspect(),
+        elderCloseupPose: (plantId) => engine.elderDeterministicCapturePose(plantId),
+        plantProjectedBoxScreenY: (plantId) => engine.plantProjectedBoxScreenY(plantId),
       })
       if (sessionStorage.getItem('mg:tree-young-elder-capture') === '1') {
         engine.setPlayerPose(
