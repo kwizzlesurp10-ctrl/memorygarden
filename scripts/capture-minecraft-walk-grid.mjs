@@ -178,7 +178,9 @@ async function applyPose(page, pose) {
 
 async function derivePlantPose(page, plantId, targetFrac, minCov) {
   return page.evaluate(
-    ({ plantId: id, targetFrac: target, minCov: min }) => {
+    async ({ plantId: id, targetFrac: target, minCov: min }) => {
+      const waitFrame = () =>
+        new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
       const wp = window.__mgWalkCapture?.worldPlants?.().find((p) => p.id === id)
       if (!wp) throw new Error(`No world plant ${id}`)
       if (!window.__mgWalkCapture?.hasPlantGroup?.(id)) {
@@ -186,17 +188,18 @@ async function derivePlantPose(page, plantId, targetFrac, minCov) {
       }
       let best = null
       let bestScore = Infinity
-      const pitchSteps = [-0.14, -0.22, -0.3]
-      for (let a = 0; a < 16; a++) {
-        const ang = a * (Math.PI / 8)
-        for (let dist = 2.6; dist <= 10.5; dist += 0.38) {
+      const pitchSteps = [-0.16, -0.24]
+      for (let a = 0; a < 12; a++) {
+        const ang = a * (Math.PI / 6)
+        for (let dist = 2.8; dist <= 10; dist += 0.45) {
           const x = wp.x + Math.sin(ang) * dist
           const z = wp.z + Math.cos(ang) * dist
           const baseYaw = Math.atan2(wp.x - x, wp.z - z)
           for (const pitch of pitchSteps) {
-            for (const dYaw of [0, -0.4, 0.4]) {
+            for (const dYaw of [0, -0.45, 0.45]) {
               const pose = { x, z, yaw: baseYaw + dYaw, pitch, eyeY: 1.62 }
               window.__mgWalkCapture?.setPose?.(pose)
+              await waitFrame()
               const frac = window.__mgWalkCapture?.plantScreenCoverage?.(id) ?? 0
               const fit = window.__mgWalkCapture?.plantCaptureFitNow?.(id)
               if (frac < 0.25 || frac > 0.9) continue
