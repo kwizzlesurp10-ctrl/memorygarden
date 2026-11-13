@@ -1,6 +1,6 @@
 /**
  * Minecraft walk capture grid — deterministic plant cameras, pinned poses.
- * Env: AFTER_URL, BEFORE_URL (61887fe preview on 4173 — see prepare-walk-before-preview.mjs),
+ * Env: AFTER_URL, BEFORE_URL (256ca59 preview on 4173 — see prepare-walk-before-preview.mjs),
  *       ARTIFACT_DIR, VIEWPORT=desktop|mobile, MODE=full|overview
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -174,6 +174,12 @@ async function bootstrapWalk(page, baseUrl, artStyle) {
   await page.evaluate(async () => {
     await window.__mgWalkCapture?.waitCaptureReady?.()
   })
+  if (artStyle === 'pixel-art') {
+    const v = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? 0)
+    if (v < 40) {
+      throw new Error(`Expected voxels in pixel-art walk at ${baseUrl}, got ${v}`)
+    }
+  }
 }
 
 async function poseForShot(page, shot) {
@@ -225,6 +231,8 @@ async function captureShot(page, phase, artStyle, shot, pose) {
   await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
   await page.evaluate(() => window.__mgWalkCapture?.setSoloPlantFocus?.(null))
   if (shot.plantId) {
+    const has = await page.evaluate((id) => window.__mgWalkCapture?.hasPlantGroup?.(id) === true, shot.plantId)
+    if (!has) throw new Error(`Missing plant ${shot.plantId} for ${phase} ${artStyle} ${shot.file}`)
     const cov = await page.evaluate(
       ({ id, p }) => window.__mgWalkCapture?.plantScreenCoverage?.(id, p) ?? 0,
       { id: shot.plantId, p: pose },

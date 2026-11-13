@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process'
 
 const outDir = process.env.ARTIFACT_DIR || '/opt/cursor/artifacts'
 const tmp = resolve(outDir, '.grid-compose-tmp')
-const out = resolve(outDir, 'minecraft-walk-pr224-grid-desktop.png')
+const out = resolve(outDir, 'minecraft-walk-polish-r2-grid-desktop.png')
 const cellW = 420
 const cellH = 262
 const labelW = 108
@@ -25,7 +25,7 @@ const rowFiles = [
 ]
 
 const columns = [
-  { header: 'before pixel-art\n(61887fe)', phase: 'before', style: 'pixel-art' },
+  { header: 'before pixel-art\n(256ca59)', phase: 'before', style: 'pixel-art' },
   { header: 'after pixel-art', phase: 'after', style: 'pixel-art' },
   { header: 'after watercolor', phase: 'after', style: 'watercolor' },
 ]

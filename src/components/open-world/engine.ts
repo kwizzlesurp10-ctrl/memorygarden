@@ -9,7 +9,13 @@ import { layoutGardenWorld } from '@/lib/open-world/layout'
 import { createPlayer, eyeOffset, findNearestPlant, stepPlayer } from '@/lib/open-world/locomotion'
 import { plantRecipe } from '@/lib/open-world/plant-visual'
 import type { GardenWorld, PlayerState, WorldPlant } from '@/lib/open-world/types'
-import { applyWatercolorWalkTint, snapPlantGroupToTerrain, walkCaptureGroundY } from './minecraft-visual'
+import {
+  applyVoxelPlantNightTint,
+  applyWatercolorWalkTint,
+  setWalkSurfaceHeightSampler,
+  snapPlantGroupToTerrain,
+  walkCaptureGroundY,
+} from './minecraft-visual'
 import { createPlantGroup, disposePlantGroup } from './plant-mesh'
 import { buildTerrain, type TerrainHandle } from './terrain'
 import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
@@ -254,6 +260,9 @@ export class OpenWorldEngine {
   setPalette(palette: ScenePalette): void {
     this.palette = palette
     this.terrain?.recolor(palette)
+    if (this.plantArtStyle === 'pixel-art' && this.terrain) {
+      applyVoxelPlantNightTint(this.terrain.root, palette)
+    }
     this.cc0Scenery?.setPalette(palette)
     this.applyLighting()
     this.renderer?.setClearColor(palette.sky[2] ?? '#20123a', 1)
@@ -845,6 +854,12 @@ export class OpenWorldEngine {
     const minecraftMode = this.plantArtStyle === 'pixel-art'
     this.terrain = buildTerrain(this.world, this.palette, this.reducedMotion, minecraftMode)
     this.scene.add(this.terrain.root)
+    if (minecraftMode && this.terrain.surfaceY) {
+      setWalkSurfaceHeightSampler(this.terrain.surfaceY)
+      applyVoxelPlantNightTint(this.terrain.root, this.palette)
+    } else {
+      setWalkSurfaceHeightSampler(null)
+    }
   }
 
   private rebuildPlants(): void {
@@ -866,6 +881,7 @@ export class OpenWorldEngine {
       }
       if (style === 'pixel-art') {
         snapPlantGroupToTerrain(group, walkCaptureGroundY(plant.x, plant.z))
+        applyVoxelPlantNightTint(group, this.palette)
       }
       this.plantsRoot.add(group)
       this.plantGroups.set(plant.id, group)

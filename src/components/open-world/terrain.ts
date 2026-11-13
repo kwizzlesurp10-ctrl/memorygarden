@@ -3,7 +3,12 @@ import { gardenRng } from '@/lib/garden/prng'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import type { GardenWorld } from '@/lib/open-world/types'
 import { isWalkCaptureSession } from '@/lib/open-world/walk-capture-bridge'
-import { minecraftGrassTexture, minecraftPathTexture, voxelRockCluster } from './minecraft-visual'
+import {
+  buildMinecraftSteppedHills,
+  minecraftGrassTexture,
+  minecraftPathTexture,
+  voxelRockCluster,
+} from './minecraft-visual'
 
 export interface TerrainHandle {
   root: THREE.Group
@@ -11,6 +16,7 @@ export interface TerrainHandle {
   water: THREE.Mesh
   sky: THREE.Mesh
   fogColor: THREE.Color
+  surfaceY?: (x: number, z: number) => number
   tick?: (time: number, dt: number) => void
   dispose: () => void
   recolor: (palette: ScenePalette) => void
@@ -189,6 +195,7 @@ export function buildTerrain(
   ground.rotation.x = -Math.PI / 2
   ground.receiveShadow = true
   root.add(ground)
+  const surfaceY = minecraftMode ? buildMinecraftSteppedHills(root, track, palette) : undefined
   const walkCapture = isWalkCaptureSession()
 
   // ── Gentle Flowerbed Soil Berms ─────────────────────────────────────────
@@ -956,6 +963,7 @@ export function buildTerrain(
     water,
     sky,
     fogColor,
+    surfaceY,
     tick: (time: number, dt: number) => {
       if (reducedMotion) return
 
