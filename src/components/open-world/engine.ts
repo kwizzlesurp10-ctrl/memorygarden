@@ -272,6 +272,14 @@ export class OpenWorldEngine {
       }
     }
     if (this.captureBackdrop) this.applyCaptureFog()
+    if (this.plantArtStyle === 'pixel-art' && this.scene.fog instanceof THREE.Fog && !this.captureBackdrop) {
+      const star = palette.starAlpha ?? 0
+      if (star <= 0.22) {
+        this.scene.fog.color.set('#9ed66e')
+        this.scene.fog.near = 38
+        this.scene.fog.far = 118
+      }
+    }
     this.applyRendererExposure()
     this.rebuildPlants()
   }
@@ -280,7 +288,7 @@ export class OpenWorldEngine {
     if (!this.renderer) return
     const star = this.palette.starAlpha ?? 0
     if (this.plantArtStyle === 'pixel-art') {
-      this.renderer.toneMappingExposure = star > 0.22 ? 1.32 + star * 0.28 : 1.35
+      this.renderer.toneMappingExposure = star > 0.22 ? 1.22 + star * 0.38 : 1.44
       return
     }
     if (star > 0.22) {
@@ -540,28 +548,32 @@ export class OpenWorldEngine {
       if (wp) {
         const ground = box.min.y
         if (plantId === 'sprout-walk') {
-          const aim = new THREE.Vector3(wp.x, ground + 0.42, wp.z)
-          const yaw = 0.72
-          const dist = 1.35
+          const aim = new THREE.Vector3(wp.x, ground + size.y * 0.52, wp.z)
+          const yaw = 0.32
+          const dist = 0.62
           const camX = wp.x + Math.sin(yaw) * dist
           const camZ = wp.z + Math.cos(yaw) * dist
-          const eyeY = ground + 1.05
+          const eyeY = ground + 0.72
+          const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+          pose.pitch = -0.1
+          return pose
+        }
+        if (wp.variety === 'mushroom') {
+          const aim = new THREE.Vector3(wp.x, ground + 0.28, wp.z)
+          const yaw = -0.55
+          const dist = 2.75
+          const camX = wp.x + Math.sin(yaw) * dist
+          const camZ = wp.z + Math.cos(yaw) * dist
+          const eyeY = ground + 0.82
           return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
         }
-        const aimY =
-          wp.variety === 'mushroom'
-            ? ground + 1.05
-            : wp.variety === 'flower'
-              ? ground + 0.48
-              : ground + 0.42
+        const aimY = wp.variety === 'flower' ? ground + 0.48 : ground + 0.42
         const aim = new THREE.Vector3(wp.x, aimY, wp.z)
-        const yaw = wp.variety === 'flower' ? 0.65 : wp.variety === 'mushroom' ? -0.55 : -0.45
+        const yaw = wp.variety === 'flower' ? 0.65 : -0.45
         const minFrac = plantId.includes('sprout') ? 0.27 : 0.34
-        const maxFrac = wp.variety === 'mushroom' ? 0.42 : 0.88
-        const startDist =
-          wp.variety === 'mushroom' ? 3.6 : plantId.includes('sprout') ? 1.55 : 1.85
-        const endDist =
-          wp.variety === 'mushroom' ? 2.1 : plantId.includes('sprout') ? 0.95 : 1.05
+        const maxFrac = 0.88
+        const startDist = plantId.includes('sprout') ? 1.55 : 1.85
+        const endDist = plantId.includes('sprout') ? 0.95 : 1.05
         let bestPose: WalkCapturePose | null = null
         let bestFrac = 0
         for (let pass = 0; pass < 10; pass++) {
@@ -569,7 +581,7 @@ export class OpenWorldEngine {
           const d = startDist + (endDist - startDist) * t
           const camX = wp.x + Math.sin(yaw) * d
           const camZ = wp.z + Math.cos(yaw) * d
-          const eyeY = ground + (wp.variety === 'mushroom' ? 1.42 : 1.28)
+          const eyeY = ground + 1.28
           const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
           const fit = this.plantCaptureFitAt(plantId, pose)
           const frac = fit?.frac ?? 0
@@ -990,16 +1002,38 @@ export class OpenWorldEngine {
 
   private applyLighting(): void {
     if (this.plantArtStyle === 'pixel-art') {
-      this.hemi.color.set('#b8d4f8')
-      this.hemi.groundColor.set('#72c74e')
-      this.hemi.intensity = 1.38
-      this.fill.color.set('#e8f0ff')
-      this.fill.intensity = 0.52
-      this.sun.color.set('#fff6de')
-      this.sun.intensity = 0.95
-      this.rim.intensity = 0.08
-      this.sun.position.set(18, 38, -14)
-      this.rim.position.set(-12, 22, 18)
+      const star = this.palette.starAlpha ?? 0
+      const night = star > 0.22
+      if (!night) {
+        this.hemi.color.set('#d4ecff')
+        this.hemi.groundColor.set('#95a055')
+        this.hemi.intensity = 1.48
+        this.fill.color.set('#f4f8ff')
+        this.fill.intensity = 0.64
+        this.sun.color.set('#fffef2')
+        this.sun.intensity = 1.08
+      } else {
+        const p = this.palette
+        const skyWash = new THREE.Color(p.sky[3] ?? p.sky[2] ?? '#88aacc')
+        this.hemi.color.set(p.sky[1] ?? '#88aacc').lerp(skyWash, 0.32)
+        const groundColor = new THREE.Color(p.hills[1] ?? '#3d5a32')
+        groundColor.lerp(new THREE.Color(p.hills[0] ?? '#5fa037'), 0.55 + star * 0.2)
+        this.hemi.groundColor.copy(groundColor)
+        this.hemi.intensity = 1.05 + star * 0.16
+        this.fill.color.set(p.glow ?? '#c8b8e8')
+        this.fill.intensity = 0.58 + star * 0.14
+        this.sun.color.set(p.sun?.disk ?? p.glow ?? '#fff4d8')
+        this.sun.intensity = 0.62 + star * 0.24
+        if (p.moon) {
+          this.sun.position.set((p.moon.x / 1200 - 0.5) * 40, 18, -12)
+          this.sun.color.set('#c9d8ea')
+        }
+      }
+      this.rim.intensity = night ? 0.28 + star * 0.2 : 0.06
+      if (!night) {
+        this.sun.position.set(18, 38, -14)
+        this.rim.position.set(-12, 22, 18)
+      }
       return
     }
     const p = this.palette

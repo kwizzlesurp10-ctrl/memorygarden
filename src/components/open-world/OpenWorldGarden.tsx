@@ -243,8 +243,19 @@ export function OpenWorldGarden({
     engineRef.current = engine
     setFailed(engine.failed)
     setWorld(engine.getWorld())
-    const win = window as Window & { __mgWalkSceneReady?: () => boolean }
+    const win = window as Window & {
+      __mgWalkSceneReady?: () => boolean
+      __mgWalkNudgePose?: (pose: {
+        x: number
+        z: number
+        yaw: number
+        pitch: number
+        eyeY?: number
+      }) => void
+    }
     win.__mgWalkSceneReady = () => engine.sceneReady()
+    win.__mgWalkNudgePose = (pose) =>
+      engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
     requestAnimationFrame(() => engine.refreshCanvasSize())
     if (captureMode) {
       engine.setPaused(true)
@@ -312,6 +323,7 @@ export function OpenWorldGarden({
     }
     return () => {
       delete win.__mgWalkSceneReady
+      delete win.__mgWalkNudgePose
       registerWalkCaptureBridge(null)
       engine.dispose()
       engineRef.current = null

@@ -207,7 +207,24 @@ try {
   await enterWalk(desktopPage)
   await walkToward(desktopPage, 1600, ['KeyW'])
   await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-tree.png')
-  await walkToward(desktopPage, 900, ['KeyA', 'KeyW'])
+
+  await walkToward(desktopPage, 4200, ['KeyA'])
+  await walkToward(desktopPage, 1800, ['KeyW'])
+  await desktopPage.evaluate(() => {
+    window.__mgWalkNudgePose?.({
+      x: -22.82,
+      z: 15.38,
+      yaw: 0.62,
+      pitch: -0.58,
+      eyeY: 1.22,
+    })
+  })
+  await desktopPage.waitForTimeout(400)
+  for (let i = 0; i < 3; i++) {
+    await desktopPage.keyboard.press('Escape')
+    await desktopPage.waitForTimeout(60)
+  }
+  await desktopPage.waitForTimeout(400)
   await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-flowers.png')
   if (consoleErrors.length) console.log('desktop page errors', consoleErrors.slice(0, 3))
   await desktop.close()

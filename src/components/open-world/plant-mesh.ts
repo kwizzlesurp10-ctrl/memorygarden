@@ -1335,6 +1335,7 @@ export function createPlantGroup(
 }
 
 export function disposePlantGroup(group: THREE.Group): void {
+  if (group.userData.voxelPlant) return
   group.traverse((obj: THREE.Object3D) => {
     if (obj instanceof THREE.Sprite) {
       const sm = obj.material as THREE.SpriteMaterial
@@ -1347,14 +1348,18 @@ export function disposePlantGroup(group: THREE.Group): void {
         obj.geometry.dispose()
       }
       const disposeMat = (m: THREE.Material) => {
+        if (!m || typeof m.dispose !== 'function') return
+        if (m.userData?.isSharedStatic) return
         const std = m as THREE.MeshStandardMaterial
-        std.map?.dispose()
+        if (std.map && typeof std.map.dispose === 'function' && !std.map.userData?.isSharedStatic) {
+          std.map.dispose()
+        }
         std.emissiveMap?.dispose()
         m.dispose()
       }
       const material = obj.material
       if (Array.isArray(material)) material.forEach(disposeMat)
-      else if (material) disposeMat(material)
+      else disposeMat(material as THREE.Material)
     }
   })
 }

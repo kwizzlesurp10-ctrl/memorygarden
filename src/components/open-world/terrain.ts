@@ -166,6 +166,8 @@ export function buildTerrain(
       ? new THREE.MeshLambertMaterial({
           map: grassTex,
           color: new THREE.Color('#ffffff'),
+          emissive: new THREE.Color('#5fa037'),
+          emissiveIntensity: twilight ? 0.28 + starAlpha * 0.32 : 0.32,
         })
       : new THREE.MeshStandardMaterial({
           map: grassTex,
@@ -1011,16 +1013,22 @@ export function buildTerrain(
         ground.lerp(new THREE.Color(next.hills[0] ?? next.silSoft), 0.55 + star * 0.28)
         ground.lerp(new THREE.Color(next.bank), 0.12)
       }
-      groundMat.color.copy(ground)
-      if (groundMat instanceof THREE.MeshStandardMaterial) {
-        if (twilight) {
-          groundMat.emissive.set(next.hills[0] ?? next.glow ?? next.silSoft)
-          groundMat.emissiveIntensity = 0.24 + star * 0.24
-          groundMat.roughness = 0.86
-        } else {
-          groundMat.emissive.set('#000000')
-          groundMat.emissiveIntensity = 0
-          groundMat.roughness = 0.95
+      if (minecraftMode && groundMat instanceof THREE.MeshLambertMaterial) {
+        groundMat.color.set('#ffffff')
+        groundMat.emissive.set(twilight ? (next.hills[0] ?? '#5fa037') : '#5fa037')
+        groundMat.emissiveIntensity = twilight ? 0.26 + star * 0.36 : 0.32
+      } else {
+        groundMat.color.copy(ground)
+        if (groundMat instanceof THREE.MeshStandardMaterial) {
+          if (twilight) {
+            groundMat.emissive.set(next.hills[0] ?? next.glow ?? next.silSoft)
+            groundMat.emissiveIntensity = 0.24 + star * 0.24
+            groundMat.roughness = 0.86
+          } else {
+            groundMat.emissive.set('#000000')
+            groundMat.emissiveIntensity = 0
+            groundMat.roughness = 0.95
+          }
         }
       }
       waterMat.color.set(next.waterTint[1] ?? '#1a0f2b')

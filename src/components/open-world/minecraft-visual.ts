@@ -56,7 +56,7 @@ export function minecraftBlockTexture(
 
   const leafGreens = ['#1e4620', '#2d5a27', '#3d7a34', '#4a8f3a', '#5cab48']
   const barkBrowns = ['#3f2817', '#4a3018', '#6b4423', '#8b5a2b']
-  const grassGreens = ['#5f9f35', '#6aad3d', '#7cbd4b', '#6ba838', '#578f30', '#4d852b']
+  const grassGreens = ['#5fa037', '#6bb848', '#7ed65a', '#62b53a', '#73c94f', '#579a32']
 
   ctx.fillStyle = base
   ctx.fillRect(0, 0, 16, 16)
@@ -128,12 +128,12 @@ export function minecraftBlockTexture(
       for (let x = 0; x < 16; x++) {
         const dy = y - cy
         const dx = x - cx
-        if (y >= 12 && Math.abs(dx) <= 1) {
-          ctx.fillStyle = hash01(seed + x + y) > 0.4 ? '#3d7a34' : '#2d5a27'
+        if (kind === 'sapling' && y >= 11 && Math.abs(dx) <= 1) {
+          ctx.fillStyle = hash01(seed + x + y) > 0.4 ? '#6b4a30' : '#5a3a25'
           ctx.fillRect(x, y, 1, 1)
           continue
         }
-        const r = Math.hypot(dx * 0.95, dy * (kind === 'sapling' ? 1.2 : 1))
+        const r = Math.hypot(dx * 0.95, dy * (kind === 'sapling' ? 1.15 : 1))
         if (kind === 'poppy' && r < 5.5 && y < 13) {
           if (hash01(seed + x * 13 + y * 17) > 0.92) continue
           ctx.fillStyle =
@@ -143,9 +143,13 @@ export function minecraftBlockTexture(
                 ? '#d84848'
                 : '#c43b3b'
           ctx.fillRect(x, y, 1, 1)
-        } else if (kind === 'sapling' && Math.abs(dx) <= 1 && y >= 6 && y <= 13) {
-          ctx.fillStyle = hash01(seed + x + y) > 0.5 ? '#4a8f3a' : '#3d7a34'
-          ctx.fillRect(x, y, 1, 1)
+        } else if (kind === 'sapling') {
+          const spread = y < 8 ? 3 : y < 11 ? 2 : 1
+          if (Math.abs(dx) <= spread && y >= 3 && y <= 11) {
+            const bright = hash01(seed + x * 9 + y * 13) > 0.42
+            ctx.fillStyle = bright ? '#7ed65a' : '#5fa037'
+            ctx.fillRect(x, y, 1, 1)
+          }
         }
       }
     }
@@ -298,18 +302,13 @@ function buildPixelArtOak(
   }
 }
 
+/** Minecraft red mushroom ~0.6 blocks tall — cross-sprite (smaller than one block). */
 function buildPixelArtMushroom(
   g: THREE.Group,
-  stem: THREE.MeshBasicMaterial,
+  _stem: THREE.MeshBasicMaterial,
   cap: THREE.MeshBasicMaterial,
 ): void {
-  placeBlock(g, 0, 0, 0, stem)
-  for (let dx = -1; dx <= 1; dx++) {
-    for (let dz = -1; dz <= 1; dz++) {
-      if (Math.abs(dx) === 1 && Math.abs(dz) === 1) continue
-      placeBlock(g, dx, 1, dz, cap)
-    }
-  }
+  placeCrossPlantSprite(g, 0, 0, 0, 0.6, 0.52, cap)
 }
 
 export function snapPlantGroupToTerrain(g: THREE.Group, terrainTop: number): void {
@@ -347,8 +346,8 @@ function buildOakTree(
   const idx = plantStageToIndex(stage)
   const rng = gardenRng(seed)
   if (idx <= 1) {
-    const sapling = voxelMaterial('#4a8f3a', '#3d7a34', seed + 3, 'sapling', true)
-    placeCrossPlantSprite(g, 0, 0, 0, 0.6, 0.5, sapling)
+    const sapling = voxelMaterial('#5fa037', '#7ed65a', seed + 3, 'sapling', true)
+    placeCrossPlantSprite(g, 0, 0, 0, 0.8, 0.56, sapling)
     return
   }
   if (idx >= 7) {
@@ -385,8 +384,8 @@ function buildFlower(
     return
   }
   if (idx === 1) {
-    const sapling = voxelMaterial('#4a8f3a', '#3d7a34', seed + 3, 'sapling', true)
-    placeCrossPlantSprite(g, 0, 0, 0, 0.6, 0.5, sapling)
+    const sapling = voxelMaterial('#5fa037', '#7ed65a', seed + 3, 'sapling', true)
+    placeCrossPlantSprite(g, 0, 0, 0, 0.8, 0.56, sapling)
     return
   }
   if (idx >= 5) {
@@ -524,7 +523,15 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
     }
   }
 
-  if (recipe.kind === 'tree') {
+  if (plant.id === 'sprout-walk') {
+    const stem = voxelMaterial('#6b4a30', '#5a3a25', seedN + 2, 'bark')
+    const sapling = voxelMaterial('#5fa037', '#7ed65a', seedN + 3, 'sapling', true)
+    const mini = new THREE.Group()
+    placeBlock(mini, 0, 0, 0, stem)
+    placeCrossPlantSprite(mini, 0, 0, 0.55, 0.48, 0.58, sapling)
+    mini.scale.setScalar(0.82)
+    g.add(mini)
+  } else if (recipe.kind === 'tree') {
     buildOakTree(g, bark, leaf, seedN, stage)
   } else if (recipe.kind === 'flower') {
     buildFlower(g, stemMat, bloom, seedN, stage)
