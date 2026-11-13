@@ -220,13 +220,15 @@ try {
   await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-elder.png')
 
   await desktopPage.evaluate(() => {
-    const foot = window.__mgWalkFootAt?.(0.85, 29.1) ?? 0
+    const px = 0
+    const pz = 27.2
+    const foot = window.__mgWalkFootAt?.(px, pz) ?? 0
     window.__mgWalkNudgePose?.({
-      x: 0.85,
-      z: 29.1,
-      yaw: -0.82,
-      pitch: -0.2,
-      eyeY: foot + 1.46,
+      x: px,
+      z: pz,
+      yaw: Math.PI,
+      pitch: -0.22,
+      eyeY: foot + 1.6,
     })
   })
   await desktopPage.waitForTimeout(900)

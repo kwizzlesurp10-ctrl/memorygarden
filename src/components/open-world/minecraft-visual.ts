@@ -360,7 +360,9 @@ function buildPixelArtOak(
   }
 }
 
-/** Short Minecraft-style red mushroom: pale stem column + symmetric flat cap + center dome (cap material). */
+const MUSHROOM_WALK_VOXEL_SCALE = 0.52
+
+/** Short Minecraft-style red mushroom: pale stem, symmetric 3×3 cap, plus dome (cap material). */
 function buildPixelArtMushroom(
   g: THREE.Group,
   stem: THREE.MeshBasicMaterial,
@@ -368,19 +370,18 @@ function buildPixelArtMushroom(
   _seed: number,
 ): void {
   placeBlock(g, 0, 0, 0, stem)
-  placeBlock(g, 0, 1, 0, stem)
-
-  const capY = 2
-  for (let dx = -2; dx <= 2; dx++) {
-    for (let dz = -2; dz <= 2; dz++) {
+  const capY = 1
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
       placeBlock(g, dx, capY, dz, cap)
     }
   }
-  placeBlock(g, 0, capY + 1, 0, cap)
-  placeBlock(g, -1, capY + 1, 0, cap)
-  placeBlock(g, 1, capY + 1, 0, cap)
-  placeBlock(g, 0, capY + 1, -1, cap)
-  placeBlock(g, 0, capY + 1, 1, cap)
+  const domeY = capY + 1
+  placeBlock(g, 0, domeY, 0, cap)
+  placeBlock(g, -1, domeY, 0, cap)
+  placeBlock(g, 1, domeY, 0, cap)
+  placeBlock(g, 0, domeY, -1, cap)
+  placeBlock(g, 0, domeY, 1, cap)
 }
 
 export function snapPlantGroupToTerrain(g: THREE.Group, terrainTop: number): void {
@@ -682,6 +683,10 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
     buildFlower(g, stemMat, bloom, seedN, stage)
   } else if (recipe.kind === 'mushroom') {
     buildMushroom(g, stemMushroom, cap, seedN, stage)
+    if (plantStageToIndex(stage) >= 2) {
+      g.userData.walkVoxelScale = MUSHROOM_WALK_VOXEL_SCALE
+      g.scale.setScalar(MUSHROOM_WALK_VOXEL_SCALE)
+    }
   } else {
     buildOakTree(g, bark, leaf, seedN + 19, stage)
   }

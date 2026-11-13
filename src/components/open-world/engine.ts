@@ -527,54 +527,42 @@ export class OpenWorldEngine {
     const H = box.max.y - ground
     const cx = (box.min.x + box.max.x) / 2
     const cz = (box.min.z + box.max.z) / 2
-    const legacyCross = H < 2.1
-    const aimY = ground + (legacyCross ? H * 0.52 : Math.min(H * 0.38, 1.15))
+    const legacyCross = H < 1.25
+    const aimY = ground + H * 0.5
     const aim = new THREE.Vector3(cx, aimY, cz)
-    const targetSpan = legacyCross ? 0.24 : 0.5
-    const margin = 0.2
+    const targetSpan = legacyCross ? 0.22 : 0.42
+    const margin = 0.1
     let bestPose: WalkCapturePose | null = null
     let bestScore = Infinity
-    const distMin = legacyCross ? 2.4 : 5.1
-    const distMax = legacyCross ? 5.2 : 7.4
-    for (let pass = 0; pass < 40; pass++) {
-      const dist = distMin + (pass / 39) * (distMax - distMin)
-      const yaw = 0.52 + (pass % 7) * 0.11
+    const distMin = legacyCross ? 2.2 : 2.45
+    const distMax = legacyCross ? 4.2 : 3.05
+    for (let pass = 0; pass < 48; pass++) {
+      const dist = distMin + (pass / 47) * (distMax - distMin)
+      const yaw = 0.48 + (pass % 8) * 0.12
       const camX = cx + Math.sin(yaw) * dist
       const camZ = cz + Math.cos(yaw) * dist
       const foot = this.terrainFootY(camX, camZ)
-      const eyeMin = legacyCross ? 0.92 : Math.max(1.82, ground - foot + 0.9)
-      const eyeY = foot + eyeMin + (pass % 5) * 0.05
+      const eyeY = foot + 1.58 + (pass % 4) * 0.03
       const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-      if (pose.pitch > 0.05) continue
+      if (pose.pitch > -0.04) continue
       this.setPlayerPose(camX, camZ, pose.yaw, pose.pitch, eyeY)
       this.renderOnce()
       const proj = this.plantProjectedAabbScreenFromBox(box)
-      if (!proj || !Number.isFinite(proj.top) || proj.top < 0.16 || proj.top > 0.42 || proj.bottom > 0.8) {
-        continue
-      }
+      if (!proj || !Number.isFinite(proj.top) || proj.bottom > 0.92) continue
       const spanPx = proj.bottom - proj.top
       const inFrame =
         proj.left >= margin &&
         proj.right <= 1 - margin &&
         proj.top >= margin &&
         proj.bottom <= 1 - margin
-      const span = spanPx
       const fit = this.plantCaptureFit(box)
       const centerPen = Math.abs(fit.centerX) + Math.abs(fit.centerY)
-      const underStem = spanPx > 0.42 && proj.top < margin + 0.04 && pose.pitch > 0.01
       const score =
-        Math.abs(span - targetSpan) +
-        centerPen * 0.25 +
-        (inFrame ? 0 : 2.2) +
-        (underStem ? 1.5 : 0) +
-        (pose.pitch > -0.04 ? 0.35 : 0)
-      if (
-        inFrame &&
-        span >= targetSpan - 0.12 &&
-        span <= targetSpan + 0.14 &&
-        centerPen < 0.34 &&
-        pose.pitch <= 0.02
-      ) {
+        Math.abs(spanPx - targetSpan) +
+        centerPen * 0.3 +
+        (inFrame ? 0 : 3) +
+        (pose.pitch > -0.06 ? 0.8 : 0)
+      if (inFrame && spanPx >= targetSpan - 0.14 && spanPx <= targetSpan + 0.18 && centerPen < 0.32) {
         return { ...pose, x: camX, z: camZ, eyeY }
       }
       if (score < bestScore) {
@@ -583,14 +571,16 @@ export class OpenWorldEngine {
       }
     }
     if (bestPose) return bestPose
-    const dist = legacyCross ? 3.2 : 5.15
-    const yaw = 0.62
+    const dist = legacyCross ? 3.0 : 2.75
+    const yaw = 0.55
     const camX = cx + Math.sin(yaw) * dist
     const camZ = cz + Math.cos(yaw) * dist
     const foot = this.terrainFootY(camX, camZ)
-    const eyeY = foot + (legacyCross ? 0.95 : 1.88)
+    const eyeY = foot + 1.58
     const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-    return { ...pose, x: camX, z: camZ, eyeY }
+    const pitch = Math.min(pose.pitch, -0.1)
+    this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
+    return { ...pose, pitch, x: camX, z: camZ, eyeY }
   }
 
   private elderCapturePoseAtSlack(
@@ -705,7 +695,7 @@ export class OpenWorldEngine {
     let bestScore = Infinity
     const yaws = [-Math.PI / 2, Math.PI / 2, -Math.PI / 4, Math.PI / 4]
     for (let pass = 0; pass < 64; pass++) {
-      const dist = 10.8 + (pass / 63) * 4.2
+      const dist = 11.9 + (pass / 63) * 4.3
       const yaw = yaws[pass % yaws.length]!
       const camX = cx + Math.sin(yaw) * dist
       const camZ = cz + Math.cos(yaw) * dist
@@ -724,15 +714,16 @@ export class OpenWorldEngine {
       const proj = this.plantProjectedAabbScreenFromBox(box)
       const widthSpan = proj ? proj.right - proj.left : 0
       if (
-        top >= 0.06 &&
+        top >= 0.04 &&
         top <= 0.2 &&
         span >= 0.66 &&
-        span <= 0.78 &&
+        span <= 0.77 &&
         widthSpan >= 0.38
       ) {
         return { ...pose, pitch, x: camX, z: camZ, eyeY }
       }
-      const clipPen = top < 0.05 ? 14 + Math.abs(top) * 12 : span > 0.8 ? 10 : 0
+      const clipPen =
+        top < 0.02 ? 20 + Math.abs(top) * 16 : span > 0.88 ? 18 : span > 0.8 ? 8 : 0
       const topPen = top < 0.06 ? 6 + Math.abs(0.06 - top) * 6 : top > 0.22 ? (top - 0.22) * 8 : 0
       const widthPen = widthSpan < 0.34 ? (0.34 - widthSpan) * 5 : 0
       const score = Math.abs(span - 0.71) + Math.abs(top - 0.11) * 2.5 + topPen + widthPen + clipPen
@@ -740,6 +731,20 @@ export class OpenWorldEngine {
         bestScore = score
         bestPose = { ...pose, pitch, x: camX, z: camZ, eyeY }
       }
+    }
+    if (bestPose) {
+      this.setPlayerPose(bestPose.x, bestPose.z, bestPose.yaw, bestPose.pitch, bestPose.eyeY)
+      this.camera.rotation.x = bestPose.pitch
+      this.renderOnce()
+      const span = this.screenHeightFraction(box)
+      const canopy = this.plantProjectedBoxScreenYFromBox(box)
+      const top = canopy?.top ?? 0.5
+      if (span <= 0.88 && top >= 0.02) return bestPose
+    }
+    const slack = this.elderCapturePoseAtSlack(box, 1.02, -0.04)
+    if (slack) {
+      const { screenSpan: _s, screenTop: _t, ...pose } = slack
+      return pose
     }
     return bestPose
   }
@@ -1255,7 +1260,9 @@ export class OpenWorldEngine {
         const bounce = Math.sin(remain * Math.PI * 3) * 0.14 * remain
         scale *= 1 + bounce
       }
-      group.scale.setScalar(scale)
+      const baseScale =
+        typeof group.userData.walkVoxelScale === 'number' ? (group.userData.walkVoxelScale as number) : 1
+      group.scale.setScalar(baseScale * scale)
     }
   }
 

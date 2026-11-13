@@ -295,8 +295,8 @@ async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, 
   if (artStyle === 'pixel-art' && skyFrac < 0.05) {
     errs.push(`sky top band ${(skyFrac * 100).toFixed(1)}% < 5% (canopy clipped)`)
   }
-  if (phase === 'after' && artStyle === 'pixel-art' && cov < 0.65) {
-    errs.push(`screen coverage ${cov.toFixed(3)} < 0.65 (elder too small)`)
+  if (phase === 'after' && artStyle === 'pixel-art' && cov < 0.68) {
+    errs.push(`screen coverage ${cov.toFixed(3)} < 0.68 (elder too small)`)
   }
   if (phase === 'after' && artStyle === 'pixel-art' && cov > 0.88) {
     errs.push(`screen coverage ${cov.toFixed(3)} > 0.88 (elder too large / clipped)`)
@@ -326,31 +326,32 @@ async function assertMushroomCloseupFrame(page, plantId, pngPath, phase, artStyl
     `mushroom-frame-assert ${phase} ${artStyle} worldH=${Number.isFinite(worldH) ? worldH.toFixed(2) : 'n/a'} coverage=${cov.toFixed(3)} proj=${proj ? JSON.stringify(proj) : 'n/a'}`,
   )
   const errs = []
-  if (Number.isFinite(worldH) && artStyle === 'pixel-art' && phase === 'after' && worldH > 4.35) {
-    errs.push(`world height ${worldH.toFixed(2)} > 4.35 blocks (target ~3–4)`)
+  if (Number.isFinite(worldH) && artStyle === 'pixel-art' && phase === 'after' && worldH > 2.35) {
+    errs.push(`world height ${worldH.toFixed(2)} > 2.35 (target ~1.5–2)`)
+  }
+  if (Number.isFinite(worldH) && artStyle === 'pixel-art' && phase === 'after' && worldH < 1.2) {
+    errs.push(`world height ${worldH.toFixed(2)} < 1.2 (target ~1.5–2)`)
   }
   if (proj && artStyle === 'pixel-art') {
     const { left, right, top, bottom } = proj
-    const margin = 0.2
-    if (phase === 'after' && Number.isFinite(worldH) && worldH > 2.5 && top >= -0.05 && top <= 1) {
-      const marginV = 0.1
-      const marginH = 0.18
+    const margin = 0.1
+    if (phase === 'after' && Number.isFinite(worldH) && worldH >= 1.2 && worldH <= 2.35 && top >= 0 && top <= 1) {
       if (
-        top < marginV ||
-        bottom > 1 - marginV ||
-        left < marginH ||
-        right > 1 - marginH
+        top < margin ||
+        bottom > 1 - margin ||
+        left < margin ||
+        right > 1 - margin
       ) {
         errs.push(
-          `AABB not inside frame margins (V${marginV}/H${marginH}): L${left.toFixed(3)} R${right.toFixed(3)} T${top.toFixed(3)} B${bottom.toFixed(3)}`,
+          `AABB not inside frame margin ${margin}: L${left.toFixed(3)} R${right.toFixed(3)} T${top.toFixed(3)} B${bottom.toFixed(3)}`,
         )
       }
       const span = bottom - top
-      if (span < 0.34 || span > 0.66) {
-        errs.push(`vertical span ${span.toFixed(3)} outside 0.34–0.66`)
+      if (span < 0.22 || span > 0.62) {
+        errs.push(`vertical span ${span.toFixed(3)} outside 0.22–0.62`)
       }
     }
-    if (phase === 'before' && Number.isFinite(worldH) && worldH < 2.5) {
+    if (phase === 'before' && Number.isFinite(worldH) && worldH < 1.25) {
       if (bottom - top < 0.1) errs.push(`legacy mushroom span ${(bottom - top).toFixed(3)} < 0.1 (too far)`)
     }
   }
