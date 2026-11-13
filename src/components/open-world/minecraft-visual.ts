@@ -361,13 +361,44 @@ function buildPixelArtOak(
   }
 }
 
-/** Minecraft red mushroom ~0.6 blocks tall — cross-sprite (smaller than one block). */
+/** Short Minecraft-style red mushroom: pale stem column + domed cap with spots (cap material). */
 function buildPixelArtMushroom(
   g: THREE.Group,
-  _stem: THREE.MeshBasicMaterial,
+  stem: THREE.MeshBasicMaterial,
   cap: THREE.MeshBasicMaterial,
+  seed: number,
 ): void {
-  placeCrossPlantSprite(g, 0, 0, 0, 0.6, 0.52, cap)
+  placeBlock(g, 0, 0, 0, stem)
+  placeBlock(g, 0, 1, 0, stem)
+
+  const capY = 2
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+      placeBlock(g, dx, capY, dz, cap)
+    }
+  }
+  const overhang: Array<[number, number]> = [
+    [0, -2],
+    [0, 2],
+    [-2, 0],
+    [2, 0],
+    [-1, -2],
+    [1, -2],
+    [-1, 2],
+    [1, 2],
+    [-2, -1],
+    [-2, 1],
+    [2, -1],
+    [2, 1],
+  ]
+  for (const [dx, dz] of overhang) {
+    if (hash01(seed + dx * 3.1 + dz * 5.7) > 0.28) {
+      placeBlock(g, dx, capY, dz, cap)
+    }
+  }
+  placeBlock(g, 0, capY + 1, 0, cap)
+  if (hash01(seed + 91) > 0.35) placeBlock(g, 0, capY + 1, -1, cap)
+  if (hash01(seed + 92) > 0.35) placeBlock(g, 0, capY + 1, 1, cap)
 }
 
 export function snapPlantGroupToTerrain(g: THREE.Group, terrainTop: number): void {
@@ -477,7 +508,7 @@ function buildMushroom(
     if (idx === 1) placeBlock(g, 0, 1, 0, cap)
     return
   }
-  buildPixelArtMushroom(g, stem, cap)
+  buildPixelArtMushroom(g, stem, cap, seed)
 }
 
 const MINECRAFT_BLOCK_UNIT = 1

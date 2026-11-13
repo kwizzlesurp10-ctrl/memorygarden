@@ -522,19 +522,22 @@ export class OpenWorldEngine {
     const R = Math.max(size.x, size.z) * 0.5
     const fovRad = (this.camera.fov * Math.PI) / 180
     const halfFovTan = Math.tan(fovRad / 2)
-    /** Corner + sky slack beyond the nominal 1.25 vertical fit factor. */
-    const aabbSlack = 1.98
+    /** Between legacy 1.98 (too wide) and 1.32 (canopy clips) — targets ~65% frame height. */
+    const aabbSlack = 1.88
     const D_v = (((H * 1.25) / 2) / halfFovTan) * aabbSlack
-    const D_h = ((R * 1.25) / (halfFovTan * this.camera.aspect)) * 1.42
+    const D_h = ((R * 1.25) / (halfFovTan * this.camera.aspect)) * 1.4
     const D = Math.max(R * 2.2, D_v, D_h)
     const yaw = -0.68
+    const elderPitch = -0.06
     const camX = cx + Math.sin(yaw) * D
     const camZ = cz + Math.cos(yaw) * D
     const foot = this.terrainFootY(camX, camZ)
     const aimY = groundY + H * 0.5
     const eyeY = Math.max(foot + 0.08, aimY)
     const aim = new THREE.Vector3(cx, aimY, cz)
-    return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+    const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+    this.setPlayerPose(camX, camZ, pose.yaw, elderPitch, eyeY)
+    return { ...pose, pitch: elderPitch, x: camX, z: camZ, eyeY }
   }
 
   private projectBoxVerticalInView(box: THREE.Box3): { minNdcY: number; maxNdcY: number } | null {

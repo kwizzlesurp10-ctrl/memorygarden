@@ -221,8 +221,9 @@ async function elderCloseupPoseForPage(page, plantId) {
     const fov = typeof b.captureCameraFov === 'function' ? b.captureCameraFov() : 68
     const fovRad = (fov * Math.PI) / 180
     const halfFovTan = Math.tan(fovRad / 2)
-    const D_v = (((H * 1.25) / 2) / halfFovTan) * 1.98
-    const D_h = ((R * 1.25) / (halfFovTan * (b.captureCameraAspect?.() ?? 1.6))) * 1.42
+    const aabbSlack = 1.88
+    const D_v = (((H * 1.25) / 2) / halfFovTan) * aabbSlack
+    const D_h = ((R * 1.25) / (halfFovTan * (b.captureCameraAspect?.() ?? 1.6))) * 1.4
     const D = Math.max(R * 2.2, D_v, D_h)
     const yaw = -0.68
     const x = cx + Math.sin(yaw) * D
@@ -273,9 +274,14 @@ async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle) 
     `elder-frame-assert ${phase} ${artStyle} skyTop6=${(skyFrac * 100).toFixed(1)}% projectedTop=${topStr} projectedBottom=${botStr}`,
   )
   const errs = []
-  if (skyFrac < 0.9) errs.push(`sky top band ${(skyFrac * 100).toFixed(1)}% < 90%`)
+  const skyMin = phase === 'after' ? 0.84 : 0.9
+  if (skyFrac < skyMin) errs.push(`sky top band ${(skyFrac * 100).toFixed(1)}% < ${(skyMin * 100).toFixed(0)}%`)
   if (proj) {
-    if (top < 0.05 || top > 0.95) errs.push(`projectedTop ${top.toFixed(3)} outside [0.05,0.95]`)
+    const heightSpan = bottom - top
+    if (phase === 'after' && artStyle === 'pixel-art' && (heightSpan < 0.54 || heightSpan > 0.78)) {
+      errs.push(`projectedHeightSpan ${heightSpan.toFixed(3)} outside [0.54,0.78] (target 60–75% frame)`)
+    }
+    if (top < -0.06) errs.push(`projectedTop ${top.toFixed(3)} above frame (canopy clipped)`)
     if (bottom < 0.05 || bottom > 0.95) {
       errs.push(`projectedBottom ${bottom.toFixed(3)} outside [0.05,0.95]`)
     }
@@ -345,8 +351,17 @@ async function captureShot(page, phase, artStyle, shot, pose) {
       ({ id, p }) => window.__mgWalkCapture?.plantScreenCoverage?.(id, p) ?? 0,
       { id: shot.plantId, p: pose },
     )
-    const flag = cov >= covThreshold ? 'ok' : 'LOW'
+    const minCov = shot.file === 'walk-tree-elder-closeup' ? 0.48 : covThreshold
+    const flag = cov >= minCov ? 'ok' : 'LOW'
     console.log(`coverage[${flag}]`, phase, artStyle, shot.file, cov.toFixed(3))
+    if (
+      phase === 'after' &&
+      artStyle === 'pixel-art' &&
+      shot.file === 'walk-tree-elder-closeup' &&
+      cov < minCov
+    ) {
+      throw new Error(`Elder close-up coverage ${cov.toFixed(3)} below ${minCov}`)
+    }
   }
   console.log('Wrote', file)
   return file
