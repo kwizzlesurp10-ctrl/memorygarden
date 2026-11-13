@@ -99,7 +99,10 @@ ${markup}
           width={box.width}
           height={box.height}
           preserveAspectRatio="none"
-          style={{ imageRendering: 'pixelated' }}
+          style={{
+            imageRendering: 'pixelated',
+            shapeRendering: 'crispEdges',
+          }}
         />
       ) : (
         <g style={{ ...swayStyle, opacity: 0.35 }}>{children}</g>

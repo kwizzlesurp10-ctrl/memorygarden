@@ -146,7 +146,10 @@ async function main() {
     }
     writeFileSync(resolve(outDir, `garden-art-style-${artStyle}.png`), full.asPng())
 
-    const crop = cropFromFullRender(full, GARDEN_PLANT_CROP_VIEWBOX, 520)
+    let crop = cropFromFullRender(full, GARDEN_PLANT_CROP_VIEWBOX, 520)
+    if (artStyle === 'pixel-art') {
+      crop = pixelateFullPngRender({ width: crop.width, height: crop.height, asPng: () => crop.asPng() }, 4)
+    }
     writeFileSync(resolve(outDir, `garden-art-style-crop-${artStyle}.png`), crop.asPng())
     pixelMaps[`crop:${artStyle}`] = crop
 

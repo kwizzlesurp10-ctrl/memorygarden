@@ -242,7 +242,8 @@ export function OpenWorldGarden({
     setWorld(engine.getWorld())
     if (captureMode) {
       registerWalkCaptureBridge({
-        setPose: (pose) => engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch),
+        setPose: (pose) =>
+          engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY),
         setPalette: (palette) => engine.setPalette(palette),
         setPlantArtStyle: (style) => engine.setPlantArtStyle(style),
         showcaseModel: (id: Cc0ModelId | null) => engine.setCc0Showcase(id),
@@ -261,7 +262,12 @@ export function OpenWorldGarden({
         voxelMeshCount: () => engine.countVoxelMeshes(),
         voxelPlantGroupCount: () => engine.countVoxelPlantGroups(),
         plantCount: () => engine.getWorld().plants.length,
-        plantCapturePose: (plantId, distance) => engine.capturePoseForPlant(plantId, distance),
+        plantCapturePose: (plantId) => engine.capturePoseForPlant(plantId),
+        clusterOverviewPose: () => engine.captureClusterOverviewPose(),
+        cameraDebug: () => {
+          const p = engine.getPlayer()
+          return { y: p.y, pitch: p.pitch }
+        },
       })
       if (sessionStorage.getItem('mg:stage-row-capture') !== '1') {
         engine.setPlayerPose(

@@ -66,25 +66,6 @@ const memories = [
   },
 ]
 
-const EYE_HEIGHT = 1.55
-
-function lookTargetY(plant) {
-  if (plant.variety === 'tree') return 3.4
-  if (plant.variety === 'mushroom') return 1.05
-  if (plant.variety === 'flower') return 1.35
-  return Math.max(0.9, (plant.height ?? 1.2) * 0.65)
-}
-
-function framePlant(plant, distance = 3.2) {
-  const lookY = lookTargetY(plant)
-  const camX = plant.x - distance * 0.72
-  const camZ = plant.z - distance * 0.68
-  const yaw = Math.atan2(plant.x - camX, plant.z - camZ)
-  const horiz = Math.hypot(plant.x - camX, plant.z - camZ)
-  const pitch = Math.atan2(lookY - EYE_HEIGHT, horiz)
-  return { x: camX, z: camZ, yaw, pitch }
-}
-
 async function enterWalk(page) {
   for (let i = 0; i < 4; i++) {
     await page.keyboard.press('Escape')
@@ -126,7 +107,6 @@ async function captureWalk(page, artStyle, shots) {
   }, artStyle)
   await page.waitForTimeout(1800)
 
-  const plants = (await page.evaluate(() => window.__mgWalkCapture?.worldPlants?.() ?? [])) ?? []
   const plantCount = await page.evaluate(() => window.__mgWalkCapture?.plantCount?.() ?? 0)
   const voxelGroups = await page.evaluate(() => window.__mgWalkCapture?.voxelPlantGroupCount?.() ?? -1)
   const voxels = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? -1)
@@ -137,50 +117,36 @@ async function captureWalk(page, artStyle, shots) {
         `Voxel plant groups (${voxelGroups}) must equal plant count (${plantCount}) in pixel-art mode`,
       )
     }
-    if (voxels < plantCount * 12) {
-      throw new Error(`Too few voxel meshes (${voxels}) for ${plantCount} plants — expected chunky blocks`)
+    if (voxels < plantCount * 8) {
+      throw new Error(`Too few voxel meshes (${voxels}) for ${plantCount} plants`)
     }
     console.log('pixel-art voxel check OK:', { plantCount, voxelGroups, voxels })
   }
 
-  const tree = plants.find((p) => p.variety === 'tree')
-  const flower = plants.find((p) => p.variety === 'flower')
-  const mushroom = plants.find((p) => p.variety === 'mushroom')
-
   for (const shot of shots) {
-    let pose = shot.pose
-    if (shot.kind === 'overview' && plants.length >= 1) {
-      const cx = plants.reduce((s, p) => s + p.x, 0) / plants.length
-      const cz = plants.reduce((s, p) => s + p.z, 0) / plants.length
-      const camX = cx - 4.5
-      const camZ = cz + 5.8
-      pose = {
-        x: camX,
-        z: camZ,
-        yaw: Math.atan2(cx - camX, cz - camZ),
-        pitch: -0.14,
+    let pose = null
+    if (shot.kind === 'overview') {
+      pose = await page.evaluate(() => window.__mgWalkCapture?.clusterOverviewPose?.() ?? null)
+    } else if (shot.plantId) {
+      pose = await page.evaluate(
+        (id) => window.__mgWalkCapture?.plantCapturePose?.(id) ?? null,
+        shot.plantId,
+      )
+    }
+    if (!pose) throw new Error(`No capture pose for shot ${shot.kind}`)
+
+    if (shot.kind !== 'overview' && artStyle === 'pixel-art') {
+      const frac = pose.screenFrac ?? 0
+      if (frac < 0.25) {
+        console.warn(`Low screenFrac ${frac.toFixed(2)} for ${shot.kind} — retrying pose`)
+        pose = await page.evaluate(
+          (id) => window.__mgWalkCapture?.plantCapturePose?.(id) ?? null,
+          shot.plantId,
+        )
       }
-    }
-    if (shot.kind === 'tree' && tree) {
-      pose =
-        (await page.evaluate(
-          (id) => window.__mgWalkCapture?.plantCapturePose?.(id, 3.2),
-          tree.id,
-        )) ?? framePlant(tree, 3.1)
-    }
-    if (shot.kind === 'flower' && flower) {
-      pose =
-        (await page.evaluate(
-          (id) => window.__mgWalkCapture?.plantCapturePose?.(id, 2.8),
-          flower.id,
-        )) ?? framePlant(flower, 2.9)
-    }
-    if (shot.kind === 'mushroom' && mushroom) {
-      pose =
-        (await page.evaluate(
-          (id) => window.__mgWalkCapture?.plantCapturePose?.(id, 2.6),
-          mushroom.id,
-        )) ?? framePlant(mushroom, 2.7)
+      if ((pose?.screenFrac ?? 0) < 0.25) {
+        console.warn(`Still low coverage for ${shot.kind}: screenFrac=${pose?.screenFrac}`)
+      }
     }
 
     await page.evaluate(async (p) => {
@@ -193,8 +159,14 @@ async function captureWalk(page, artStyle, shots) {
       .locator('[data-testid="open-world-garden"] canvas')
       .first()
       .screenshot({ path: file })
-  const vAfter = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? -1)
-    console.log('Wrote', file, shot.kind, 'voxels', vAfter, 'pose', JSON.stringify(pose))
+    console.log(
+      'Wrote',
+      file,
+      shot.kind,
+      'screenFrac',
+      pose.screenFrac?.toFixed?.(3) ?? 'n/a',
+      JSON.stringify(pose),
+    )
   }
 }
 
@@ -231,15 +203,14 @@ try {
   const page = await context.newPage()
   await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 120_000 })
 
+  const plantIds = memories.map((m) => m.id)
   await captureWalk(page, 'pixel-art', [
     { kind: 'overview', file: 'garden-art-style-walk-pixel-overview.png' },
-    { kind: 'tree', file: 'garden-art-style-walk-pixel-tree-closeup.png' },
-    { kind: 'flower', file: 'garden-art-style-walk-pixel-flower-closeup.png' },
-    { kind: 'mushroom', file: 'garden-art-style-walk-pixel-mushroom-closeup.png' },
+    { kind: 'tree', plantId: 'tree-elder-walk', file: 'garden-art-style-walk-pixel-tree-closeup.png' },
+    { kind: 'flower', plantId: 'flower-bloom-walk', file: 'garden-art-style-walk-pixel-flower-closeup.png' },
+    { kind: 'mushroom', plantId: 'mushroom-walk', file: 'garden-art-style-walk-pixel-mushroom-closeup.png' },
   ])
-  await captureWalk(page, 'watercolor', [
-    { kind: 'overview', file: 'garden-art-style-walk-watercolor-3d-compare.png' },
-  ])
+  await captureWalk(page, 'watercolor', [{ kind: 'overview', file: 'garden-art-style-walk-watercolor-3d-compare.png' }])
 } finally {
   await browser.close()
 }

@@ -318,35 +318,120 @@ export class OpenWorldEngine {
     return this.player
   }
 
-  setPlayerPose(x: number, z: number, yaw: number, pitch: number): void {
+  setPlayerPose(x: number, z: number, yaw: number, pitch: number, eyeY?: number): void {
     this.player.x = x
     this.player.z = z
     this.player.yaw = yaw
     this.player.pitch = pitch
+    if (eyeY !== undefined) this.player.y = eyeY
     this.applyCamera()
+    if (isWalkCaptureSession() && eyeY !== undefined) {
+      this.camera.position.y = eyeY + (this.reducedMotion ? 0 : 0)
+    }
   }
 
-  capturePoseForPlant(plantId: string, distance = 3.4): WalkCapturePose | null {
+  private plantVoxelBox(plantId: string): THREE.Box3 | null {
     const group = this.plantGroups.get(plantId)
     if (!group) return null
     group.updateWorldMatrix(true, true)
     const box = new THREE.Box3()
     group.traverse((obj) => {
-      if (obj instanceof THREE.Mesh && obj.userData.voxel) {
+      if (obj instanceof THREE.Mesh && obj.userData.voxelBlock) {
         box.expandByObject(obj)
       }
     })
-    if (box.isEmpty()) return null
+    return box.isEmpty() ? null : box
+  }
+
+  private screenHeightFraction(box: THREE.Box3): number {
+    const { min, max } = box
+    const corners = [
+      new THREE.Vector3(min.x, min.y, min.z),
+      new THREE.Vector3(min.x, min.y, max.z),
+      new THREE.Vector3(min.x, max.y, min.z),
+      new THREE.Vector3(min.x, max.y, max.z),
+      new THREE.Vector3(max.x, min.y, min.z),
+      new THREE.Vector3(max.x, min.y, max.z),
+      new THREE.Vector3(max.x, max.y, min.z),
+      new THREE.Vector3(max.x, max.y, max.z),
+    ]
+    let minNdcY = Infinity
+    let maxNdcY = -Infinity
+    for (const c of corners) {
+      const p = c.clone().project(this.camera)
+      minNdcY = Math.min(minNdcY, p.y)
+      maxNdcY = Math.max(maxNdcY, p.y)
+    }
+    return (maxNdcY - minNdcY) / 2
+  }
+
+  private withCapturePose(pose: WalkCapturePose, fn: () => number): number {
+    const saved = { ...this.player }
+    this.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
+    const frac = fn()
+    this.player.x = saved.x
+    this.player.z = saved.z
+    this.player.y = saved.y
+    this.player.yaw = saved.yaw
+    this.player.pitch = saved.pitch
+    this.applyCamera()
+    return frac
+  }
+
+  capturePoseForPlant(plantId: string): WalkCapturePose | null {
+    const box = this.plantVoxelBox(plantId)
+    if (!box) return null
     const center = box.getCenter(new THREE.Vector3())
     const size = box.getSize(new THREE.Vector3())
-    const standoff = distance
-    const camX = center.x - standoff * 0.74
-    const camZ = center.z - standoff * 0.66
-    const yaw = Math.atan2(center.x - camX, center.z - camZ)
-    const horiz = Math.hypot(center.x - camX, center.z - camZ)
-    const lookY = center.y + size.y * 0.05
-    const pitch = Math.min(0.42, Math.atan2(lookY - this.player.y, horiz))
-    return { x: camX, z: camZ, yaw, pitch }
+    const bboxRadius = Math.max(size.x, size.z) * 0.5
+    const viewDir = new THREE.Vector3(-0.74, 0, -0.67).normalize()
+    let standoff = Math.max(2.4, bboxRadius * 2.5)
+
+    let best: WalkCapturePose | null = null
+    let bestFrac = 0
+
+    for (let i = 0; i < 16; i++) {
+      const camPos = center.clone().addScaledVector(viewDir, standoff)
+      camPos.y = 1.55
+      if (box.containsPoint(camPos)) {
+        standoff += bboxRadius * 0.4
+        continue
+      }
+      const yaw = Math.atan2(center.x - camPos.x, center.z - camPos.z)
+      const horiz = Math.hypot(center.x - camPos.x, center.z - camPos.z)
+      const pitch = -Math.atan2(center.y + size.y * 0.08 - camPos.y, horiz)
+      const trial: WalkCapturePose = {
+        x: camPos.x,
+        z: camPos.z,
+        yaw,
+        pitch,
+        eyeY: camPos.y,
+      }
+      const frac = this.withCapturePose(trial, () => this.screenHeightFraction(box))
+      if (frac >= 0.35 && frac <= 0.6) {
+        return { ...trial, screenFrac: frac }
+      }
+      if (frac > bestFrac) {
+        bestFrac = frac
+        best = { ...trial, screenFrac: frac }
+      }
+      standoff *= frac < 0.35 ? 0.86 : 1.14
+    }
+    return best
+  }
+
+  captureClusterOverviewPose(): WalkCapturePose {
+    const plants = this.world.plants
+    const cx = plants.reduce((s, p) => s + p.x, 0) / Math.max(1, plants.length)
+    const cz = plants.reduce((s, p) => s + p.z, 0) / Math.max(1, plants.length)
+    const camZ = cz + 10
+    return {
+      x: cx,
+      z: camZ,
+      yaw: Math.atan2(cx - cx, cz - camZ),
+      pitch: 0.436,
+      eyeY: 10,
+    }
   }
 
   setWalkCaptureBackdrop(active: boolean): void {

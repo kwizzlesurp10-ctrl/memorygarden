@@ -8,6 +8,8 @@ export interface WalkCapturePose {
   z: number
   yaw: number
   pitch: number
+  eyeY?: number
+  screenFrac?: number
 }
 
 export interface WalkCaptureBridge {
@@ -28,7 +30,9 @@ export interface WalkCaptureBridge {
   voxelMeshCount?: () => number
   voxelPlantGroupCount?: () => number
   plantCount?: () => number
-  plantCapturePose?: (plantId: string, distance?: number) => WalkCapturePose | null
+  plantCapturePose?: (plantId: string) => WalkCapturePose | null
+  clusterOverviewPose?: () => WalkCapturePose | null
+  cameraDebug?: () => { y: number; pitch: number }
 }
 
 export const WALK_CAPTURE_SESSION_KEY = 'mg:walk-capture'
