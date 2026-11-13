@@ -244,6 +244,7 @@ export function OpenWorldGarden({
     setFailed(engine.failed)
     setWorld(engine.getWorld())
     if (captureMode) {
+      engine.setPaused(true)
       registerWalkCaptureBridge({
         setPose: (pose) =>
           engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY),
@@ -265,11 +266,13 @@ export function OpenWorldGarden({
         voxelMeshCount: () => engine.countVoxelMeshes(),
         voxelPlantGroupCount: () => engine.countVoxelPlantGroups(),
         plantCount: () => engine.getWorld().plants.length,
-        plantCapturePose: (plantId) => {
-          engine.renderOnce()
-          return engine.capturePoseForPlant(plantId)
-        },
+        plantCapturePose: (plantId) => engine.deterministicPlantCapturePose(plantId),
+        deterministicPlantPose: (plantId) => engine.deterministicPlantCapturePose(plantId),
         clusterOverviewPose: () => engine.captureClusterOverviewPose(),
+        waitCaptureReady: () =>
+          new Promise<void>((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+          }),
         plantScreenCoverage: (plantId, pose) => engine.plantScreenCoverage(plantId, pose),
         plantCaptureFitAt: (plantId, pose) => engine.plantCaptureFitAt(plantId, pose),
         plantCaptureFitNow: (plantId) => engine.plantCaptureFitNow(plantId),

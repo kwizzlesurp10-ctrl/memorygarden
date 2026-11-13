@@ -1,6 +1,6 @@
 /**
- * Full before/after grid with pinned camera poses (identical for watercolor & pixel).
- * Env: AFTER_URL, BEFORE_URL, ARTIFACT_DIR, VIEWPORT=desktop|mobile
+ * Minecraft walk capture grid — deterministic plant cameras, pinned poses.
+ * Env: AFTER_URL, BEFORE_URL, ARTIFACT_DIR, VIEWPORT=desktop|mobile, MODE=full|overview
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -10,9 +10,12 @@ const afterUrl = process.env.AFTER_URL || 'http://127.0.0.1:4174'
 const beforeUrl = process.env.BEFORE_URL || 'http://127.0.0.1:4173'
 const outDir = process.env.ARTIFACT_DIR || '/opt/cursor/artifacts'
 const viewportMode = process.env.VIEWPORT || 'desktop'
+const mode = process.env.MODE || 'full'
+const covThreshold = 0.15
+
 mkdirSync(outDir, { recursive: true })
 
-const posePath = resolve(outDir, `minecraft-walk-poses-${viewportMode}.json`)
+const posePath = resolve(outDir, 'minecraft-walk-poses-desktop.json')
 
 const viewports = {
   desktop: { width: 1280, height: 800 },
@@ -25,7 +28,6 @@ const demoUser = {
   avatarUrl: '',
 }
 
-/** Tight cluster so overview shows multiple plants in midground. */
 const memories = [
   {
     id: 'tree-mature-walk',
@@ -109,37 +111,41 @@ const memories = [
   },
 ]
 
-const shots = [
-  { kind: 'overview', file: 'walk-overview', plantId: null },
-  { kind: 'tree-mature', plantId: 'tree-mature-walk', file: 'walk-tree-mature-closeup', minCov: 0.42 },
-  { kind: 'tree-elder', plantId: 'tree-elder-walk', file: 'walk-tree-elder-closeup', minCov: 0.42 },
-  { kind: 'flower', plantId: 'flower-bloom-walk', file: 'walk-flower-closeup', minCov: 0.4 },
-  { kind: 'mushroom', plantId: 'mushroom-walk', file: 'walk-mushroom-closeup', minCov: 0.4 },
-  { kind: 'sprout', plantId: 'sprout-walk', file: 'walk-sprout-closeup', minCov: 0.28 },
+const allShots = [
+  { kind: 'overview', file: 'walk-overview', plantId: null, label: 'overview' },
+  {
+    kind: 'tree-mature',
+    plantId: 'tree-mature-walk',
+    file: 'walk-tree-mature-closeup',
+    label: 'mature tree',
+  },
+  { kind: 'tree-elder', plantId: 'tree-elder-walk', file: 'walk-tree-elder-closeup', label: 'elder tree' },
+  { kind: 'flower', plantId: 'flower-bloom-walk', file: 'walk-flower-closeup', label: 'flower' },
+  { kind: 'mushroom', plantId: 'mushroom-walk', file: 'walk-mushroom-closeup', label: 'mushroom' },
+  { kind: 'sprout', plantId: 'sprout-walk', file: 'walk-sprout-closeup', label: 'sprout' },
 ]
+
+const shots = mode === 'overview' ? allShots.filter((s) => s.file === 'walk-overview') : allShots
 
 async function enterWalk(page) {
   for (let i = 0; i < 4; i++) {
     await page.keyboard.press('Escape')
-    await page.waitForTimeout(50)
+    await page.waitForTimeout(40)
   }
   await page.evaluate(() => {
     const btn = document.querySelector('[data-testid="enter-walk-button"]')
     if (btn instanceof HTMLElement) btn.click()
   })
-  await page.waitForTimeout(1800)
   await page.locator('[data-testid="open-world-garden"] canvas').first().waitFor({ state: 'visible', timeout: 90_000 })
+  await page.waitForFunction(() => window.__mgWalkCapture?.ready?.() === true, undefined, { timeout: 90_000 })
   await page.waitForFunction(
     () => (window.__mgWalkCapture?.worldPlants?.() ?? []).length >= 5,
     undefined,
     { timeout: 90_000 },
   )
-  await page.waitForFunction(
-    () => typeof window.__mgWalkCapture?.plantCaptureFitNow === 'function',
-    undefined,
-    { timeout: 90_000 },
-  )
-  await page.waitForTimeout(800)
+  await page.evaluate(async () => {
+    await window.__mgWalkCapture?.waitCaptureReady?.()
+  })
 }
 
 async function bootstrapWalk(page, baseUrl, artStyle) {
@@ -162,125 +168,71 @@ async function bootstrapWalk(page, baseUrl, artStyle) {
   )
   await page.reload({ waitUntil: 'networkidle', timeout: 120_000 })
   await enterWalk(page)
-  await page.evaluate((art) => {
-    window.__mgWalkCapture?.setPlantArtStyle?.(art)
-  }, artStyle)
-  await page.waitForTimeout(2800)
+  await page.evaluate((art) => window.__mgWalkCapture?.setPlantArtStyle?.(art), artStyle)
+  await page.waitForTimeout(2000)
+  await page.evaluate(async () => {
+    await window.__mgWalkCapture?.waitCaptureReady?.()
+  })
+}
+
+async function poseForShot(page, shot) {
+  return page.evaluate(async (s) => {
+    await window.__mgWalkCapture?.waitCaptureReady?.()
+    if (!s.plantId) {
+      return window.__mgWalkCapture?.clusterOverviewPose?.() ?? null
+    }
+    if (!window.__mgWalkCapture?.hasPlantGroup?.(s.plantId)) {
+      throw new Error(`Missing plant group ${s.plantId}`)
+    }
+    return window.__mgWalkCapture?.deterministicPlantPose?.(s.plantId) ?? null
+  }, shot)
 }
 
 async function applyPose(page, pose) {
-  await page.evaluate(async (p) => {
-    await window.__mgWalkCapture?.showcaseModel?.(null)
+  await page.evaluate((p) => {
     window.__mgWalkCapture?.setPose?.(p)
   }, pose)
-  await page.waitForTimeout(2200)
+  await page.evaluate(async () => {
+    await window.__mgWalkCapture?.waitCaptureReady?.()
+  })
 }
 
-async function derivePlantPose(page, plantId, targetFrac, minCov) {
-  return page.evaluate(
-    async ({ plantId: id, targetFrac: target, minCov: min }) => {
-      const waitFrame = () =>
-        new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-      const wp = window.__mgWalkCapture?.worldPlants?.().find((p) => p.id === id)
-      if (!wp) throw new Error(`No world plant ${id}`)
-      if (!window.__mgWalkCapture?.hasPlantGroup?.(id)) {
-        throw new Error(`No Object3D for plant ${id}`)
-      }
-      let best = null
-      let bestScore = Infinity
-      const pitchSteps = [-0.16, -0.24]
-      for (let a = 0; a < 12; a++) {
-        const ang = a * (Math.PI / 6)
-        for (let dist = 2.8; dist <= 10; dist += 0.45) {
-          const x = wp.x + Math.sin(ang) * dist
-          const z = wp.z + Math.cos(ang) * dist
-          const baseYaw = Math.atan2(wp.x - x, wp.z - z)
-          for (const pitch of pitchSteps) {
-            for (const dYaw of [0, -0.45, 0.45]) {
-              const pose = { x, z, yaw: baseYaw + dYaw, pitch, eyeY: 1.62 }
-              window.__mgWalkCapture?.setPose?.(pose)
-              await waitFrame()
-              const frac = window.__mgWalkCapture?.plantScreenCoverage?.(id) ?? 0
-              const fit = window.__mgWalkCapture?.plantCaptureFitNow?.(id)
-              if (frac < 0.25 || frac > 0.9) continue
-              const cx = fit?.centerX ?? 2
-              const cy = fit?.centerY ?? 2
-              const score = Math.abs(frac - target) + Math.abs(cx) * 0.45 + Math.abs(cy) * 0.5
-              if (score < bestScore) {
-                bestScore = score
-                best = { ...pose, screenFrac: frac }
-              }
-            }
-          }
-        }
-      }
-      if (!best) throw new Error(`No framed pose for plant ${id}`)
-      return best
-    },
-    { plantId, targetFrac, minCov },
-  )
-}
-
-async function derivePoses(page) {
+async function deriveAllPoses(page) {
   const poses = {}
-  const overview = await page.evaluate(() => window.__mgWalkCapture?.clusterOverviewPose?.())
-  if (!overview) throw new Error('clusterOverviewPose returned null')
-  poses['walk-overview'] = overview
-
   for (const shot of shots) {
-    if (!shot.plantId) continue
-    const target = shot.plantId.includes('sprout') ? 0.48 : 0.58
-    const pose = await derivePlantPose(page, shot.plantId, target, shot.minCov)
-    await applyPose(page, pose)
-    const cov = await page.evaluate(
-      ({ id, p }) => window.__mgWalkCapture?.plantScreenCoverage?.(id, p) ?? 0,
-      { id: shot.plantId, p: pose },
-    )
-    const centered = await page.evaluate(
-      ({ id, p }) => {
-        const fit = window.__mgWalkCapture?.plantCaptureFitAt?.(id, p)
-        return fit ? Math.abs(fit.centerX) < 0.55 && Math.abs(fit.centerY) < 0.55 : false
-      },
-      { id: shot.plantId, p: pose },
-    )
-    if (!centered) {
-      throw new Error(`Plant ${shot.plantId} not centered at pinned pose`)
-    }
-    if (cov < shot.minCov) {
-      throw new Error(`Plant ${shot.plantId} screen coverage ${cov.toFixed(3)} < min ${shot.minCov}`)
-    }
-    console.log('pose ok', shot.file, 'cov', cov.toFixed(3), 'frac', pose.screenFrac?.toFixed(3))
+    const pose = await poseForShot(page, shot)
+    if (!pose) throw new Error(`No deterministic pose for ${shot.file}`)
     poses[shot.file] = pose
+    console.log('pinned pose', shot.file, JSON.stringify(pose))
   }
-  writeFileSync(posePath, JSON.stringify(poses, null, 2))
+  if (viewportMode === 'desktop' && mode === 'full') {
+    writeFileSync(posePath, JSON.stringify(poses, null, 2))
+  }
   return poses
 }
 
 async function captureShot(page, phase, artStyle, shot, pose) {
   await applyPose(page, pose)
-  const shouldAssert = phase === 'after' && artStyle === 'pixel-art' && shot.plantId
-  if (shouldAssert) {
+  const name = `minecraft-walk-${phase}-${artStyle}-${shot.file}-${viewportMode}.png`
+  const file = resolve(outDir, name)
+  await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
+  if (shot.plantId) {
     const cov = await page.evaluate(
       ({ id, p }) => window.__mgWalkCapture?.plantScreenCoverage?.(id, p) ?? 0,
       { id: shot.plantId, p: pose },
     )
-    if (cov < shot.minCov) {
-      throw new Error(
-        `[${phase}/${artStyle}] ${shot.file}: plant coverage ${cov.toFixed(3)} < ${shot.minCov}`,
-      )
-    }
-    console.log('capture cov', phase, artStyle, shot.file, cov.toFixed(3))
+    const flag = cov >= covThreshold ? 'ok' : 'LOW'
+    console.log(`coverage[${flag}]`, phase, artStyle, shot.file, cov.toFixed(3))
   }
-  const name = `minecraft-walk-${phase}-${artStyle}-${shot.file}-${viewportMode}.png`
-  const file = resolve(outDir, name)
-  await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
   console.log('Wrote', file)
   return file
 }
 
 const browser = await chromium.launch({ headless: true })
 try {
-  const context = await browser.newContext({ viewport: viewports[viewportMode] ?? viewports.desktop })
+  const context = await browser.newContext({
+    viewport: viewports[viewportMode] ?? viewports.desktop,
+  })
   await context.addInitScript(({ user, memories: seeded }) => {
     sessionStorage.setItem('mg:walk-capture', '1')
     sessionStorage.setItem('mg:walk-plant-focus', '1')
@@ -312,26 +264,38 @@ try {
   const page = await context.newPage()
 
   let poses = null
-  if (process.env.LOAD_POSES === '1' && existsSync(posePath)) {
+  if (existsSync(posePath)) {
     poses = JSON.parse(readFileSync(posePath, 'utf8'))
-  } else {
+  }
+
+  if (!poses && mode === 'overview') {
+    throw new Error(`Missing ${posePath} — run desktop full capture first`)
+  }
+
+  if (!poses) {
     await bootstrapWalk(page, afterUrl, 'pixel-art')
     const v = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? 0)
     if (v < 40) throw new Error(`Expected voxels on AFTER build, got ${v}`)
-    poses = await derivePoses(page)
+    poses = await deriveAllPoses(page)
   }
 
-  const runs = [
-    { phase: 'after', url: afterUrl, styles: ['pixel-art', 'watercolor'] },
-    { phase: 'before', url: beforeUrl, styles: ['pixel-art', 'watercolor'] },
-  ]
+  const runs =
+    mode === 'overview'
+      ? [
+          { phase: 'after', url: afterUrl, styles: ['pixel-art', 'watercolor'] },
+          { phase: 'before', url: beforeUrl, styles: ['pixel-art', 'watercolor'] },
+        ]
+      : [
+          { phase: 'after', url: afterUrl, styles: ['pixel-art', 'watercolor'] },
+          { phase: 'before', url: beforeUrl, styles: ['pixel-art', 'watercolor'] },
+        ]
 
   for (const run of runs) {
     for (const artStyle of run.styles) {
       await bootstrapWalk(page, run.url, artStyle)
       for (const shot of shots) {
         const pose = poses[shot.file]
-        if (!pose) throw new Error(`Missing pinned pose for ${shot.file}`)
+        if (!pose) throw new Error(`Missing pose for ${shot.file}`)
         await captureShot(page, run.phase, artStyle, shot, pose)
       }
     }

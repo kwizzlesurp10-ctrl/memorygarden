@@ -12,9 +12,9 @@ export function isWalkPlantFocusCapture(): boolean {
 const WALK_V2_PIN: Record<string, { x: number; z: number }> = {
   'tree-mature-walk': { x: 0.2, z: 7.8 },
   'tree-elder-walk': { x: 2.6, z: 6.5 },
-  'flower-bloom-walk': { x: -1.4, z: 8.6 },
+  'flower-bloom-walk': { x: -3.3, z: 7.6 },
   'mushroom-walk': { x: 1.8, z: 9.2 },
-  'sprout-walk': { x: -0.6, z: 7.1 },
+  'sprout-walk': { x: 1.0, z: 6.4 },
 }
 
 /** Place seeded demo memories in front of spawn for screenshot framing. */

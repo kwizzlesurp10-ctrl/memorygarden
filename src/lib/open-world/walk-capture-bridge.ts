@@ -31,7 +31,9 @@ export interface WalkCaptureBridge {
   voxelPlantGroupCount?: () => number
   plantCount?: () => number
   plantCapturePose?: (plantId: string) => WalkCapturePose | null
+  deterministicPlantPose?: (plantId: string) => WalkCapturePose | null
   clusterOverviewPose?: () => WalkCapturePose | null
+  waitCaptureReady?: () => Promise<void>
   plantScreenCoverage?: (plantId: string, pose?: WalkCapturePose) => number
   plantCaptureFitAt?: (
     plantId: string,

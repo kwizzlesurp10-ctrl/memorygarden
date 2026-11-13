@@ -325,8 +325,8 @@ export class OpenWorldEngine {
     this.player.pitch = pitch
     if (eyeY !== undefined) this.player.y = eyeY
     this.applyCamera()
-    if (isWalkCaptureSession() && eyeY !== undefined) {
-      this.camera.position.y = eyeY + (this.reducedMotion ? 0 : 0)
+    if (isWalkCaptureSession()) {
+      this.renderOnce()
     }
   }
 
@@ -448,77 +448,137 @@ export class OpenWorldEngine {
     return frac
   }
 
-  capturePoseForPlant(plantId: string): WalkCapturePose | null {
+  private isDescendantOf(obj: THREE.Object3D, ancestor: THREE.Object3D): boolean {
+    let o: THREE.Object3D | null = obj
+    while (o) {
+      if (o === ancestor) return true
+      o = o.parent
+    }
+    return false
+  }
+
+  private isTerrainHit(obj: THREE.Object3D): boolean {
+    const root = this.terrain?.root
+    return root ? this.isDescendantOf(obj, root) : false
+  }
+
+  private plantOccludedFrom(cam: THREE.Vector3, plantId: string, target: THREE.Vector3): boolean {
+    const group = this.findPlantGroup(plantId)
+    if (!group) return true
+    const dir = target.clone().sub(cam)
+    const dist = dir.length()
+    if (dist < 0.01) return false
+    dir.normalize()
+    const ray = new THREE.Raycaster(cam, dir, 0.05, dist - 0.08)
+    const hits = ray.intersectObjects(this.scene.children, true)
+    for (const hit of hits) {
+      if (this.isDescendantOf(hit.object, group)) return false
+      if (this.isTerrainHit(hit.object)) continue
+      return true
+    }
+    return false
+  }
+
+  private poseLookAt(aim: THREE.Vector3, camPos: THREE.Vector3, eyeY: number): WalkCapturePose {
+    this.camera.position.set(camPos.x, eyeY, camPos.z)
+    this.camera.lookAt(aim)
+    this.camera.rotation.order = 'YXZ'
+    this.camera.updateMatrixWorld(true)
+    this.camera.updateProjectionMatrix()
+    return {
+      x: camPos.x,
+      z: camPos.z,
+      yaw: this.camera.rotation.y,
+      pitch: this.camera.rotation.x,
+      eyeY,
+    }
+  }
+
+  deterministicPlantCapturePose(plantId: string): WalkCapturePose | null {
     const box = this.plantWorldBox(plantId)
-    if (!box) return null
-    const center = box.getCenter(new THREE.Vector3())
-    const orbit = new THREE.Vector3(center.x, center.y, center.z)
-    const size = box.getSize(new THREE.Vector3())
-    const targetFrac = plantId.includes('sprout') ? 0.48 : 0.58
-    const minFrac = plantId.includes('sprout') ? 0.28 : 0.42
-    const maxFrac = plantId.includes('sprout') ? 0.68 : 0.72
+    const group = this.findPlantGroup(plantId)
+    if (!box || !group) return null
 
-    let best: WalkCapturePose | null = null
-    let bestScore = Infinity
+    const sphere = box.getBoundingSphere(new THREE.Sphere())
+    const c = sphere.center.clone()
+    let r = sphere.radius
+    if (plantId.includes('sprout')) {
+      r = Math.max(r, 0.25)
+    }
 
-    for (let a = 0; a < 24; a++) {
-      const ang = a * (Math.PI / 12)
-      for (let dist = 1.8; dist <= 16; dist += 0.28) {
-        const x = orbit.x + Math.sin(ang) * dist
-        const z = orbit.z + Math.cos(ang) * dist
-        const horiz = Math.hypot(center.x - x, center.z - z)
-        const eyeY = Math.max(1.48, Math.min(2.05, center.y + size.y * 0.32))
-        const pitch = -Math.atan2(center.y + size.y * 0.22 - eyeY, Math.max(0.35, horiz))
-        const trial: WalkCapturePose = {
-          x,
-          z,
-          yaw: Math.atan2(center.x - x, center.z - z),
-          pitch,
-          eyeY,
-        }
-        const fit = this.withCapturePose(trial, () => this.plantCaptureFit(box))
-        if (fit.frac < minFrac || fit.frac > 0.78) continue
-        const score =
-          Math.abs(fit.frac - targetFrac) +
-          Math.abs(fit.centerX) * 0.45 +
-          Math.abs(fit.centerY) * 0.55
-        if (fit.frac >= 0.5 && fit.frac <= 0.7 && Math.abs(fit.centerX) < 0.28 && Math.abs(fit.centerY) < 0.28) {
-          return { ...trial, screenFrac: fit.frac }
-        }
-        if (score < bestScore) {
-          bestScore = score
-          best = { ...trial, screenFrac: fit.frac }
-        }
+    const fovRad = (this.camera.fov * Math.PI) / 180
+    const standoff = (r / Math.sin(fovRad / 2)) * 1.15
+    const terrainY = box.min.y
+    const wp = this.world.plants.find((p) => p.id === plantId)
+    const baseDir = (() => {
+      if (wp?.variety === 'flower') return new THREE.Vector3(-1, 0.4, 1)
+      if (wp?.variety === 'mushroom') return new THREE.Vector3(0.85, 0.35, -1)
+      if (wp?.variety === 'tree' && plantId.includes('elder')) return new THREE.Vector3(1, 0.35, 0.75)
+      if (wp?.variety === 'tree') return new THREE.Vector3(0.7, 0.35, 1)
+      return new THREE.Vector3(1, 0.35, 1)
+    })().normalize()
+
+    let best: (WalkCapturePose & { screenFrac?: number }) | null = null
+    let bestFrac = -1
+    let fallback: (WalkCapturePose & { screenFrac?: number }) | null = null
+    let fallbackFrac = -1
+
+    for (let step = 0; step < 8; step++) {
+      const ang = step * (Math.PI / 4)
+      const cos = Math.cos(ang)
+      const sin = Math.sin(ang)
+      const dir = new THREE.Vector3(
+        baseDir.x * cos - baseDir.z * sin,
+        baseDir.y,
+        baseDir.x * sin + baseDir.z * cos,
+      ).normalize()
+
+      const camPos = c.clone().add(dir.multiplyScalar(standoff))
+      camPos.y = Math.max(camPos.y, terrainY + 0.5)
+
+      const pose = this.poseLookAt(c, camPos, camPos.y)
+      const fit = this.plantCaptureFitAt(plantId, pose)
+      const frac = fit?.frac ?? 0
+      const centerPen = fit ? Math.min(1, Math.abs(fit.centerX) + Math.abs(fit.centerY)) : 1
+      const score = frac * (1.15 - 0.35 * centerPen)
+      const labeled = { ...pose, screenFrac: frac }
+
+      if (score > fallbackFrac) {
+        fallbackFrac = score
+        fallback = labeled
+      }
+
+      if (this.plantOccludedFrom(camPos, plantId, c)) continue
+      if (score > bestFrac) {
+        bestFrac = score
+        best = labeled
       }
     }
-    return best
+
+    return best ?? fallback
+  }
+
+  capturePoseForPlant(plantId: string): WalkCapturePose | null {
+    return this.deterministicPlantCapturePose(plantId)
   }
 
 
   captureClusterOverviewPose(): WalkCapturePose {
-    const cluster = new THREE.Box3()
-    for (const plant of this.world.plants) {
-      const b = this.plantWorldBox(plant.id)
-      if (b) cluster.union(b)
-    }
-    if (cluster.isEmpty()) {
-      const plants = this.world.plants
-      const cx = plants.reduce((s, p) => s + p.x, 0) / Math.max(1, plants.length)
-      const cz = plants.reduce((s, p) => s + p.z, 0) / Math.max(1, plants.length)
-      return { x: cx - 4, z: cz + 5, yaw: 0, pitch: -0.12, eyeY: 1.62 }
-    }
-    const center = cluster.getCenter(new THREE.Vector3())
-    const sphere = cluster.getBoundingSphere(new THREE.Sphere())
-    const standoff = Math.max(2.2, sphere.radius * 1.65)
-    const camX = center.x - standoff * 0.72
-    const camZ = center.z + standoff * 1.05
-    const horiz = Math.hypot(center.x - camX, center.z - camZ)
-    const eyeY = 1.58
+    const walkPlants = this.world.plants.filter(
+      (p) => p.id.endsWith('-walk') || p.id.includes('walk-'),
+    )
+    const plants = walkPlants.length > 0 ? walkPlants : this.world.plants
+    const cx = plants.reduce((s, p) => s + p.x, 0) / Math.max(1, plants.length)
+    const cz = plants.reduce((s, p) => s + p.z, 0) / Math.max(1, plants.length)
+    const camX = cx - 2.6
+    const camZ = cz + 2.4
+    const eyeY = 1.62
+    const horiz = Math.hypot(cx - camX, cz - camZ)
     return {
       x: camX,
       z: camZ,
-      yaw: Math.atan2(center.x - camX, center.z - camZ),
-      pitch: -Math.atan2(center.y + 0.35 - eyeY, horiz),
+      yaw: Math.atan2(cx - camX, cz - camZ),
+      pitch: -Math.atan2(0.9, horiz),
       eyeY,
     }
   }
