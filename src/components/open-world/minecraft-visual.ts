@@ -2,8 +2,7 @@ import * as THREE from 'three'
 import type { PlantVisualRecipe } from '@/lib/open-world/plant-visual'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { gardenRng, seedFromGenetics } from '@/lib/garden/prng'
-import type { WorldPlant } from '@/lib/open-world/types'
-import type { GardenWorld } from '@/lib/open-world/types'
+import type { GardenWorld, WorldPlant } from '@/lib/open-world/types'
 
 const VOXEL = 0.13
 const boxGeo = new THREE.BoxGeometry(1, 1, 1)
