@@ -211,29 +211,27 @@ try {
   await walkToward(desktopPage, 3200, ['KeyW'])
   await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-hill-step.png')
 
-  await walkToward(desktopPage, 4200, ['KeyA'])
-  await walkToward(desktopPage, 1800, ['KeyW'])
+  await walkToward(desktopPage, 3800, ['KeyA'])
+  await walkToward(desktopPage, 2400, ['KeyW'])
   await desktopPage.evaluate(() => {
-    const x = -22.82
-    const z = 15.38
+    const flowerX = -23.36
+    const flowerZ = 14.83
+    const x = flowerX + 1.35
+    const z = flowerZ - 1.05
     const foot =
       window.__mgWalkCapture?.footAt?.(x, z) ??
       window.__mgWalkFootAt?.(x, z) ??
       0
+    const yaw = Math.atan2(flowerX - x, flowerZ - z)
     window.__mgWalkNudgePose?.({
       x,
       z,
-      yaw: 0.62,
-      pitch: -0.58,
-      eyeY: foot + 1.22,
+      yaw,
+      pitch: 0.12,
+      eyeY: foot + 1.62,
     })
   })
-  await desktopPage.waitForTimeout(400)
-  for (let i = 0; i < 3; i++) {
-    await desktopPage.keyboard.press('Escape')
-    await desktopPage.waitForTimeout(60)
-  }
-  await desktopPage.waitForTimeout(400)
+  await desktopPage.waitForTimeout(600)
   await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-flowers.png')
   if (consoleErrors.length) console.log('desktop page errors', consoleErrors.slice(0, 3))
   await desktop.close()

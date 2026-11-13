@@ -74,19 +74,11 @@ export function minecraftBlockTexture(
         ctx.fillRect(x, y, 1, 1)
       }
     }
-    const edge = '#163318'
-    const shade = '#255528'
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'
     for (let y = 0; y < 16; y++) {
       for (let x = 0; x < 16; x++) {
         const onBorder = x === 0 || y === 0 || x === 15 || y === 15
-        const onGrid = x % 4 === 0 || y % 4 === 0
-        if (onBorder) {
-          ctx.fillStyle = edge
-          ctx.fillRect(x, y, 1, 1)
-        } else if (onGrid && hash01(seed + x * 3.1 + y * 5.7) > 0.35) {
-          ctx.fillStyle = shade
-          ctx.fillRect(x, y, 1, 1)
-        }
+        if (onBorder) ctx.fillRect(x, y, 1, 1)
       }
     }
   } else if (kind === 'bark') {
@@ -209,7 +201,8 @@ function voxelMaterial(
   kind: BlockKind,
   transparent = false,
 ): THREE.MeshBasicMaterial {
-  const key = `${hex}-${accent}-${seed}-${kind}-${transparent}`
+  const leafTag = kind === 'leaf' ? '-leafv4' : ''
+  const key = `${hex}-${accent}-${seed}-${kind}-${transparent}${leafTag}`
   const hit = matCache.get(key)
   if (hit) return hit
   const map = minecraftBlockTexture(hex, accent, seed, kind)
@@ -278,6 +271,34 @@ function placeCrossPlantSprite(
   }
 }
 
+function placeLeafLayerAt(
+  g: THREE.Group,
+  ox: number,
+  oy: number,
+  oz: number,
+  radius: number,
+  leaf: THREE.MeshBasicMaterial,
+  trimCorners: boolean,
+  cornerSeed = 0,
+  sparseEdges = true,
+): void {
+  for (let dx = -radius; dx <= radius; dx++) {
+    for (let dz = -radius; dz <= radius; dz++) {
+      if (trimCorners && Math.abs(dx) === radius && Math.abs(dz) === radius) continue
+      if (
+        sparseEdges &&
+        trimCorners &&
+        radius >= 2 &&
+        (Math.abs(dx) === radius || Math.abs(dz) === radius) &&
+        hash01(cornerSeed + dx * 17.3 + dz * 23.1) > 0.58
+      ) {
+        continue
+      }
+      placeBlock(g, ox + dx, oy, oz + dz, leaf)
+    }
+  }
+}
+
 function placeOakSideBranches(
   g: THREE.Group,
   capY: number,
@@ -286,18 +307,22 @@ function placeOakSideBranches(
   seed: number,
 ): void {
   const dirs: Array<[number, number]> = [
-    [2, 0],
-    [-2, 0],
-    [0, 2],
-    [0, -2],
+    [3, 0],
+    [-3, 0],
+    [0, 3],
+    [0, -3],
   ]
   for (let i = 0; i < dirs.length; i++) {
-    if (hash01(seed + i * 19.7) > 0.55) continue
+    if (hash01(seed + i * 19.7) > 0.35) continue
     const [dx, dz] = dirs[i]!
     placeBlock(g, dx, capY - 2, dz, bark)
     placeBlock(g, dx, capY - 1, dz, bark)
-    placeLeafLayer(g, capY, 0, leaf, false, seed + 60 + i)
-    placeBlock(g, dx, capY, dz, leaf)
+  }
+  for (let i = 0; i < dirs.length; i++) {
+    if (hash01(seed + i * 23.1 + 5) > 0.78) continue
+    const [dx, dz] = dirs[i]!
+    const clusterY = capY + (hash01(seed + i * 31.7) > 0.5 ? 1 : 0)
+    placeLeafLayerAt(g, dx, clusterY, dz, 1, leaf, true, seed + 60 + i)
   }
 }
 
@@ -327,11 +352,18 @@ function buildPixelArtOak(
   }
   const capY = trunkH
   if (elder) {
-    placeLeafLayer(g, capY, 3, leaf, true, seed + 40, false)
-    placeLeafLayer(g, capY + 1, 3, leaf, true, seed + 41, false)
+    placeLeafLayer(g, capY, 3, leaf, true, seed + 40, true, 0.4)
+    placeLeafLayer(g, capY + 1, 3, leaf, true, seed + 41, true, 0.48)
     placeLeafLayer(g, capY + 2, 2, leaf, true, seed + 42)
     placeLeafLayer(g, capY + 3, 1, leaf, false, seed + 43)
     placeOakPlusCap(g, capY + 4, leaf)
+    for (let i = 0; i < 8; i++) {
+      const dx = Math.round((hash01(seed + 80 + i * 7.1) - 0.5) * 8)
+      const dz = Math.round((hash01(seed + 81 + i * 9.3) - 0.5) * 8)
+      if (Math.abs(dx) < 2 && Math.abs(dz) < 2) continue
+      if (hash01(seed + 82 + i) > 0.42) continue
+      placeBlock(g, dx, capY + 1, dz, leaf)
+    }
     placeOakSideBranches(g, capY + 2, bark, leaf, seed)
   } else {
     placeLeafLayer(g, capY, 2, leaf, true, seed + 20)
@@ -368,6 +400,7 @@ function placeLeafLayer(
   trimCorners: boolean,
   cornerSeed = 0,
   sparseEdges = true,
+  edgeTrim = 0.58,
 ): void {
   for (let dx = -radius; dx <= radius; dx++) {
     for (let dz = -radius; dz <= radius; dz++) {
@@ -377,7 +410,7 @@ function placeLeafLayer(
         trimCorners &&
         radius >= 2 &&
         (Math.abs(dx) === radius || Math.abs(dz) === radius) &&
-        hash01(cornerSeed + dx * 17.3 + dz * 23.1) > 0.58
+        hash01(cornerSeed + dx * 17.3 + dz * 23.1) > edgeTrim
       ) {
         continue
       }
