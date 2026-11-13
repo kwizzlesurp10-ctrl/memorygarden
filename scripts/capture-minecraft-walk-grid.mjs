@@ -293,6 +293,17 @@ try {
     const v = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? 0)
     if (v < 40) throw new Error(`Expected voxels on AFTER build, got ${v}`)
     poses = await deriveAllPoses(page)
+  } else {
+    await bootstrapWalk(page, afterUrl, 'pixel-art')
+    for (const shot of shots.filter((s) => s.file === 'walk-tree-elder-closeup')) {
+      const pose = await poseForShot(page, shot)
+      if (!pose) throw new Error(`No deterministic pose for ${shot.file}`)
+      poses[shot.file] = pose
+      console.log('refreshed pose', shot.file, JSON.stringify(pose))
+    }
+    if (viewportMode === 'desktop' && mode === 'full') {
+      writeFileSync(posePath, JSON.stringify(poses, null, 2))
+    }
   }
 
   const runs =

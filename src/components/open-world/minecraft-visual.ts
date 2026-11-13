@@ -340,17 +340,18 @@ function buildPixelArtOak(
   elder: boolean,
   seed: number,
 ): void {
-  const trunkH = elder ? 7 : 5
+  const trunkH = elder ? 6 : 5
   for (let y = 0; y < trunkH; y++) {
     placeBlock(g, 0, y, 0, bark)
   }
   const capY = trunkH
   if (elder) {
-    placeLeafLayer(g, capY, 3, leaf, true, seed + 40, false, 0.4)
-    placeLeafLayer(g, capY + 1, 3, leaf, true, seed + 41, false, 0.48)
-    placeLeafLayer(g, capY + 2, 2, leaf, true, seed + 42, false)
+    placeLeafLayer(g, capY, 3, leaf, true, seed + 40, true, 0.4)
+    placeLeafLayer(g, capY + 1, 3, leaf, true, seed + 41, true, 0.48)
+    placeLeafLayer(g, capY + 2, 3, leaf, true, seed + 42, true, 0.42)
     placeLeafLayer(g, capY + 3, 2, leaf, true, seed + 43, false)
-    placeLeafLayer(g, capY + 4, 1, leaf, false, seed + 44, false)
+    placeLeafLayer(g, capY + 4, 2, leaf, true, seed + 44, false)
+    placeLeafLayer(g, capY + 5, 1, leaf, false, seed + 45, false)
     placeOakSideBranches(g, capY, bark, leaf, seed)
   } else {
     placeLeafLayer(g, capY, 2, leaf, true, seed + 20)
