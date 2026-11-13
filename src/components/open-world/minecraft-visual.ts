@@ -302,27 +302,21 @@ function placeLeafLayerAt(
 function placeOakSideBranches(
   g: THREE.Group,
   capY: number,
-  bark: THREE.MeshBasicMaterial,
+  _bark: THREE.MeshBasicMaterial,
   leaf: THREE.MeshBasicMaterial,
   seed: number,
 ): void {
   const dirs: Array<[number, number]> = [
-    [3, 0],
-    [-3, 0],
-    [0, 3],
-    [0, -3],
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
   ]
   for (let i = 0; i < dirs.length; i++) {
-    if (hash01(seed + i * 19.7) > 0.35) continue
+    if (hash01(seed + i * 19.7) > 0.38) continue
     const [dx, dz] = dirs[i]!
-    placeBlock(g, dx, capY - 2, dz, bark)
-    placeBlock(g, dx, capY - 1, dz, bark)
-  }
-  for (let i = 0; i < dirs.length; i++) {
-    if (hash01(seed + i * 23.1 + 5) > 0.78) continue
-    const [dx, dz] = dirs[i]!
-    const clusterY = capY + (hash01(seed + i * 31.7) > 0.5 ? 1 : 0)
-    placeLeafLayerAt(g, dx, clusterY, dz, 1, leaf, true, seed + 60 + i)
+    placeLeafLayerAt(g, dx, capY, dz, 1, leaf, true, seed + 60 + i, false)
+    placeBlock(g, dx, capY + 1, dz, leaf)
   }
 }
 
@@ -352,19 +346,12 @@ function buildPixelArtOak(
   }
   const capY = trunkH
   if (elder) {
-    placeLeafLayer(g, capY, 3, leaf, true, seed + 40, true, 0.4)
-    placeLeafLayer(g, capY + 1, 3, leaf, true, seed + 41, true, 0.48)
-    placeLeafLayer(g, capY + 2, 2, leaf, true, seed + 42)
-    placeLeafLayer(g, capY + 3, 1, leaf, false, seed + 43)
-    placeOakPlusCap(g, capY + 4, leaf)
-    for (let i = 0; i < 8; i++) {
-      const dx = Math.round((hash01(seed + 80 + i * 7.1) - 0.5) * 8)
-      const dz = Math.round((hash01(seed + 81 + i * 9.3) - 0.5) * 8)
-      if (Math.abs(dx) < 2 && Math.abs(dz) < 2) continue
-      if (hash01(seed + 82 + i) > 0.42) continue
-      placeBlock(g, dx, capY + 1, dz, leaf)
-    }
-    placeOakSideBranches(g, capY + 2, bark, leaf, seed)
+    placeLeafLayer(g, capY, 3, leaf, true, seed + 40, false, 0.4)
+    placeLeafLayer(g, capY + 1, 3, leaf, true, seed + 41, false, 0.48)
+    placeLeafLayer(g, capY + 2, 2, leaf, true, seed + 42, false)
+    placeLeafLayer(g, capY + 3, 2, leaf, true, seed + 43, false)
+    placeLeafLayer(g, capY + 4, 1, leaf, false, seed + 44, false)
+    placeOakSideBranches(g, capY, bark, leaf, seed)
   } else {
     placeLeafLayer(g, capY, 2, leaf, true, seed + 20)
     placeLeafLayer(g, capY + 1, 2, leaf, true, seed + 21)

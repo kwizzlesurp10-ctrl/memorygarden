@@ -449,6 +449,18 @@ export class OpenWorldEngine {
     return Math.min(0.92, (maxNdcY - minNdcY) / 2)
   }
 
+  private plantVerticalMarginInFrame(box: THREE.Box3): number {
+    const cx = (box.min.x + box.max.x) / 2
+    const cz = (box.min.z + box.max.z) / 2
+    const bot = new THREE.Vector3(cx, box.min.y, cz).project(this.camera)
+    const top = new THREE.Vector3(cx, box.max.y, cz).project(this.camera)
+    if (bot.z < -1 || bot.z > 1 || top.z < -1 || top.z > 1) return -1
+    const topMargin = 0.86 - top.y
+    const botMargin = bot.y - -0.82
+    if (topMargin < 0.04 || botMargin < 0.04) return -1
+    return Math.min(topMargin, botMargin)
+  }
+
   private plantCaptureFit(box: THREE.Box3): { frac: number; centerX: number; centerY: number } {
     const centerNdc = this.projectBoxCenter(box)
     if (centerNdc.z < -1 || centerNdc.z > 1) {
@@ -546,15 +558,43 @@ export class OpenWorldEngine {
         if (!wp) return null
         const elder = plantId.includes('elder')
         const ground = box.min.y
+        const yaw = elder ? -0.68 : 2.05
+        if (elder) {
+          let bestPose: WalkCapturePose | null = null
+          let bestScore = -Infinity
+          for (let dist = 16.5; dist <= 22.5; dist += 1) {
+            for (const pitch of [-0.1, -0.04, 0.02, 0.08]) {
+              const aimY = ground + size.y * 0.44
+              const aim = new THREE.Vector3(wp.x, aimY, wp.z)
+              const camX = wp.x + Math.sin(yaw) * dist
+              const camZ = wp.z + Math.cos(yaw) * dist
+              const eyeY = this.eyeHeightAt(camX, camZ, Math.min(size.y * 0.28, 3.1))
+              const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+              this.camera.rotation.x = pitch
+              this.camera.updateMatrixWorld(true)
+              this.renderOnce()
+              const margin = this.plantVerticalMarginInFrame(box)
+              const frac = this.screenHeightFraction(box)
+              const score = margin >= 0 ? margin * 2.2 + frac * 0.35 : -1
+              const labeled = { ...pose, pitch }
+              if (score > bestScore) {
+                bestScore = score
+                bestPose = labeled
+              }
+            }
+          }
+          if (bestPose) {
+            this.setPlayerPose(bestPose.x, bestPose.z, bestPose.yaw, bestPose.pitch, bestPose.eyeY)
+            this.applyCamera()
+            return bestPose
+          }
+        }
         const aimY = ground + size.y * 0.68
         const aim = new THREE.Vector3(wp.x, aimY, wp.z)
-        const dist = elder ? 8.25 : 10.75
-        const yaw = elder ? -0.68 : 2.05
+        const dist = 10.75
         const camX = wp.x + Math.sin(yaw) * dist
         const camZ = wp.z + Math.cos(yaw) * dist
-        const clearance = elder
-          ? Math.min(size.y * 0.42, 4.2)
-          : Math.min(size.y * 0.48, 4.5)
+        const clearance = Math.min(size.y * 0.48, 4.5)
         const eyeY = this.eyeHeightAt(camX, camZ, clearance)
         return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
       }

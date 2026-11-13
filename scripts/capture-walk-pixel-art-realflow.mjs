@@ -211,27 +211,21 @@ try {
   await walkToward(desktopPage, 3200, ['KeyW'])
   await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-hill-step.png')
 
-  await walkToward(desktopPage, 3800, ['KeyA'])
-  await walkToward(desktopPage, 2400, ['KeyW'])
+  await walkToward(desktopPage, 2200, ['KeyA'])
+  await walkToward(desktopPage, 800, ['KeyW'])
+  const canvas = desktopPage.locator('[data-testid="open-world-garden"] canvas').first()
+  await canvas.click({ position: { x: 640, y: 400 }, force: true })
+  await desktopPage.waitForTimeout(200)
   await desktopPage.evaluate(() => {
-    const flowerX = -23.36
-    const flowerZ = 14.83
-    const x = flowerX + 1.35
-    const z = flowerZ - 1.05
-    const foot =
-      window.__mgWalkCapture?.footAt?.(x, z) ??
-      window.__mgWalkFootAt?.(x, z) ??
-      0
-    const yaw = Math.atan2(flowerX - x, flowerZ - z)
     window.__mgWalkNudgePose?.({
-      x,
-      z,
-      yaw,
-      pitch: 0.12,
-      eyeY: foot + 1.62,
+      x: -22.4567746653731,
+      z: 16.03001368630009,
+      yaw: 0.65,
+      pitch: -0.42,
+      eyeY: 2.44,
     })
   })
-  await desktopPage.waitForTimeout(600)
+  await desktopPage.waitForTimeout(800)
   await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-flowers.png')
   if (consoleErrors.length) console.log('desktop page errors', consoleErrors.slice(0, 3))
   await desktop.close()
