@@ -3,7 +3,7 @@ import type { ArtStyle, Memory } from '@/lib/types'
 import { resolvePlantArtStyle } from '@/lib/garden/plant-art-style'
 import { isWalkCaptureSession, type WalkCapturePose } from '@/lib/open-world/walk-capture-bridge'
 import type { ScenePalette } from '@/lib/garden/palettes'
-import { LOOK_SENSITIVITY } from '@/lib/open-world/constants'
+import { EYE_HEIGHT, LOOK_SENSITIVITY } from '@/lib/open-world/constants'
 import { isTypingTarget, mergeMotion, motionFromKeys, type Stick } from '@/lib/open-world/input'
 import { layoutGardenWorld } from '@/lib/open-world/layout'
 import { createPlayer, eyeOffset, findNearestPlant, stepPlayer } from '@/lib/open-world/locomotion'
@@ -506,6 +506,19 @@ export class OpenWorldEngine {
     return false
   }
 
+  getTerrainFootY(x: number, z: number): number {
+    return this.terrainFootY(x, z)
+  }
+
+  private terrainFootY(x: number, z: number): number {
+    if (this.plantArtStyle === 'pixel-art') return walkCaptureGroundY(x, z)
+    return 0
+  }
+
+  private eyeHeightAt(x: number, z: number, clearance: number): number {
+    return this.terrainFootY(x, z) + clearance
+  }
+
   private poseLookAt(aim: THREE.Vector3, camPos: THREE.Vector3, eyeY: number): WalkCapturePose {
     this.camera.position.set(camPos.x, eyeY, camPos.z)
     this.camera.lookAt(aim)
@@ -535,11 +548,14 @@ export class OpenWorldEngine {
         const ground = box.min.y
         const aimY = ground + size.y * 0.68
         const aim = new THREE.Vector3(wp.x, aimY, wp.z)
-        const dist = Math.max(elder ? 11.5 : 10.5, size.y * 1.15)
+        const dist = elder ? 8.25 : 10.75
         const yaw = elder ? -0.68 : 2.05
         const camX = wp.x + Math.sin(yaw) * dist
         const camZ = wp.z + Math.cos(yaw) * dist
-        const eyeY = ground + Math.min(size.y * 0.48, 4.5)
+        const clearance = elder
+          ? Math.min(size.y * 0.42, 4.2)
+          : Math.min(size.y * 0.48, 4.5)
+        const eyeY = this.eyeHeightAt(camX, camZ, clearance)
         return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
       }
       if (wp) {
@@ -554,7 +570,7 @@ export class OpenWorldEngine {
             const dist = 0.55 + (pass / 17) * 2.4
             const camX = wp.x + Math.sin(yaw) * dist
             const camZ = wp.z + Math.cos(yaw) * dist
-            const eyeY = ground + 0.92
+            const eyeY = this.eyeHeightAt(camX, camZ, 0.92)
             const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
             const fit = this.plantCaptureFitAt(plantId, pose)
             const frac = fit?.frac ?? 0
@@ -575,38 +591,30 @@ export class OpenWorldEngine {
           const dist = 2.75
           const camX = wp.x + Math.sin(yaw) * dist
           const camZ = wp.z + Math.cos(yaw) * dist
-          const eyeY = ground + 0.82
+          const eyeY = this.eyeHeightAt(camX, camZ, 0.82)
           return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
         }
-        const aimY = wp.variety === 'flower' ? ground + 0.48 : ground + 0.42
-        const aim = new THREE.Vector3(wp.x, aimY, wp.z)
-        const yaw = wp.variety === 'flower' ? 0.65 : -0.45
-        const minFrac = plantId.includes('sprout') ? 0.27 : 0.34
-        const maxFrac = 0.88
-        const startDist = plantId.includes('sprout') ? 1.55 : 1.85
-        const endDist = plantId.includes('sprout') ? 0.95 : 1.05
-        let bestPose: WalkCapturePose | null = null
-        let bestFrac = 0
-        for (let pass = 0; pass < 10; pass++) {
-          const t = pass / 9
-          const d = startDist + (endDist - startDist) * t
-          const camX = wp.x + Math.sin(yaw) * d
-          const camZ = wp.z + Math.cos(yaw) * d
-          const eyeY = ground + 1.28
+        if (wp.variety === 'flower') {
+          const aimY = ground + 0.44
+          const aim = new THREE.Vector3(wp.x, aimY, wp.z)
+          const yaw = 0.65
+          const dist = 2.55
+          const camX = wp.x + Math.sin(yaw) * dist
+          const camZ = wp.z + Math.cos(yaw) * dist
+          const eyeY = this.eyeHeightAt(camX, camZ, 1.42)
           const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-          const fit = this.plantCaptureFitAt(plantId, pose)
-          const frac = fit?.frac ?? 0
-          const inBand = frac >= minFrac && frac <= maxFrac
-          if (inBand) return pose
-          if (frac > bestFrac && frac <= maxFrac) {
-            bestFrac = frac
-            bestPose = pose
-          } else if (!bestPose && frac > bestFrac) {
-            bestFrac = frac
-            bestPose = pose
-          }
+          this.camera.rotation.x = -0.42
+          this.camera.updateProjectionMatrix()
+          return { ...pose, pitch: -0.42 }
         }
-        return bestPose
+        const aimY = ground + 0.42
+        const aim = new THREE.Vector3(wp.x, aimY, wp.z)
+        const yaw = -0.45
+        const dist = 2.05
+        const camX = wp.x + Math.sin(yaw) * dist
+        const camZ = wp.z + Math.cos(yaw) * dist
+        const eyeY = this.eyeHeightAt(camX, camZ, 1.05)
+        return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
       }
     }
 
@@ -657,7 +665,8 @@ export class OpenWorldEngine {
       ).normalize()
 
       const camPos = c.clone().add(dir.multiplyScalar(standoff))
-      camPos.y = Math.max(camPos.y, terrainY + 0.5)
+      const foot = this.terrainFootY(camPos.x, camPos.z)
+      camPos.y = Math.max(camPos.y, foot + 0.5, terrainY + 0.5)
 
       const pose = this.poseLookAt(aim, camPos, camPos.y)
       const fit = this.plantCaptureFitAt(plantId, pose)
@@ -694,8 +703,12 @@ export class OpenWorldEngine {
     const cx = plants.reduce((s, p) => s + p.x, 0) / Math.max(1, plants.length)
     const cz = plants.reduce((s, p) => s + p.z, 0) / Math.max(1, plants.length)
     const aim = new THREE.Vector3(cx, 2.4, cz)
-    const camPos = new THREE.Vector3(cx + 11, 5.2, cz + 15)
-    return this.poseLookAt(aim, camPos, 5.2)
+    const camX = cx + 11
+    const camZ = cz + 15
+    const eyeY = this.eyeHeightAt(camX, camZ, 5.2)
+    const camPos = new THREE.Vector3(camX, eyeY, camZ)
+    const aimY = this.terrainFootY(cx, cz) + 2.4
+    return this.poseLookAt(new THREE.Vector3(cx, aimY, cz), camPos, eyeY)
   }
 
   setWalkCaptureBackdrop(active: boolean): void {
@@ -783,6 +796,11 @@ export class OpenWorldEngine {
         this.world,
         this.reducedMotion,
       )
+      if (this.plantArtStyle === 'pixel-art') {
+        this.player.y = walkCaptureGroundY(this.player.x, this.player.z) + EYE_HEIGHT
+      } else {
+        this.player.y = EYE_HEIGHT
+      }
       this.yawAcc = 0
       this.pitchAcc = 0
       this.applyCamera()

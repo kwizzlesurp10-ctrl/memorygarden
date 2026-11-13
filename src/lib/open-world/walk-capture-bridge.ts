@@ -44,6 +44,7 @@ export interface WalkCaptureBridge {
   setSoloPlantFocus?: (plantId: string | null) => void
   plantCaptureFitNow?: (plantId: string) => { frac: number; centerX: number; centerY: number } | null
   cameraDebug?: () => { y: number; pitch: number }
+  footAt?: (x: number, z: number) => number
 }
 
 export const WALK_CAPTURE_SESSION_KEY = 'mg:walk-capture'

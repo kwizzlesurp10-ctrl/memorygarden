@@ -256,6 +256,7 @@ export function OpenWorldGarden({
     win.__mgWalkSceneReady = () => engine.sceneReady()
     win.__mgWalkNudgePose = (pose) =>
       engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
+    win.__mgWalkFootAt = (x: number, z: number) => engine.getTerrainFootY(x, z)
     requestAnimationFrame(() => engine.refreshCanvasSize())
     if (captureMode) {
       engine.setPaused(true)
@@ -297,6 +298,7 @@ export function OpenWorldGarden({
           const p = engine.getPlayer()
           return { y: p.y, pitch: p.pitch }
         },
+        footAt: (x, z) => engine.getTerrainFootY(x, z),
       })
       if (sessionStorage.getItem('mg:tree-young-elder-capture') === '1') {
         engine.setPlayerPose(

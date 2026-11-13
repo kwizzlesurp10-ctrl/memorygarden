@@ -74,6 +74,21 @@ export function minecraftBlockTexture(
         ctx.fillRect(x, y, 1, 1)
       }
     }
+    const edge = '#163318'
+    const shade = '#255528'
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const onBorder = x === 0 || y === 0 || x === 15 || y === 15
+        const onGrid = x % 4 === 0 || y % 4 === 0
+        if (onBorder) {
+          ctx.fillStyle = edge
+          ctx.fillRect(x, y, 1, 1)
+        } else if (onGrid && hash01(seed + x * 3.1 + y * 5.7) > 0.35) {
+          ctx.fillStyle = shade
+          ctx.fillRect(x, y, 1, 1)
+        }
+      }
+    }
   } else if (kind === 'bark') {
     for (let x = 0; x < 16; x++) {
       const stripe = Math.floor(x / 2) % barkBrowns.length
@@ -263,6 +278,29 @@ function placeCrossPlantSprite(
   }
 }
 
+function placeOakSideBranches(
+  g: THREE.Group,
+  capY: number,
+  bark: THREE.MeshBasicMaterial,
+  leaf: THREE.MeshBasicMaterial,
+  seed: number,
+): void {
+  const dirs: Array<[number, number]> = [
+    [2, 0],
+    [-2, 0],
+    [0, 2],
+    [0, -2],
+  ]
+  for (let i = 0; i < dirs.length; i++) {
+    if (hash01(seed + i * 19.7) > 0.55) continue
+    const [dx, dz] = dirs[i]!
+    placeBlock(g, dx, capY - 2, dz, bark)
+    placeBlock(g, dx, capY - 1, dz, bark)
+    placeLeafLayer(g, capY, 0, leaf, false, seed + 60 + i)
+    placeBlock(g, dx, capY, dz, leaf)
+  }
+}
+
 function placeOakPlusCap(g: THREE.Group, capY: number, leaf: THREE.MeshBasicMaterial): void {
   const arms: Array<[number, number]> = [
     [0, 0],
@@ -283,18 +321,18 @@ function buildPixelArtOak(
   elder: boolean,
   seed: number,
 ): void {
-  const trunkH = elder ? 6 : 5
+  const trunkH = elder ? 7 : 5
   for (let y = 0; y < trunkH; y++) {
     placeBlock(g, 0, y, 0, bark)
   }
   const capY = trunkH
   if (elder) {
-    placeLeafLayer(g, capY, 3, leaf, true, seed + 40)
-    placeLeafLayer(g, capY + 1, 3, leaf, true, seed + 41)
+    placeLeafLayer(g, capY, 3, leaf, true, seed + 40, false)
+    placeLeafLayer(g, capY + 1, 3, leaf, true, seed + 41, false)
     placeLeafLayer(g, capY + 2, 2, leaf, true, seed + 42)
-    placeLeafLayer(g, capY + 3, 2, leaf, true, seed + 43)
-    placeLeafLayer(g, capY + 4, 1, leaf, false, seed + 44)
-    placeOakPlusCap(g, capY + 5, leaf)
+    placeLeafLayer(g, capY + 3, 1, leaf, false, seed + 43)
+    placeOakPlusCap(g, capY + 4, leaf)
+    placeOakSideBranches(g, capY + 2, bark, leaf, seed)
   } else {
     placeLeafLayer(g, capY, 2, leaf, true, seed + 20)
     placeLeafLayer(g, capY + 1, 2, leaf, true, seed + 21)
@@ -329,11 +367,13 @@ function placeLeafLayer(
   leaf: THREE.MeshBasicMaterial,
   trimCorners: boolean,
   cornerSeed = 0,
+  sparseEdges = true,
 ): void {
   for (let dx = -radius; dx <= radius; dx++) {
     for (let dz = -radius; dz <= radius; dz++) {
       if (trimCorners && Math.abs(dx) === radius && Math.abs(dz) === radius) continue
       if (
+        sparseEdges &&
         trimCorners &&
         radius >= 2 &&
         (Math.abs(dx) === radius || Math.abs(dz) === radius) &&
@@ -382,7 +422,6 @@ function buildFlower(
   stage: PlantStage,
 ): void {
   const idx = plantStageToIndex(stage)
-  const rng = gardenRng(seed)
   if (idx <= 0) {
     placeBlock(g, 0, 1, 0, stem)
     return

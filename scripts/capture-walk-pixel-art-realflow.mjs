@@ -208,15 +208,24 @@ try {
   await walkToward(desktopPage, 1600, ['KeyW'])
   await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-tree.png')
 
+  await walkToward(desktopPage, 3200, ['KeyW'])
+  await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-hill-step.png')
+
   await walkToward(desktopPage, 4200, ['KeyA'])
   await walkToward(desktopPage, 1800, ['KeyW'])
   await desktopPage.evaluate(() => {
+    const x = -22.82
+    const z = 15.38
+    const foot =
+      window.__mgWalkCapture?.footAt?.(x, z) ??
+      window.__mgWalkFootAt?.(x, z) ??
+      0
     window.__mgWalkNudgePose?.({
-      x: -22.82,
-      z: 15.38,
+      x,
+      z,
       yaw: 0.62,
       pitch: -0.58,
-      eyeY: 1.22,
+      eyeY: foot + 1.22,
     })
   })
   await desktopPage.waitForTimeout(400)
