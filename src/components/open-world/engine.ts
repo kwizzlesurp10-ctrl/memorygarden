@@ -280,7 +280,7 @@ export class OpenWorldEngine {
     if (!this.renderer) return
     const star = this.palette.starAlpha ?? 0
     if (this.plantArtStyle === 'pixel-art') {
-      this.renderer.toneMappingExposure = star > 0.22 ? 1.28 + star * 0.32 : 1.22
+      this.renderer.toneMappingExposure = star > 0.22 ? 1.32 + star * 0.28 : 1.35
       return
     }
     if (star > 0.22) {
@@ -539,6 +539,15 @@ export class OpenWorldEngine {
       }
       if (wp) {
         const ground = box.min.y
+        if (plantId === 'sprout-walk') {
+          const aim = new THREE.Vector3(wp.x, ground + 0.42, wp.z)
+          const yaw = 0.72
+          const dist = 1.35
+          const camX = wp.x + Math.sin(yaw) * dist
+          const camZ = wp.z + Math.cos(yaw) * dist
+          const eyeY = ground + 1.05
+          return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+        }
         const aimY =
           wp.variety === 'mushroom'
             ? ground + 1.05
@@ -552,7 +561,7 @@ export class OpenWorldEngine {
         const startDist =
           wp.variety === 'mushroom' ? 3.6 : plantId.includes('sprout') ? 1.55 : 1.85
         const endDist =
-          wp.variety === 'mushroom' ? 2.1 : plantId.includes('sprout') ? 0.62 : 1.05
+          wp.variety === 'mushroom' ? 2.1 : plantId.includes('sprout') ? 0.95 : 1.05
         let bestPose: WalkCapturePose | null = null
         let bestFrac = 0
         for (let pass = 0; pass < 10; pass++) {
@@ -982,8 +991,8 @@ export class OpenWorldEngine {
   private applyLighting(): void {
     if (this.plantArtStyle === 'pixel-art') {
       this.hemi.color.set('#b8d4f8')
-      this.hemi.groundColor.set('#4f8a3e')
-      this.hemi.intensity = 1.28
+      this.hemi.groundColor.set('#72c74e')
+      this.hemi.intensity = 1.38
       this.fill.color.set('#e8f0ff')
       this.fill.intensity = 0.52
       this.sun.color.set('#fff6de')

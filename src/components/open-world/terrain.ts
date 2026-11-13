@@ -781,7 +781,7 @@ export function buildTerrain(
   shed.add(roofMesh)
   shed.position.set(world.shed.x, 0, world.shed.z)
   shed.rotation.y = world.shed.yaw
-  root.add(shed)
+  if (!walkCaptureDecor) root.add(shed)
 
   // ── Perimeter Fence & Gate ──────────────────────────────────────────────
   const hedgeMat = track(
@@ -790,6 +790,7 @@ export function buildTerrain(
   if (!walkCaptureDecor) {
   const postGeo = track(new THREE.BoxGeometry(0.28, 1.35, 0.28))
   const railGeo = track(new THREE.BoxGeometry(1, 0.12, 0.1))
+  const fencePostMat = minecraftMode ? wood : hedgeMat
   const addFence = (ax: number, az: number, bx: number, bz: number) => {
     const dist = Math.hypot(bx - ax, bz - az)
     const posts = Math.max(2, Math.round(dist / 2.1))
@@ -799,7 +800,7 @@ export function buildTerrain(
       const z = az + (bz - az) * t
       const gateGap = Math.abs(x) < 2.4 && Math.abs(z - world.gate.z) < 1.2
       if (gateGap) continue
-      const post = new THREE.Mesh(postGeo, hedgeMat)
+      const post = new THREE.Mesh(postGeo, fencePostMat)
       post.position.set(x, 0.67, z)
       root.add(post)
       if (i < posts) {

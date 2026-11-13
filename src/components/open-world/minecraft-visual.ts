@@ -429,8 +429,8 @@ export function minecraftGrassTexture(
   planeW: number,
   planeD: number,
 ): THREE.CanvasTexture {
-  const base = '#5f9f35'
-  const accent = '#7cbd4b'
+  const base = '#62b53a'
+  const accent = '#7ed64f'
   const seed = 42 + Math.floor(hash01(planeW + planeD) * 120)
   const tex = minecraftBlockTexture(base, accent, seed, 'grass')
   tex.repeat.set(planeW / MINECRAFT_BLOCK_UNIT, planeD / MINECRAFT_BLOCK_UNIT)

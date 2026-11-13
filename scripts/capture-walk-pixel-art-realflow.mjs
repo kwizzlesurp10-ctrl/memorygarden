@@ -89,9 +89,8 @@ const seedPayload = { user: demoUser, memories }
 async function waitWalkScene(page) {
   await page.waitForFunction(
     () => {
-      const canvas = document.querySelector(
-        '[data-testid="open-world-garden"] canvas[data-engine="three.js r184"]',
-      )
+      const root = document.querySelector('[data-testid="open-world-garden"]')
+      const canvas = root?.querySelector('canvas')
       if (!(canvas instanceof HTMLCanvasElement)) return false
       if (canvas.clientWidth < 80 || canvas.clientHeight < 80) return false
       return typeof window.__mgWalkSceneReady === 'function' && window.__mgWalkSceneReady() === true
@@ -100,9 +99,9 @@ async function waitWalkScene(page) {
     { timeout: 120_000 },
   )
   await page.evaluate(async () => {
-    await new Promise((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-    })
+    for (let i = 0; i < 6; i++) {
+      await new Promise((resolve) => requestAnimationFrame(() => resolve()))
+    }
   })
 }
 
@@ -139,9 +138,23 @@ async function shotCanvas(page, file) {
   if (errors.failed) {
     throw new Error(`Open-world walk error before shot ${file}`)
   }
-  const canvas = page.locator('[data-testid="open-world-garden"] canvas[data-engine="three.js r184"]')
+  const canvas = page.locator('[data-testid="open-world-garden"] canvas').first()
+  const stats = await page.evaluate(() => {
+    const canvas = document.querySelector('[data-testid="open-world-garden"] canvas')
+    if (!(canvas instanceof HTMLCanvasElement)) return { ok: false, reason: 'no canvas' }
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl')
+    if (!gl) return { ok: false, reason: 'no webgl' }
+    const x = Math.floor(canvas.width * 0.45)
+    const y = Math.floor(canvas.height * 0.45)
+    const px = new Uint8Array(4)
+    gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px)
+    return { ok: true, avg: { r: px[0], g: px[1], b: px[2] } }
+  })
+  if (!stats.ok) {
+    console.warn('canvas sample skipped', stats.reason)
+  }
   await canvas.screenshot({ path })
-  console.log('Wrote', path)
+  console.log('Wrote', path, stats.ok ? `avg rgb ${JSON.stringify(stats.avg)}` : '')
 }
 
 const browser = await chromium.launch({ headless: true })
@@ -164,6 +177,17 @@ try {
       )
       localStorage.setItem(`memorygarden:${payload.user.id}:memories`, JSON.stringify(payload.memories))
       sessionStorage.setItem('mg:walk-plant-focus', '1')
+      const OriginalDate = Date
+      // eslint-disable-next-line no-global-assign
+      Date = class extends OriginalDate {
+        constructor(...args) {
+          if (args.length === 0) super(2026, 5, 15, 14, 30, 0)
+          else super(...args)
+        }
+        static now() {
+          return new OriginalDate(2026, 5, 15, 14, 30, 0).getTime()
+        }
+      }
     }, seedPayload)
     await context.route('**/api/**', (route) =>
       route.fulfill({ status: 503, body: '{}', contentType: 'application/json' }),
@@ -174,7 +198,11 @@ try {
   const desktop = await makeContext({ width: 1280, height: 800 }, false)
   const desktopPage = await desktop.newPage()
   const consoleErrors = []
-  desktopPage.on('pageerror', (e) => consoleErrors.push(String(e)))
+  const logConsole = (prefix, msg) => consoleErrors.push(`[${prefix}] ${msg}`)
+  desktopPage.on('pageerror', (e) => logConsole('pageerror', String(e)))
+  desktopPage.on('console', (msg) => {
+    if (msg.type() === 'error') logConsole('console', msg.text())
+  })
   await desktopPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 120_000 })
   await enterWalk(desktopPage)
   await walkToward(desktopPage, 1600, ['KeyW'])
