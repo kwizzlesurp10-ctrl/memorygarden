@@ -534,7 +534,10 @@ export class OpenWorldEngine {
     }
 
     const fovRad = (this.camera.fov * Math.PI) / 180
-    const standoff = (r / Math.sin(fovRad / 2)) * 1.15
+    let standoff = (r / Math.sin(fovRad / 2)) * 1.15
+    if (wp?.variety === 'tree') {
+      standoff *= plantId.includes('elder') ? 1.3 : 1.15
+    }
     const terrainY = box.min.y
     const baseDir = (() => {
       if (wp?.variety === 'flower') return new THREE.Vector3(-1, 0.4, 1)
