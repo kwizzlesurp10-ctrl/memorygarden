@@ -272,14 +272,6 @@ export class OpenWorldEngine {
       }
     }
     if (this.captureBackdrop) this.applyCaptureFog()
-    if (this.plantArtStyle === 'pixel-art' && this.scene.fog instanceof THREE.Fog && !this.captureBackdrop) {
-      const star = palette.starAlpha ?? 0
-      if (star <= 0.22) {
-        this.scene.fog.color.set('#9ed66e')
-        this.scene.fog.near = 38
-        this.scene.fog.far = 118
-      }
-    }
     this.applyRendererExposure()
     this.rebuildPlants()
   }
@@ -287,10 +279,6 @@ export class OpenWorldEngine {
   private applyRendererExposure(): void {
     if (!this.renderer) return
     const star = this.palette.starAlpha ?? 0
-    if (this.plantArtStyle === 'pixel-art') {
-      this.renderer.toneMappingExposure = star > 0.22 ? 1.22 + star * 0.38 : 1.44
-      return
-    }
     if (star > 0.22) {
       this.renderer.toneMappingExposure = 1.18 + star * 0.42
     } else {
@@ -548,15 +536,29 @@ export class OpenWorldEngine {
       if (wp) {
         const ground = box.min.y
         if (plantId === 'sprout-walk') {
-          const aim = new THREE.Vector3(wp.x, ground + size.y * 0.52, wp.z)
-          const yaw = 0.32
-          const dist = 0.62
-          const camX = wp.x + Math.sin(yaw) * dist
-          const camZ = wp.z + Math.cos(yaw) * dist
-          const eyeY = ground + 0.72
-          const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-          pose.pitch = -0.1
-          return pose
+          const aim = new THREE.Vector3(wp.x, ground + size.y * 0.5, wp.z)
+          const yaw = Math.PI / 4
+          const targetFrac = 0.25
+          let bestPose: WalkCapturePose | null = null
+          let bestDelta = Infinity
+          for (let pass = 0; pass < 18; pass++) {
+            const dist = 0.55 + (pass / 17) * 2.4
+            const camX = wp.x + Math.sin(yaw) * dist
+            const camZ = wp.z + Math.cos(yaw) * dist
+            const eyeY = ground + 0.92
+            const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+            const fit = this.plantCaptureFitAt(plantId, pose)
+            const frac = fit?.frac ?? 0
+            const centerPen =
+              fit ? Math.abs(fit.centerX) + Math.abs(fit.centerY) : 2
+            const delta = Math.abs(frac - targetFrac) + centerPen * 0.12
+            if (Math.abs(frac - targetFrac) < 0.05 && centerPen < 0.35) return pose
+            if (delta < bestDelta) {
+              bestDelta = delta
+              bestPose = pose
+            }
+          }
+          return bestPose
         }
         if (wp.variety === 'mushroom') {
           const aim = new THREE.Vector3(wp.x, ground + 0.28, wp.z)
@@ -1005,34 +1007,33 @@ export class OpenWorldEngine {
       const star = this.palette.starAlpha ?? 0
       const night = star > 0.22
       if (!night) {
-        this.hemi.color.set('#d4ecff')
-        this.hemi.groundColor.set('#95a055')
-        this.hemi.intensity = 1.48
-        this.fill.color.set('#f4f8ff')
-        this.fill.intensity = 0.64
-        this.sun.color.set('#fffef2')
-        this.sun.intensity = 1.08
+        this.hemi.color.set('#c8e8ff')
+        this.hemi.groundColor.set('#6b9a48')
+        this.hemi.intensity = 1.12
+        this.fill.color.set('#e8f0ff')
+        this.fill.intensity = 0.48
+        this.sun.color.set('#fff8e8')
+        this.sun.intensity = 0.92
+        this.sun.position.set(18, 38, -14)
+        this.rim.position.set(-12, 22, 18)
+        this.rim.intensity = 0.06
       } else {
         const p = this.palette
         const skyWash = new THREE.Color(p.sky[3] ?? p.sky[2] ?? '#88aacc')
-        this.hemi.color.set(p.sky[1] ?? '#88aacc').lerp(skyWash, 0.32)
-        const groundColor = new THREE.Color(p.hills[1] ?? '#3d5a32')
-        groundColor.lerp(new THREE.Color(p.hills[0] ?? '#5fa037'), 0.55 + star * 0.2)
+        this.hemi.color.set(p.sky[1] ?? '#88aacc').lerp(skyWash, 0.35)
+        const groundColor = new THREE.Color(p.hills[1] ?? p.bank)
+        groundColor.lerp(new THREE.Color(p.hills[0] ?? p.silSoft), 0.55 + star * 0.2)
         this.hemi.groundColor.copy(groundColor)
-        this.hemi.intensity = 1.05 + star * 0.16
+        this.hemi.intensity = 1.02 + star * 0.14
         this.fill.color.set(p.glow ?? '#c8b8e8')
-        this.fill.intensity = 0.58 + star * 0.14
+        this.fill.intensity = 0.62 + star * 0.18
         this.sun.color.set(p.sun?.disk ?? p.glow ?? '#fff4d8')
         this.sun.intensity = 0.62 + star * 0.24
+        this.rim.intensity = 0.28 + star * 0.2
         if (p.moon) {
           this.sun.position.set((p.moon.x / 1200 - 0.5) * 40, 18, -12)
           this.sun.color.set('#c9d8ea')
         }
-      }
-      this.rim.intensity = night ? 0.28 + star * 0.2 : 0.06
-      if (!night) {
-        this.sun.position.set(18, 38, -14)
-        this.rim.position.set(-12, 22, 18)
       }
       return
     }

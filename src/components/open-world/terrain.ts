@@ -161,13 +161,18 @@ export function buildTerrain(
     groundTint.lerp(new THREE.Color(palette.hills[0] ?? palette.silSoft), 0.62 + starAlpha * 0.22)
     groundTint.lerp(new THREE.Color(palette.hills[2] ?? palette.hills[1] ?? '#5a3d52'), 0.18)
   }
+  const minecraftDayGrassEmissive = new THREE.Color('#5fa037')
+  const minecraftNightGrassEmissive = new THREE.Color(palette.hills[1] ?? '#2a4a38').lerp(
+    new THREE.Color(palette.sky[3] ?? palette.hills[0] ?? '#4a5a68'),
+    0.38 + starAlpha * 0.22,
+  )
   const groundMat = track(
     minecraftMode
       ? new THREE.MeshLambertMaterial({
           map: grassTex,
-          color: new THREE.Color('#ffffff'),
-          emissive: new THREE.Color('#5fa037'),
-          emissiveIntensity: twilight ? 0.28 + starAlpha * 0.32 : 0.32,
+          color: new THREE.Color(twilight ? '#5a6e62' : '#ffffff'),
+          emissive: twilight ? minecraftNightGrassEmissive : minecraftDayGrassEmissive,
+          emissiveIntensity: twilight ? 0.05 + starAlpha * 0.09 : 0.32,
         })
       : new THREE.MeshStandardMaterial({
           map: grassTex,
@@ -1014,9 +1019,17 @@ export function buildTerrain(
         ground.lerp(new THREE.Color(next.bank), 0.12)
       }
       if (minecraftMode && groundMat instanceof THREE.MeshLambertMaterial) {
-        groundMat.color.set('#ffffff')
-        groundMat.emissive.set(twilight ? (next.hills[0] ?? '#5fa037') : '#5fa037')
-        groundMat.emissiveIntensity = twilight ? 0.26 + star * 0.36 : 0.32
+        if (twilight) {
+          groundMat.color.set('#5a6e62')
+          const nightGrass = new THREE.Color(next.hills[1] ?? '#2a4a38')
+          nightGrass.lerp(new THREE.Color(next.sky[3] ?? next.hills[0] ?? '#4a5a68'), 0.45 + star * 0.28)
+          groundMat.emissive.copy(nightGrass)
+          groundMat.emissiveIntensity = 0.05 + star * 0.09
+        } else {
+          groundMat.color.set('#ffffff')
+          groundMat.emissive.set('#5fa037')
+          groundMat.emissiveIntensity = 0.32
+        }
       } else {
         groundMat.color.copy(ground)
         if (groundMat instanceof THREE.MeshStandardMaterial) {

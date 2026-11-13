@@ -524,13 +524,8 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
   }
 
   if (plant.id === 'sprout-walk') {
-    const stem = voxelMaterial('#6b4a30', '#5a3a25', seedN + 2, 'bark')
     const sapling = voxelMaterial('#5fa037', '#7ed65a', seedN + 3, 'sapling', true)
-    const mini = new THREE.Group()
-    placeBlock(mini, 0, 0, 0, stem)
-    placeCrossPlantSprite(mini, 0, 0, 0.55, 0.48, 0.58, sapling)
-    mini.scale.setScalar(0.82)
-    g.add(mini)
+    placeCrossPlantSprite(g, 0, 0, 0, 0.8, 0.64, sapling)
   } else if (recipe.kind === 'tree') {
     buildOakTree(g, bark, leaf, seedN, stage)
   } else if (recipe.kind === 'flower') {

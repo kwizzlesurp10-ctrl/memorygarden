@@ -1,6 +1,7 @@
 /**
  * Minecraft walk capture grid — deterministic plant cameras, pinned poses.
- * Env: AFTER_URL, BEFORE_URL, ARTIFACT_DIR, VIEWPORT=desktop|mobile, MODE=full|overview
+ * Env: AFTER_URL, BEFORE_URL (61887fe preview on 4173 — see prepare-walk-before-preview.mjs),
+ *       ARTIFACT_DIR, VIEWPORT=desktop|mobile, MODE=full|overview
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
