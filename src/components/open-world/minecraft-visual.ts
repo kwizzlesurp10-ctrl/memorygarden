@@ -4,7 +4,6 @@ import type { PlantVisualRecipe } from '@/lib/open-world/plant-visual'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { gardenRng, seedFromGenetics } from '@/lib/garden/prng'
 import { plantStageToIndex } from '@/lib/garden/stage'
-import { isWalkCaptureSession } from '@/lib/open-world/walk-capture-bridge'
 import type { GardenWorld, WorldPlant } from '@/lib/open-world/types'
 
 /** One voxel cube edge in world units (~Minecraft block scale). */
@@ -260,7 +259,20 @@ function placeCrossPlantSprite(
   }
 }
 
-function buildWalkCaptureOak(
+function placeOakPlusCap(g: THREE.Group, capY: number, leaf: THREE.MeshBasicMaterial): void {
+  const arms: Array<[number, number]> = [
+    [0, 0],
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ]
+  for (const [dx, dz] of arms) {
+    placeBlock(g, dx, capY, dz, leaf)
+  }
+}
+
+function buildPixelArtOak(
   g: THREE.Group,
   bark: THREE.MeshBasicMaterial,
   leaf: THREE.MeshBasicMaterial,
@@ -276,15 +288,17 @@ function buildWalkCaptureOak(
     placeLeafLayer(g, capY + 1, 3, leaf, true)
     placeLeafLayer(g, capY + 2, 2, leaf, true)
     placeLeafLayer(g, capY + 3, 2, leaf, false)
+    placeOakPlusCap(g, capY + 4, leaf)
   } else {
     placeLeafLayer(g, capY, 2, leaf, true)
     placeLeafLayer(g, capY + 1, 2, leaf, true)
     placeLeafLayer(g, capY + 2, 1, leaf, false)
     placeLeafLayer(g, capY + 3, 1, leaf, false)
+    placeOakPlusCap(g, capY + 4, leaf)
   }
 }
 
-function buildWalkCaptureMushroom(
+function buildPixelArtMushroom(
   g: THREE.Group,
   stem: THREE.MeshBasicMaterial,
   cap: THREE.MeshBasicMaterial,
@@ -335,31 +349,25 @@ function buildOakTree(
 ): void {
   const idx = plantStageToIndex(stage)
   const rng = gardenRng(seed)
-  if (idx <= 0) {
-    placeCrossSprite(g, 0, 1, 0, leaf)
+  if (idx <= 1) {
+    const sapling = voxelMaterial('#4a8f3a', '#3d7a34', seed + 3, 'sapling', true)
+    placeCrossPlantSprite(g, 0, 0, 0, 0.6, 0.5, sapling)
     return
   }
-  if (idx === 1) {
-    placeBlock(g, 0, 1, 0, bark)
-    placeCrossSprite(g, 0, 2, 0, leaf)
+  if (idx >= 7) {
+    buildPixelArtOak(g, bark, leaf, true)
     return
   }
-  const trunkH =
-    idx >= 7 ? 6 : idx >= 6 ? 5 + Math.floor(rng() * 2) : idx >= 4 ? 4 : 3
-  for (let y = 1; y <= trunkH; y++) {
+  if (idx >= 6) {
+    buildPixelArtOak(g, bark, leaf, false)
+    return
+  }
+  const trunkH = idx >= 4 ? 4 : 3
+  for (let y = 0; y < trunkH; y++) {
     placeBlock(g, 0, y, 0, bark)
   }
-  const capY = trunkH + 1
-  if (idx >= 7) {
-    placeLeafLayer(g, capY, 3, leaf, true)
-    placeLeafLayer(g, capY + 1, 3, leaf, true)
-    placeLeafLayer(g, capY + 2, 2, leaf, true)
-    placeLeafLayer(g, capY + 3, 1, leaf, false)
-  } else if (idx >= 6) {
-    placeLeafLayer(g, capY, 2, leaf, true)
-    placeLeafLayer(g, capY + 1, 2, leaf, true)
-    placeLeafLayer(g, capY + 2, 1, leaf, false)
-  } else {
+  const capY = trunkH
+  {
     const radius = idx >= 4 ? 2 : 1
     placeLeafLayer(g, capY, radius, leaf, true)
     if (idx >= 4) placeLeafLayer(g, capY + 1, 1, leaf, false)
@@ -380,16 +388,20 @@ function buildFlower(
     return
   }
   if (idx === 1) {
-    placeBlock(g, 0, 1, 0, stem)
-    placeCrossSprite(g, 0, 2, 0, bloom)
+    const sapling = voxelMaterial('#4a8f3a', '#3d7a34', seed + 3, 'sapling', true)
+    placeCrossPlantSprite(g, 0, 0, 0, 0.6, 0.5, sapling)
     return
   }
-  const stemH = idx >= 5 ? 1 + Math.floor(rng() * 2) : 2
-  for (let y = 1; y <= stemH; y++) {
+  if (idx >= 5) {
+    const poppy = voxelMaterial('#c43b3b', '#e85d5d', seed + 7, 'poppy', true)
+    placeCrossPlantSprite(g, 0, 0, 0, 0.72, 0.55, poppy)
+    return
+  }
+  const stemH = 2
+  for (let y = 0; y < stemH; y++) {
     placeBlock(g, 0, y, 0, stem)
   }
-  const headY = stemH + 1
-  placeCrossSprite(g, 0, headY, 0, bloom, idx >= 5 ? 1.75 : 1.2)
+  placeCrossSprite(g, 0, stemH, 0, bloom, 1.2)
 }
 
 function buildMushroom(
@@ -401,113 +413,18 @@ function buildMushroom(
 ): void {
   const idx = plantStageToIndex(stage)
   if (idx <= 1) {
-    placeBlock(g, 0, 1, 0, stem)
-    if (idx === 1) placeBlock(g, 0, 2, 0, cap)
+    placeBlock(g, 0, 0, 0, stem)
+    if (idx === 1) placeBlock(g, 0, 1, 0, cap)
     return
   }
-  const stemH = idx >= 6 ? 2 : 1
-  for (let y = 1; y <= stemH; y++) {
-    placeBlock(g, 0, y, 0, stem)
-  }
-  const top = stemH + 1
-  const capR = idx >= 6 ? 1 : 1
-  for (let dx = -capR; dx <= capR; dx++) {
-    for (let dz = -capR; dz <= capR; dz++) {
-      if (Math.abs(dx) === capR && Math.abs(dz) === capR) continue
-      placeBlock(g, dx, top, dz, cap)
-    }
-  }
-}
-
-function buildSproutSapling(
-  g: THREE.Group,
-  stem: THREE.MeshBasicMaterial,
-  leaf: THREE.MeshBasicMaterial,
-): void {
-  placeBlock(g, 0, 1, 0, stem)
-  placeCrossSprite(g, 0, 2, 0, leaf)
+  buildPixelArtMushroom(g, stem, cap)
 }
 
 const MINECRAFT_BLOCK_UNIT = 1
 
-function minecraftGrassBlockMaterials(
-  palette: ScenePalette,
-): THREE.MeshLambertMaterial[] {
-  const grassTop = configurePixelTexture(
-    minecraftBlockTexture('#5f9f35', '#7cbd4b', 42, 'grass'),
-  )
-  const grassSide = configurePixelTexture(
-    minecraftBlockTexture('#5f9f35', '#7cbd4b', 44, 'grass_side'),
-  )
-  const dirtBottom = configurePixelTexture(
-    minecraftBlockTexture('#5a4332', '#3f2e22', 5, 'dirt'),
-  )
-  grassTop.repeat.set(1, 1)
-  grassSide.repeat.set(1, 1)
-  dirtBottom.repeat.set(1, 1)
-  const white = new THREE.Color('#ffffff')
-  const mk = (tex: THREE.CanvasTexture) =>
-    new THREE.MeshLambertMaterial({ map: tex, color: white })
-  return [
-    mk(grassSide),
-    mk(grassSide),
-    mk(grassTop),
-    mk(dirtBottom),
-    mk(grassSide),
-    mk(grassSide),
-  ]
-}
-
-const WALK_CAPTURE_PINS: Array<{ x: number; z: number }> = [
-  { x: 0, z: 14 },
-  { x: 24, z: 14 },
-  { x: -24, z: 14 },
-  { x: 0, z: 30 },
-  { x: -24, z: 30 },
-]
-
-function walkCaptureFlatPad(ix: number, iz: number): boolean {
-  for (const pin of WALK_CAPTURE_PINS) {
-    if (Math.abs(ix - pin.x) <= 3 && Math.abs(iz - pin.z) <= 3) return true
-  }
-  return false
-}
-
-function walkCaptureColumnSurface(_ix: number, _iz: number): number {
-  return 1
-}
-
-/** World Y of the walk-capture grass surface (top face under plants). */
+/** Grass plane height for voxel plants (ground-aligned models). */
 export function walkCaptureGroundY(_x: number, _z: number): number {
   return 0
-}
-
-/** Stepped grass blocks for walk-capture screenshots (grass top + dirt sides). */
-export function addWalkCaptureGrassField(
-  world: GardenWorld,
-  palette: ScenePalette,
-  root: THREE.Group,
-  track: <T extends { dispose: () => void }>(o: T) => T,
-): void {
-  const mats = minecraftGrassBlockMaterials(palette)
-  for (const m of mats) track(m)
-  const blockGeo = track(new THREE.BoxGeometry(1, 1, 1))
-  const minX = Math.floor(world.bounds.minX) - 2
-  const maxX = Math.ceil(world.bounds.maxX) + 2
-  const minZ = Math.floor(world.bounds.minZ) - 2
-  const maxZ = Math.ceil(world.bounds.maxZ) + 2
-  for (let ix = minX; ix <= maxX; ix++) {
-    for (let iz = minZ; iz <= maxZ; iz++) {
-      const columnHeight = walkCaptureColumnSurface(ix, iz)
-      for (let y = 0; y < columnHeight; y++) {
-        const mesh = new THREE.Mesh(blockGeo, mats)
-        mesh.position.set(ix + 0.5, y - columnHeight + 0.5, iz + 0.5)
-        mesh.receiveShadow = true
-        mesh.castShadow = y === columnHeight - 1
-        root.add(mesh)
-      }
-    }
-  }
 }
 
 export function minecraftGrassTexture(
@@ -538,7 +455,6 @@ export function minecraftGrassTufts(
   root: THREE.Group,
   track: <T extends { dispose: () => void }>(o: T) => T,
 ): void {
-  if (isWalkCaptureSession()) return
   const grassMat = track(
     voxelMaterial(palette.hills[0] ?? '#5a9c48', palette.hills[1] ?? '#3d7a34', 71, 'grass'),
   )
@@ -578,6 +494,14 @@ export function voxelRockCluster(
   root.add(g)
 }
 
+function usesCompactPixelFooting(kind: PlantVisualRecipe['kind'], stage: PlantStage): boolean {
+  const idx = plantStageToIndex(stage)
+  if (kind === 'tree') return idx <= 1 || idx >= 6
+  if (kind === 'flower') return idx <= 1 || idx >= 5
+  if (kind === 'mushroom') return idx >= 2
+  return false
+}
+
 export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualRecipe): THREE.Group {
   const g = new THREE.Group()
   g.name = `plant:${plant.id}`
@@ -590,11 +514,12 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
   const leaf = voxelMaterial(recipe.foliage, recipe.foliageAlt, seedN + 3, 'leaf', true)
   const stemMat = voxelMaterial(recipe.stem, '#4a5f3a', seedN + 5, 'bark')
   const bloom = voxelMaterial(recipe.bloom, recipe.emissive, seedN + 7, 'flower', true)
-  const cap = voxelMaterial('#c44a4a', '#f2e8dc', seedN + 13, 'mushroom')
+  const stemMushroom = voxelMaterial('#e8dcc8', '#d9c8ad', seedN + 5, 'mushroom_stem')
+  const cap = voxelMaterial('#c44a4a', '#f2e8dc', seedN + 13, 'mushroom_cap')
   const dirt = voxelMaterial('#5a4332', '#3f2e22', seedN + 11, 'dirt')
 
-  const walkSolo = isWalkCaptureSession() && plant.id.endsWith('-walk')
-  if (!walkSolo) {
+  const compact = usesCompactPixelFooting(recipe.kind, stage)
+  if (!compact) {
     placeBlock(g, 0, 0, 0, dirt)
     if (plantStageToIndex(stage) > 0) {
       placeBlock(g, -1, 0, 0, dirt)
@@ -602,40 +527,19 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
     }
   }
 
-  const walkCaptureTree =
-    isWalkCaptureSession() && plant.id.endsWith('-walk') && recipe.kind === 'tree'
-
-  if (walkSolo && plant.id === 'flower-bloom-walk') {
-    const poppy = voxelMaterial('#c43b3b', '#e85d5d', seedN + 7, 'poppy', true)
-    placeCrossPlantSprite(g, 0, 0, 0, 0.72, 0.55, poppy)
-  } else if (walkSolo && plant.id === 'mushroom-walk') {
-    const stem = voxelMaterial('#e8dcc8', '#d9c8ad', seedN + 5, 'mushroom_stem')
-    const capSmall = voxelMaterial('#c44a4a', '#f2e8dc', seedN + 13, 'mushroom_cap')
-    buildWalkCaptureMushroom(g, stem, capSmall)
-  } else if (walkSolo && plant.id === 'sprout-walk') {
-    const sapling = voxelMaterial('#4a8f3a', '#3d7a34', seedN + 3, 'sapling', true)
-    placeCrossPlantSprite(g, 0, 0, 0, 0.6, 0.5, sapling)
-  } else if (walkCaptureTree) {
-    buildWalkCaptureOak(g, bark, leaf, plant.id.includes('elder'))
-  } else if (recipe.kind === 'tree') {
+  if (recipe.kind === 'tree') {
     buildOakTree(g, bark, leaf, seedN, stage)
   } else if (recipe.kind === 'flower') {
-    if (plant.id === 'sprout-walk' || plantStageToIndex(stage) <= 1) {
-      buildSproutSapling(g, stemMat, bloom)
-    } else {
-      buildFlower(g, stemMat, bloom, seedN, stage)
-    }
+    buildFlower(g, stemMat, bloom, seedN, stage)
   } else if (recipe.kind === 'mushroom') {
-    buildMushroom(g, stemMat, cap, seedN, stage)
+    buildMushroom(g, stemMushroom, cap, seedN, stage)
   } else {
     buildOakTree(g, bark, leaf, seedN + 19, stage)
   }
 
-  const terrainTop = isWalkCaptureSession() ? walkCaptureGroundY(plant.x, plant.z) : 0
+  const terrainTop = walkCaptureGroundY(plant.x, plant.z)
   g.position.set(plant.x, terrainTop, plant.z)
-  if (isWalkCaptureSession()) {
-    snapPlantGroupToTerrain(g, terrainTop)
-  }
+  snapPlantGroupToTerrain(g, terrainTop)
   return g
 }
 

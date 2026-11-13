@@ -4,7 +4,6 @@ import type { ScenePalette } from '@/lib/garden/palettes'
 import type { GardenWorld } from '@/lib/open-world/types'
 import { isWalkCaptureSession } from '@/lib/open-world/walk-capture-bridge'
 import {
-  addWalkCaptureGrassField,
   minecraftGrassTexture,
   minecraftGrassTufts,
   minecraftPathTexture,
@@ -187,14 +186,8 @@ export function buildTerrain(
   )
   ground.rotation.x = -Math.PI / 2
   ground.receiveShadow = true
+  root.add(ground)
   const walkCapture = isWalkCaptureSession()
-  if (!(minecraftMode && walkCapture)) {
-    root.add(ground)
-  }
-
-  if (minecraftMode && walkCapture) {
-    addWalkCaptureGrassField(world, palette, root, track)
-  }
 
   // ── Gentle Flowerbed Soil Berms ─────────────────────────────────────────
   const soilBermMat = track(
@@ -799,6 +792,7 @@ export function buildTerrain(
   const hedgeMat = track(
     twilightSceneryMat(palette, palette.hills[2] ?? palette.silSoft ?? palette.sil, twilight, starAlpha, 0.9),
   )
+  if (!walkCaptureDecor) {
   const postGeo = track(new THREE.BoxGeometry(0.28, 1.35, 0.28))
   const railGeo = track(new THREE.BoxGeometry(1, 0.12, 0.1))
   const addFence = (ax: number, az: number, bx: number, bz: number) => {
@@ -836,6 +830,7 @@ export function buildTerrain(
   const lintel = new THREE.Mesh(track(new THREE.BoxGeometry(4.8, 0.22, 0.3)), wood)
   lintel.position.set(0, 2.15, world.gate.z)
   root.add(lintel)
+  }
 
   // ── Distant Hills ───────────────────────────────────────────────────────
   const hillColor = palette.hills[1] ?? palette.hills[0] ?? palette.silSoft

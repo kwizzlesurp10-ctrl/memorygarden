@@ -542,12 +542,26 @@ export class OpenWorldEngine {
               : ground + 0.42
         const aim = new THREE.Vector3(wp.x, aimY, wp.z)
         const dist =
-          wp.variety === 'mushroom' ? 2.3 : plantId.includes('sprout') ? 2.1 : 2.5
+          wp.variety === 'mushroom' ? 1.05 : plantId.includes('sprout') ? 0.92 : 1.15
         const yaw = wp.variety === 'flower' ? 0.65 : wp.variety === 'mushroom' ? -0.55 : -0.45
-        const camX = wp.x + Math.sin(yaw) * dist
-        const camZ = wp.z + Math.cos(yaw) * dist
-        const eyeY = ground + 1.28
-        return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+        const minFrac = plantId.includes('sprout') ? 0.27 : 0.34
+        let bestPose: WalkCapturePose | null = null
+        let bestFrac = 0
+        for (let pass = 0; pass < 9; pass++) {
+          const d = dist * Math.pow(0.9, pass)
+          const camX = wp.x + Math.sin(yaw) * d
+          const camZ = wp.z + Math.cos(yaw) * d
+          const eyeY = ground + 1.28
+          const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+          const fit = this.plantCaptureFitAt(plantId, pose)
+          const frac = fit?.frac ?? 0
+          if (frac > bestFrac) {
+            bestFrac = frac
+            bestPose = pose
+          }
+          if (frac >= minFrac) return pose
+        }
+        return bestPose
       }
     }
 
@@ -634,9 +648,9 @@ export class OpenWorldEngine {
     const plants = walkPlants.length > 0 ? walkPlants : this.world.plants
     const cx = plants.reduce((s, p) => s + p.x, 0) / Math.max(1, plants.length)
     const cz = plants.reduce((s, p) => s + p.z, 0) / Math.max(1, plants.length)
-    const camX = cx - 6
-    const camZ = cz + 18
-    const eyeY = 6.2
+    const camX = cx
+    const camZ = cz + 22
+    const eyeY = 5.8
     const horiz = Math.hypot(cx - camX, cz - camZ)
     return {
       x: camX,
@@ -813,7 +827,7 @@ export class OpenWorldEngine {
       if (style === 'watercolor') {
         applyWatercolorWalkTint(group)
       }
-      if (isWalkCaptureSession()) {
+      if (style === 'pixel-art') {
         snapPlantGroupToTerrain(group, walkCaptureGroundY(plant.x, plant.z))
       }
       this.plantsRoot.add(group)
