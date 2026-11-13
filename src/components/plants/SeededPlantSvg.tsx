@@ -1,11 +1,14 @@
 import type { ArtStyle, PlantStage } from '@/lib/types'
 import { plantArtFilterUrl, resolvePlantArtStyle } from '@/lib/garden/plant-art-style'
+import {
+  PlantPixelArtFilterDef,
+  plantPixelFilterLocalId,
+} from './PlantPixelArtFilterDef'
 import type { PlantFacing } from '@/lib/garden/landscape-world'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { gardenRng, seedFromGenetics } from '@/lib/garden/prng'
 import { plantStageToIndex } from '@/lib/garden/stage'
 import { buildSeededPlant, getSwayStyle } from './seeded-builders'
-import { PlantPixelArtRaster } from './PlantPixelArtRaster'
 import type { SeededVariety } from './types'
 
 export interface SeededPlantSvgProps {
@@ -16,6 +19,8 @@ export interface SeededPlantSvgProps {
   rimStrength: number
   motion: boolean
   scale?: number
+  /** Scene graph scale outside this component (e.g. landscape projection). */
+  layoutScale?: number
   facing?: PlantFacing
   rimFromLeft?: boolean
   className?: string
@@ -30,6 +35,7 @@ export function SeededPlantSvg({
   rimStrength,
   motion,
   scale = 1,
+  layoutScale = 1,
   facing = 'front',
   rimFromLeft = true,
   className,
@@ -42,20 +48,33 @@ export function SeededPlantSvg({
   const nodes = buildSeededPlant(variety, ctx)
   const swayStyle = getSwayStyle(seedN, motion, variety === 'tree')
   const resolvedStyle = resolvePlantArtStyle(artStyle)
-  const plantFilter = plantArtFilterUrl(resolvedStyle)
   const pixelArt = resolvedStyle === 'pixel-art'
-  const plantBody = pixelArt ? (
-    <PlantPixelArtRaster variety={variety} stage={stage} scale={scale}>
-      {nodes}
-    </PlantPixelArtRaster>
-  ) : (
-    nodes
-  )
+  const effectiveScale = scale * layoutScale
+  const pixelFilterId = pixelArt
+    ? plantPixelFilterLocalId(variety, stage, effectiveScale)
+    : ''
+  const plantFilter = pixelArt ? `url(#${pixelFilterId})` : plantArtFilterUrl(resolvedStyle)
 
   return (
     <g className={className} transform={scale !== 1 ? `scale(${scale})` : undefined}>
-      <g style={swayStyle} filter={plantFilter}>
-        {plantBody}
+      {pixelArt ? (
+        <defs>
+          <PlantPixelArtFilterDef
+            id={pixelFilterId}
+            variety={variety}
+            stage={stage}
+            scale={effectiveScale}
+          />
+        </defs>
+      ) : null}
+      <g
+        style={{
+          ...swayStyle,
+          shapeRendering: pixelArt ? 'crispEdges' : undefined,
+        }}
+        filter={plantFilter}
+      >
+        {nodes}
       </g>
     </g>
   )

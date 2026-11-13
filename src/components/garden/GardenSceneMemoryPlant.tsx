@@ -154,6 +154,7 @@ export function GardenSceneMemoryPlant({
               palette={palette}
               rimStrength={rimStrength}
               motion={motion}
+              layoutScale={sc}
               facing={pos.facing}
               rimFromLeft={pos.rimFromLeft}
               artStyle={plantArtStyle}

@@ -18,6 +18,7 @@ export interface WalkCaptureBridge {
   showcasePoseFor: (modelId: Cc0ModelId) => WalkCapturePose
   ready: () => boolean
   worldPlants: () => Array<{ id: string; x: number; z: number; variety: string; stage: string }>
+  voxelMeshCount?: () => number
 }
 
 export const WALK_CAPTURE_SESSION_KEY = 'mg:walk-capture'

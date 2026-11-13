@@ -1,17 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { plantPixelRasterStep } from '@/lib/garden/plant-art-pixel'
+import { plantPixelCellRadius, plantPixelRasterStep } from '@/lib/garden/plant-art-pixel'
 
-describe('plantPixelRasterStep', () => {
-  it('uses finer steps for flowers than for elder trees at same scale', () => {
-    const flower = plantPixelRasterStep('flower', 1, 'bloom')
-    const tree = plantPixelRasterStep('tree', 1, 'elder')
-    expect(flower).toBeGreaterThanOrEqual(2)
-    expect(tree).toBeGreaterThanOrEqual(2)
-    expect(flower).toBeLessThan(tree)
+describe('plantPixelCellRadius', () => {
+  it('uses coarser cells for trees than flowers at same scale', () => {
+    const flower = plantPixelCellRadius('flower', 'bloom', 1)
+    const tree = plantPixelCellRadius('tree', 'elder', 1)
+    expect(flower).toBeGreaterThan(2)
+    expect(tree).toBeGreaterThan(flower)
   })
 
   it('clamps extreme scales', () => {
-    expect(plantPixelRasterStep('flower', 0.1, 'seed')).toBeGreaterThanOrEqual(2)
-    expect(plantPixelRasterStep('flower', 4, 'elder')).toBeLessThanOrEqual(7)
+    expect(plantPixelCellRadius('mushroom', 'mature', 0.2)).toBeGreaterThanOrEqual(2.4)
+    expect(plantPixelCellRadius('flower', 'elder', 4)).toBeLessThanOrEqual(6.8)
+  })
+})
+
+describe('plantPixelRasterStep', () => {
+  it('returns a numeric step for legacy callers', () => {
+    expect(plantPixelRasterStep('flower', 1, 'bloom')).toBeGreaterThanOrEqual(2)
   })
 })

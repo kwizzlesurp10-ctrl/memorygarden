@@ -257,6 +257,7 @@ export function OpenWorldGarden({
             variety: p.variety,
             stage: p.stage,
           })),
+        voxelMeshCount: () => engine.countVoxelMeshes(),
       })
       if (sessionStorage.getItem('mg:stage-row-capture') !== '1') {
         engine.setPlayerPose(
@@ -302,7 +303,7 @@ export function OpenWorldGarden({
   }, [paused])
 
   useEffect(() => {
-    if (plantArtStyle) engineRef.current?.setPlantArtStyle(plantArtStyle)
+    engineRef.current?.setPlantArtStyle(plantArtStyle ?? 'watercolor')
   }, [plantArtStyle])
 
   useEffect(() => {

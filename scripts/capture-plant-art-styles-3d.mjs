@@ -1,5 +1,5 @@
 /**
- * Walk-mode screenshots for pixel-art (voxel) vs watercolor 3D comparison.
+ * Walk-mode screenshots — voxel plants only (CC0 disabled in capture).
  */
 import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -23,7 +23,7 @@ const memories = [
     text: 'Elder tree memory',
     date: '2025-06-01',
     plantedAt: '2025-06-01T12:00:00.000Z',
-    position: { x: 220, y: 380 },
+    position: { x: 400, y: 380 },
     emotionalTone: 'peaceful',
     plantStage: 'elder',
     plantVariety: 'tree',
@@ -39,7 +39,7 @@ const memories = [
     text: 'Bloom flower',
     date: '2025-06-02',
     plantedAt: '2025-06-02T12:00:00.000Z',
-    position: { x: 380, y: 420 },
+    position: { x: 520, y: 400 },
     emotionalTone: 'joyful',
     plantStage: 'bloom',
     plantVariety: 'flower',
@@ -48,16 +48,33 @@ const memories = [
     audioRecordings: [],
     geneticsSeed: 'walk-flower',
   },
+  {
+    id: 'mushroom-walk',
+    photoUrl:
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    text: 'Mature mushroom',
+    date: '2025-06-03',
+    plantedAt: '2025-06-03T12:00:00.000Z',
+    position: { x: 460, y: 420 },
+    emotionalTone: 'peaceful',
+    plantStage: 'mature',
+    plantVariety: 'mushroom',
+    visitCount: 2,
+    reflections: [],
+    audioRecordings: [],
+    geneticsSeed: 'walk-mushroom',
+  },
 ]
 
-function poseNearPlant(plant, distance = 2.2) {
-  const yaw = Math.atan2(plant.x - (plant.x + distance * 0.35), plant.z - (plant.z + distance))
-  return {
-    x: plant.x + distance * 0.35,
-    z: plant.z + distance,
-    yaw,
-    pitch: -0.14,
-  }
+const EYE_HEIGHT = 1.55
+
+function framePlant(plant, distance = 2.2, lookHeight = 1.65) {
+  const camX = plant.x - distance * 0.78
+  const camZ = plant.z - distance * 0.62
+  const yaw = Math.atan2(plant.x - camX, plant.z - camZ)
+  const horiz = Math.hypot(plant.x - camX, plant.z - camZ)
+  const pitch = Math.atan2(lookHeight - EYE_HEIGHT, horiz)
+  return { x: camX, z: camZ, yaw, pitch }
 }
 
 async function enterWalk(page) {
@@ -69,12 +86,12 @@ async function enterWalk(page) {
     const btn = document.querySelector('[data-testid="enter-walk-button"]')
     if (btn instanceof HTMLElement) btn.click()
   })
-  await page.waitForTimeout(1500)
+  await page.waitForTimeout(1600)
   await page
     .locator('[data-testid="open-world-garden"] canvas')
     .first()
     .waitFor({ state: 'visible', timeout: 45_000 })
-  await page.waitForTimeout(1000)
+  await page.waitForTimeout(900)
 }
 
 async function captureWalk(page, artStyle, shots) {
@@ -98,34 +115,49 @@ async function captureWalk(page, artStyle, shots) {
   await page.evaluate((art) => {
     window.__mgWalkCapture?.setPlantArtStyle?.(art)
   }, artStyle)
-  await page.waitForTimeout(800)
+  await page.waitForTimeout(1200)
 
-  const plants =
-    (await page.evaluate(() => window.__mgWalkCapture?.worldPlants?.() ?? [])) ?? []
+  const plants = (await page.evaluate(() => window.__mgWalkCapture?.worldPlants?.() ?? [])) ?? []
   const tree = plants.find((p) => p.variety === 'tree')
   const flower = plants.find((p) => p.variety === 'flower')
+  const mushroom = plants.find((p) => p.variety === 'mushroom')
 
   for (const shot of shots) {
     let pose = shot.pose
-    if (shot.kind === 'overview' && plants.length > 0) {
+    if (shot.kind === 'overview' && plants.length >= 1) {
       const cx = plants.reduce((s, p) => s + p.x, 0) / plants.length
       const cz = plants.reduce((s, p) => s + p.z, 0) / plants.length
-      pose = { x: cx + 3, z: cz + 6, yaw: Math.PI + 0.35, pitch: -0.2 }
+      const camX = cx - 2
+      const camZ = cz + 3.2
+      pose = {
+        x: camX,
+        z: camZ,
+        yaw: Math.atan2(cx - camX, cz - camZ),
+        pitch: -0.18,
+      }
     }
-    if (shot.kind === 'tree' && tree) pose = poseNearPlant(tree, 2.4)
-    if (shot.kind === 'flower' && flower) pose = poseNearPlant(flower, 1.6)
+    if (shot.kind === 'tree' && tree) pose = framePlant(tree, 2.4, 2.1)
+    if (shot.kind === 'flower' && flower) {
+      pose = framePlant(flower, 0.55, 0.38)
+      pose.pitch = -0.42
+    }
+    if (shot.kind === 'mushroom' && mushroom) {
+      pose = framePlant(mushroom, 0.5, 0.32)
+      pose.pitch = -0.48
+    }
 
     await page.evaluate(async (p) => {
       await window.__mgWalkCapture?.showcaseModel?.(null)
       window.__mgWalkCapture?.setPose?.(p)
     }, pose)
-    await page.waitForTimeout(2600)
+    await page.waitForTimeout(2800)
     const file = resolve(outDir, shot.file)
     await page
       .locator('[data-testid="open-world-garden"] canvas')
       .first()
       .screenshot({ path: file })
-    console.log('Wrote', file, 'plants=', JSON.stringify(plants))
+    const voxels = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? -1)
+    console.log('Wrote', file, shot.kind, 'voxels', voxels, 'pose', JSON.stringify(pose))
   }
 }
 
@@ -166,6 +198,7 @@ try {
     { kind: 'overview', file: 'garden-art-style-walk-pixel-overview.png' },
     { kind: 'tree', file: 'garden-art-style-walk-pixel-tree-closeup.png' },
     { kind: 'flower', file: 'garden-art-style-walk-pixel-flower-closeup.png' },
+    { kind: 'mushroom', file: 'garden-art-style-walk-pixel-mushroom-closeup.png' },
   ])
   await captureWalk(page, 'watercolor', [
     { kind: 'overview', file: 'garden-art-style-walk-watercolor-3d-compare.png' },

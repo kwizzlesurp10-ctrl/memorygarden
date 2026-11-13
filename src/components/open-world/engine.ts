@@ -140,9 +140,11 @@ export class OpenWorldEngine {
     this.rebuildPlants()
     const skipCc0 =
       typeof window !== 'undefined' &&
-      (sessionStorage.getItem('mg:walk-capture-baseline') === '1' ||
+      (isWalkCaptureSession() ||
+        sessionStorage.getItem('mg:walk-capture-baseline') === '1' ||
         sessionStorage.getItem('mg:stage-row-capture') === '1' ||
-        sessionStorage.getItem('mg:walk-plant-focus') === '1')
+        sessionStorage.getItem('mg:walk-plant-focus') === '1' ||
+        this.plantArtStyle === 'pixel-art')
     if (!this.failed && !skipCc0) {
       this.cc0Scenery = new Cc0SceneryLayer(this.scene, this.world, this.palette, {
         reducedMotion: opts.reducedMotion,
@@ -234,11 +236,15 @@ export class OpenWorldEngine {
     this.growing = ids
   }
 
-  setPlantArtStyle(style: ArtStyle): void {
+  setPlantArtStyle(style: ArtStyle | undefined): void {
     const next = resolvePlantArtStyle(style)
     if (next === this.plantArtStyle) return
     this.plantArtStyle = next
     this.applyLighting()
+    if (next === 'pixel-art' && this.cc0Scenery) {
+      this.cc0Scenery.dispose()
+      this.cc0Scenery = null
+    }
     this.rebuildTerrain()
     this.rebuildPlants()
   }
@@ -290,6 +296,14 @@ export class OpenWorldEngine {
 
   getWorld(): GardenWorld {
     return this.world
+  }
+
+  countVoxelMeshes(): number {
+    let n = 0
+    this.plantsRoot.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && obj.userData.voxel) n++
+    })
+    return n
   }
 
   getPlayer(): PlayerState {
@@ -597,12 +611,16 @@ export class OpenWorldEngine {
 
   private applyLighting(): void {
     if (this.plantArtStyle === 'pixel-art') {
-      this.hemi.intensity = 1.05
-      this.fill.intensity = 0.38
-      this.sun.intensity = 0.82
-      this.rim.intensity = 0.06
-      this.sun.position.set(18, 32, -14)
-      this.rim.position.set(-12, 20, 18)
+      this.hemi.color.set('#b8d4f8')
+      this.hemi.groundColor.set('#4f8a3e')
+      this.hemi.intensity = 1.28
+      this.fill.color.set('#e8f0ff')
+      this.fill.intensity = 0.52
+      this.sun.color.set('#fff6de')
+      this.sun.intensity = 0.95
+      this.rim.intensity = 0.08
+      this.sun.position.set(18, 38, -14)
+      this.rim.position.set(-12, 22, 18)
       return
     }
     const p = this.palette

@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
-import type { ArtStyle, HybridGenome } from '@/lib/types'
+import type { ArtStyle, HybridGenome, PlantStage } from '@/lib/types'
 import { plantArtFilterUrl, resolvePlantArtStyle } from '@/lib/garden/plant-art-style'
-import { PlantPixelArtRaster } from './PlantPixelArtRaster'
+import { PlantPixelArtFilterDef, plantPixelFilterLocalId } from './PlantPixelArtFilterDef'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { hybridPlantPalette, mergedPal } from '@/lib/garden/hybrid'
 import { gardenRng } from '@/lib/garden/prng'
@@ -392,21 +392,26 @@ export function HybridPlantSvg({
     : undefined
 
   const resolvedStyle = resolvePlantArtStyle(artStyle)
-  const plantFilter = plantArtFilterUrl(resolvedStyle)
+  const pixelArt = resolvedStyle === 'pixel-art'
+  const hybridStage: PlantStage = 'mature'
+  const pixelFilterId = pixelArt ? plantPixelFilterLocalId('flower', hybridStage, scale) : ''
+  const plantFilter = pixelArt ? `url(#${pixelFilterId})` : plantArtFilterUrl(resolvedStyle)
   const hybridNodes = buildHybrid(stage, CH, rimStrength, motion, genome)
-  const body =
-    resolvedStyle === 'pixel-art' ? (
-      <PlantPixelArtRaster variety="flower" stage="mature" scale={scale}>
-        {hybridNodes}
-      </PlantPixelArtRaster>
-    ) : (
-      hybridNodes
-    )
 
   return (
     <g transform={`translate(${x} ${y}) scale(${scale})`}>
-      <g style={swayStyle} filter={plantFilter}>
-        {body}
+      {pixelArt ? (
+        <defs>
+          <PlantPixelArtFilterDef
+            id={pixelFilterId}
+            variety="flower"
+            stage={hybridStage}
+            scale={scale}
+          />
+        </defs>
+      ) : null}
+      <g style={{ ...swayStyle, shapeRendering: pixelArt ? 'crispEdges' : undefined }} filter={plantFilter}>
+        {hybridNodes}
       </g>
     </g>
   )

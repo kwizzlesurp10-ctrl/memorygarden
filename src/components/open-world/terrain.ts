@@ -2,7 +2,11 @@ import * as THREE from 'three'
 import { gardenRng } from '@/lib/garden/prng'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import type { GardenWorld } from '@/lib/open-world/types'
-import { minecraftGrassTexture } from './minecraft-visual'
+import {
+  minecraftGrassTexture,
+  minecraftGrassTufts,
+  voxelRockCluster,
+} from './minecraft-visual'
 
 export interface TerrainHandle {
   root: THREE.Group
@@ -318,14 +322,19 @@ export function buildTerrain(
     { x: -12, z: 18, s: 0.75 },
     { x: 14, z: 16, s: 0.85 },
   ]
-  for (const rp of rockPositions) {
-    const rMesh = new THREE.Mesh(rockGeo, rockMat)
-    rMesh.scale.set(rp.s * 1.2, rp.s * 0.7, rp.s * 0.9)
-    rMesh.position.set(rp.x, rp.s * 0.35, rp.z)
-    rMesh.rotation.set(rp.s * 1.5, rp.s * 2.3, rp.s)
-    rMesh.castShadow = true
-    rMesh.receiveShadow = true
-    root.add(rMesh)
+  for (let ri = 0; ri < rockPositions.length; ri++) {
+    const rp = rockPositions[ri]
+    if (minecraftMode) {
+      voxelRockCluster(rp.x, rp.z, 300 + ri * 17, palette, root, track)
+    } else {
+      const rMesh = new THREE.Mesh(rockGeo, rockMat)
+      rMesh.scale.set(rp.s * 1.2, rp.s * 0.7, rp.s * 0.9)
+      rMesh.position.set(rp.x, rp.s * 0.35, rp.z)
+      rMesh.rotation.set(rp.s * 1.5, rp.s * 2.3, rp.s)
+      rMesh.castShadow = true
+      rMesh.receiveShadow = true
+      root.add(rMesh)
+    }
   }
 
   // ── Wooden Garden Pergola / Trellis Arch near Gate ──────────────────────
@@ -676,7 +685,7 @@ export function buildTerrain(
   root.add(sanctuaryGroup)
 
   // ── Negative-Space Masking: Bed Filler Flora (Wild Clover & Ferns) ──────
-  if (world.fillerFlora && world.fillerFlora.length > 0) {
+  if (!minecraftMode && world.fillerFlora && world.fillerFlora.length > 0) {
     const fillerGeo = track(new THREE.ConeGeometry(0.14, 0.22, 6))
     const fillerMat = track(
       new THREE.MeshStandardMaterial({
@@ -794,15 +803,19 @@ export function buildTerrain(
     { x: -40, z: 12, s: 15 },
     { x: 42, z: 18, s: 17 },
   ]
-  for (const h of hills) {
-    const mesh = new THREE.Mesh(hillGeo, hillMat)
-    mesh.scale.set(h.s, h.s * 0.42, h.s * 0.85)
-    mesh.position.set(h.x, -1.2, h.z)
-    root.add(mesh)
+  if (!minecraftMode) {
+    for (const h of hills) {
+      const mesh = new THREE.Mesh(hillGeo, hillMat)
+      mesh.scale.set(h.s, h.s * 0.42, h.s * 0.85)
+      mesh.position.set(h.x, -1.2, h.z)
+      root.add(mesh)
+    }
   }
 
   // ── Grass Tufts ─────────────────────────────────────────────────────────
-  if (!reducedMotion) {
+  if (minecraftMode) {
+    minecraftGrassTufts(world, palette, root, track)
+  } else if (!reducedMotion) {
     const tuftGeo = track(new THREE.ConeGeometry(0.07, 0.28, 5))
     const tuftMat = track(new THREE.MeshStandardMaterial({ color: palette.hills[0] ?? '#4e2749', roughness: 1 }))
     const count = 480

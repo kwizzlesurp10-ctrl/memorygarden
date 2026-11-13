@@ -40,6 +40,7 @@ export function buildStarterWorldPlants(
           rimStrength={rim}
           motion={motion}
           scale={decor.elderTree.scale}
+          layoutScale={elder.scale}
           facing={elder.facing}
           rimFromLeft={elder.rimFromLeft}
           artStyle={artStyle}
@@ -65,7 +66,8 @@ export function buildStarterWorldPlants(
             palette={palette}
             rimStrength={rim}
             motion={motion}
-            scale={1}
+            scale={shroom.scale}
+            layoutScale={proj.scale * drawScale}
             facing={proj.facing}
             rimFromLeft={proj.rimFromLeft}
             artStyle={artStyle}
