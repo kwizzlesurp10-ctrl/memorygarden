@@ -341,11 +341,12 @@ async function tuneElderCaptureFovFromPng(page, plantId, probePath) {
     .screenshot({ path: probePath })
   const baselineTree = measureTreePixelFillFromPng(probePath)
   if (
-    baselineTree.height >= 0.58 &&
-    baselineTree.height <= 0.72 &&
+    baselineTree.height >= 0.6 &&
+    baselineTree.height <= 0.7 &&
     baselineTree.top >= 0.04 &&
     baselineTree.top <= 0.08 &&
-    !baselineTree.canopyTouchesTopRow
+    !baselineTree.canopyTouchesTopRow &&
+    !baselineTree.canopyInTopBand
   ) {
     return { fov: 68, col: { heightFrac: baselineTree.height, topFrac: baselineTree.top } }
   }
@@ -374,9 +375,9 @@ async function tuneElderCaptureFovFromPng(page, plantId, probePath) {
     const height = treeFill.height > 0 ? treeFill.height : col.heightFrac
     const topFrac = treeFill.height > 0 ? treeFill.top : col.topFrac
     if (treeFill.canopyTouchesTopRow || treeFill.canopyInTopBand) continue
-    if (treeFill.bottom > 0.93 || height > 0.74 || height < 0.5) continue
+    if (treeFill.bottom > 0.93 || height > 0.74 || height < 0.58) continue
     const score = Math.abs(height - 0.65) + Math.abs(topFrac - 0.05) * 4
-    const fits = height >= 0.55 && height <= 0.72 && topFrac >= 0.04 && topFrac <= 0.08
+    const fits = height >= 0.6 && height <= 0.7 && topFrac >= 0.04 && topFrac <= 0.08
     if (fits && (!best || score < best.score)) {
       best = { fov, score, col: { ...col, heightFrac: height, topFrac } }
     }
@@ -399,15 +400,15 @@ async function tuneElderCaptureFovFromPng(page, plantId, probePath) {
       const height = treeFill.height > 0 ? treeFill.height : col.heightFrac
       const topFrac = treeFill.height > 0 ? treeFill.top : col.topFrac
       if (treeFill.canopyTouchesTopRow || treeFill.canopyInTopBand) continue
-      if (treeFill.bottom > 0.93 || height > 0.74 || height < 0.5) continue
+      if (treeFill.bottom > 0.93 || height > 0.74 || height < 0.58) continue
       const score = Math.abs(height - 0.65) + Math.abs(topFrac - 0.05) * 4
-      const fits = height >= 0.55 && height <= 0.72 && topFrac >= 0.04 && topFrac <= 0.08
+      const fits = height >= 0.6 && height <= 0.7 && topFrac >= 0.04 && topFrac <= 0.08
       if (fits && (!best || score < best.score)) {
         best = { fov, score, col: { ...col, heightFrac: height, topFrac } }
       }
     }
   }
-  if (!best || best.col.heightFrac < 0.55) {
+  if (!best || best.col.heightFrac < 0.58) {
     await page.evaluate(() => window.__mgWalkCapture?.setCaptureFov?.(68))
     return null
   }
@@ -539,8 +540,18 @@ async function captureShot(page, phase, artStyle, shot, pose) {
   const name = `minecraft-walk-${phase}-${shaTag}-${artStyle}-${shot.file}-${viewportMode}.png`
   const legacyName = `minecraft-walk-${phase}-${artStyle}-${shot.file}-${viewportMode}.png`
   const file = resolve(outDir, name)
-  if (shot.file === 'walk-tree-elder-closeup' && shot.plantId && phase === 'after') {
-    await tuneElderCaptureFovFromPng(page, shot.plantId, file.replace(/\.png$/, '-fov-probe.png'))
+  if (shot.file === 'walk-tree-elder-closeup' && shot.plantId && phase === 'after' && artStyle === 'pixel-art') {
+    const tuned = await tuneElderCaptureFovFromPng(page, shot.plantId, file.replace(/\.png$/, '-fov-probe.png'))
+    if (tuned?.fov) {
+      pose.captureFov = tuned.fov
+      await applyPose(page, pose)
+    } else {
+      const mainPose = await page.evaluate(
+        (id) => window.__mgWalkCapture?.elderMainBaselinePose?.(id) ?? null,
+        shot.plantId,
+      )
+      if (mainPose) await applyPose(page, mainPose)
+    }
   }
   await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
   if (shot.file === 'walk-tree-elder-closeup' && shot.plantId) {

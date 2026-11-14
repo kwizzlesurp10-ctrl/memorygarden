@@ -41,6 +41,7 @@ import {
 } from '@/lib/garden-gifts'
 import {
   isWalkCaptureSession,
+  walkCaptureTod,
   isWalkHidePointerHint,
   registerWalkCaptureBridge,
 } from '@/lib/open-world/walk-capture-bridge'
@@ -224,7 +225,7 @@ export function OpenWorldGarden({
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const palette = todPalette(realClockTod(), season)
+    const palette = todPalette(walkCaptureTod() ?? realClockTod(), season)
     const engine = new OpenWorldEngine(canvas, memories, palette, {
       reducedMotion,
       coarsePointer: coarse,
@@ -280,6 +281,7 @@ export function OpenWorldGarden({
           engine.applyCaptureFov(pose.captureFov)
         },
         setPalette: (palette) => engine.setPalette(palette),
+        setTodHour: (hour) => engine.setPalette(todPalette(hour, season)),
         setPlantArtStyle: (style) => engine.setPlantArtStyle(style),
         showcaseModel: (id: Cc0ModelId | null) => engine.setCc0Showcase(id),
         showcasePoseFor: (id: Cc0ModelId) =>
@@ -320,10 +322,12 @@ export function OpenWorldGarden({
         captureCameraAspect: () => engine.getCaptureCameraAspect(),
         setCaptureFov: (fov) => engine.applyCaptureFov(fov),
         elderCloseupPose: (plantId) => engine.elderDeterministicCapturePose(plantId),
+        elderMainBaselinePose: (plantId) => engine.elderMainBaselineCapturePose(plantId),
         mushroomCloseupPose: (plantId) => engine.mushroomDeterministicCapturePose(plantId),
         plantProjectedBoxScreenY: (plantId) => engine.plantProjectedBoxScreenY(plantId),
         plantProjectedAabbScreen: (plantId) => engine.plantProjectedAabbScreen(plantId),
         pondCloseupPose: () => engine.pondCapturePose(),
+        gardenSceneryCloseupPose: (kind) => engine.gardenSceneryCloseupPose(kind),
       })
       if (sessionStorage.getItem('mg:tree-young-elder-capture') === '1') {
         engine.setPlayerPose(
@@ -384,9 +388,9 @@ export function OpenWorldGarden({
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      engineRef.current?.setPalette(todPalette(realClockTod(), season))
+      engineRef.current?.setPalette(todPalette(walkCaptureTod() ?? realClockTod(), season))
     }, 4000)
-    engineRef.current?.setPalette(todPalette(realClockTod(), season))
+    engineRef.current?.setPalette(todPalette(walkCaptureTod() ?? realClockTod(), season))
     return () => window.clearInterval(id)
   }, [season])
 

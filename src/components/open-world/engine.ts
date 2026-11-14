@@ -22,6 +22,10 @@ import { WALK_SYNTHETIC_POND } from '@/lib/open-world/walk-pond-capture'
 import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
 import { Cc0SceneryLayer, defaultCc0GardenSeed } from './cc0-scenery'
 import { playWaterSfx } from '@/lib/water-sound'
+import {
+  computeGardenSceneryCloseupPose,
+  type GardenSceneryCloseupKind,
+} from '@/lib/open-world/garden-scenery-capture'
 
 export interface EngineHooks {
   onProximity: (plant: WorldPlant | null) => void
@@ -382,6 +386,36 @@ export class OpenWorldEngine {
     group.updateWorldMatrix(true, true)
     const box = new THREE.Box3().setFromObject(group)
     return box.isEmpty() ? null : box
+  }
+
+  /** Voxel-only extent for elder pixel-art capture aim (excludes pots / CC0 extras). */
+  private plantVoxelWorldBox(plantId: string): THREE.Box3 | null {
+    const group = this.findPlantGroup(plantId)
+    if (!group) return null
+    group.updateWorldMatrix(true, true)
+    const box = new THREE.Box3()
+    let hit = false
+    group.traverse((obj) => {
+      if (!(obj instanceof THREE.Mesh)) return
+      if (!obj.userData.voxel) return
+      const b = new THREE.Box3().setFromObject(obj)
+      if (b.isEmpty()) return
+      if (!hit) {
+        box.copy(b)
+        hit = true
+      } else {
+        box.union(b)
+      }
+    })
+    return hit ? box : null
+  }
+
+  gardenSceneryCloseupPose(kind: GardenSceneryCloseupKind): WalkCapturePose {
+    this.resetCaptureFov()
+    const pose = computeGardenSceneryCloseupPose(kind, (x, z) => this.terrainFootY(x, z))
+    this.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
+    this.renderOnce()
+    return pose
   }
 
   hasPlantGroup(plantId: string): boolean {
@@ -785,9 +819,35 @@ export class OpenWorldEngine {
     return bestPose
   }
 
-  elderDeterministicCapturePose(plantId: string): WalkCapturePose | null {
+  elderMainBaselineCapturePose(plantId: string): WalkCapturePose | null {
     this.resetCaptureFov()
     return this.elderDeterministicCapturePoseLegacy(plantId)
+  }
+
+  elderDeterministicCapturePose(plantId: string): WalkCapturePose | null {
+    this.resetCaptureFov()
+    const legacy = this.elderDeterministicCapturePoseLegacy(plantId)
+    if (!legacy) return null
+    if (this.plantArtStyle !== 'pixel-art') return legacy
+
+    const voxelBox = this.plantVoxelWorldBox(plantId)
+    if (!voxelBox) return legacy
+
+    const cx = (voxelBox.min.x + voxelBox.max.x) / 2
+    const cy = (voxelBox.min.y + voxelBox.max.y) / 2
+    const cz = (voxelBox.min.z + voxelBox.max.z) / 2
+    const aim = new THREE.Vector3(cx, cy, cz)
+    const eyeY = legacy.eyeY ?? this.player.y
+    const camPos = new THREE.Vector3(legacy.x, eyeY, legacy.z)
+    const aimed = this.poseLookAt(aim, camPos, eyeY)
+    const pitch = Math.min(aimed.pitch, -0.035)
+
+    return {
+      ...legacy,
+      yaw: aimed.yaw,
+      pitch,
+      eyeY,
+    }
   }
 
   private projectBoxVerticalInView(box: THREE.Box3): { minNdcY: number; maxNdcY: number } | null {

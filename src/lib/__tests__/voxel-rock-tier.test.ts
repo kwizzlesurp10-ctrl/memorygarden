@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { MINECRAFT_WALK_ROCK_CLUSTERS, ROCK_TIER_BLOCKS } from '@/components/open-world/minecraft-visual'
+import { ROCK_TIER_BLOCKS } from '@/components/open-world/minecraft-visual'
+import { WALK_ROCK_TIER_SHOWCASE } from '@/lib/open-world/garden-scenery-capture'
 
 describe('voxel rock tiers', () => {
   it('assigns small and large tiers on walk rock clusters', () => {
-    const tiers = MINECRAFT_WALK_ROCK_CLUSTERS.map((c) => c.tier ?? 'medium')
+    const tiers = WALK_ROCK_TIER_SHOWCASE.map((c) => c.tier)
     expect(tiers).toContain('small')
     expect(tiers).toContain('large')
   })

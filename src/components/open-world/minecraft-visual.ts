@@ -704,15 +704,15 @@ export const MINECRAFT_WALK_ROCK_CLUSTERS: Array<{
 ]
 
 export const ROCK_TIER_BLOCKS: Record<VoxelRockTier, [number, number]> = {
-  small: [3, 5],
-  medium: [4, 7],
-  large: [6, 10],
+  small: [4, 7],
+  medium: [8, 12],
+  large: [14, 20],
 }
 
 const ROCK_TIER_MAX_LAYERS: Record<VoxelRockTier, number> = {
-  small: 2,
-  medium: 3,
-  large: 4,
+  small: 3,
+  medium: 5,
+  large: 7,
 }
 
 export function voxelRockCluster(
