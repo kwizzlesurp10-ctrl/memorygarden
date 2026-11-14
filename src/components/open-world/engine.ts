@@ -91,7 +91,6 @@ export class OpenWorldEngine {
   private soloCapturePlantId: string | null = null
   private plantArtStyle: ArtStyle
   private framesRendered = 0
-  private elderWalkFramingBoxByPlant = new Map<string, THREE.Box3>()
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -433,34 +432,42 @@ export class OpenWorldEngine {
     }
   }
 
-  /** Elder walk framing: precise voxel bounds; cached from pixel-art for watercolor parity. */
+  private scaleWatercolorElderToVoxelRef(
+    group: THREE.Group,
+    ref: THREE.Box3,
+    footY: number,
+  ): void {
+    group.updateWorldMatrix(true, true)
+    const box = new THREE.Box3().setFromObject(group, true)
+    if (box.isEmpty()) return
+    const h = box.max.y - box.min.y
+    const refH = ref.max.y - ref.min.y
+    if (h < 0.05 || refH < 0.05) return
+    const s = refH / h
+    group.scale.set(s, s, s)
+    group.updateWorldMatrix(true, true)
+    snapPlantGroupToTerrain(group, footY)
+  }
+
+  /** Elder walk framing from full tree group (vertices when available). */
   private plantElderFramingBox(plantId: string): THREE.Box3 | null {
-    if (plantId.includes('elder') && plantId.endsWith('-walk')) {
-      const cached = this.elderWalkFramingBoxByPlant.get(plantId)
-      if (cached) return cached.clone()
-      if (this.plantArtStyle === 'watercolor') {
-        const fromSession = this.readElderFramingBoxFromSession(plantId)
-        if (fromSession) return fromSession
-      }
-    }
     const group = this.findPlantGroup(plantId)
     if (!group) return null
     group.updateWorldMatrix(true, true)
-    const bounds = new THREE.Box3().setFromObject(group)
     const precise = new THREE.Box3().setFromObject(group, true)
-    if (bounds.isEmpty() && precise.isEmpty()) return null
-    const merged = bounds.isEmpty() ? precise.clone() : bounds.clone()
-    if (!precise.isEmpty()) merged.union(precise)
-    if (
-      isWalkCaptureSession() &&
-      plantId.includes('elder') &&
-      plantId.endsWith('-walk') &&
-      this.plantArtStyle === 'pixel-art'
-    ) {
-      this.elderWalkFramingBoxByPlant.set(plantId, merged.clone())
-      this.writeElderFramingBoxToSession(plantId, merged)
+    if (!precise.isEmpty()) {
+      if (
+        isWalkCaptureSession() &&
+        plantId.includes('elder') &&
+        plantId.endsWith('-walk') &&
+        this.plantArtStyle === 'pixel-art'
+      ) {
+        this.writeElderFramingBoxToSession(plantId, precise)
+      }
+      return precise
     }
-    return merged
+    const bounds = new THREE.Box3().setFromObject(group)
+    return bounds.isEmpty() ? null : bounds
   }
 
   /** Tighter AABB for camera framing — full walk bounds include sparse voxel wings that read smaller on screen. */
@@ -868,11 +875,12 @@ export class OpenWorldEngine {
         const ndc = this.projectBoxVerticalInView(box)
         if (!ndc) break
         const spanHalf = (ndc.maxNdcY - ndc.minNdcY) / 2
-        const spanOk = spanHalf <= 0.752 && spanHalf >= 0.58
+        const spanOk = spanHalf <= 0.68 && spanHalf >= 0.62
         if (this.elderNdcFrameOk(ndc) && spanOk) break
         const topScale = ndc.maxNdcY > 0.8 ? ndc.maxNdcY / 0.78 : 1
         const botScale = ndc.minNdcY < -0.8 ? Math.abs(ndc.minNdcY) / 0.78 : 1
-        const spanScale = spanHalf > 0.752 ? spanHalf / 0.66 : spanHalf < 0.58 ? 0.66 / Math.max(spanHalf, 0.2) : 1
+        const spanScale =
+          spanHalf > 0.68 ? spanHalf / 0.66 : spanHalf < 0.62 ? 0.66 / Math.max(spanHalf, 0.2) : 1
         const scale = Math.max(topScale, botScale, spanScale, 1.02)
         dist *= scale
         pose = applyAt(dist)
@@ -1401,6 +1409,20 @@ export class OpenWorldEngine {
       const group = createPlantGroup(plant, recipe, style)
       if (style === 'watercolor') {
         applyWatercolorWalkTint(group)
+        if (
+          isWalkCaptureSession() &&
+          plant.id.includes('elder') &&
+          plant.id.endsWith('-walk')
+        ) {
+          const ref = this.readElderFramingBoxFromSession(plant.id)
+          if (ref) {
+            this.scaleWatercolorElderToVoxelRef(
+              group,
+              ref,
+              walkCaptureGroundY(plant.x, plant.z),
+            )
+          }
+        }
       }
       if (style === 'pixel-art') {
         snapPlantGroupToTerrain(group, walkCaptureGroundY(plant.x, plant.z))
