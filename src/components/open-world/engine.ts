@@ -470,7 +470,20 @@ export class OpenWorldEngine {
     const s = refH / h
     group.scale.set(s, s, s)
     group.updateWorldMatrix(true, true)
-    snapPlantGroupToTerrain(group, footY)
+    const footed = new THREE.Box3().setFromObject(group, true)
+    group.position.y += ref.min.y - footed.min.y
+    group.updateWorldMatrix(true, true)
+    const sized = new THREE.Box3().setFromObject(group, true)
+    const h2 = sized.max.y - sized.min.y
+    if (h2 > 0.05 && Math.abs(h2 - refH) > 0.08) {
+      group.scale.y *= refH / h2
+      group.updateWorldMatrix(true, true)
+      const after = new THREE.Box3().setFromObject(group, true)
+      group.position.y += ref.min.y - after.min.y
+    } else {
+      snapPlantGroupToTerrain(group, footY)
+    }
+    group.updateWorldMatrix(true, true)
   }
 
   /** Elder walk framing from full tree group (vertices when available). */
