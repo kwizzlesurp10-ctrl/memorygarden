@@ -177,8 +177,10 @@ async function captureSubject(browser, artStyle, subject, phase, url, sha, light
   let fill = 0
   let uniform = true
   let usedPullBack = 1
+  const basePull = artStyle === 'watercolor' ? 0.58 : 1
+  const duskExtra = lightingHour >= 18 ? 0.35 : 0
   for (let attempt = 0; attempt < 5; attempt++) {
-    const pullBack = 1 + attempt * 0.14
+    const pullBack = basePull + duskExtra + attempt * 0.12
     usedPullBack = pullBack
     chosenPose =
       (await page.evaluate(
@@ -260,7 +262,22 @@ async function runArtStyle(artStyle) {
       }
     }
     if (artStyle === 'pixel-art') {
-      await captureSubject(browser, 'pixel-art', { id: 'stump', slug: 'stump-closeup' }, 'after', afterUrl, afterSha, 19.5)
+      const dusk = await captureSubject(
+        browser,
+        'pixel-art',
+        { id: 'stump', slug: 'stump-closeup' },
+        'after',
+        afterUrl,
+        afterSha,
+        19.5,
+      )
+      shotDescriptions.push({
+        file: dusk.file,
+        artStyle: 'pixel-art',
+        phase: 'after',
+        subject: 'stump-dusk',
+        centerFill: dusk.fill,
+      })
     }
   } finally {
     await browser.close()

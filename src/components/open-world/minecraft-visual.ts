@@ -883,12 +883,12 @@ export function voxelGardenFenceSegment(
   g.position.set(x, surfaceY, z)
   g.rotation.y = yaw
   g.userData.gardenProp = 'fence'
-  for (let px = 0; px < 3; px++) {
+  for (const px of [-1, 1]) {
     placeBlock(g, px, 0, 0, woodMat)
     placeBlock(g, px, 1, 0, woodMat)
   }
+  placeBlock(g, -1, 2, 0, woodMat)
   placeBlock(g, 0, 2, 0, woodMat)
-  placeBlock(g, 2, 2, 0, woodMat)
   placeBlock(g, 1, 2, 0, woodMat)
   root.add(g)
 }

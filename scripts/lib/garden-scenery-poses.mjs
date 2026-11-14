@@ -2,9 +2,9 @@
 const DEFAULT_CAPTURE_FOV = 68
 
 const GARDEN_SCENERY_CLOSEUP = {
-  'rock-tiers': { x: -8, z: 6, aimY: 0.72, height: 1.15, camDx: 1.2, camDz: 7.8 },
-  fence: { x: 19, z: 24, aimY: 0.88, height: 1.05, camDx: -5.2, camDz: 5.5 },
-  stump: { x: -17, z: 27, aimY: 0.48, height: 0.62, camDx: 4.8, camDz: 5.2 },
+  'rock-tiers': { x: -8, z: 6, aimY: 0.68, height: 1.15, camDx: 0.8, camDz: 5.4 },
+  fence: { x: 19, z: 24, aimY: 0.96, height: 1.05, camDx: 6.5, camDz: 2.8 },
+  stump: { x: -17, z: 27, aimY: 0.52, height: 0.62, camDx: 3.2, camDz: 4.6 },
 }
 
 export function walkCaptureGroundY(x, z) {
