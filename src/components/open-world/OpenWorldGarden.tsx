@@ -320,6 +320,7 @@ export function OpenWorldGarden({
         mushroomCloseupPose: (plantId) => engine.mushroomDeterministicCapturePose(plantId),
         plantProjectedBoxScreenY: (plantId) => engine.plantProjectedBoxScreenY(plantId),
         plantProjectedAabbScreen: (plantId) => engine.plantProjectedAabbScreen(plantId),
+        plantPixelFill: () => engine.measureSoloPlantPixelFill(),
         pondCloseupPose: () => engine.pondCapturePose(),
       })
       if (sessionStorage.getItem('mg:tree-young-elder-capture') === '1') {
