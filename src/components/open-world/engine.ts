@@ -501,14 +501,6 @@ export class OpenWorldEngine {
     const box = bounds.isEmpty() ? precise.clone() : bounds.clone()
     if (!precise.isEmpty()) box.union(precise)
     if (box.isEmpty()) return null
-    if (
-      isWalkCaptureSession() &&
-      plantId.includes('elder') &&
-      plantId.endsWith('-walk') &&
-      this.plantArtStyle === 'pixel-art'
-    ) {
-      this.writeElderFramingBoxToSession(plantId, box)
-    }
     return box
   }
 
@@ -941,11 +933,9 @@ export class OpenWorldEngine {
         pose = applyAt(dist)
       }
     }
-    if (
-      isWalkCaptureSession() &&
-      this.plantArtStyle === 'pixel-art' &&
-      plantId.includes('elder')
-    ) {
+    if (isWalkCaptureSession() && this.plantArtStyle === 'pixel-art' && plantId.includes('elder')) {
+      const finalBox = this.plantElderFramingBox(plantId)
+      if (finalBox) this.writeElderFramingBoxToSession(plantId, finalBox)
       this.writeElderPoseToSession(plantId, pose)
     }
     return pose
@@ -962,14 +952,6 @@ export class OpenWorldEngine {
   }
 
   plantBoxVerticalNdc(plantId: string): { minNdcY: number; maxNdcY: number } | null {
-    if (
-      plantId.includes('elder') &&
-      plantId.endsWith('-walk') &&
-      this.plantArtStyle === 'watercolor'
-    ) {
-      const refNdc = this.plantElderReferenceVerticalNdc(plantId)
-      if (refNdc) return refNdc
-    }
     const box =
       plantId.includes('elder') && plantId.endsWith('-walk')
         ? (this.plantElderFramingBox(plantId) ?? this.plantWorldBox(plantId))
