@@ -801,13 +801,16 @@ export class OpenWorldEngine {
 
     let pose = applyAt(dist)
     if (this.renderer) {
-      for (let pass = 0; pass < 12; pass++) {
+      for (let pass = 0; pass < 16; pass++) {
         const ndc = this.projectBoxVerticalInView(box)
         if (!ndc) break
-        if (this.elderNdcFrameOk(ndc)) break
+        const spanHalf = (ndc.maxNdcY - ndc.minNdcY) / 2
+        const spanOk = spanHalf <= 0.752 && spanHalf >= 0.58
+        if (this.elderNdcFrameOk(ndc) && spanOk) break
         const topScale = ndc.maxNdcY > 0.8 ? ndc.maxNdcY / 0.78 : 1
         const botScale = ndc.minNdcY < -0.8 ? Math.abs(ndc.minNdcY) / 0.78 : 1
-        const scale = Math.max(topScale, botScale, 1.02)
+        const spanScale = spanHalf > 0.752 ? spanHalf / 0.66 : spanHalf < 0.58 ? 0.66 / Math.max(spanHalf, 0.2) : 1
+        const scale = Math.max(topScale, botScale, spanScale, 1.02)
         dist *= scale
         pose = applyAt(dist)
       }
