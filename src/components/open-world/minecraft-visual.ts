@@ -582,8 +582,11 @@ export function minecraftAnalyticSurfaceY(x: number, z: number): number {
 
 export function applyVoxelPlantNightTint(root: THREE.Object3D, palette: ScenePalette): void {
   const star = palette.starAlpha ?? 0
+  const dusk = star > 0.18 && star < 0.72
   const twilight = star > 0.22
-  const tint = new THREE.Color(twilight ? '#5a6e62' : '#ffffff')
+  const tint = dusk
+    ? new THREE.Color('#8aaa72').lerp(new THREE.Color('#e8a060'), 0.42)
+    : new THREE.Color(twilight ? '#5a6e62' : '#ffffff')
   root.traverse((obj) => {
     if (!(obj instanceof THREE.Mesh)) return
     const mat = obj.material

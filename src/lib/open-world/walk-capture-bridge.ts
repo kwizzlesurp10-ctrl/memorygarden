@@ -63,6 +63,15 @@ export interface WalkCaptureBridge {
   plantProjectedAabbScreen?: (
     plantId: string,
   ) => { left: number; right: number; top: number; bottom: number } | null
+  plantPixelFill?: () => {
+    top: number
+    bottom: number
+    left: number
+    right: number
+    height: number
+    width: number
+    treePixels: number
+  } | null
   pondCloseupPose?: () => WalkCapturePose | null
 }
 

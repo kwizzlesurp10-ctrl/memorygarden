@@ -22,6 +22,10 @@ import { WALK_SYNTHETIC_POND } from '@/lib/open-world/walk-pond-capture'
 import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
 import { Cc0SceneryLayer, defaultCc0GardenSeed } from './cc0-scenery'
 import { playWaterSfx } from '@/lib/water-sound'
+import {
+  measurePlantPixelFillFromGl,
+  type PlantPixelFill,
+} from '@/lib/open-world/capture-pixel-fill'
 
 export interface EngineHooks {
   onProximity: (plant: WorldPlant | null) => void
@@ -113,6 +117,7 @@ export class OpenWorldEngine {
         antialias: this.plantArtStyle !== 'pixel-art',
         alpha: false,
         powerPreference: 'high-performance',
+        preserveDrawingBuffer: isWalkCaptureSession(),
       })
     } catch {
       this.failed = true
@@ -266,19 +271,33 @@ export class OpenWorldEngine {
     }
     this.cc0Scenery?.setPalette(palette)
     this.applyLighting()
-    this.renderer?.setClearColor(palette.sky[2] ?? '#20123a', 1)
-    if (this.scene.fog instanceof THREE.Fog) {
-      const fogColor = new THREE.Color(palette.sky[2] ?? '#20123a')
-      const star = palette.starAlpha ?? 0
-      if (star > 0.22) fogColor.lerp(new THREE.Color(palette.hills[1] ?? palette.bank), 0.28)
-      this.scene.fog.color.copy(fogColor)
-      if (star > 0.35 && !this.captureBackdrop) {
-        fogColor.lerp(new THREE.Color(palette.sky[3] ?? palette.hills[1] ?? palette.bank), 0.42)
-        this.scene.fog.near = 16
-        this.scene.fog.far = 88
-      } else if (!this.captureBackdrop) {
-        this.scene.fog.near = 20
-        this.scene.fog.far = 82
+    const star = palette.starAlpha ?? 0
+    const pixelDusk = this.plantArtStyle === 'pixel-art' && star > 0.18 && star < 0.72
+    if (pixelDusk) {
+      const tw = Math.min(1, (star - 0.18) / 0.5)
+      const horizonAmber = new THREE.Color('#ffb86b')
+      const skyViolet = new THREE.Color(palette.sky[3] ?? palette.sky[2] ?? '#9a78c8')
+      const duskSky = skyViolet.clone().lerp(horizonAmber, 0.38 + tw * 0.32)
+      this.renderer?.setClearColor(duskSky, 1)
+      if (this.scene.fog instanceof THREE.Fog) {
+        this.scene.fog.color.copy(duskSky)
+        this.scene.fog.near = 22
+        this.scene.fog.far = 76
+      }
+    } else {
+      this.renderer?.setClearColor(palette.sky[2] ?? '#20123a', 1)
+      if (this.scene.fog instanceof THREE.Fog) {
+        const fogColor = new THREE.Color(palette.sky[2] ?? '#20123a')
+        if (star > 0.22) fogColor.lerp(new THREE.Color(palette.hills[1] ?? palette.bank), 0.28)
+        this.scene.fog.color.copy(fogColor)
+        if (star > 0.35 && !this.captureBackdrop) {
+          fogColor.lerp(new THREE.Color(palette.sky[3] ?? palette.hills[1] ?? palette.bank), 0.42)
+          this.scene.fog.near = 16
+          this.scene.fog.far = 88
+        } else if (!this.captureBackdrop) {
+          this.scene.fog.near = 20
+          this.scene.fog.far = 82
+        }
       }
     }
     if (this.captureBackdrop) this.applyCaptureFog()
@@ -437,14 +456,39 @@ export class OpenWorldEngine {
   }
 
   plantScreenCoverage(plantId: string, pose?: WalkCapturePose): number {
-    const box =
-      plantId.includes('elder') ? this.plantFramingBox(plantId) : this.plantWorldBox(plantId)
+    if (plantId.includes('elder') && isWalkCaptureSession()) {
+      const saved = pose ? { ...this.player } : null
+      if (pose) {
+        this.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
+      }
+      const fill = this.measureSoloPlantPixelFill()
+      if (saved) {
+        this.player.x = saved.x
+        this.player.z = saved.z
+        this.player.y = saved.y
+        this.player.yaw = saved.yaw
+        this.player.pitch = saved.pitch
+        this.applyCamera()
+      }
+      return fill?.height ?? 0
+    }
+    const box = this.plantWorldBox(plantId)
     if (!box) return 0
     if (pose) {
       return this.withCapturePose(pose, () => this.projectedScreenSpan(box))
     }
     this.renderOnce()
     return this.projectedScreenSpan(box)
+  }
+
+  measureSoloPlantPixelFill(): PlantPixelFill | null {
+    if (!this.renderer) return null
+    this.renderOnce()
+    const gl = this.renderer.getContext()
+    const w = this.canvas.width
+    const h = this.canvas.height
+    if (w < 8 || h < 8) return null
+    return measurePlantPixelFillFromGl(gl, w, h)
   }
 
   private projectBoxCenter(box: THREE.Box3): THREE.Vector3 {
@@ -709,199 +753,76 @@ export class OpenWorldEngine {
   }
 
   elderDeterministicCapturePose(plantId: string): WalkCapturePose | null {
-    const box = this.plantFramingBox(plantId)
+    if (!isWalkCaptureSession() || !this.renderer) {
+      return this.elderCapturePoseFromGeometry(plantId)
+    }
     const worldBox = this.plantWorldBox(plantId)
     const wp = this.world.plants.find((p) => p.id === plantId)
-    if (!box || !worldBox || !wp) return null
-    const ground = box.min.y
-    const H = box.max.y - ground
+    if (!worldBox || !wp) return null
+    const size = worldBox.getSize(new THREE.Vector3())
+    const cx = (worldBox.min.x + worldBox.max.x) / 2
+    const cz = (worldBox.min.z + worldBox.max.z) / 2
+    const aimY = worldBox.min.y + size.y * 0.5
+    const aim = new THREE.Vector3(cx, aimY, cz)
+    const yaw = Math.PI / 2
+    const targetHeight = 0.7
+    let best: WalkCapturePose | null = null
+    let bestScore = Infinity
+
+    for (let step = 0; step < 17; step++) {
+      const dist = 5.75 + (step / 16) * 4.85
+      const camX = cx + Math.sin(yaw) * dist
+      const camZ = cz + Math.cos(yaw) * dist
+      const foot = this.terrainFootY(camX, camZ)
+      const eyeY = foot + 1.78
+      const posed = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+      const pitch = Math.min(posed.pitch, -0.028)
+      this.setPlayerPose(camX, camZ, posed.yaw, pitch, eyeY)
+      this.camera.rotation.x = pitch
+      this.renderOnce()
+      const fill = this.measureSoloPlantPixelFill()
+      if (!fill) continue
+      const clipPen = fill.top < 0.03 ? 40 + (0.03 - fill.top) * 80 : 0
+      const score =
+        Math.abs(fill.height - targetHeight) +
+        Math.abs(fill.top - 0.09) * 2.2 +
+        clipPen +
+        (fill.width < 0.22 ? (0.22 - fill.width) * 4 : 0)
+      if (
+        fill.top >= 0.035 &&
+        fill.top <= 0.2 &&
+        fill.height >= 0.65 &&
+        fill.height <= 0.76 &&
+        fill.width >= 0.24
+      ) {
+        return { ...posed, pitch, x: camX, z: camZ, eyeY }
+      }
+      if (fill.top >= 0.03 && score < bestScore) {
+        bestScore = score
+        best = { ...posed, pitch, x: camX, z: camZ, eyeY }
+      }
+    }
+
+    if (best) return best
+    return this.elderCapturePoseFromGeometry(plantId)
+  }
+
+  private elderCapturePoseFromGeometry(plantId: string): WalkCapturePose | null {
+    const box = this.plantWorldBox(plantId)
+    if (!box) return null
     const cx = (box.min.x + box.max.x) / 2
     const cz = (box.min.z + box.max.z) / 2
-    const aimY = ground + H * 0.44
-    const aim = new THREE.Vector3(cx, aimY, cz)
-    let bestPose: WalkCapturePose | null = null
-    let bestScore = Infinity
-    const yaws = [Math.PI / 2, -Math.PI / 2, Math.PI / 4, -Math.PI / 4]
-    const targetSpan = 0.7
-    const targetTop = 0.1
-    for (let pass = 0; pass < 72; pass++) {
-      const dist = 10.15 + (pass / 71) * 2.35
-      const yaw = yaws[pass % yaws.length]!
-      const camX = cx + Math.sin(yaw) * dist
-      const camZ = cz + Math.cos(yaw) * dist
-      const foot = this.terrainFootY(camX, camZ)
-      const eyeY = foot + 1.82 + (pass % 5) * 0.04
-      const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-      const pitch = Math.min(pose.pitch, -0.035)
-      if (pitch > 0.12) continue
-      this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
-      this.camera.rotation.x = pitch
-      this.camera.updateProjectionMatrix()
-      this.renderOnce()
-      const span = this.projectedScreenSpan(box)
-      const canopy = this.plantProjectedBoxScreenYFromBox(worldBox)
-      const top = canopy?.top ?? 0.5
-      const proj = this.plantProjectedAabbScreenFromBox(box)
-      const widthSpan = proj ? proj.right - proj.left : 0
-      if (
-        top >= 0.04 &&
-        top <= 0.2 &&
-        span >= targetSpan - 0.03 &&
-        span <= targetSpan + 0.06 &&
-        widthSpan >= 0.42
-      ) {
-        return this.refineElderPoseForCanopy(
-          { ...pose, pitch, x: camX, z: camZ, eyeY },
-          worldBox,
-          box,
-          aim,
-        )
-      }
-      const clipPen =
-        top < 0.02 ? 20 + Math.abs(top) * 16 : span > 0.92 ? 18 : span > 0.84 ? 8 : 0
-      const topPen = top < 0.06 ? 6 + Math.abs(0.06 - top) * 6 : top > 0.22 ? (top - 0.22) * 8 : 0
-      const widthPen = widthSpan < 0.38 ? (0.38 - widthSpan) * 5 : 0
-      const score =
-        Math.abs(span - targetSpan) + Math.abs(top - targetTop) * 2.5 + topPen + widthPen + clipPen
-      if (span > 0.88 || top < 0.02) continue
-      if (score < bestScore) {
-        bestScore = score
-        bestPose = { ...pose, pitch, x: camX, z: camZ, eyeY }
-      }
-    }
-  if (bestPose) {
-    this.setPlayerPose(bestPose.x, bestPose.z, bestPose.yaw, bestPose.pitch, bestPose.eyeY)
-    this.camera.rotation.x = bestPose.pitch
-    this.renderOnce()
-    const span = this.projectedScreenSpan(box)
-    const canopy = this.plantProjectedBoxScreenYFromBox(worldBox)
-    const top = canopy?.top ?? 0.5
-    if (span >= targetSpan - 0.05 && span <= 0.88 && top >= 0.04 && top <= 0.24) {
-      return this.refineElderPoseForCanopy(bestPose, worldBox, box, aim)
-    }
-  }
-  const slack = this.elderCapturePoseAtSlack(box, 0.96, -0.045)
-  if (slack) {
-    this.setPlayerPose(slack.x, slack.z, slack.yaw, slack.pitch, slack.eyeY)
-    this.camera.rotation.x = slack.pitch
-    this.renderOnce()
-    const worldTop = this.plantProjectedBoxScreenYFromBox(worldBox)?.top ?? 0.5
-    if (
-      slack.screenSpan >= targetSpan - 0.05 &&
-      slack.screenSpan <= 0.88 &&
-      worldTop >= 0.04 &&
-      worldTop <= 0.24
-    ) {
-      const { screenSpan: _s, screenTop: _t, ...pose } = slack
-      return this.refineElderPoseForCanopy(pose, worldBox, box, aim)
-    }
-  }
-  if (bestPose) return this.refineElderPoseForCanopy(bestPose, worldBox, box, aim)
-  const yaw = Math.PI / 2
-  const dist = 13.15
-  const camX = cx + Math.sin(yaw) * dist
-  const camZ = cz + Math.cos(yaw) * dist
-  const foot = this.terrainFootY(camX, camZ)
-  const eyeY = foot + 1.82
-  const fallback = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-  const pitch = Math.min(fallback.pitch, -0.035)
-  return this.refineElderPoseForCanopy(
-    { ...fallback, pitch, x: camX, z: camZ, eyeY },
-    worldBox,
-    box,
-    aim,
-  )
-  }
-
-  private refineElderPoseForCanopy(
-    pose: WalkCapturePose,
-    worldBox: THREE.Box3,
-    frameBox: THREE.Box3,
-    aim: THREE.Vector3,
-  ): WalkCapturePose {
-    const cx = aim.x
-    const cz = aim.z
-    const yaw = pose.yaw
-    const footBase = this.terrainFootY(pose.x, pose.z)
-    const eyeY = Math.max(footBase + 1.75, pose.eyeY)
-    let lo = 11.4
-    let hi = 16.4
-    let best = pose
-    let bestScore = Infinity
-
-    for (let step = 0; step < 13; step++) {
-      const dist = (lo + hi) / 2
-      const camX = cx + Math.sin(yaw) * dist
-      const camZ = cz + Math.cos(yaw) * dist
-      const foot = this.terrainFootY(camX, camZ)
-      const trialEye = Math.max(foot + 1.75, eyeY)
-      const trial = this.poseLookAt(aim, new THREE.Vector3(camX, trialEye, camZ), trialEye)
-      const pitch = Math.min(trial.pitch, -0.03)
-      this.setPlayerPose(camX, camZ, trial.yaw, pitch, trialEye)
-      this.camera.rotation.x = pitch
-      this.renderOnce()
-      const top = this.plantProjectedBoxScreenYFromBox(worldBox)?.top ?? 0.5
-      const span = this.projectedScreenSpan(frameBox)
-      if (top < 0.038) {
-        lo = dist
-        continue
-      }
-      const score = Math.abs(span - 0.72) + Math.abs(top - 0.1) * 3 + (span < 0.66 ? 0.8 : 0)
-      if (score < bestScore) {
-        bestScore = score
-        best = { ...trial, pitch, x: camX, z: camZ, eyeY: trialEye }
-      }
-      if (span < 0.668) {
-        hi = dist
-        continue
-      }
-      if (top <= 0.2 && span <= 0.85 && span >= 0.682) {
-        best = { ...trial, pitch, x: camX, z: camZ, eyeY: trialEye }
-        break
-      }
-      if (top > 0.2) lo = dist
-      else hi = dist
-    }
-    if (bestScore === Infinity) {
-      const dist = hi
-      const camX = cx + Math.sin(yaw) * dist
-      const camZ = cz + Math.cos(yaw) * dist
-      const foot = this.terrainFootY(camX, camZ)
-      const trialEye = Math.max(foot + 1.75, eyeY)
-      const trial = this.poseLookAt(aim, new THREE.Vector3(camX, trialEye, camZ), trialEye)
-      const pitch = Math.min(trial.pitch, -0.03)
-      best = { ...trial, pitch, x: camX, z: camZ, eyeY: trialEye }
-    }
-    this.setPlayerPose(best.x, best.z, best.yaw, best.pitch, best.eyeY)
-    this.camera.rotation.x = best.pitch
-    this.renderOnce()
-    let finalTop = this.plantProjectedBoxScreenYFromBox(worldBox)?.top ?? 0.5
-    let finalSpan = this.projectedScreenSpan(frameBox)
-    if (finalTop < 0.04) {
-      const startDist = Math.hypot(best.x - cx, best.z - cz)
-      for (let dist = startDist; dist <= 17.4; dist += 0.35) {
-        const camX = cx + Math.sin(yaw) * dist
-        const camZ = cz + Math.cos(yaw) * dist
-        const foot = this.terrainFootY(camX, camZ)
-        const trialEye = Math.max(foot + 1.75, eyeY)
-        const trial = this.poseLookAt(aim, new THREE.Vector3(camX, trialEye, camZ), trialEye)
-        const pitch = Math.min(trial.pitch, -0.03)
-        this.setPlayerPose(camX, camZ, trial.yaw, pitch, trialEye)
-        this.camera.rotation.x = pitch
-        this.renderOnce()
-        const top = this.plantProjectedBoxScreenYFromBox(worldBox)?.top ?? 0.5
-        const span = this.projectedScreenSpan(frameBox)
-        const candidate = { ...trial, pitch, x: camX, z: camZ, eyeY: trialEye }
-        const score = Math.abs(span - 0.71) + Math.abs(top - 0.1) * 2.6
-        if (top >= 0.04 && span >= 0.655 && score < Math.abs(finalSpan - 0.71) + 2) {
-          best = candidate
-          finalTop = top
-          finalSpan = span
-          if (top >= 0.04 && span >= 0.675) break
-        }
-      }
-    }
-    return best
+    const H = box.max.y - box.min.y
+    const aim = new THREE.Vector3(cx, box.min.y + H * 0.5, cz)
+    const yaw = Math.PI / 2
+    const dist = 8.35
+    const camX = cx + Math.sin(yaw) * dist
+    const camZ = cz + Math.cos(yaw) * dist
+    const foot = this.terrainFootY(camX, camZ)
+    const eyeY = foot + 1.78
+    const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+    const pitch = Math.min(pose.pitch, -0.03)
+    return { ...pose, pitch, x: camX, z: camZ, eyeY }
   }
 
   private projectBoxVerticalInView(box: THREE.Box3): { minNdcY: number; maxNdcY: number } | null {
@@ -1018,7 +939,7 @@ export class OpenWorldEngine {
     const group = this.findPlantGroup(plantId)
     if (!box || !group) return null
 
-  if (isWalkCaptureSession() && plantId.endsWith('-walk')) {
+    if (isWalkCaptureSession() && plantId.endsWith('-walk')) {
       const wp = this.world.plants.find((p) => p.id === plantId)
       const size = box.getSize(new THREE.Vector3())
       if (plantId.includes('tree')) {
@@ -1549,10 +1470,11 @@ export class OpenWorldEngine {
 
   private applyLighting(): void {
     if (this.plantArtStyle === 'pixel-art') {
-      const star = this.palette.starAlpha ?? 0
-      const night = star > 0.22
-      const dusk = !night && star > 0.05
-      if (!night && !dusk) {
+      const p = this.palette
+      const star = p.starAlpha ?? 0
+      const dusk = star > 0.18 && star < 0.72
+      const deepNight = star >= 0.72
+      if (!dusk && !deepNight) {
         this.hemi.color.set('#c8e8ff')
         this.hemi.groundColor.set('#6b9a48')
         this.hemi.intensity = 1.12
@@ -1561,31 +1483,38 @@ export class OpenWorldEngine {
         this.sun.color.set('#fff8e8')
         this.sun.intensity = 0.92
         this.sun.position.set(18, 38, -14)
+        this.rim.color.set('#ffd8a8')
         this.rim.position.set(-12, 22, 18)
         this.rim.intensity = 0.06
       } else if (dusk) {
-        const p = this.palette
-        const tw = (star - 0.05) / 0.17
-        const skyWash = new THREE.Color(p.sky[3] ?? p.sky[2] ?? '#c8e8ff')
-        this.hemi.color.set('#c8e8ff').lerp(skyWash, 0.35 + tw * 0.25)
-        this.hemi.groundColor.set('#6b9a48').lerp(new THREE.Color(p.hills[1] ?? '#5a7f38'), 0.35 * tw)
-        this.hemi.intensity = 1.06 + tw * 0.06
-        this.fill.color.set('#e8f0ff').lerp(new THREE.Color(p.glow ?? '#ffd4a8'), 0.38 * tw)
-        this.fill.intensity = 0.48 + tw * 0.14
-        this.sun.color.set('#fff4e0').lerp(new THREE.Color(p.sun?.disk ?? '#ffb878'), 0.42 * tw)
-        this.sun.intensity = 0.88 + tw * 0.1
+        const tw = Math.min(1, (star - 0.18) / 0.5)
+        const horizonAmber = new THREE.Color('#ffb86b')
+        const skyViolet = new THREE.Color(p.sky[3] ?? p.sky[2] ?? '#9a78c8')
+        this.hemi.color.set('#c8e8ff').lerp(skyViolet, 0.55 + tw * 0.25)
+        this.hemi.groundColor.set('#6b9a48').lerp(horizonAmber, 0.22 + tw * 0.18)
+        this.hemi.intensity = 1.08 + tw * 0.12
+        this.fill.color.set('#ffe8c8').lerp(horizonAmber, 0.35 + tw * 0.35)
+        this.fill.intensity = 0.52 + tw * 0.22
+        this.sun.color.set('#fff0d8').lerp(horizonAmber, 0.5 + tw * 0.35)
+        this.sun.intensity = 0.78 + tw * 0.16
         if (p.sun) {
           const u = p.sun.x / 1200 - 0.5
           const v = (470 - p.sun.y) / 400
-          this.sun.position.set(18 + u * 22, 34 - v * 8, -14)
+          this.sun.position.set(u * 38, 10 + v * 22, -16)
         } else {
-          this.sun.position.set(18, 34, -14)
+          this.sun.position.set(8, 16, -16)
         }
-        this.rim.color.set('#ffcf9a')
-        this.rim.position.set(-10, 20, 16)
-        this.rim.intensity = 0.12 + tw * 0.22
+        this.rim.color.set('#ffba6a')
+        this.rim.position.set(-14, 14, 22)
+        this.rim.intensity = 0.48 + tw * 0.42
+        const duskSky = skyViolet.clone().lerp(horizonAmber, 0.38 + tw * 0.32)
+        this.renderer?.setClearColor(duskSky, 1)
+        if (this.scene.fog instanceof THREE.Fog) {
+          this.scene.fog.color.copy(duskSky)
+          this.scene.fog.near = 22
+          this.scene.fog.far = 76
+        }
       } else {
-        const p = this.palette
         const skyWash = new THREE.Color(p.sky[3] ?? p.sky[2] ?? '#88aacc')
         this.hemi.color.set(p.sky[1] ?? '#88aacc').lerp(skyWash, 0.35)
         const groundColor = new THREE.Color(p.hills[1] ?? p.bank)
