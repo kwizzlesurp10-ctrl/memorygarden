@@ -391,6 +391,30 @@ export class OpenWorldEngine {
     return `mg:elder-framing-aabb:${plantId}`
   }
 
+  private elderPoseSessionKey(plantId: string): string {
+    return `mg:elder-capture-pose:${plantId}`
+  }
+
+  private readElderPoseFromSession(plantId: string): WalkCapturePose | null {
+    if (typeof sessionStorage === 'undefined') return null
+    try {
+      const raw = sessionStorage.getItem(this.elderPoseSessionKey(plantId))
+      if (!raw) return null
+      return JSON.parse(raw) as WalkCapturePose
+    } catch {
+      return null
+    }
+  }
+
+  private writeElderPoseToSession(plantId: string, pose: WalkCapturePose): void {
+    if (typeof sessionStorage === 'undefined') return
+    try {
+      sessionStorage.setItem(this.elderPoseSessionKey(plantId), JSON.stringify(pose))
+    } catch {
+      /* quota */
+    }
+  }
+
   private readElderFramingBoxFromSession(plantId: string): THREE.Box3 | null {
     if (typeof sessionStorage === 'undefined') return null
     try {
@@ -846,6 +870,19 @@ export class OpenWorldEngine {
   }
 
   private elderGeometryCapturePose(plantId: string): WalkCapturePose | null {
+    if (
+      isWalkCaptureSession() &&
+      this.plantArtStyle === 'watercolor' &&
+      plantId.includes('elder')
+    ) {
+      const pinned = this.readElderPoseFromSession(plantId)
+      if (pinned) {
+        this.setPlayerPose(pinned.x, pinned.z, pinned.yaw, pinned.pitch, pinned.eyeY)
+        this.camera.rotation.x = pinned.pitch
+        this.renderOnce()
+        return pinned
+      }
+    }
     const box = this.plantElderFramingBox(plantId)
     if (!box) return null
     const center = box.getCenter(new THREE.Vector3())
@@ -885,6 +922,13 @@ export class OpenWorldEngine {
         dist *= scale
         pose = applyAt(dist)
       }
+    }
+    if (
+      isWalkCaptureSession() &&
+      this.plantArtStyle === 'pixel-art' &&
+      plantId.includes('elder')
+    ) {
+      this.writeElderPoseToSession(plantId, pose)
     }
     return pose
   }
