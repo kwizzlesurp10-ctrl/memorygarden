@@ -387,13 +387,17 @@ export class OpenWorldEngine {
     return box.isEmpty() ? null : box
   }
 
-  /** Full tree bounds from mesh vertices — used for elder close-up framing. */
+  /** Elder framing bounds: union of precise vertices and object bounds (watercolor billboards). */
   private plantPreciseWorldBox(plantId: string): THREE.Box3 | null {
     const group = this.findPlantGroup(plantId)
     if (!group) return null
     group.updateWorldMatrix(true, true)
-    const box = new THREE.Box3().setFromObject(group, true)
-    return box.isEmpty() ? null : box
+    const bounds = new THREE.Box3().setFromObject(group)
+    const precise = new THREE.Box3().setFromObject(group, true)
+    if (bounds.isEmpty() && precise.isEmpty()) return null
+    const merged = bounds.isEmpty() ? precise.clone() : bounds.clone()
+    if (!precise.isEmpty()) merged.union(precise)
+    return merged
   }
 
   /** Tighter AABB for camera framing — full walk bounds include sparse voxel wings that read smaller on screen. */
