@@ -496,11 +496,11 @@ export class OpenWorldEngine {
     const group = this.findPlantGroup(plantId)
     if (!group) return null
     group.updateWorldMatrix(true, true)
-    const bounds = new THREE.Box3().setFromObject(group)
     const precise = new THREE.Box3().setFromObject(group, true)
-    const box = bounds.isEmpty() ? precise.clone() : bounds.clone()
-    if (!precise.isEmpty()) box.union(precise)
-    if (box.isEmpty()) return null
+    if (!precise.isEmpty()) return precise
+    const bounds = new THREE.Box3().setFromObject(group)
+    if (bounds.isEmpty()) return null
+    return bounds
     return box
   }
 
