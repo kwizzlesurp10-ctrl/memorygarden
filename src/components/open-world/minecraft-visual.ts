@@ -489,7 +489,11 @@ function buildOakTree(
   for (let y = 0; y < trunkH; y++) {
     placeBlock(g, 0, y, 0, bark)
   }
-  placeLeafLayer(g, trunkH, 1, leaf, true)
+  placeLeafLayer(g, trunkH, 1, leaf, true, seed + 18)
+  if (idx >= 3) {
+    placeLeafLayer(g, trunkH + 1, 1, leaf, false, seed + 19)
+    placeOakPlusCap(g, trunkH + 2, leaf)
+  }
 }
 
 function buildFlower(
@@ -578,8 +582,11 @@ export function minecraftAnalyticSurfaceY(x: number, z: number): number {
 
 export function applyVoxelPlantNightTint(root: THREE.Object3D, palette: ScenePalette): void {
   const star = palette.starAlpha ?? 0
+  const dusk = star > 0.18 && star < 0.72
   const twilight = star > 0.22
-  const tint = new THREE.Color(twilight ? '#5a6e62' : '#ffffff')
+  const tint = dusk
+    ? new THREE.Color('#8aaa72').lerp(new THREE.Color('#e8a060'), 0.42)
+    : new THREE.Color(twilight ? '#5a6e62' : '#ffffff')
   root.traverse((obj) => {
     if (!(obj instanceof THREE.Mesh)) return
     const mat = obj.material

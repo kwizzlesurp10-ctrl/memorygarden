@@ -1,10 +1,19 @@
 /**
  * Dusk (19:30) walk overview — before/after pixel-art on pinned cluster pose.
  */
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { spawnSync } from 'node:child_process'
 import { chromium } from 'playwright'
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const afterSha =
+  process.env.AFTER_SHA ||
+  spawnSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).stdout.trim()
+const beforeSha =
+  process.env.BEFORE_SHA ||
+  spawnSync('git', ['rev-parse', '--short', 'main'], { cwd: repoRoot, encoding: 'utf8' }).stdout.trim()
 
 const afterUrl = process.env.AFTER_URL || 'http://127.0.0.1:4174'
 const beforeUrl = process.env.BEFORE_URL || 'http://127.0.0.1:4173'
@@ -163,9 +172,12 @@ try {
     if (!pose) throw new Error(`No overview pose at ${url}`)
     await page.evaluate((p) => window.__mgWalkCapture?.setPose?.(p), pose)
     await page.waitForTimeout(800)
-    const file = resolve(outDir, `minecraft-walk-dusk-${phase}-pixel-art-desktop.png`)
+    const shaTag = phase === 'after' ? afterSha : beforeSha
+    const file = resolve(outDir, `minecraft-walk-dusk-${phase}-${shaTag}-pixel-art-desktop.png`)
+    const legacy = resolve(outDir, `minecraft-walk-dusk-${phase}-pixel-art-desktop.png`)
     await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
-    console.log('Wrote', file)
+    writeFileSync(legacy, readFileSync(file))
+    console.log('Wrote', file, legacy)
     await context.close()
   }
 } finally {
