@@ -282,26 +282,28 @@ export function buildTerrain(
   }
 
   // ── Pond & Bank ────────────────────────────────────────────────────────
-  const waterBase = palette.waterTint[1] ?? '#1a0f2b'
-  const waterShallow = palette.waterTint[0] ?? palette.ripple
+  const waterShallow = palette.waterTint[0] ?? '#5ab8c8'
+  const waterDeep = palette.waterTint[1] ?? '#1a5870'
+  const skySheen = palette.sky[2] ?? palette.ripple ?? '#a8d8f0'
+  const pixelWaterTex = minecraftMode ? track(minecraftWaterBlockTexture(palette)) : null
   const waterMat = track(
-    minecraftMode
+    minecraftMode && pixelWaterTex
       ? new THREE.MeshLambertMaterial({
-          map: track(minecraftWaterBlockTexture(palette)),
-          color: new THREE.Color(twilight ? '#9ab8e0' : '#c8e8ff'),
+          map: pixelWaterTex,
+          color: new THREE.Color(isNight ? '#3a6898' : twilight ? '#78b8d8' : '#88cce8'),
           transparent: true,
-          opacity: 0.97,
-          emissive: new THREE.Color(palette.ripple),
-          emissiveIntensity: twilight ? 0.08 + starAlpha * 0.06 : 0.14,
+          opacity: 0.94,
+          emissive: new THREE.Color(isNight ? '#5a88c0' : skySheen),
+          emissiveIntensity: isNight ? 0.28 + starAlpha * 0.12 : twilight ? 0.16 : 0.22,
         })
       : new THREE.MeshStandardMaterial({
-          color: waterBase,
-          roughness: 0.08,
-          metalness: 0.35,
+          color: new THREE.Color(waterShallow).lerp(new THREE.Color(waterDeep), 0.38),
+          roughness: isNight ? 0.06 : 0.04,
+          metalness: 0.48,
           transparent: true,
-          opacity: 0.88,
-          emissive: palette.ripple,
-          emissiveIntensity: twilight ? 0.1 + starAlpha * 0.08 : 0.16,
+          opacity: isNight ? 0.82 : 0.86,
+          emissive: new THREE.Color(skySheen),
+          emissiveIntensity: isNight ? 0.22 + starAlpha * 0.1 : 0.2,
         }),
   )
   const waterDiameter = world.pond.radius * 2
@@ -317,20 +319,45 @@ export function buildTerrain(
   water.position.set(world.pond.x, minecraftMode ? 0.085 : 0.05, world.pond.z)
   root.add(water)
 
+  const depthMat = track(
+    minecraftMode
+      ? new THREE.MeshLambertMaterial({
+          color: new THREE.Color('#1a5878'),
+          transparent: true,
+          opacity: 0.55,
+        })
+      : new THREE.MeshStandardMaterial({
+          color: new THREE.Color(waterDeep),
+          roughness: 0.2,
+          metalness: 0.15,
+          transparent: true,
+          opacity: 0.72,
+        }),
+  )
+  const waterDepth = new THREE.Mesh(
+    track(new THREE.CircleGeometry(world.pond.radius * 0.88, 32)),
+    depthMat,
+  )
+  waterDepth.rotation.x = -Math.PI / 2
+  waterDepth.position.set(world.pond.x, minecraftMode ? 0.078 : 0.042, world.pond.z)
+  root.add(waterDepth)
+
   const foamMat = track(
     minecraftMode
       ? new THREE.MeshLambertMaterial({
-          color: new THREE.Color(palette.silSoft ?? '#c8e8f0').lerp(new THREE.Color(palette.ripple), 0.35),
+          color: new THREE.Color('#e8f8ff'),
+          emissive: new THREE.Color('#f8ffff'),
+          emissiveIntensity: isNight ? 0.15 : 0.35,
           transparent: true,
-          opacity: 0.72,
+          opacity: 0.88,
         })
       : new THREE.MeshStandardMaterial({
-          color: new THREE.Color(palette.silSoft ?? '#b8d8e8').lerp(new THREE.Color(waterShallow), 0.4),
-          roughness: 0.95,
+          color: new THREE.Color('#e8f4f8'),
+          roughness: 0.92,
           transparent: true,
-          opacity: twilight ? 0.55 : 0.65,
-          emissive: palette.ripple,
-          emissiveIntensity: 0.06,
+          opacity: isNight ? 0.5 : 0.72,
+          emissive: '#f0f8ff',
+          emissiveIntensity: isNight ? 0.12 : 0.25,
         }),
   )
   const foam = new THREE.Mesh(
@@ -1114,6 +1141,11 @@ export function buildTerrain(
       auroraRibbons.forEach((rib, idx) => {
         rib.rotation.y = Math.sin(time * 0.0004 + idx) * 0.12
       })
+
+      if (pixelWaterTex) {
+        const drift = time * 0.00006
+        pixelWaterTex.offset.set(drift, drift * 0.65)
+      }
     },
     dispose: () => {
       disposables.forEach((d) => d.dispose())
@@ -1153,8 +1185,40 @@ export function buildTerrain(
           }
         }
       }
-      waterMat.color.set(next.waterTint[1] ?? '#1a0f2b')
-      waterMat.emissive.set(next.ripple)
+      const nextShallow = next.waterTint[0] ?? '#5ab8c8'
+      const nextDeep = next.waterTint[1] ?? '#1a5870'
+      const nextSheen = next.sky[2] ?? next.ripple ?? '#a8d8f0'
+      if (minecraftMode && waterMat instanceof THREE.MeshLambertMaterial) {
+        if (nextNight) {
+          waterMat.color.set('#2a5888')
+          waterMat.emissive.set('#6a98d0')
+          waterMat.emissiveIntensity = 0.32 + star * 0.14
+        } else if (twilight) {
+          waterMat.color.set('#78b8d8')
+          waterMat.emissive.set(nextSheen)
+          waterMat.emissiveIntensity = 0.14 + star * 0.06
+        } else {
+          waterMat.color.set('#68b8d8')
+          waterMat.emissive.set(nextSheen)
+          waterMat.emissiveIntensity = 0.22
+        }
+      } else if (waterMat instanceof THREE.MeshStandardMaterial) {
+        waterMat.color.copy(new THREE.Color(nextShallow).lerp(new THREE.Color(nextDeep), 0.38))
+        waterMat.emissive.set(nextSheen)
+        waterMat.emissiveIntensity = nextNight ? 0.22 + star * 0.1 : 0.2
+        waterMat.metalness = 0.48
+        waterMat.roughness = nextNight ? 0.06 : 0.04
+      }
+      if (depthMat instanceof THREE.MeshLambertMaterial) {
+        depthMat.color.set(nextNight ? '#0a3858' : '#1a5878')
+      } else if (depthMat instanceof THREE.MeshStandardMaterial) {
+        depthMat.color.set(nextDeep)
+      }
+      if (foamMat instanceof THREE.MeshLambertMaterial) {
+        foamMat.emissiveIntensity = nextNight ? 0.14 : 0.35
+      } else if (foamMat instanceof THREE.MeshStandardMaterial) {
+        foamMat.emissiveIntensity = nextNight ? 0.12 : 0.25
+      }
       const nextHill = next.hills[1] ?? next.hills[0] ?? next.silSoft
       hillMat.color.set(nextHill)
       if (twilight) {

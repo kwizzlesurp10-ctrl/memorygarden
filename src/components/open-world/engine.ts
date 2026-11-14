@@ -18,6 +18,7 @@ import {
 } from './minecraft-visual'
 import { createPlantGroup, disposePlantGroup } from './plant-mesh'
 import { buildTerrain, type TerrainHandle } from './terrain'
+import { WALK_SYNTHETIC_POND } from '@/lib/open-world/walk-pond-capture'
 import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
 import { Cc0SceneryLayer, defaultCc0GardenSeed } from './cc0-scenery'
 import { playWaterSfx } from '@/lib/water-sound'
@@ -1016,15 +1017,34 @@ export class OpenWorldEngine {
 
 
   pondCapturePose(): WalkCapturePose {
-    const pond = this.world.pond
-    const camX = pond.x + 1.4
-    const camZ = pond.z + pond.radius + 2.85
+    const camX = WALK_SYNTHETIC_POND.x + 0.85
+    const camZ = WALK_SYNTHETIC_POND.z + WALK_SYNTHETIC_POND.radius + 1.85
     const foot = this.terrainFootY(camX, camZ)
-    const eyeY = foot + 1.52
-    const aim = new THREE.Vector3(pond.x, 0.35, pond.z)
-    const camPos = new THREE.Vector3(camX, eyeY, camZ)
-    const pose = this.poseLookAt(aim, camPos, eyeY)
-    const pitch = Math.min(pose.pitch, -0.22)
+    const eyeY = foot + 1.55
+    const aim = new THREE.Vector3(WALK_SYNTHETIC_POND.x, foot + 0.1, WALK_SYNTHETIC_POND.z)
+    const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+    const pitch = Math.min(pose.pitch, -0.38)
+    const framed = { ...pose, pitch, x: camX, z: camZ, eyeY }
+    this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
+    this.camera.rotation.x = pitch
+    this.renderOnce()
+    return framed
+  }
+
+  plantApproachPose(plantId: string, standoff = 10): WalkCapturePose | null {
+    const box = this.plantWorldBox(plantId)
+    if (!box) return null
+    const cx = (box.min.x + box.max.x) / 2
+    const cz = (box.min.z + box.max.z) / 2
+    const ground = box.min.y
+    const h = box.max.y - ground
+    const camX = cx - standoff * 0.48
+    const camZ = cz - standoff * 0.82
+    const foot = this.terrainFootY(camX, camZ)
+    const eyeY = foot + 1.62
+    const aim = new THREE.Vector3(cx, ground + h * 0.55, cz)
+    const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+    const pitch = Math.min(pose.pitch, -0.05)
     this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
     this.camera.rotation.x = pitch
     this.renderOnce()

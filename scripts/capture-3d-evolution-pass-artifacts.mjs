@@ -99,12 +99,12 @@ const pairs = [
   {
     dest: 'label-realflow-desktop-near-elder-after.png',
     src: 'minecraft-walk-realflow-desktop-near-elder.png',
-    title: 'Real flow — facing elder (no capture session, no pointer overlay)',
+    title: 'Real flow — elder oak in frame (approach, no pointer overlay)',
   },
   {
     dest: 'label-pond-watercolor-before-dusk.png',
     src: 'walk-pond-before-watercolor-dusk-desktop.png',
-    title: 'Pond close-up — BEFORE watercolor (dusk)',
+    title: 'Pond close-up — BEFORE main@312e660 watercolor (dusk, same pose)',
   },
   {
     dest: 'label-pond-watercolor-after-dusk.png',
@@ -114,7 +114,7 @@ const pairs = [
   {
     dest: 'label-pond-pixel-art-before-dusk.png',
     src: 'walk-pond-before-pixel-art-dusk-desktop.png',
-    title: 'Pond close-up — BEFORE pixel-art (dusk)',
+    title: 'Pond close-up — BEFORE main@312e660 pixel-art (dusk, same pose)',
   },
   {
     dest: 'label-pond-pixel-art-after-dusk.png',

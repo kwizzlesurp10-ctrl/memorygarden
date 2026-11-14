@@ -51,17 +51,28 @@ async function waitWalk(page) {
   await page.waitForTimeout(600)
 }
 
-async function resolvePondPose(page) {
-  return page.evaluate(() => {
+async function applyPondCapturePose(page) {
+  await page.evaluate(async () => {
     if (typeof window.__mgWalkCapture?.pondCloseupPose === 'function') {
-      return window.__mgWalkCapture.pondCloseupPose()
+      window.__mgWalkCapture.pondCloseupPose()
+    } else {
+      const pond = { x: 0, z: -5.5, r: 5.4 }
+      const camX = pond.x + 0.85
+      const camZ = pond.z + pond.r + 1.85
+      const foot = window.__mgWalkFootAt?.(camX, camZ) ?? 0
+      const eyeY = foot + 1.55
+      const dx = pond.x - camX
+      const dz = pond.z - camZ
+      const yaw = Math.atan2(dx, dz) + Math.PI
+      const horiz = Math.hypot(dx, dz)
+      const pitch = Math.min(-Math.atan2(eyeY - 0.1, horiz) - 0.05, -0.38)
+      const pose = { x: camX, z: camZ, yaw, pitch, eyeY }
+      if (window.__mgWalkCapture?.setPose) window.__mgWalkCapture.setPose(pose)
+      else window.__mgWalkNudgePose?.(pose)
     }
-    const camX = 1.4
-    const camZ = 8.25
-    const foot = window.__mgWalkFootAt?.(camX, camZ) ?? 0
-    const eyeY = foot + 1.52
-    const yaw = Math.atan2(0 - camX, -5.5 - camZ)
-    return { x: camX, z: camZ, yaw, pitch: -0.24, eyeY }
+    for (let i = 0; i < 10; i++) {
+      await new Promise((resolve) => requestAnimationFrame(() => resolve()))
+    }
   })
 }
 
@@ -116,13 +127,8 @@ async function captureRun(browser, url, phase, artStyle) {
   const page = await context.newPage()
   await page.goto(url, { waitUntil: 'networkidle', timeout: 120_000 })
   await enterWalk(page)
-  const pose = await resolvePondPose(page)
-  if (!pose) throw new Error(`No pond pose at ${url}`)
-  await page.evaluate((p) => {
-    if (window.__mgWalkCapture?.setPose) window.__mgWalkCapture.setPose(p)
-    else window.__mgWalkNudgePose?.(p)
-  }, pose)
-  await page.waitForTimeout(700)
+  await applyPondCapturePose(page)
+  await page.waitForTimeout(400)
   const tag = night ? 'night' : 'dusk'
   const file = resolve(
     outDir,

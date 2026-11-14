@@ -37,6 +37,7 @@ type BlockKind =
   | 'gravel'
   | 'stone'
   | 'moss_stone'
+  | 'water'
   | 'mushroom'
   | 'mushroom_stem'
   | 'mushroom_cap'
@@ -175,6 +176,28 @@ export function minecraftBlockTexture(
           const idx = Math.floor(n * stones.length) % stones.length
           ctx.fillStyle = stones[idx] ?? '#6a6a72'
         }
+        ctx.fillRect(x, y, 1, 1)
+      }
+    }
+  } else if (kind === 'water') {
+    const shallow = ['#6ed8f0', '#5ec8e8', '#4ab8d8', '#78e0f8']
+    const deep = ['#2a88b8', '#1e78a8', '#2878a0', '#1a6888']
+    const skyGlint = ['#b8e8ff', '#d8f4ff', '#a8d8f8']
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const depth = y / 16
+        const n = hash01(seed + x * 13.1 + y * 17.9)
+        let fill: string
+        if (n > 0.93) {
+          fill = skyGlint[Math.floor(n * 3) % skyGlint.length] ?? '#b8e8ff'
+        } else if (depth < 0.42) {
+          const idx = Math.floor(n * shallow.length) % shallow.length
+          fill = shallow[idx] ?? '#5ec8e8'
+        } else {
+          const idx = Math.floor(n * deep.length) % deep.length
+          fill = deep[idx] ?? '#2878a0'
+        }
+        ctx.fillStyle = fill
         ctx.fillRect(x, y, 1, 1)
       }
     }
@@ -723,27 +746,13 @@ export function voxelRockCluster(
 }
 
 export function minecraftWaterBlockTexture(palette: ScenePalette, seed = 44): THREE.CanvasTexture {
-  const base = palette.waterTint[0] ?? '#2a4a6e'
-  const accent = palette.waterTint[1] ?? '#1a3050'
-  const highlight = palette.ripple ?? '#6a9ac8'
-  const tex = minecraftBlockTexture('#3a9ad8', '#1a4878', seed, 'gravel')
-  const img = tex.image as HTMLCanvasElement
-  const ctx = img.getContext('2d')
-  if (ctx) {
-    for (let y = 0; y < 16; y++) {
-      for (let x = 0; x < 16; x++) {
-        const n = hash01(seed + x * 19.1 + y * 23.7)
-        if (n > 0.88) {
-          ctx.fillStyle = highlight
-          ctx.fillRect(x, y, 1, 1)
-        } else if (n < 0.08) {
-          ctx.fillStyle = accent
-          ctx.fillRect(x, y, 1, 1)
-        }
-      }
-    }
-    tex.needsUpdate = true
-  }
+  const tex = minecraftBlockTexture(
+    palette.waterTint[0] ?? '#5ec8e8',
+    palette.waterTint[1] ?? '#1e78a8',
+    seed,
+    'water',
+  )
+  tex.repeat.set(8, 8)
   return configurePixelTexture(tex)
 }
 

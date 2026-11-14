@@ -255,16 +255,18 @@ export function OpenWorldGarden({
         eyeY?: number
       }) => void
       __mgWalkFootAt?: (x: number, z: number) => number
-      __mgWalkFacePlant?: (plantId: string) => boolean
+      __mgWalkFacePlant?: (plantId: string, mode?: 'closeup' | 'approach') => boolean
     }
     win.__mgWalkSceneReady = () => engine.sceneReady()
     win.__mgWalkNudgePose = (pose) =>
       engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
     win.__mgWalkFootAt = (x: number, z: number) => engine.getTerrainFootY(x, z)
-    win.__mgWalkFacePlant = (plantId: string) => {
+    win.__mgWalkFacePlant = (plantId: string, mode: 'closeup' | 'approach' = 'closeup') => {
       const pose =
-        engine.elderDeterministicCapturePose(plantId) ??
-        engine.deterministicPlantCapturePose(plantId)
+        mode === 'approach'
+          ? engine.plantApproachPose(plantId, 11)
+          : (engine.elderDeterministicCapturePose(plantId) ??
+            engine.deterministicPlantCapturePose(plantId))
       if (!pose) return false
       engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
       return true

@@ -207,7 +207,9 @@ try {
   })
   await desktopPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 120_000 })
   await enterWalk(desktopPage)
-  const facedElder = await desktopPage.evaluate(() => window.__mgWalkFacePlant?.('tree-elder-walk'))
+  const facedElder = await desktopPage.evaluate(() =>
+    window.__mgWalkFacePlant?.('tree-elder-walk', 'approach'),
+  )
   if (!facedElder) {
     throw new Error('Could not face tree-elder-walk in realflow shot')
   }
