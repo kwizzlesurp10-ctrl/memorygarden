@@ -316,8 +316,12 @@ async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, 
     (id) => window.__mgWalkCapture?.plantProjectedAabbScreen?.(id) ?? null,
     plantId,
   )
-  const projTop = projBox?.top ?? null
-  const projBottom = projBox?.bottom ?? null
+  const projCanopy = await page.evaluate(
+    (id) => window.__mgWalkCapture?.plantProjectedBoxScreenY?.(id) ?? null,
+    plantId,
+  )
+  const projTop = projCanopy?.top ?? projBox?.top ?? null
+  const projBottom = projCanopy?.bottom ?? projBox?.bottom ?? null
   const cov = fillPng.height
   const top = fillPng.top
   const liveH = fillLive?.height ?? cov
@@ -331,20 +335,33 @@ async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, 
     const metricTop =
       artStyle === 'watercolor' && projTop != null && projTop >= 0.035 && projTop <= 0.15
         ? projTop
-        : projTop != null && Number.isFinite(projTop) && projTop >= 0 && projTop <= 0.32
+        : artStyle === 'pixel-art' && projTop != null && projTop >= 0.035 && projTop <= 0.14
           ? projTop
-          : Math.min(top, fillLive?.top ?? top)
+          : artStyle === 'pixel-art'
+            ? Math.min(top, fillLive?.top ?? top)
+            : projTop != null && Number.isFinite(projTop) && projTop >= 0 && projTop <= 0.32
+            ? projTop
+            : Math.min(top, fillLive?.top ?? top)
   const topMarginPct = (metricTop * 100).toFixed(1)
+  const projCanopyPct =
+    projCanopy?.top != null && Number.isFinite(projCanopy.top)
+      ? (projCanopy.top * 100).toFixed(1)
+      : 'n/a'
   console.log(
-    `elder-frame-assert ${phase} ${artStyle} treePxFillH=${(cov * 100).toFixed(1)}% projTop=${(projTop != null ? (projTop * 100).toFixed(1) : 'n/a')}% topMargin=${topMarginPct}% touchRow0=${topTouch} liveH=${(liveH * 100).toFixed(1)}%`,
+    `elder-frame-assert ${phase} ${artStyle} treePxFillH=${(cov * 100).toFixed(1)}% projTop=${(projTop != null ? (projTop * 100).toFixed(1) : 'n/a')}% canopyY=${projCanopyPct}% topMargin=${topMarginPct}% touchRow0=${topTouch} liveH=${(liveH * 100).toFixed(1)}%`,
   )
   const errs = []
   if (phase === 'after') {
     const projSpan =
-      projBox && Number.isFinite(projBox.top) && projBox.top >= 0 && projBox.top <= 0.2
-        ? projBox.bottom - projBox.top
+      projTop != null &&
+      projBottom != null &&
+      Number.isFinite(projTop) &&
+      projTop >= 0 &&
+      projTop <= 0.2
+        ? projBottom - projTop
         : null
-    const metricH = artStyle === 'watercolor' && projSpan != null ? projSpan : liveH
+    const metricH =
+      projSpan != null && (artStyle === 'watercolor' || artStyle === 'pixel-art') ? projSpan : liveH
     if (topTouch) {
       errs.push('canopy touches or projects above frame top (clipped)')
     } else if (projTop != null && projTop < 0.01 && metricTop < 0.045) {
@@ -362,7 +379,7 @@ async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, 
       errs.push(`sky margin above canopy ${(metricTop * 100).toFixed(1)}% < ${(minTop * 100).toFixed(0)}%`)
     }
     if (metricTop > 0.21) {
-      errs.push(`sky margin above canopy ${(metricTop * 100).toFixed(1)}% > 21% (tree too small)`)
+      errs.push(`sky margin above canopy ${(metricTop * 100).toFixed(1)}% > 21% (tree too small in frame)`)
     }
     const trunkBottom = fillLive?.bottom ?? fillPng.bottom
     if (trunkBottom > 0.945) {

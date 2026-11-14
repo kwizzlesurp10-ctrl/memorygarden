@@ -793,8 +793,7 @@ export class OpenWorldEngine {
       this.camera.rotation.x = pitch
       this.renderOnce()
       const fill = this.measureSoloPlantPixelFill()
-      const proj = this.plantProjectedAabbScreenFromBox(worldBox)
-      if (!fill || !proj || !Number.isFinite(proj.top)) return null
+      if (!fill) return null
       return {
         pose: { ...posed, pitch, x: camX, z: camZ, eyeY },
         fill,
