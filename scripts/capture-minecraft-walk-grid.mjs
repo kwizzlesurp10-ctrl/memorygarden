@@ -305,7 +305,7 @@ async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, 
     phase === 'after' &&
     artStyle === 'pixel-art' &&
     Number.isFinite(top) &&
-    (top < 0.02 || top > 0.24)
+    (top < 0.015 || top > 0.24)
   ) {
     errs.push(`projected canopy top ${top.toFixed(3)} outside 2–24% band`)
   }

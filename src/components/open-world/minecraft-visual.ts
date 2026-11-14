@@ -489,7 +489,11 @@ function buildOakTree(
   for (let y = 0; y < trunkH; y++) {
     placeBlock(g, 0, y, 0, bark)
   }
-  placeLeafLayer(g, trunkH, 1, leaf, true)
+  placeLeafLayer(g, trunkH, 1, leaf, true, seed + 18)
+  if (idx >= 3) {
+    placeLeafLayer(g, trunkH + 1, 1, leaf, false, seed + 19)
+    placeOakPlusCap(g, trunkH + 2, leaf)
+  }
 }
 
 function buildFlower(

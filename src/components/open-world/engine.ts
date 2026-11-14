@@ -368,6 +368,31 @@ export class OpenWorldEngine {
     return box.isEmpty() ? null : box
   }
 
+  /** Tighter AABB for camera framing — full walk bounds include sparse voxel wings that read smaller on screen. */
+  private plantFramingBox(plantId: string): THREE.Box3 | null {
+    const box = this.plantWorldBox(plantId)
+    if (!box) return null
+    const wp = this.world.plants.find((p) => p.id === plantId)
+    if (wp?.variety !== 'tree' || !plantId.includes('elder')) return box
+    const size = box.getSize(new THREE.Vector3())
+    const cx = (box.min.x + box.max.x) / 2
+    const cz = (box.min.z + box.max.z) / 2
+    const framed = box.clone()
+    const xzShrink = 0.68
+    framed.min.x = cx - (size.x * 0.5) * xzShrink
+    framed.max.x = cx + (size.x * 0.5) * xzShrink
+    framed.min.z = cz - (size.z * 0.5) * xzShrink
+    framed.max.z = cz + (size.z * 0.5) * xzShrink
+    framed.min.y = box.min.y + size.y * 0.02
+    framed.max.y = box.min.y + size.y * 0.95
+    return framed
+  }
+
+  private projectedScreenSpan(box: THREE.Box3): number {
+    const proj = this.plantProjectedAabbScreenFromBox(box)
+    return proj ? Math.max(0, proj.bottom - proj.top) : 0
+  }
+
   hasPlantGroup(plantId: string): boolean {
     return this.findPlantGroup(plantId) !== null
   }
@@ -412,13 +437,14 @@ export class OpenWorldEngine {
   }
 
   plantScreenCoverage(plantId: string, pose?: WalkCapturePose): number {
-    const box = this.plantWorldBox(plantId)
+    const box =
+      plantId.includes('elder') ? this.plantFramingBox(plantId) : this.plantWorldBox(plantId)
     if (!box) return 0
     if (pose) {
-      return this.withCapturePose(pose, () => this.screenHeightFraction(box))
+      return this.withCapturePose(pose, () => this.projectedScreenSpan(box))
     }
     this.renderOnce()
-    return this.screenHeightFraction(box)
+    return this.projectedScreenSpan(box)
   }
 
   private projectBoxCenter(box: THREE.Box3): THREE.Vector3 {
@@ -597,9 +623,9 @@ export class OpenWorldEngine {
     const R = Math.max(size.x, size.z) * 0.5
     const fovRad = (this.camera.fov * Math.PI) / 180
     const halfFovTan = Math.tan(fovRad / 2)
-    const D_v = (((H * 1.18) / 2) / halfFovTan) * slack
-    const D_h = ((R * 1.22) / (halfFovTan * this.camera.aspect)) * 1.34
-    const D = Math.max(R * 0.95, D_v, D_h) * 1.04
+    const D_v = (((H * 1.1) / 2) / halfFovTan) * slack
+    const D_h = ((R * 1.14) / (halfFovTan * this.camera.aspect)) * 1.28
+    const D = Math.max(R * 0.88, D_v, D_h) * 0.98
     const yaw = -0.52
     const camX = cx + Math.sin(yaw) * D
     const camZ = cz + Math.cos(yaw) * D
@@ -612,7 +638,7 @@ export class OpenWorldEngine {
     this.camera.rotation.x = elderPitch
     this.camera.updateProjectionMatrix()
     this.renderOnce()
-    const frac = this.screenHeightFraction(box)
+    const frac = this.projectedScreenSpan(box)
     const canopy = this.plantProjectedBoxScreenYFromBox(box)
     return {
       ...pose,
@@ -683,20 +709,23 @@ export class OpenWorldEngine {
   }
 
   elderDeterministicCapturePose(plantId: string): WalkCapturePose | null {
-    const box = this.plantWorldBox(plantId)
+    const box = this.plantFramingBox(plantId)
+    const worldBox = this.plantWorldBox(plantId)
     const wp = this.world.plants.find((p) => p.id === plantId)
-    if (!box || !wp) return null
+    if (!box || !worldBox || !wp) return null
     const ground = box.min.y
     const H = box.max.y - ground
     const cx = (box.min.x + box.max.x) / 2
     const cz = (box.min.z + box.max.z) / 2
-    const aimY = ground + H * 0.48
+    const aimY = ground + H * 0.44
     const aim = new THREE.Vector3(cx, aimY, cz)
     let bestPose: WalkCapturePose | null = null
     let bestScore = Infinity
-    const yaws = [-Math.PI / 2, Math.PI / 2, -Math.PI / 4, Math.PI / 4]
-    for (let pass = 0; pass < 64; pass++) {
-      const dist = 11.25 + (pass / 63) * 3.95
+    const yaws = [Math.PI / 2, -Math.PI / 2, Math.PI / 4, -Math.PI / 4]
+    const targetSpan = 0.7
+    const targetTop = 0.1
+    for (let pass = 0; pass < 72; pass++) {
+      const dist = 10.15 + (pass / 71) * 2.35
       const yaw = yaws[pass % yaws.length]!
       const camX = cx + Math.sin(yaw) * dist
       const camZ = cz + Math.cos(yaw) * dist
@@ -709,26 +738,32 @@ export class OpenWorldEngine {
       this.camera.rotation.x = pitch
       this.camera.updateProjectionMatrix()
       this.renderOnce()
-      const span = this.screenHeightFraction(box)
-      const canopy = this.plantProjectedBoxScreenYFromBox(box)
+      const span = this.projectedScreenSpan(box)
+      const canopy = this.plantProjectedBoxScreenYFromBox(worldBox)
       const top = canopy?.top ?? 0.5
       const proj = this.plantProjectedAabbScreenFromBox(box)
       const widthSpan = proj ? proj.right - proj.left : 0
       if (
         top >= 0.04 &&
         top <= 0.2 &&
-        span >= 0.67 &&
-        span <= 0.79 &&
-        widthSpan >= 0.38
+        span >= targetSpan - 0.03 &&
+        span <= targetSpan + 0.06 &&
+        widthSpan >= 0.42
       ) {
-        return { ...pose, pitch, x: camX, z: camZ, eyeY }
+        return this.refineElderPoseForCanopy(
+          { ...pose, pitch, x: camX, z: camZ, eyeY },
+          worldBox,
+          box,
+          aim,
+        )
       }
       const clipPen =
-        top < 0.02 ? 20 + Math.abs(top) * 16 : span > 0.88 ? 18 : span > 0.8 ? 8 : 0
+        top < 0.02 ? 20 + Math.abs(top) * 16 : span > 0.92 ? 18 : span > 0.84 ? 8 : 0
       const topPen = top < 0.06 ? 6 + Math.abs(0.06 - top) * 6 : top > 0.22 ? (top - 0.22) * 8 : 0
-      const widthPen = widthSpan < 0.34 ? (0.34 - widthSpan) * 5 : 0
-      const score = Math.abs(span - 0.7) + Math.abs(top - 0.1) * 2.5 + topPen + widthPen + clipPen
-      if (span > 0.85 || top < 0.03) continue
+      const widthPen = widthSpan < 0.38 ? (0.38 - widthSpan) * 5 : 0
+      const score =
+        Math.abs(span - targetSpan) + Math.abs(top - targetTop) * 2.5 + topPen + widthPen + clipPen
+      if (span > 0.88 || top < 0.02) continue
       if (score < bestScore) {
         bestScore = score
         bestPose = { ...pose, pitch, x: camX, z: camZ, eyeY }
@@ -738,17 +773,135 @@ export class OpenWorldEngine {
     this.setPlayerPose(bestPose.x, bestPose.z, bestPose.yaw, bestPose.pitch, bestPose.eyeY)
     this.camera.rotation.x = bestPose.pitch
     this.renderOnce()
-    const span = this.screenHeightFraction(box)
-    const canopy = this.plantProjectedBoxScreenYFromBox(box)
+    const span = this.projectedScreenSpan(box)
+    const canopy = this.plantProjectedBoxScreenYFromBox(worldBox)
     const top = canopy?.top ?? 0.5
-    if (span <= 0.85 && top >= 0.04) return bestPose
+    if (span >= targetSpan - 0.05 && span <= 0.88 && top >= 0.04 && top <= 0.24) {
+      return this.refineElderPoseForCanopy(bestPose, worldBox, box, aim)
+    }
   }
-  const slack = this.elderCapturePoseAtSlack(box, 1.04, -0.045)
-  if (slack && slack.screenSpan <= 0.85 && slack.screenTop >= 0.04) {
-    const { screenSpan: _s, screenTop: _t, ...pose } = slack
-    return pose
+  const slack = this.elderCapturePoseAtSlack(box, 0.96, -0.045)
+  if (slack) {
+    this.setPlayerPose(slack.x, slack.z, slack.yaw, slack.pitch, slack.eyeY)
+    this.camera.rotation.x = slack.pitch
+    this.renderOnce()
+    const worldTop = this.plantProjectedBoxScreenYFromBox(worldBox)?.top ?? 0.5
+    if (
+      slack.screenSpan >= targetSpan - 0.05 &&
+      slack.screenSpan <= 0.88 &&
+      worldTop >= 0.04 &&
+      worldTop <= 0.24
+    ) {
+      const { screenSpan: _s, screenTop: _t, ...pose } = slack
+      return this.refineElderPoseForCanopy(pose, worldBox, box, aim)
+    }
   }
-  return bestPose
+  if (bestPose) return this.refineElderPoseForCanopy(bestPose, worldBox, box, aim)
+  const yaw = Math.PI / 2
+  const dist = 13.15
+  const camX = cx + Math.sin(yaw) * dist
+  const camZ = cz + Math.cos(yaw) * dist
+  const foot = this.terrainFootY(camX, camZ)
+  const eyeY = foot + 1.82
+  const fallback = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+  const pitch = Math.min(fallback.pitch, -0.035)
+  return this.refineElderPoseForCanopy(
+    { ...fallback, pitch, x: camX, z: camZ, eyeY },
+    worldBox,
+    box,
+    aim,
+  )
+  }
+
+  private refineElderPoseForCanopy(
+    pose: WalkCapturePose,
+    worldBox: THREE.Box3,
+    frameBox: THREE.Box3,
+    aim: THREE.Vector3,
+  ): WalkCapturePose {
+    const cx = aim.x
+    const cz = aim.z
+    const yaw = pose.yaw
+    const footBase = this.terrainFootY(pose.x, pose.z)
+    const eyeY = Math.max(footBase + 1.75, pose.eyeY)
+    let lo = 11.4
+    let hi = 16.4
+    let best = pose
+    let bestScore = Infinity
+
+    for (let step = 0; step < 13; step++) {
+      const dist = (lo + hi) / 2
+      const camX = cx + Math.sin(yaw) * dist
+      const camZ = cz + Math.cos(yaw) * dist
+      const foot = this.terrainFootY(camX, camZ)
+      const trialEye = Math.max(foot + 1.75, eyeY)
+      const trial = this.poseLookAt(aim, new THREE.Vector3(camX, trialEye, camZ), trialEye)
+      const pitch = Math.min(trial.pitch, -0.03)
+      this.setPlayerPose(camX, camZ, trial.yaw, pitch, trialEye)
+      this.camera.rotation.x = pitch
+      this.renderOnce()
+      const top = this.plantProjectedBoxScreenYFromBox(worldBox)?.top ?? 0.5
+      const span = this.projectedScreenSpan(frameBox)
+      if (top < 0.038) {
+        lo = dist
+        continue
+      }
+      const score = Math.abs(span - 0.72) + Math.abs(top - 0.1) * 3 + (span < 0.66 ? 0.8 : 0)
+      if (score < bestScore) {
+        bestScore = score
+        best = { ...trial, pitch, x: camX, z: camZ, eyeY: trialEye }
+      }
+      if (span < 0.668) {
+        hi = dist
+        continue
+      }
+      if (top <= 0.2 && span <= 0.85 && span >= 0.682) {
+        best = { ...trial, pitch, x: camX, z: camZ, eyeY: trialEye }
+        break
+      }
+      if (top > 0.2) lo = dist
+      else hi = dist
+    }
+    if (bestScore === Infinity) {
+      const dist = hi
+      const camX = cx + Math.sin(yaw) * dist
+      const camZ = cz + Math.cos(yaw) * dist
+      const foot = this.terrainFootY(camX, camZ)
+      const trialEye = Math.max(foot + 1.75, eyeY)
+      const trial = this.poseLookAt(aim, new THREE.Vector3(camX, trialEye, camZ), trialEye)
+      const pitch = Math.min(trial.pitch, -0.03)
+      best = { ...trial, pitch, x: camX, z: camZ, eyeY: trialEye }
+    }
+    this.setPlayerPose(best.x, best.z, best.yaw, best.pitch, best.eyeY)
+    this.camera.rotation.x = best.pitch
+    this.renderOnce()
+    let finalTop = this.plantProjectedBoxScreenYFromBox(worldBox)?.top ?? 0.5
+    let finalSpan = this.projectedScreenSpan(frameBox)
+    if (finalTop < 0.04) {
+      const startDist = Math.hypot(best.x - cx, best.z - cz)
+      for (let dist = startDist; dist <= 17.4; dist += 0.35) {
+        const camX = cx + Math.sin(yaw) * dist
+        const camZ = cz + Math.cos(yaw) * dist
+        const foot = this.terrainFootY(camX, camZ)
+        const trialEye = Math.max(foot + 1.75, eyeY)
+        const trial = this.poseLookAt(aim, new THREE.Vector3(camX, trialEye, camZ), trialEye)
+        const pitch = Math.min(trial.pitch, -0.03)
+        this.setPlayerPose(camX, camZ, trial.yaw, pitch, trialEye)
+        this.camera.rotation.x = pitch
+        this.renderOnce()
+        const top = this.plantProjectedBoxScreenYFromBox(worldBox)?.top ?? 0.5
+        const span = this.projectedScreenSpan(frameBox)
+        const candidate = { ...trial, pitch, x: camX, z: camZ, eyeY: trialEye }
+        const score = Math.abs(span - 0.71) + Math.abs(top - 0.1) * 2.6
+        if (top >= 0.04 && span >= 0.655 && score < Math.abs(finalSpan - 0.71) + 2) {
+          best = candidate
+          finalTop = top
+          finalSpan = span
+          if (top >= 0.04 && span >= 0.675) break
+        }
+      }
+    }
+    return best
   }
 
   private projectBoxVerticalInView(box: THREE.Box3): { minNdcY: number; maxNdcY: number } | null {
@@ -1398,7 +1551,8 @@ export class OpenWorldEngine {
     if (this.plantArtStyle === 'pixel-art') {
       const star = this.palette.starAlpha ?? 0
       const night = star > 0.22
-      if (!night) {
+      const dusk = !night && star > 0.05
+      if (!night && !dusk) {
         this.hemi.color.set('#c8e8ff')
         this.hemi.groundColor.set('#6b9a48')
         this.hemi.intensity = 1.12
@@ -1409,6 +1563,27 @@ export class OpenWorldEngine {
         this.sun.position.set(18, 38, -14)
         this.rim.position.set(-12, 22, 18)
         this.rim.intensity = 0.06
+      } else if (dusk) {
+        const p = this.palette
+        const tw = (star - 0.05) / 0.17
+        const skyWash = new THREE.Color(p.sky[3] ?? p.sky[2] ?? '#c8e8ff')
+        this.hemi.color.set('#c8e8ff').lerp(skyWash, 0.35 + tw * 0.25)
+        this.hemi.groundColor.set('#6b9a48').lerp(new THREE.Color(p.hills[1] ?? '#5a7f38'), 0.35 * tw)
+        this.hemi.intensity = 1.06 + tw * 0.06
+        this.fill.color.set('#e8f0ff').lerp(new THREE.Color(p.glow ?? '#ffd4a8'), 0.38 * tw)
+        this.fill.intensity = 0.48 + tw * 0.14
+        this.sun.color.set('#fff4e0').lerp(new THREE.Color(p.sun?.disk ?? '#ffb878'), 0.42 * tw)
+        this.sun.intensity = 0.88 + tw * 0.1
+        if (p.sun) {
+          const u = p.sun.x / 1200 - 0.5
+          const v = (470 - p.sun.y) / 400
+          this.sun.position.set(18 + u * 22, 34 - v * 8, -14)
+        } else {
+          this.sun.position.set(18, 34, -14)
+        }
+        this.rim.color.set('#ffcf9a')
+        this.rim.position.set(-10, 20, 16)
+        this.rim.intensity = 0.12 + tw * 0.22
       } else {
         const p = this.palette
         const skyWash = new THREE.Color(p.sky[3] ?? p.sky[2] ?? '#88aacc')
