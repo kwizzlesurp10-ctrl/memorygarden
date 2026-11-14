@@ -864,7 +864,7 @@ export class OpenWorldEngine {
         this.renderOnce()
         proj = this.plantProjectedAabbScreenFromBox(worldBox)!
       }
-      if (!proj || proj.top < 0.038 || proj.top > 0.095) continue
+      if (!proj || proj.top < 0.04 || proj.top > 0.12) continue
       const span = proj.bottom - proj.top
       if (span < 0.55 || span > 0.71 || proj.bottom > 0.94) continue
       const gap = Math.abs(span - 0.64) + Math.abs(proj.top - 0.06) * 2
