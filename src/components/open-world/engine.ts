@@ -964,7 +964,7 @@ export class OpenWorldEngine {
       if (fin) {
         const spanHalf = (fin.maxNdcY - fin.minNdcY) / 2
         if (spanHalf < 0.64) {
-          dist *= 0.66 / Math.max(spanHalf, 0.35)
+          dist *= Math.max(spanHalf, 0.35) / 0.66
           pose = applyAt(dist)
         }
       }
