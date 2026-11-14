@@ -822,7 +822,22 @@ export class OpenWorldEngine {
     const box = this.plantPreciseWorldBox(plantId)
     if (!box) return null
     this.renderOnce()
-    return this.projectBoxVerticalInView(box)
+    const ndc = this.projectBoxVerticalInView(box)
+    if (ndc) return ndc
+    const screen = this.plantProjectedAabbScreenFromBox(box)
+    if (
+      !screen ||
+      !Number.isFinite(screen.top) ||
+      !Number.isFinite(screen.bottom) ||
+      screen.top < -0.05 ||
+      screen.top > 1.05
+    ) {
+      return null
+    }
+    return {
+      maxNdcY: 1 - 2 * screen.top,
+      minNdcY: 1 - 2 * screen.bottom,
+    }
   }
 
   private projectBoxVerticalInView(box: THREE.Box3): { minNdcY: number; maxNdcY: number } | null {
