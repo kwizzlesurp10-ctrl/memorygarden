@@ -14,8 +14,14 @@ export function walkCaptureGroundY(x, z) {
 export function computeGardenSceneryCloseupPose(kind, footY = walkCaptureGroundY, pullBack = 1) {
   const f = GARDEN_SCENERY_CLOSEUP[kind]
   if (!f) return null
-  const camX = f.x + f.camDx * pullBack
-  const camZ = f.z + f.camDz * pullBack
+  let camX = f.x + f.camDx * pullBack
+  let camZ = f.z + f.camDz * pullBack
+  if (kind === 'fence') {
+    const dist = 5.8 * pullBack
+    const fy = 0.92
+    camX = 19 + Math.sin(fy) * dist
+    camZ = 24 - Math.cos(fy) * dist
+  }
   const ground = footY(camX, camZ)
   const eyeY = ground + 1.62
   const dx = f.x - camX
