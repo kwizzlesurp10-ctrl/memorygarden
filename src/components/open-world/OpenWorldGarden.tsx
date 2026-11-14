@@ -304,7 +304,9 @@ export function OpenWorldGarden({
         captureCameraFov: () => engine.getCaptureCameraFov(),
         captureCameraAspect: () => engine.getCaptureCameraAspect(),
         elderCloseupPose: (plantId) => engine.elderDeterministicCapturePose(plantId),
+        mushroomCloseupPose: (plantId) => engine.mushroomDeterministicCapturePose(plantId),
         plantProjectedBoxScreenY: (plantId) => engine.plantProjectedBoxScreenY(plantId),
+        plantProjectedAabbScreen: (plantId) => engine.plantProjectedAabbScreen(plantId),
       })
       if (sessionStorage.getItem('mg:tree-young-elder-capture') === '1') {
         engine.setPlayerPose(

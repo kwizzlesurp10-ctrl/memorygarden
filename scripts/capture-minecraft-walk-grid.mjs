@@ -1,6 +1,6 @@
 /**
  * Minecraft walk capture grid — deterministic plant cameras, pinned poses.
- * Env: AFTER_URL, BEFORE_URL (256ca59 preview on 4173 — see prepare-walk-before-preview.mjs),
+ * Env: AFTER_URL, BEFORE_URL (312e660 worktree preview on 4173 — prepare-walk-before-preview.mjs),
  *       ARTIFACT_DIR, VIEWPORT=desktop|mobile, MODE=full|overview
  */
 import { createRequire } from 'node:module'
@@ -134,6 +134,10 @@ const allShots = [
 let shots = mode === 'overview' ? allShots.filter((s) => s.file === 'walk-overview') : allShots
 if (captureOnly === 'elder') {
   shots = shots.filter((s) => s.file === 'walk-tree-elder-closeup')
+} else if (captureOnly === 'mushroom') {
+  shots = shots.filter((s) => s.file === 'walk-mushroom-closeup')
+} else if (captureOnly === 'detail') {
+  shots = shots.filter((s) => s.file === 'walk-mushroom-closeup' || s.file === 'walk-tree-elder-closeup')
 }
 
 async function enterWalk(page) {
@@ -190,6 +194,16 @@ async function bootstrapWalk(page, baseUrl, artStyle) {
   }
 }
 
+async function mushroomCloseupPoseForPage(page, plantId) {
+  return page.evaluate((id) => {
+    const b = window.__mgWalkCapture
+    if (typeof b?.mushroomCloseupPose === 'function') {
+      return b.mushroomCloseupPose(id)
+    }
+    return b?.deterministicPlantPose?.(id) ?? null
+  }, plantId)
+}
+
 async function elderCloseupPoseForPage(page, plantId) {
   return page.evaluate((id) => {
     const b = window.__mgWalkCapture
@@ -221,8 +235,9 @@ async function elderCloseupPoseForPage(page, plantId) {
     const fov = typeof b.captureCameraFov === 'function' ? b.captureCameraFov() : 68
     const fovRad = (fov * Math.PI) / 180
     const halfFovTan = Math.tan(fovRad / 2)
-    const D_v = (((H * 1.25) / 2) / halfFovTan) * 1.98
-    const D_h = ((R * 1.25) / (halfFovTan * (b.captureCameraAspect?.() ?? 1.6))) * 1.42
+    const aabbSlack = 1.68
+    const D_v = (((H * 1.25) / 2) / halfFovTan) * aabbSlack
+    const D_h = ((R * 1.25) / (halfFovTan * (b.captureCameraAspect?.() ?? 1.6))) * 1.4
     const D = Math.max(R * 2.2, D_v, D_h)
     const yaw = -0.68
     const x = cx + Math.sin(yaw) * D
@@ -256,34 +271,92 @@ function skyFractionTopBand(pngPath, topFraction = 0.06) {
   return total > 0 ? sky / total : 0
 }
 
-async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle) {
-  const proj = await page.evaluate((id) => {
-    const b = window.__mgWalkCapture
-    if (typeof b?.plantProjectedBoxScreenY === 'function') {
-      return b.plantProjectedBoxScreenY(id)
-    }
-    return null
-  }, plantId)
+async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, pose) {
   const skyFrac = skyFractionTopBand(pngPath)
+  const cov = await page.evaluate(
+    ({ id, p }) => window.__mgWalkCapture?.plantScreenCoverage?.(id, p) ?? 0,
+    { id: plantId, p: pose },
+  )
+  const proj = await page.evaluate((id) => window.__mgWalkCapture?.plantProjectedBoxScreenY?.(id) ?? null, plantId)
   const top = proj?.top ?? NaN
-  const bottom = proj?.bottom ?? NaN
-  const topStr = Number.isFinite(top) ? top.toFixed(3) : 'n/a'
-  const botStr = Number.isFinite(bottom) ? bottom.toFixed(3) : 'n/a'
   console.log(
-    `elder-frame-assert ${phase} ${artStyle} skyTop6=${(skyFrac * 100).toFixed(1)}% projectedTop=${topStr} projectedBottom=${botStr}`,
+    `elder-frame-assert ${phase} ${artStyle} skyTop6=${(skyFrac * 100).toFixed(1)}% coverage=${cov.toFixed(3)} projectedTop=${Number.isFinite(top) ? top.toFixed(3) : 'n/a'}`,
   )
   const errs = []
-  if (skyFrac < 0.9) errs.push(`sky top band ${(skyFrac * 100).toFixed(1)}% < 90%`)
-  if (proj) {
-    if (top < 0.05 || top > 0.95) errs.push(`projectedTop ${top.toFixed(3)} outside [0.05,0.95]`)
-    if (bottom < 0.05 || bottom > 0.95) {
-      errs.push(`projectedBottom ${bottom.toFixed(3)} outside [0.05,0.95]`)
-    }
-  } else {
-    console.warn(`elder-frame-assert ${phase} ${artStyle}: plantProjectedBoxScreenY unavailable — sky band only`)
+  if (skyFrac < 0.06) errs.push(`sky top band ${(skyFrac * 100).toFixed(1)}% < 6%`)
+  if (
+    phase === 'after' &&
+    artStyle === 'pixel-art' &&
+    !Number.isFinite(top) &&
+    skyFrac > 0.22
+  ) {
+    errs.push(`sky top band ${(skyFrac * 100).toFixed(1)}% > 22% (tree too small)`)
+  }
+  if (artStyle === 'pixel-art' && skyFrac < 0.05) {
+    errs.push(`sky top band ${(skyFrac * 100).toFixed(1)}% < 5% (canopy clipped)`)
+  }
+  if (phase === 'after' && artStyle === 'pixel-art' && cov < 0.68) {
+    errs.push(`screen coverage ${cov.toFixed(3)} < 0.68 (elder too small)`)
+  }
+  if (phase === 'after' && artStyle === 'pixel-art' && cov > 0.88) {
+    errs.push(`screen coverage ${cov.toFixed(3)} > 0.88 (elder too large / clipped)`)
+  }
+  if (
+    phase === 'after' &&
+    artStyle === 'pixel-art' &&
+    Number.isFinite(top) &&
+    (top < 0.02 || top > 0.24)
+  ) {
+    errs.push(`projected canopy top ${top.toFixed(3)} outside 2–24% band`)
   }
   if (errs.length) {
     throw new Error(`Elder close-up frame check failed (${phase} ${artStyle}): ${errs.join('; ')}`)
+  }
+}
+
+async function assertMushroomCloseupFrame(page, plantId, pngPath, phase, artStyle, pose) {
+  const aabb = await page.evaluate((id) => window.__mgWalkCapture?.plantWorldAabb?.(id) ?? null, plantId)
+  const worldH = aabb ? aabb.maxY - aabb.minY : NaN
+  const cov = await page.evaluate(
+    ({ id, p }) => window.__mgWalkCapture?.plantScreenCoverage?.(id, p) ?? 0,
+    { id: plantId, p: pose },
+  )
+  const proj = await page.evaluate((id) => window.__mgWalkCapture?.plantProjectedAabbScreen?.(id) ?? null, plantId)
+  console.log(
+    `mushroom-frame-assert ${phase} ${artStyle} worldH=${Number.isFinite(worldH) ? worldH.toFixed(2) : 'n/a'} coverage=${cov.toFixed(3)} proj=${proj ? JSON.stringify(proj) : 'n/a'}`,
+  )
+  const errs = []
+  if (Number.isFinite(worldH) && artStyle === 'pixel-art' && phase === 'after' && worldH > 2.35) {
+    errs.push(`world height ${worldH.toFixed(2)} > 2.35 (target ~1.5–2)`)
+  }
+  if (Number.isFinite(worldH) && artStyle === 'pixel-art' && phase === 'after' && worldH < 1.2) {
+    errs.push(`world height ${worldH.toFixed(2)} < 1.2 (target ~1.5–2)`)
+  }
+  if (proj && artStyle === 'pixel-art') {
+    const { left, right, top, bottom } = proj
+    const margin = 0.1
+    if (phase === 'after' && Number.isFinite(worldH) && worldH >= 1.2 && worldH <= 2.35 && top >= 0 && top <= 1) {
+      if (
+        top < margin ||
+        bottom > 1 - margin ||
+        left < margin ||
+        right > 1 - margin
+      ) {
+        errs.push(
+          `AABB not inside frame margin ${margin}: L${left.toFixed(3)} R${right.toFixed(3)} T${top.toFixed(3)} B${bottom.toFixed(3)}`,
+        )
+      }
+      const span = bottom - top
+      if (span < 0.22 || span > 0.74) {
+        errs.push(`vertical span ${span.toFixed(3)} outside 0.22–0.74`)
+      }
+    }
+    if (phase === 'before' && Number.isFinite(worldH) && worldH < 1.25) {
+      if (bottom - top < 0.1) errs.push(`legacy mushroom span ${(bottom - top).toFixed(3)} < 0.1 (too far)`)
+    }
+  }
+  if (errs.length) {
+    throw new Error(`Mushroom close-up frame check failed (${phase} ${artStyle}): ${errs.join('; ')}`)
   }
 }
 
@@ -335,7 +408,10 @@ async function captureShot(page, phase, artStyle, shot, pose) {
   const file = resolve(outDir, name)
   await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
   if (shot.file === 'walk-tree-elder-closeup' && shot.plantId) {
-    await assertElderCloseupFrame(page, shot.plantId, file, phase, artStyle)
+    await assertElderCloseupFrame(page, shot.plantId, file, phase, artStyle, pose)
+  }
+  if (shot.file === 'walk-mushroom-closeup' && shot.plantId && artStyle === 'pixel-art') {
+    await assertMushroomCloseupFrame(page, shot.plantId, file, phase, artStyle, pose)
   }
   await page.evaluate(() => window.__mgWalkCapture?.setSoloPlantFocus?.(null))
   if (shot.plantId) {
@@ -345,8 +421,17 @@ async function captureShot(page, phase, artStyle, shot, pose) {
       ({ id, p }) => window.__mgWalkCapture?.plantScreenCoverage?.(id, p) ?? 0,
       { id: shot.plantId, p: pose },
     )
-    const flag = cov >= covThreshold ? 'ok' : 'LOW'
+    const minCov = shot.file === 'walk-tree-elder-closeup' ? 0.48 : covThreshold
+    const flag = cov >= minCov ? 'ok' : 'LOW'
     console.log(`coverage[${flag}]`, phase, artStyle, shot.file, cov.toFixed(3))
+    if (
+      phase === 'after' &&
+      artStyle === 'pixel-art' &&
+      shot.file === 'walk-tree-elder-closeup' &&
+      cov < minCov
+    ) {
+      throw new Error(`Elder close-up coverage ${cov.toFixed(3)} below ${minCov}`)
+    }
   }
   console.log('Wrote', file)
   return file
@@ -397,8 +482,9 @@ try {
   }
 
   if (!poses) poses = {}
-  if (captureOnly !== 'elder') {
-    const missing = shots.filter((s) => !poses[s.file] && s.file !== 'walk-tree-elder-closeup')
+  const posePinnedExternally = new Set(['walk-tree-elder-closeup', 'walk-mushroom-closeup'])
+  if (captureOnly !== 'elder' && captureOnly !== 'mushroom' && captureOnly !== 'detail') {
+    const missing = shots.filter((s) => !poses[s.file] && !posePinnedExternally.has(s.file))
     if (missing.length) {
       await bootstrapWalk(page, afterUrl, 'pixel-art')
       const v = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? 0)
@@ -419,44 +505,63 @@ try {
           { phase: 'before', url: beforeUrl, styles: ['pixel-art', 'watercolor'] },
         ]
 
+  const styleListForRun =
+    captureOnly === 'mushroom' || captureOnly === 'elder' || captureOnly === 'detail'
+      ? (styles) => styles.filter((s) => s === 'pixel-art')
+      : (styles) => styles
+
   for (const run of runs) {
     let elderPoseForRun = null
-    await bootstrapWalk(page, run.url, 'pixel-art')
-    for (const shot of shots) {
-      if (shot.file === 'walk-tree-elder-closeup') {
-        await page.evaluate((plantId) => {
-          window.__mgWalkCapture?.setSoloPlantFocus?.(plantId ?? null)
-        }, shot.plantId)
-        await page.evaluate(async () => {
-          await window.__mgWalkCapture?.waitCaptureReady?.()
-        })
-        elderPoseForRun = await elderCloseupPoseForPage(page, shot.plantId)
-        if (!elderPoseForRun) throw new Error(`No elder close-up pose for ${run.url}`)
-        poses[shot.file] = elderPoseForRun
-        const dims = await page.evaluate((id) => {
-          const a = window.__mgWalkCapture?.plantWorldAabb?.(id)
-          return a
-            ? { H: a.maxY - a.minY, R: Math.max(a.maxX - a.minX, a.maxZ - a.minZ) * 0.5 }
-            : null
-        }, shot.plantId)
-        console.log(`elder pose (${run.phase})`, JSON.stringify(elderPoseForRun), dims ?? '')
-        await page.evaluate(() => window.__mgWalkCapture?.setSoloPlantFocus?.(null))
-      }
+    let mushroomPoseForRun = null
+    const elderShot = shots.find((s) => s.file === 'walk-tree-elder-closeup')
+    const mushroomShot = shots.find((s) => s.file === 'walk-mushroom-closeup')
+    if (elderShot?.plantId || mushroomShot?.plantId) {
+      await bootstrapWalk(page, run.url, 'pixel-art')
     }
-    for (const artStyle of run.styles) {
+    if (elderShot?.plantId) {
+      await page.evaluate((plantId) => {
+        window.__mgWalkCapture?.setSoloPlantFocus?.(plantId ?? null)
+      }, elderShot.plantId)
+      await page.evaluate(async () => {
+        await window.__mgWalkCapture?.waitCaptureReady?.()
+      })
+      elderPoseForRun = await elderCloseupPoseForPage(page, elderShot.plantId)
+      if (!elderPoseForRun) throw new Error(`No elder close-up pose for ${run.url}`)
+      console.log(`elder pose (${run.phase})`, JSON.stringify(elderPoseForRun))
+      await page.evaluate(() => window.__mgWalkCapture?.setSoloPlantFocus?.(null))
+    }
+    if (mushroomShot?.plantId) {
+      await page.evaluate((plantId) => {
+        window.__mgWalkCapture?.setSoloPlantFocus?.(plantId ?? null)
+      }, mushroomShot.plantId)
+      await page.evaluate(async () => {
+        await window.__mgWalkCapture?.waitCaptureReady?.()
+      })
+      mushroomPoseForRun = await mushroomCloseupPoseForPage(page, mushroomShot.plantId)
+      if (!mushroomPoseForRun) throw new Error(`No mushroom close-up pose for ${run.url}`)
+      console.log(`mushroom pose (${run.phase})`, JSON.stringify(mushroomPoseForRun))
+      await page.evaluate(() => window.__mgWalkCapture?.setSoloPlantFocus?.(null))
+    }
+    for (const artStyle of styleListForRun(run.styles)) {
       await bootstrapWalk(page, run.url, artStyle)
       for (const shot of shots) {
         let pose = poses[shot.file]
         if (shot.file === 'walk-tree-elder-closeup') {
           pose = elderPoseForRun
         }
+        if (shot.file === 'walk-mushroom-closeup') {
+          pose = mushroomPoseForRun
+        }
         if (!pose) throw new Error(`Missing pose for ${shot.file}`)
         await captureShot(page, run.phase, artStyle, shot, pose)
       }
     }
   }
-  if (viewportMode === 'desktop' && poses['walk-tree-elder-closeup']) {
-    writeFileSync(posePath, JSON.stringify(poses, null, 2))
+  if (viewportMode === 'desktop') {
+    const persist = { ...poses }
+    delete persist['walk-tree-elder-closeup']
+    delete persist['walk-mushroom-closeup']
+    writeFileSync(posePath, JSON.stringify(persist, null, 2))
   }
 } finally {
   await browser.close()

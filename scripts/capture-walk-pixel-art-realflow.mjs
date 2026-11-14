@@ -177,6 +177,7 @@ try {
       )
       localStorage.setItem(`memorygarden:${payload.user.id}:memories`, JSON.stringify(payload.memories))
       sessionStorage.setItem('mg:walk-plant-focus', '1')
+      sessionStorage.setItem('mg:walk-capture', '1')
       const OriginalDate = Date
       // eslint-disable-next-line no-global-assign
       Date = class extends OriginalDate {
@@ -205,28 +206,36 @@ try {
   })
   await desktopPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 120_000 })
   await enterWalk(desktopPage)
-  await walkToward(desktopPage, 1600, ['KeyW'])
-  await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-tree.png')
-
-  await walkToward(desktopPage, 3200, ['KeyW'])
-  await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-hill-step.png')
-
-  await walkToward(desktopPage, 2200, ['KeyA'])
-  await walkToward(desktopPage, 800, ['KeyW'])
-  const canvas = desktopPage.locator('[data-testid="open-world-garden"] canvas').first()
-  await canvas.click({ position: { x: 640, y: 400 }, force: true })
-  await desktopPage.waitForTimeout(200)
   await desktopPage.evaluate(() => {
+    const foot = window.__mgWalkFootAt?.(20.8, 11.5) ?? 0
     window.__mgWalkNudgePose?.({
-      x: -22.4567746653731,
-      z: 16.03001368630009,
-      yaw: 0.65,
-      pitch: -0.42,
-      eyeY: 2.44,
+      x: 20.8,
+      z: 11.5,
+      yaw: -0.72,
+      pitch: -0.06,
+      eyeY: foot + 1.62,
     })
   })
-  await desktopPage.waitForTimeout(800)
-  await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-flowers.png')
+  await desktopPage.waitForTimeout(900)
+  await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-elder.png')
+
+  await desktopPage.evaluate(() => {
+    const px = 0
+    const pz = 27.2
+    const foot = window.__mgWalkFootAt?.(px, pz) ?? 0
+    window.__mgWalkNudgePose?.({
+      x: px,
+      z: pz,
+      yaw: Math.PI,
+      pitch: -0.22,
+      eyeY: foot + 1.6,
+    })
+  })
+  await desktopPage.waitForTimeout(900)
+  await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-mushroom.png')
+
+  await walkToward(desktopPage, 1200, ['KeyW'])
+  await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-hill-step.png')
   if (consoleErrors.length) console.log('desktop page errors', consoleErrors.slice(0, 3))
   await desktop.close()
 

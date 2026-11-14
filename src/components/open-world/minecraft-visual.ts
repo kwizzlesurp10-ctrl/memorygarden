@@ -313,7 +313,6 @@ function placeOakSideBranches(
     [0, -1],
   ]
   for (let i = 0; i < dirs.length; i++) {
-    if (hash01(seed + i * 19.7) > 0.38) continue
     const [dx, dz] = dirs[i]!
     placeLeafLayerAt(g, dx, capY, dz, 1, leaf, true, seed + 60 + i, false)
     placeBlock(g, dx, capY + 1, dz, leaf)
@@ -346,9 +345,9 @@ function buildPixelArtOak(
   }
   const capY = trunkH
   if (elder) {
-    placeLeafLayer(g, capY, 3, leaf, true, seed + 40, true, 0.4)
-    placeLeafLayer(g, capY + 1, 3, leaf, true, seed + 41, true, 0.48)
-    placeLeafLayer(g, capY + 2, 3, leaf, true, seed + 42, true, 0.42)
+    placeLeafLayer(g, capY, 3, leaf, true, seed + 40, false)
+    placeLeafLayer(g, capY + 1, 3, leaf, true, seed + 41, false)
+    placeLeafLayer(g, capY + 2, 3, leaf, true, seed + 42, false)
     placeLeafLayer(g, capY + 3, 2, leaf, true, seed + 43, false)
     placeLeafLayer(g, capY + 4, 2, leaf, true, seed + 44, false)
     placeLeafLayer(g, capY + 5, 1, leaf, false, seed + 45, false)
@@ -361,13 +360,19 @@ function buildPixelArtOak(
   }
 }
 
-/** Minecraft red mushroom ~0.6 blocks tall — cross-sprite (smaller than one block). */
+const MUSHROOM_WALK_VOXEL_SCALE = 0.52
+
+/** Walk mushroom: 2-block stem (1×1), thin 3×3 cap with trimmed corners, small plus dome (no second cap layer). */
 function buildPixelArtMushroom(
   g: THREE.Group,
-  _stem: THREE.MeshBasicMaterial,
+  stem: THREE.MeshBasicMaterial,
   cap: THREE.MeshBasicMaterial,
+  seed: number,
 ): void {
-  placeCrossPlantSprite(g, 0, 0, 0, 0.6, 0.52, cap)
+  placeBlock(g, 0, 0, 0, stem)
+  placeBlock(g, 0, 1, 0, stem)
+  const capY = 2
+  placeLeafLayer(g, capY, 1, cap, true, seed + 7, false)
 }
 
 export function snapPlantGroupToTerrain(g: THREE.Group, terrainTop: number): void {
@@ -477,7 +482,7 @@ function buildMushroom(
     if (idx === 1) placeBlock(g, 0, 1, 0, cap)
     return
   }
-  buildPixelArtMushroom(g, stem, cap)
+  buildPixelArtMushroom(g, stem, cap, seed)
 }
 
 const MINECRAFT_BLOCK_UNIT = 1
@@ -669,6 +674,10 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
     buildFlower(g, stemMat, bloom, seedN, stage)
   } else if (recipe.kind === 'mushroom') {
     buildMushroom(g, stemMushroom, cap, seedN, stage)
+    if (plantStageToIndex(stage) >= 2) {
+      g.userData.walkVoxelScale = MUSHROOM_WALK_VOXEL_SCALE
+      g.scale.setScalar(MUSHROOM_WALK_VOXEL_SCALE)
+    }
   } else {
     buildOakTree(g, bark, leaf, seedN + 19, stage)
   }

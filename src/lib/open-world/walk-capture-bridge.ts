@@ -58,7 +58,11 @@ export interface WalkCaptureBridge {
   captureCameraFov?: () => number
   captureCameraAspect?: () => number
   elderCloseupPose?: (plantId: string) => WalkCapturePose | null
+  mushroomCloseupPose?: (plantId: string) => WalkCapturePose | null
   plantProjectedBoxScreenY?: (plantId: string) => { top: number; bottom: number } | null
+  plantProjectedAabbScreen?: (
+    plantId: string,
+  ) => { left: number; right: number; top: number; bottom: number } | null
 }
 
 export const WALK_CAPTURE_SESSION_KEY = 'mg:walk-capture'
