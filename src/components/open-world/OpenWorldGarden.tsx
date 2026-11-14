@@ -275,8 +275,10 @@ export function OpenWorldGarden({
     if (captureMode) {
       engine.setPaused(true)
       registerWalkCaptureBridge({
-        setPose: (pose) =>
-          engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY),
+        setPose: (pose) => {
+          engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
+          engine.applyCaptureFov(pose.captureFov)
+        },
         setPalette: (palette) => engine.setPalette(palette),
         setPlantArtStyle: (style) => engine.setPlantArtStyle(style),
         showcaseModel: (id: Cc0ModelId | null) => engine.setCc0Showcase(id),
@@ -316,6 +318,7 @@ export function OpenWorldGarden({
         plantWorldAabb: (plantId) => engine.plantWorldAabb(plantId),
         captureCameraFov: () => engine.getCaptureCameraFov(),
         captureCameraAspect: () => engine.getCaptureCameraAspect(),
+        setCaptureFov: (fov) => engine.applyCaptureFov(fov),
         elderCloseupPose: (plantId) => engine.elderDeterministicCapturePose(plantId),
         mushroomCloseupPose: (plantId) => engine.mushroomDeterministicCapturePose(plantId),
         plantProjectedBoxScreenY: (plantId) => engine.plantProjectedBoxScreenY(plantId),

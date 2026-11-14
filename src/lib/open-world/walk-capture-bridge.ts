@@ -10,6 +10,8 @@ export interface WalkCapturePose {
   pitch: number
   eyeY?: number
   screenFrac?: number
+  /** Narrowed vertical FOV for elder close-up capture only. */
+  captureFov?: number
 }
 
 export interface WalkCaptureBridge {
@@ -57,6 +59,7 @@ export interface WalkCaptureBridge {
   } | null
   captureCameraFov?: () => number
   captureCameraAspect?: () => number
+  setCaptureFov?: (fov: number) => void
   elderCloseupPose?: (plantId: string) => WalkCapturePose | null
   mushroomCloseupPose?: (plantId: string) => WalkCapturePose | null
   plantProjectedBoxScreenY?: (plantId: string) => { top: number; bottom: number } | null

@@ -330,6 +330,97 @@ function skyFractionTopCenterColumn(pngPath, centerX01, topFraction = 0.04) {
   return total > 0 ? sky / total : 0
 }
 
+async function tuneElderCaptureFovFromPng(page, plantId, probePath) {
+  await page.evaluate(() => window.__mgWalkCapture?.setCaptureFov?.(68))
+  await page.evaluate(async () => {
+    await window.__mgWalkCapture?.waitCaptureReady?.()
+  })
+  await page
+    .locator('[data-testid="open-world-garden"] canvas')
+    .first()
+    .screenshot({ path: probePath })
+  const baselineTree = measureTreePixelFillFromPng(probePath)
+  if (
+    baselineTree.height >= 0.58 &&
+    baselineTree.height <= 0.72 &&
+    baselineTree.top >= 0.04 &&
+    baselineTree.top <= 0.08 &&
+    !baselineTree.canopyTouchesTopRow
+  ) {
+    return { fov: 68, col: { heightFrac: baselineTree.height, topFrac: baselineTree.top } }
+  }
+  const projBox = await page.evaluate(
+    (id) => window.__mgWalkCapture?.plantProjectedAabbScreen?.(id) ?? null,
+    plantId,
+  )
+  const centerX =
+    projBox && Number.isFinite(projBox.left) && Number.isFinite(projBox.right)
+      ? (projBox.left + projBox.right) / 2
+      : 0.5
+  let best = null
+  const coarse = [68, 52, 38, 28, 20, 14, 10]
+  for (const fov of coarse) {
+    await page.evaluate((f) => window.__mgWalkCapture?.setCaptureFov?.(f), fov)
+    await page.evaluate(async () => {
+      await window.__mgWalkCapture?.waitCaptureReady?.()
+    })
+    await page
+      .locator('[data-testid="open-world-garden"] canvas')
+      .first()
+      .screenshot({ path: probePath })
+    const col = measureElderColumnVerticalFillFromPng(probePath, centerX, 64)
+    const treeFill = measureTreePixelFillFromPng(probePath)
+    if (treeFill.canopyTouchesTopRow) continue
+    const height = treeFill.height > 0 ? treeFill.height : col.heightFrac
+    const topFrac = treeFill.height > 0 ? treeFill.top : col.topFrac
+    if (treeFill.canopyTouchesTopRow || treeFill.canopyInTopBand) continue
+    if (treeFill.bottom > 0.93 || height > 0.74 || height < 0.5) continue
+    const score = Math.abs(height - 0.65) + Math.abs(topFrac - 0.05) * 4
+    const fits = height >= 0.55 && height <= 0.72 && topFrac >= 0.04 && topFrac <= 0.08
+    if (fits && (!best || score < best.score)) {
+      best = { fov, score, col: { ...col, heightFrac: height, topFrac } }
+    }
+  }
+  if (best) {
+    const start = Math.min(68, best.fov + 4)
+    const end = Math.max(8, best.fov - 4)
+    for (let fov = start; fov >= end; fov -= 0.75) {
+      await page.evaluate((f) => window.__mgWalkCapture?.setCaptureFov?.(f), fov)
+      await page.evaluate(async () => {
+        await window.__mgWalkCapture?.waitCaptureReady?.()
+      })
+      await page
+        .locator('[data-testid="open-world-garden"] canvas')
+        .first()
+        .screenshot({ path: probePath })
+      const col = measureElderColumnVerticalFillFromPng(probePath, centerX, 64)
+      const treeFill = measureTreePixelFillFromPng(probePath)
+      if (treeFill.canopyTouchesTopRow) continue
+      const height = treeFill.height > 0 ? treeFill.height : col.heightFrac
+      const topFrac = treeFill.height > 0 ? treeFill.top : col.topFrac
+      if (treeFill.canopyTouchesTopRow || treeFill.canopyInTopBand) continue
+      if (treeFill.bottom > 0.93 || height > 0.74 || height < 0.5) continue
+      const score = Math.abs(height - 0.65) + Math.abs(topFrac - 0.05) * 4
+      const fits = height >= 0.55 && height <= 0.72 && topFrac >= 0.04 && topFrac <= 0.08
+      if (fits && (!best || score < best.score)) {
+        best = { fov, score, col: { ...col, heightFrac: height, topFrac } }
+      }
+    }
+  }
+  if (!best || best.col.heightFrac < 0.55) {
+    await page.evaluate(() => window.__mgWalkCapture?.setCaptureFov?.(68))
+    return null
+  }
+  await page.evaluate((f) => window.__mgWalkCapture?.setCaptureFov?.(f), best.fov)
+  await page.evaluate(async () => {
+    await window.__mgWalkCapture?.waitCaptureReady?.()
+  })
+  console.log(
+    `elder-png-fov-tune fov=${best.fov.toFixed(1)} height=${(best.col.heightFrac * 100).toFixed(1)}% top=${(best.col.topFrac * 100).toFixed(1)}%`,
+  )
+  return best
+}
+
 async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, pose) {
   const projBox = await page.evaluate(
     (id) => window.__mgWalkCapture?.plantProjectedAabbScreen?.(id) ?? null,
@@ -448,6 +539,9 @@ async function captureShot(page, phase, artStyle, shot, pose) {
   const name = `minecraft-walk-${phase}-${shaTag}-${artStyle}-${shot.file}-${viewportMode}.png`
   const legacyName = `minecraft-walk-${phase}-${artStyle}-${shot.file}-${viewportMode}.png`
   const file = resolve(outDir, name)
+  if (shot.file === 'walk-tree-elder-closeup' && shot.plantId && phase === 'after') {
+    await tuneElderCaptureFovFromPng(page, shot.plantId, file.replace(/\.png$/, '-fov-probe.png'))
+  }
   await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
   if (shot.file === 'walk-tree-elder-closeup' && shot.plantId) {
     await assertElderCloseupFrame(page, shot.plantId, file, phase, artStyle, pose)
@@ -541,7 +635,7 @@ try {
         ]
 
   const styleListForRun =
-    captureOnly === 'mushroom' || captureOnly === 'detail'
+    captureOnly === 'mushroom'
       ? (styles) => styles.filter((s) => s === 'pixel-art')
       : (styles) => styles
 

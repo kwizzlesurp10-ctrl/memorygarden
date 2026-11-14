@@ -689,12 +689,31 @@ export function minecraftGrassTufts(
   }
 }
 
-export const MINECRAFT_WALK_ROCK_CLUSTERS: Array<{ x: number; z: number; seed: number }> = [
-  { x: -11, z: 6, seed: 501 },
-  { x: 13, z: -6, seed: 502 },
-  { x: -16, z: -9, seed: 503 },
-  { x: 18, z: 10, seed: 504 },
+export type VoxelRockTier = 'small' | 'medium' | 'large'
+
+export const MINECRAFT_WALK_ROCK_CLUSTERS: Array<{
+  x: number
+  z: number
+  seed: number
+  tier?: VoxelRockTier
+}> = [
+  { x: -11, z: 6, seed: 501, tier: 'small' },
+  { x: 13, z: -6, seed: 502, tier: 'large' },
+  { x: -16, z: -9, seed: 503, tier: 'medium' },
+  { x: 18, z: 10, seed: 504, tier: 'small' },
 ]
+
+export const ROCK_TIER_BLOCKS: Record<VoxelRockTier, [number, number]> = {
+  small: [3, 5],
+  medium: [4, 7],
+  large: [6, 10],
+}
+
+const ROCK_TIER_MAX_LAYERS: Record<VoxelRockTier, number> = {
+  small: 2,
+  medium: 3,
+  large: 4,
+}
 
 export function voxelRockCluster(
   x: number,
@@ -704,6 +723,7 @@ export function voxelRockCluster(
   root: THREE.Group,
   track: <T extends { dispose: () => void }>(o: T) => T,
   blockTopY?: (wx: number, wz: number) => number,
+  tier: VoxelRockTier = 'medium',
 ): void {
   const rockMat = track(
     voxelMaterial(palette.bank ?? '#6b6b74', palette.hills[2] ?? '#8a8a94', seed, 'stone'),
@@ -715,8 +735,11 @@ export function voxelRockCluster(
   const surfaceY = Math.max(0, Math.round(topAt(x, z)))
   const g = new THREE.Group()
   g.position.set(x, 0, z)
+  g.userData.gardenRock = true
   const rng = gardenRng(seed)
-  const blockCount = 3 + Math.floor(rng() * 4)
+  const [blockMin, blockMax] = ROCK_TIER_BLOCKS[tier]
+  const blockCount = blockMin + Math.floor(rng() * (blockMax - blockMin + 1))
+  const maxLayer = ROCK_TIER_MAX_LAYERS[tier]
   const used = new Set<string>()
   const colHeight = new Map<string, number>()
   const offsets: Array<[number, number]> = [
@@ -727,28 +750,106 @@ export function voxelRockCluster(
     [0, -1],
     [1, 1],
     [-1, -1],
+    [1, -1],
+    [-1, 1],
   ]
-  let placed = 0
+
+  const stampBlock = (ix: number, iz: number, layer: number, topCap: boolean) => {
+    const mat = topCap ? mossMat : rockMat
+    placeBlock(g, ix, surfaceY + layer, iz, mat)
+    const scaleJitter = tier === 'small' ? 0.78 : tier === 'large' ? 0.88 : 0.82
+    const scale = scaleJitter + rng() * 0.22
+    const child = g.children[g.children.length - 1]
+    if (child) child.scale.set(VOXEL * scale, VOXEL * scale, VOXEL * scale)
+  }
+
+  stampBlock(0, 0, 0, false)
+  used.add('0,0,0')
+  colHeight.set('0,0', 1)
+
+  let placed = 1
   let guard = 0
-  while (placed < blockCount && guard < 40) {
+  while (placed < blockCount && guard < 48) {
     guard++
     const pick = offsets[Math.floor(rng() * offsets.length)]!
     const ix = pick[0]
     const iz = pick[1]
     const colKey = `${ix},${iz}`
     const layer = colHeight.get(colKey) ?? 0
-    if (layer > 1) continue
+    if (layer >= maxLayer) continue
+    const belowKey = `${ix},${iz},${layer - 1}`
+    const atOrigin = ix === 0 && iz === 0
+    if (layer > 0 && !used.has(belowKey) && !atOrigin) continue
+    if (layer === 0) {
+      const neighborTall = Math.max(
+        colHeight.get(`${ix + 1},${iz}`) ?? 0,
+        colHeight.get(`${ix - 1},${iz}`) ?? 0,
+        colHeight.get(`${ix},${iz + 1}`) ?? 0,
+        colHeight.get(`${ix},${iz - 1}`) ?? 0,
+      )
+      if (neighborTall > 1 && rng() > 0.35) continue
+    }
     const key = `${colKey},${layer}`
     if (used.has(key)) continue
     used.add(key)
-    colHeight.set(colKey, layer + 1)
-    const mat = layer === 0 ? mossMat : rockMat
-    placeBlock(g, ix, surfaceY + layer, iz, mat)
-    const scale = 0.82 + rng() * 0.28
-    const child = g.children[g.children.length - 1]
-    if (child) child.scale.set(VOXEL * scale, VOXEL * scale, VOXEL * scale)
+    const nextLayer = layer + 1
+    colHeight.set(colKey, nextLayer)
+    const willStack = rng() > 0.42 && nextLayer < maxLayer
+    stampBlock(ix, iz, layer, !willStack)
     placed++
   }
+
+  root.add(g)
+}
+
+/** Short voxel fence segment — visible in walk capture, off main paths. */
+export function voxelGardenFenceSegment(
+  x: number,
+  z: number,
+  yaw: number,
+  palette: ScenePalette,
+  root: THREE.Group,
+  track: <T extends { dispose: () => void }>(o: T) => T,
+  blockTopY?: (wx: number, wz: number) => number,
+): void {
+  const woodMat = track(voxelMaterial('#543825', '#3f2817', 41, 'bark'))
+  const topAt = blockTopY ?? ((wx, wz) => walkCaptureGroundY(wx, wz))
+  const surfaceY = Math.max(0, Math.round(topAt(x, z)))
+  const g = new THREE.Group()
+  g.position.set(x, surfaceY, z)
+  g.rotation.y = yaw
+  g.userData.gardenProp = 'fence'
+  for (let px = 0; px < 3; px++) {
+    placeBlock(g, px, 0, 0, woodMat)
+    placeBlock(g, px, 1, 0, woodMat)
+  }
+  placeBlock(g, 0, 2, 0, woodMat)
+  placeBlock(g, 2, 2, 0, woodMat)
+  placeBlock(g, 1, 2, 0, woodMat)
+  root.add(g)
+}
+
+/** Mossy log stump — voxel tier companion prop. */
+export function voxelLogStump(
+  x: number,
+  z: number,
+  seed: number,
+  palette: ScenePalette,
+  root: THREE.Group,
+  track: <T extends { dispose: () => void }>(o: T) => T,
+  blockTopY?: (wx: number, wz: number) => number,
+): void {
+  const barkMat = track(voxelMaterial('#4a3528', '#3f2817', seed, 'bark'))
+  const mossMat = track(
+    voxelMaterial(palette.hills[0] ?? '#5fa037', palette.hills[1] ?? '#3d7a34', seed + 2, 'moss_stone'),
+  )
+  const topAt = blockTopY ?? ((wx, wz) => walkCaptureGroundY(wx, wz))
+  const surfaceY = Math.max(0, Math.round(topAt(x, z)))
+  const g = new THREE.Group()
+  g.position.set(x, 0, z)
+  g.userData.gardenProp = 'stump'
+  placeBlock(g, 0, surfaceY, 0, barkMat)
+  placeBlock(g, 0, surfaceY + 1, 0, mossMat)
   root.add(g)
 }
 

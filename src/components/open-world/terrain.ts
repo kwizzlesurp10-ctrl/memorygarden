@@ -11,6 +11,8 @@ import {
   minecraftGrassTufts,
   minecraftPathTexture,
   minecraftWaterBlockTexture,
+  voxelGardenFenceSegment,
+  voxelLogStump,
   voxelRockCluster,
 } from './minecraft-visual'
 
@@ -470,28 +472,45 @@ export function buildTerrain(
 
   // ── Mossy River Boulders & Garden Rocks ──────────────────────────────────
   const rockMat = track(twilightSceneryMat(palette, palette.bank, twilight, starAlpha, 0.9))
-  const rockGeo = track(new THREE.DodecahedronGeometry(1, 1))
+  const mossCapMat = track(
+    twilightSceneryMat(palette, palette.hills[0] ?? palette.silSoft, twilight, starAlpha, 0.82),
+  )
   const rockPositions = [
-    { x: world.pond.x + world.pond.radius * 0.95, z: world.pond.z - 0.5, s: 0.65 },
-    { x: world.pond.x - world.pond.radius * 0.85, z: world.pond.z + 1.2, s: 0.8 },
-    { x: world.pond.x + 0.4, z: world.pond.z + world.pond.radius * 0.98, s: 0.55 },
-    { x: -16, z: -14, s: 1.1 },
-    { x: 18, z: -12, s: 0.9 },
-    { x: -12, z: 18, s: 0.75 },
-    { x: 14, z: 16, s: 0.85 },
+    { x: world.pond.x + world.pond.radius * 0.95, z: world.pond.z - 0.5, s: 0.65, shape: 0 },
+    { x: world.pond.x - world.pond.radius * 0.85, z: world.pond.z + 1.2, s: 0.8, shape: 1 },
+    { x: world.pond.x + 0.4, z: world.pond.z + world.pond.radius * 0.98, s: 0.55, shape: 2 },
+    { x: -16, z: -14, s: 1.1, shape: 0 },
+    { x: 18, z: -12, s: 0.9, shape: 1 },
+    { x: -12, z: 18, s: 0.75, shape: 2 },
+    { x: 14, z: 16, s: 0.85, shape: 0 },
+  ]
+  const rockGeos = [
+    track(new THREE.IcosahedronGeometry(1, 0)),
+    track(new THREE.OctahedronGeometry(1, 0)),
+    track(new THREE.TetrahedronGeometry(1, 0)),
   ]
   for (let ri = 0; ri < rockPositions.length; ri++) {
     const rp = rockPositions[ri]
     if (minecraftMode) {
       /* voxel clusters placed below */
     } else {
-      const rMesh = new THREE.Mesh(rockGeo, rockMat)
-      rMesh.scale.set(rp.s * 1.2, rp.s * 0.7, rp.s * 0.9)
-      rMesh.position.set(rp.x, rp.s * 0.35, rp.z)
-      rMesh.rotation.set(rp.s * 1.5, rp.s * 2.3, rp.s)
+      const geo = rockGeos[rp.shape % rockGeos.length]!
+      const rMesh = new THREE.Mesh(geo, rockMat)
+      const squash = 0.62 + (ri % 3) * 0.08
+      const stretch = 0.95 + (ri % 2) * 0.14
+      rMesh.scale.set(rp.s * stretch, rp.s * squash, rp.s * (0.88 + (ri % 4) * 0.06))
+      rMesh.position.set(rp.x, rp.s * 0.34, rp.z)
+      rMesh.rotation.set(rp.s * 0.9 + ri * 0.4, rp.s * 1.7 + ri, rp.s * 0.6)
       rMesh.castShadow = true
       rMesh.receiveShadow = true
       root.add(rMesh)
+      if (ri % 2 === 0) {
+        const cap = new THREE.Mesh(track(new THREE.SphereGeometry(0.42, 5, 4)), mossCapMat)
+        cap.scale.set(rp.s * 0.55, rp.s * 0.22, rp.s * 0.5)
+        cap.position.set(rp.x, rp.s * 0.62, rp.z)
+        cap.castShadow = true
+        root.add(cap)
+      }
     }
   }
 
@@ -501,8 +520,65 @@ export function buildTerrain(
       ((wx: number, wz: number) => minecraftAnalyticSurfaceY(Math.round(wx), Math.round(wz)))
     const clusters = walkCapture ? MINECRAFT_WALK_ROCK_CLUSTERS : MINECRAFT_WALK_ROCK_CLUSTERS.slice(0, 4)
     for (const c of clusters) {
-      voxelRockCluster(c.x, c.z, c.seed, palette, root, track, (wx, wz) => hillTop(wx, wz))
+      voxelRockCluster(
+        c.x,
+        c.z,
+        c.seed,
+        palette,
+        root,
+        track,
+        (wx, wz) => hillTop(wx, wz),
+        c.tier ?? 'medium',
+      )
     }
+  }
+
+  const ambientPropWoodMats: THREE.MeshStandardMaterial[] = []
+  const registerWood = (m: THREE.MeshStandardMaterial) => {
+    ambientPropWoodMats.push(m)
+    return m
+  }
+
+  // Garden ambient props (walk + live) — tucked off paths near rock clusters
+  const propFenceWood = registerWood(track(new THREE.MeshStandardMaterial({ color: '#543825', roughness: 0.82 })))
+  const propStumpWood = registerWood(track(new THREE.MeshStandardMaterial({ color: '#4a3528', roughness: 0.88 })))
+  const propStumpMoss = track(
+    twilightSceneryMat(palette, palette.hills[0] ?? palette.silSoft, twilight, starAlpha, 0.85),
+  )
+
+  if (minecraftMode) {
+    const hillTop =
+      surfaceY ??
+      ((wx: number, wz: number) => minecraftAnalyticSurfaceY(Math.round(wx), Math.round(wz)))
+    const hillSampler = (wx: number, wz: number) => hillTop(wx, wz)
+    voxelGardenFenceSegment(-9, 11, 0.35, palette, root, track, hillSampler)
+    voxelLogStump(16, 8, 611, palette, root, track, hillSampler)
+  } else {
+    const fenceGrp = new THREE.Group()
+    const postGeo = track(new THREE.BoxGeometry(0.14, 0.9, 0.14))
+    for (const px of [-0.45, 0.45]) {
+      const post = new THREE.Mesh(postGeo, propFenceWood)
+      post.position.set(px, 0.45, 0)
+      post.castShadow = true
+      fenceGrp.add(post)
+    }
+    const rail = new THREE.Mesh(track(new THREE.BoxGeometry(1.05, 0.08, 0.1)), propFenceWood)
+    rail.position.set(0, 0.78, 0)
+    fenceGrp.add(rail)
+    fenceGrp.position.set(-9, 0, 11)
+    fenceGrp.rotation.y = 0.35
+    root.add(fenceGrp)
+
+    const stump = new THREE.Group()
+    const stumpBody = new THREE.Mesh(track(new THREE.CylinderGeometry(0.32, 0.38, 0.42, 7)), propStumpWood)
+    stumpBody.position.y = 0.21
+    stumpBody.castShadow = true
+    stump.add(stumpBody)
+    const stumpCap = new THREE.Mesh(track(new THREE.CylinderGeometry(0.34, 0.34, 0.06, 7)), propStumpMoss)
+    stumpCap.position.y = 0.45
+    stump.add(stumpCap)
+    stump.position.set(16, 0, 8)
+    root.add(stump)
   }
 
   const walkCaptureDecor = isWalkCaptureSession()
@@ -1233,12 +1309,31 @@ export function buildTerrain(
       const nextTwilight = star > 0.22
       const sceneryRock = twilightSceneryColor(next, next.bank, nextTwilight)
       rockMat.color.copy(sceneryRock)
+      mossCapMat.color.copy(twilightSceneryColor(next, next.hills[0] ?? next.silSoft, nextTwilight))
+      propStumpMoss.color.copy(twilightSceneryColor(next, next.hills[0] ?? next.silSoft, nextTwilight))
       if (nextTwilight) {
         rockMat.emissive.set(next.hills[0] ?? next.glow ?? next.silSoft)
         rockMat.emissiveIntensity = 0.14 + star * 0.16
+        mossCapMat.emissive.set(next.hills[0] ?? next.glow ?? next.silSoft)
+        mossCapMat.emissiveIntensity = 0.12 + star * 0.14
+        propStumpMoss.emissive.set(next.hills[0] ?? next.glow ?? next.silSoft)
+        propStumpMoss.emissiveIntensity = 0.12 + star * 0.14
       } else {
         rockMat.emissive.set('#000000')
         rockMat.emissiveIntensity = 0
+        mossCapMat.emissive.set('#000000')
+        mossCapMat.emissiveIntensity = 0
+        propStumpMoss.emissive.set('#000000')
+        propStumpMoss.emissiveIntensity = 0
+      }
+      for (const w of ambientPropWoodMats) {
+        if (nextTwilight) {
+          w.emissive.set(next.hills[0] ?? next.glow ?? next.silSoft)
+          w.emissiveIntensity = 0.08 + star * 0.1
+        } else {
+          w.emissive.set('#000000')
+          w.emissiveIntensity = 0
+        }
       }
       hedgeMat.color.copy(twilightSceneryColor(next, next.hills[2] ?? next.silSoft ?? next.sil, nextTwilight))
       if (nextTwilight) {
