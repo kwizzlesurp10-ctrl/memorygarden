@@ -91,6 +91,7 @@ export class OpenWorldEngine {
   private soloCapturePlantId: string | null = null
   private plantArtStyle: ArtStyle
   private framesRendered = 0
+  private elderWalkFramingBoxByPlant = new Map<string, THREE.Box3>()
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -387,8 +388,61 @@ export class OpenWorldEngine {
     return box.isEmpty() ? null : box
   }
 
-  /** Elder framing bounds: union of precise vertices and object bounds (watercolor billboards). */
-  private plantPreciseWorldBox(plantId: string): THREE.Box3 | null {
+  private elderFramingBoxSessionKey(plantId: string): string {
+    return `mg:elder-framing-aabb:${plantId}`
+  }
+
+  private readElderFramingBoxFromSession(plantId: string): THREE.Box3 | null {
+    if (typeof sessionStorage === 'undefined') return null
+    try {
+      const raw = sessionStorage.getItem(this.elderFramingBoxSessionKey(plantId))
+      if (!raw) return null
+      const o = JSON.parse(raw) as {
+        minX: number
+        minY: number
+        minZ: number
+        maxX: number
+        maxY: number
+        maxZ: number
+      }
+      return new THREE.Box3(
+        new THREE.Vector3(o.minX, o.minY, o.minZ),
+        new THREE.Vector3(o.maxX, o.maxY, o.maxZ),
+      )
+    } catch {
+      return null
+    }
+  }
+
+  private writeElderFramingBoxToSession(plantId: string, box: THREE.Box3): void {
+    if (typeof sessionStorage === 'undefined') return
+    try {
+      sessionStorage.setItem(
+        this.elderFramingBoxSessionKey(plantId),
+        JSON.stringify({
+          minX: box.min.x,
+          minY: box.min.y,
+          minZ: box.min.z,
+          maxX: box.max.x,
+          maxY: box.max.y,
+          maxZ: box.max.z,
+        }),
+      )
+    } catch {
+      /* quota */
+    }
+  }
+
+  /** Elder walk framing: precise voxel bounds; cached from pixel-art for watercolor parity. */
+  private plantElderFramingBox(plantId: string): THREE.Box3 | null {
+    if (plantId.includes('elder') && plantId.endsWith('-walk')) {
+      const cached = this.elderWalkFramingBoxByPlant.get(plantId)
+      if (cached) return cached.clone()
+      if (this.plantArtStyle === 'watercolor') {
+        const fromSession = this.readElderFramingBoxFromSession(plantId)
+        if (fromSession) return fromSession
+      }
+    }
     const group = this.findPlantGroup(plantId)
     if (!group) return null
     group.updateWorldMatrix(true, true)
@@ -397,6 +451,15 @@ export class OpenWorldEngine {
     if (bounds.isEmpty() && precise.isEmpty()) return null
     const merged = bounds.isEmpty() ? precise.clone() : bounds.clone()
     if (!precise.isEmpty()) merged.union(precise)
+    if (
+      isWalkCaptureSession() &&
+      plantId.includes('elder') &&
+      plantId.endsWith('-walk') &&
+      this.plantArtStyle === 'pixel-art'
+    ) {
+      this.elderWalkFramingBoxByPlant.set(plantId, merged.clone())
+      this.writeElderFramingBoxToSession(plantId, merged)
+    }
     return merged
   }
 
@@ -470,14 +533,14 @@ export class OpenWorldEngine {
 
   plantScreenCoverage(plantId: string, pose?: WalkCapturePose): number {
     if (plantId.includes('elder') && isWalkCaptureSession()) {
-      const box = this.plantPreciseWorldBox(plantId) ?? this.plantWorldBox(plantId)
-      if (!box) return 0
-      if (pose) {
-        return this.withCapturePose(pose, () => {
-          const ndc = this.projectBoxVerticalInView(box)
-          return ndc ? (ndc.maxNdcY - ndc.minNdcY) / 2 : 0
-        })
-      }
+    const box = this.plantElderFramingBox(plantId) ?? this.plantWorldBox(plantId)
+    if (!box) return 0
+    if (pose) {
+      return this.withCapturePose(pose, () => {
+        const ndc = this.projectBoxVerticalInView(box)
+        return ndc ? (ndc.maxNdcY - ndc.minNdcY) / 2 : 0
+      })
+    }
       this.renderOnce()
       const ndc = this.projectBoxVerticalInView(box)
       return ndc ? (ndc.maxNdcY - ndc.minNdcY) / 2 : 0
@@ -598,7 +661,7 @@ export class OpenWorldEngine {
   ): { left: number; right: number; top: number; bottom: number } | null {
     const box =
       plantId.includes('elder') && plantId.endsWith('-walk')
-        ? (this.plantPreciseWorldBox(plantId) ?? this.plantWorldBox(plantId))
+        ? (this.plantElderFramingBox(plantId) ?? this.plantWorldBox(plantId))
         : this.plantWorldBox(plantId)
     if (!box) return null
     this.renderOnce()
@@ -776,7 +839,7 @@ export class OpenWorldEngine {
   }
 
   private elderGeometryCapturePose(plantId: string): WalkCapturePose | null {
-    const box = this.plantPreciseWorldBox(plantId)
+    const box = this.plantElderFramingBox(plantId)
     if (!box) return null
     const center = box.getCenter(new THREE.Vector3())
     const H = box.max.y - box.min.y
@@ -819,7 +882,10 @@ export class OpenWorldEngine {
   }
 
   plantBoxVerticalNdc(plantId: string): { minNdcY: number; maxNdcY: number } | null {
-    const box = this.plantPreciseWorldBox(plantId)
+    const box =
+      plantId.includes('elder') && plantId.endsWith('-walk')
+        ? (this.plantElderFramingBox(plantId) ?? this.plantWorldBox(plantId))
+        : this.plantWorldBox(plantId)
     if (!box) return null
     this.renderOnce()
     const ndc = this.projectBoxVerticalInView(box)
