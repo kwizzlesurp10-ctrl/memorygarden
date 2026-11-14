@@ -454,20 +454,20 @@ export class OpenWorldEngine {
     const group = this.findPlantGroup(plantId)
     if (!group) return null
     group.updateWorldMatrix(true, true)
-    const precise = new THREE.Box3().setFromObject(group, true)
-    if (!precise.isEmpty()) {
-      if (
-        isWalkCaptureSession() &&
-        plantId.includes('elder') &&
-        plantId.endsWith('-walk') &&
-        this.plantArtStyle === 'pixel-art'
-      ) {
-        this.writeElderFramingBoxToSession(plantId, precise)
-      }
-      return precise
-    }
     const bounds = new THREE.Box3().setFromObject(group)
-    return bounds.isEmpty() ? null : bounds
+    const precise = new THREE.Box3().setFromObject(group, true)
+    const box = bounds.isEmpty() ? precise.clone() : bounds.clone()
+    if (!precise.isEmpty()) box.union(precise)
+    if (box.isEmpty()) return null
+    if (
+      isWalkCaptureSession() &&
+      plantId.includes('elder') &&
+      plantId.endsWith('-walk') &&
+      this.plantArtStyle === 'pixel-art'
+    ) {
+      this.writeElderFramingBoxToSession(plantId, box)
+    }
+    return box
   }
 
   /** Tighter AABB for camera framing — full walk bounds include sparse voxel wings that read smaller on screen. */
@@ -825,7 +825,7 @@ export class OpenWorldEngine {
     let bottom = -Infinity
     for (const [x, y, z] of corners) {
       const p = new THREE.Vector3(x, y, z).project(this.camera)
-      if (p.z < -1 || p.z > 1 || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue
+      if (p.z > 1 || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue
       const screenX = (p.x + 1) / 2
       const screenY = (1 - p.y) / 2
       left = Math.min(left, screenX)
@@ -875,12 +875,12 @@ export class OpenWorldEngine {
         const ndc = this.projectBoxVerticalInView(box)
         if (!ndc) break
         const spanHalf = (ndc.maxNdcY - ndc.minNdcY) / 2
-        const spanOk = spanHalf <= 0.68 && spanHalf >= 0.62
+        const spanOk = spanHalf <= 0.752 && spanHalf >= 0.58
         if (this.elderNdcFrameOk(ndc) && spanOk) break
         const topScale = ndc.maxNdcY > 0.8 ? ndc.maxNdcY / 0.78 : 1
         const botScale = ndc.minNdcY < -0.8 ? Math.abs(ndc.minNdcY) / 0.78 : 1
         const spanScale =
-          spanHalf > 0.68 ? spanHalf / 0.66 : spanHalf < 0.62 ? 0.66 / Math.max(spanHalf, 0.2) : 1
+          spanHalf > 0.752 ? spanHalf / 0.66 : spanHalf < 0.58 ? 0.66 / Math.max(spanHalf, 0.2) : 1
         const scale = Math.max(topScale, botScale, spanScale, 1.02)
         dist *= scale
         pose = applyAt(dist)
@@ -924,7 +924,7 @@ export class OpenWorldEngine {
     let maxNdcY = -Infinity
     for (const [x, y, z] of corners) {
       const p = new THREE.Vector3(x, y, z).project(this.camera)
-      if (p.z < -1 || p.z > 1) continue
+      if (p.z > 1 || !Number.isFinite(p.y)) continue
       minNdcY = Math.min(minNdcY, p.y)
       maxNdcY = Math.max(maxNdcY, p.y)
     }
