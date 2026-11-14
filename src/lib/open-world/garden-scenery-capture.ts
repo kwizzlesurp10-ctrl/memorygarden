@@ -25,12 +25,12 @@ export const WALK_ROCK_TIER_SHOWCASE: Array<{
   seed: number
   tier: VoxelRockTier
 }> = [
-  { x: -10.5, z: 5.5, seed: 701, tier: 'small' },
-  { x: -8, z: 6, seed: 702, tier: 'medium' },
-  { x: -5.5, z: 5.75, seed: 703, tier: 'large' },
+  { x: -12.5, z: 5.5, seed: 701, tier: 'small' },
+  { x: -8.25, z: 6, seed: 702, tier: 'medium' },
+  { x: -4, z: 5.75, seed: 703, tier: 'large' },
 ]
 
-export const ROCK_TIER_LINEUP_CENTER = { x: -8, z: 6 } as const
+export const ROCK_TIER_LINEUP_CENTER = { x: -8.25, z: 6 } as const
 
 export type GardenSceneryCloseupKind = 'rock-tiers' | 'fence' | 'stump'
 
@@ -49,26 +49,26 @@ export const GARDEN_SCENERY_CLOSEUP: Record<GardenSceneryCloseupKind, GardenScen
   'rock-tiers': {
     x: ROCK_TIER_LINEUP_CENTER.x,
     z: ROCK_TIER_LINEUP_CENTER.z,
-    aimY: 0.68,
-    height: 1.15,
-    camDx: 0.8,
-    camDz: 5.4,
+    aimY: 0.62,
+    height: 1.05,
+    camDx: 1.5,
+    camDz: 4.6,
   },
   fence: {
     x: GARDEN_AMBIENT_FENCE.x,
     z: GARDEN_AMBIENT_FENCE.z,
-    aimY: 0.96,
-    height: 1.05,
-    camDx: 6.5,
-    camDz: 2.8,
+    aimY: 0.92,
+    height: 0.95,
+    camDx: 4.2,
+    camDz: 3.6,
   },
   stump: {
     x: GARDEN_AMBIENT_STUMP.x,
     z: GARDEN_AMBIENT_STUMP.z,
-    aimY: 0.52,
-    height: 0.62,
-    camDx: 3.2,
-    camDz: 4.6,
+    aimY: 0.55,
+    height: 0.72,
+    camDx: 1.6,
+    camDz: 2.2,
   },
 }
 
@@ -94,10 +94,16 @@ export function computeGardenSceneryCloseupPose(
   let camX = f.x + f.camDx * pullBack
   let camZ = f.z + f.camDz * pullBack
   if (kind === 'fence') {
-    const dist = 5.8 * pullBack
+    const dist = 5.2 * pullBack
     const fy = GARDEN_AMBIENT_FENCE.yaw
-    camX = GARDEN_AMBIENT_FENCE.x + Math.sin(fy) * dist
-    camZ = GARDEN_AMBIENT_FENCE.z - Math.cos(fy) * dist
+    const fx = GARDEN_AMBIENT_FENCE.x
+    const fz = GARDEN_AMBIENT_FENCE.z
+    const perpX = Math.cos(fy) * dist
+    const perpZ = Math.sin(fy) * dist
+    const alongX = Math.sin(fy) * 1.4 * pullBack
+    const alongZ = -Math.cos(fy) * 1.4 * pullBack
+    camX = fx + perpX + alongX
+    camZ = fz + perpZ + alongZ
   }
   const ground = footY(camX, camZ)
   const eyeY = ground + 1.62

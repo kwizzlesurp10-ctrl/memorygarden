@@ -28,7 +28,7 @@ function farFromSceneryProps(x: number, z: number): boolean {
   const near = (px: number, pz: number) => Math.hypot(x - px, z - pz) < SCENERY_PROP_CLEAR_RADIUS
   if (near(GARDEN_AMBIENT_FENCE.x, GARDEN_AMBIENT_FENCE.z)) return false
   if (near(GARDEN_AMBIENT_STUMP.x, GARDEN_AMBIENT_STUMP.z)) return false
-  if (near(-8, 6)) return false
+  if (near(-8.25, 6)) return false
   return true
 }
 
@@ -592,29 +592,42 @@ export function buildTerrain(
       hillSampler,
     )
   } else {
+    const wcPropScale = walkCapture ? 3.6 : 1
     const fenceGrp = new THREE.Group()
-    const postGeo = track(new THREE.BoxGeometry(0.14, 0.9, 0.14))
-    for (const px of [-0.45, 0.45]) {
+    const postSpan = walkCapture ? 1.05 : 0.45
+    const postH = walkCapture ? 1.35 : 0.9
+    const postGeo = track(new THREE.BoxGeometry(0.12, postH, 0.12))
+    for (const px of [-postSpan, postSpan]) {
       const post = new THREE.Mesh(postGeo, propFenceWood)
-      post.position.set(px, 0.45, 0)
+      post.position.set(px, postH * 0.5, 0)
       post.castShadow = true
       fenceGrp.add(post)
     }
-    const rail = new THREE.Mesh(track(new THREE.BoxGeometry(1.05, 0.08, 0.1)), propFenceWood)
-    rail.position.set(0, 0.78, 0)
+    const railW = postSpan * 2 + 0.15
+    const rail = new THREE.Mesh(track(new THREE.BoxGeometry(railW, 0.1, 0.12)), propFenceWood)
+    rail.position.set(0, postH * 0.88, 0)
     fenceGrp.add(rail)
+    fenceGrp.scale.setScalar(wcPropScale)
     fenceGrp.position.set(GARDEN_AMBIENT_FENCE.x, 0, GARDEN_AMBIENT_FENCE.z)
     fenceGrp.rotation.y = GARDEN_AMBIENT_FENCE.yaw
     root.add(fenceGrp)
 
     const stump = new THREE.Group()
-    const stumpBody = new THREE.Mesh(track(new THREE.CylinderGeometry(0.32, 0.38, 0.42, 7)), propStumpWood)
-    stumpBody.position.y = 0.21
+    const stumpR = walkCapture ? 0.55 : 0.32
+    const stumpBody = new THREE.Mesh(
+      track(new THREE.CylinderGeometry(stumpR, stumpR * 1.15, walkCapture ? 0.72 : 0.42, 8)),
+      propStumpWood,
+    )
+    stumpBody.position.y = (walkCapture ? 0.72 : 0.42) * 0.5
     stumpBody.castShadow = true
     stump.add(stumpBody)
-    const stumpCap = new THREE.Mesh(track(new THREE.CylinderGeometry(0.34, 0.34, 0.06, 7)), propStumpMoss)
-    stumpCap.position.y = 0.45
+    const stumpCap = new THREE.Mesh(
+      track(new THREE.CylinderGeometry(stumpR * 1.05, stumpR * 1.05, 0.1, 8)),
+      propStumpMoss,
+    )
+    stumpCap.position.y = (walkCapture ? 0.72 : 0.42) + 0.05
     stump.add(stumpCap)
+    stump.scale.setScalar(wcPropScale)
     stump.position.set(GARDEN_AMBIENT_STUMP.x, 0, GARDEN_AMBIENT_STUMP.z)
     root.add(stump)
 

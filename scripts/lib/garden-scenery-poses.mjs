@@ -1,10 +1,12 @@
 /** Keep in sync with `src/lib/open-world/garden-scenery-capture.ts`. */
 const DEFAULT_CAPTURE_FOV = 68
 
+const GARDEN_AMBIENT_FENCE_YAW = -0.72
+
 const GARDEN_SCENERY_CLOSEUP = {
-  'rock-tiers': { x: -8, z: 6, aimY: 0.68, height: 1.15, camDx: 0.8, camDz: 5.4 },
-  fence: { x: 19, z: 24, aimY: 0.96, height: 1.05, camDx: 6.5, camDz: 2.8 },
-  stump: { x: -17, z: 27, aimY: 0.52, height: 0.62, camDx: 3.2, camDz: 4.6 },
+  'rock-tiers': { x: -8.25, z: 6, aimY: 0.62, height: 1.05, camDx: 1.5, camDz: 4.6 },
+  fence: { x: 19, z: 24, aimY: 0.92, height: 0.95, camDx: 4.2, camDz: 3.6 },
+  stump: { x: -17, z: 27, aimY: 0.55, height: 0.72, camDx: 1.6, camDz: 2.2 },
 }
 
 export function walkCaptureGroundY(x, z) {
@@ -17,10 +19,14 @@ export function computeGardenSceneryCloseupPose(kind, footY = walkCaptureGroundY
   let camX = f.x + f.camDx * pullBack
   let camZ = f.z + f.camDz * pullBack
   if (kind === 'fence') {
-    const dist = 5.8 * pullBack
-    const fy = 0.92
-    camX = 19 + Math.sin(fy) * dist
-    camZ = 24 - Math.cos(fy) * dist
+    const dist = 5.2 * pullBack
+    const fy = GARDEN_AMBIENT_FENCE_YAW
+    const perpX = Math.cos(fy) * dist
+    const perpZ = Math.sin(fy) * dist
+    const alongX = Math.sin(fy) * 1.4 * pullBack
+    const alongZ = -Math.cos(fy) * 1.4 * pullBack
+    camX = f.x + perpX + alongX
+    camZ = f.z + perpZ + alongZ
   }
   const ground = footY(camX, camZ)
   const eyeY = ground + 1.62
@@ -31,5 +37,6 @@ export function computeGardenSceneryCloseupPose(kind, footY = walkCaptureGroundY
   const horiz = Math.hypot(dx, dz)
   let pitch = -Math.atan2(dy, horiz)
   if (pitch > -0.08) pitch = -0.08
+  void DEFAULT_CAPTURE_FOV
   return { x: camX, z: camZ, yaw, pitch, eyeY }
 }

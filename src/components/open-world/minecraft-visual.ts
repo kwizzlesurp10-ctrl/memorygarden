@@ -730,7 +730,7 @@ export function voxelSteppedBoulder(
     voxelMaterial(palette.bank ?? '#6b6b74', palette.hills[2] ?? '#8a8a94', seed, 'stone'),
   )
   const mossMat = track(
-    voxelMaterial(palette.hills[0] ?? '#5fa037', palette.hills[1] ?? '#3d7a34', seed + 3, 'moss_stone'),
+    voxelMaterial(palette.hills[0] ?? '#5fa037', palette.hills[1] ?? '#7ed65a', seed + 3, 'grass'),
   )
   const topAt = blockTopY ?? ((wx, wz) => walkCaptureGroundY(wx, wz))
   const surfaceY = Math.max(0, Math.round(topAt(x, z)))
@@ -741,38 +741,39 @@ export function voxelSteppedBoulder(
 
   const cells: Array<[number, number, number]> = []
   if (tier === 'small') {
-    for (const [ix, iz] of [
-      [0, 0],
-      [1, 0],
-      [0, 1],
-      [1, 1],
-    ]) {
-      cells.push([ix, 0, iz])
-    }
+    cells.push(
+      [0, 0, 0],
+      [1, 0, 0],
+      [0, 0, 1],
+      [1, 0, 1],
+    )
   } else if (tier === 'medium') {
     for (let ix = 0; ix < 3; ix++) {
       for (let iz = 0; iz < 2; iz++) cells.push([ix, 0, iz])
     }
+    cells.push([1, 1, 0])
   } else {
     for (let ix = 0; ix < 3; ix++) {
       for (let iz = 0; iz < 3; iz++) cells.push([ix, 0, iz])
     }
-    cells.push([1, 1, 1])
+    cells.push([1, 1, 1], [0, 1, 1], [2, 1, 1])
   }
 
   const topAtLayer = (ix: number, iz: number, iy: number) =>
     !cells.some(([cx, cy, cz]) => cx === ix && cz === iz && cy > iy)
 
-  const offsetX = tier === 'small' ? -0.5 : tier === 'medium' ? -1 : -1
-  const offsetZ = tier === 'small' ? -0.5 : tier === 'medium' ? -0.5 : -1
+  const spanX = tier === 'small' ? 2 : tier === 'medium' ? 3 : 3
+  const spanZ = tier === 'small' ? 2 : tier === 'medium' ? 2 : 3
+  const offsetX = -(spanX - 1) / 2
+  const offsetZ = -(spanZ - 1) / 2
 
   for (const [ix, iy, iz] of cells) {
     const mat = topAtLayer(ix, iz, iy) ? mossMat : rockMat
     placeBlock(g, ix + offsetX, surfaceY + iy, iz + offsetZ, mat)
     const child = g.children[g.children.length - 1]
     if (child instanceof THREE.Mesh) {
-      const flat = 0.92 + (seed % 7) * 0.01
-      child.scale.set(VOXEL * flat, VOXEL * (iy === 0 ? 0.86 : 0.92), VOXEL * flat)
+      const squash = iy === 0 ? 0.82 : 0.88
+      child.scale.set(VOXEL * 0.94, VOXEL * squash, VOXEL * 0.94)
     }
   }
 
@@ -793,7 +794,7 @@ export function voxelRockCluster(
     voxelMaterial(palette.bank ?? '#6b6b74', palette.hills[2] ?? '#8a8a94', seed, 'stone'),
   )
   const mossMat = track(
-    voxelMaterial(palette.hills[0] ?? '#5fa037', palette.hills[1] ?? '#3d7a34', seed + 3, 'moss_stone'),
+    voxelMaterial(palette.hills[0] ?? '#5fa037', palette.hills[1] ?? '#7ed65a', seed + 3, 'grass'),
   )
   const topAt = blockTopY ?? ((wx, wz) => walkCaptureGroundY(wx, wz))
   const surfaceY = Math.max(0, Math.round(topAt(x, z)))
@@ -880,16 +881,27 @@ export function voxelGardenFenceSegment(
   const topAt = blockTopY ?? ((wx, wz) => walkCaptureGroundY(wx, wz))
   const surfaceY = Math.max(0, Math.round(topAt(x, z)))
   const g = new THREE.Group()
-  g.position.set(x, surfaceY, z)
+  g.position.set(x, 0, z)
   g.rotation.y = yaw
   g.userData.gardenProp = 'fence'
-  for (const px of [-1, 1]) {
-    placeBlock(g, px, 0, 0, woodMat)
-    placeBlock(g, px, 1, 0, woodMat)
+  const stampPost = (lx: number) => {
+    for (let ly = 0; ly < 2; ly++) {
+      placeBlock(g, lx, ly, 0, woodMat)
+      const post = g.children[g.children.length - 1]
+      if (post instanceof THREE.Mesh) {
+        post.scale.set(VOXEL * 0.42, VOXEL * 0.92, VOXEL * 0.42)
+      }
+    }
   }
-  placeBlock(g, -1, 2, 0, woodMat)
-  placeBlock(g, 0, 2, 0, woodMat)
-  placeBlock(g, 1, 2, 0, woodMat)
+  stampPost(-2)
+  stampPost(2)
+  for (const lx of [-1, 0, 1]) {
+    placeBlock(g, lx, 2, 0, woodMat)
+    const rail = g.children[g.children.length - 1]
+    if (rail instanceof THREE.Mesh) {
+      rail.scale.set(VOXEL * 0.34, VOXEL * 0.2, VOXEL * 0.34)
+    }
+  }
   root.add(g)
 }
 
@@ -904,16 +916,28 @@ export function voxelLogStump(
   blockTopY?: (wx: number, wz: number) => number,
 ): void {
   const barkMat = track(voxelMaterial('#4a3528', '#3f2817', seed, 'bark'))
-  const mossMat = track(
-    voxelMaterial(palette.hills[0] ?? '#5fa037', palette.hills[1] ?? '#3d7a34', seed + 2, 'moss_stone'),
-  )
+  const mossCap = track(voxelMaterial('#5fa037', '#7ed65a', seed + 2, 'grass'))
+  const ringWood = track(voxelMaterial('#6b4f3a', '#4a3528', seed + 4, 'bark'))
   const topAt = blockTopY ?? ((wx, wz) => walkCaptureGroundY(wx, wz))
   const surfaceY = Math.max(0, Math.round(topAt(x, z)))
   const g = new THREE.Group()
   g.position.set(x, 0, z)
   g.userData.gardenProp = 'stump'
   placeBlock(g, 0, surfaceY, 0, barkMat)
-  placeBlock(g, 0, surfaceY + 1, 0, mossMat)
+  const core = g.children[g.children.length - 1]
+  if (core instanceof THREE.Mesh) {
+    core.scale.set(VOXEL * 0.92, VOXEL * 0.84, VOXEL * 0.92)
+  }
+  placeBlock(g, 0, surfaceY + 1, 0, ringWood)
+  const collar = g.children[g.children.length - 1]
+  if (collar instanceof THREE.Mesh) {
+    collar.scale.set(VOXEL * 0.98, VOXEL * 0.26, VOXEL * 0.98)
+  }
+  placeBlock(g, 0, surfaceY + 2, 0, mossCap)
+  const cap = g.children[g.children.length - 1]
+  if (cap instanceof THREE.Mesh) {
+    cap.scale.set(VOXEL * 0.96, VOXEL * 0.34, VOXEL * 0.96)
+  }
   root.add(g)
 }
 

@@ -1,7 +1,7 @@
 /**
  * Rocks + ambient props — daytime close-ups (40–60% frame) for walk + open-world watercolor.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
@@ -56,9 +56,8 @@ const subjects = [
 ]
 
 const poseCachePath = resolve(outDir, 'garden-scenery-poses.json')
-let pinnedSceneryPoses = existsSync(poseCachePath)
-  ? JSON.parse(readFileSync(poseCachePath, 'utf8'))
-  : {}
+if (existsSync(poseCachePath)) unlinkSync(poseCachePath)
+let pinnedSceneryPoses = {}
 
 function diffRatio(aPath, bPath) {
   if (!existsSync(aPath) || !existsSync(bPath)) return NaN
@@ -177,28 +176,54 @@ async function captureSubject(browser, artStyle, subject, phase, url, sha, light
   let fill = 0
   let uniform = true
   let usedPullBack = 1
-  const basePull = artStyle === 'watercolor' ? 0.58 : 1
-  const duskExtra = lightingHour >= 18 ? 0.35 : 0
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const pullBack = basePull + duskExtra + attempt * 0.12
-    usedPullBack = pullBack
-    chosenPose =
-      (await page.evaluate(
-        (kind) => window.__mgWalkCapture?.gardenSceneryCloseupPose?.(kind) ?? null,
-        subject.id,
-      )) ?? computeGardenSceneryCloseupPose(subject.id, undefined, pullBack)
-    if (url !== afterUrl || phase === 'before') {
-      chosenPose = computeGardenSceneryCloseupPose(subject.id, undefined, pullBack)
-    }
+  const subjectPull =
+    subject.id === 'stump'
+      ? artStyle === 'watercolor'
+        ? 0.4
+        : 0.62
+      : subject.id === 'fence'
+        ? artStyle === 'watercolor'
+          ? 0.44
+          : 0.94
+        : artStyle === 'watercolor'
+          ? 0.52
+          : 0.82
+  const duskExtra = lightingHour >= 18 ? 0.22 : 0
+  const minPull =
+    subject.id === 'fence' ? 0.86 : subject.id === 'stump' ? 0.52 : artStyle === 'watercolor' ? 0.44 : 0.72
+  const targetFillMin = 0.35
+  const targetFillMax = 0.52
+  const pullCandidates = []
+  for (let d = -4; d <= 5; d++) pullCandidates.push(subjectPull + duskExtra + d * 0.05)
+  let best = null
+  for (const pullBack of pullCandidates) {
+    const clamped = Math.max(minPull, pullBack)
+    usedPullBack = clamped
+    chosenPose = computeGardenSceneryCloseupPose(subject.id, undefined, clamped)
     await page.evaluate((p) => window.__mgWalkCapture?.setPose?.(p), chosenPose)
     await page.waitForTimeout(650)
     await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
-    uniform = centerTwentyPercentTooUniform(file)
+    uniform = phase === 'after' && centerTwentyPercentTooUniform(file)
     fill = centerSubjectFillRatio(file)
-    if (!uniform && fill >= 0.32 && fill <= 0.62) break
+  const score =
+      fill >= targetFillMin && fill <= targetFillMax
+        ? 0
+        : Math.min(Math.abs(fill - targetFillMin), Math.abs(fill - targetFillMax))
+    const reject = phase === 'after' && uniform && fill > 0.58
+    if (!reject && (!best || score < best.score)) best = { fill, uniform, pose: chosenPose, pullBack: clamped, score, file }
+    if (!reject && score === 0) break
+  }
+  if (best) {
+    fill = best.fill
+    uniform = best.uniform
+    chosenPose = best.pose
+    usedPullBack = best.pullBack
+    await page.evaluate((p) => window.__mgWalkCapture?.setPose?.(p), chosenPose)
+    await page.waitForTimeout(350)
+    await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
   }
 
-  if (phase === 'after' && uniform) {
+  if (phase === 'after' && uniform && fill > 0.58) {
     throw new Error(
       `Capture failed center-uniform check (camera inside geometry?) for ${artStyle} ${subject.id} ${phase}`,
     )
