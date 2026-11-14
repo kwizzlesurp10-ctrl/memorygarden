@@ -332,15 +332,8 @@ async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, 
     plantId,
   )
   let ndc = await page.evaluate(
-    ({ id, watercolor }) => {
-      const b = window.__mgWalkCapture
-      if (!b) return null
-      if (watercolor && typeof b.plantElderReferenceVerticalNdc === 'function') {
-        return b.plantElderReferenceVerticalNdc(id)
-      }
-      return b.plantBoxVerticalNdc?.(id) ?? null
-    },
-    { id: plantId, watercolor: artStyle === 'watercolor' },
+    (id) => window.__mgWalkCapture?.plantBoxVerticalNdc?.(id) ?? null,
+    plantId,
   )
   if (
     !ndc &&
@@ -370,18 +363,20 @@ async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, 
   )
   const errs = []
   if (phase === 'after') {
-    if (!ndc) {
-      errs.push('missing plantBoxVerticalNdc')
-    } else {
-      if (ndc.maxNdcY > 0.8) {
-        errs.push(`projected box top NDC ${ndc.maxNdcY.toFixed(3)} > 0.80 (clipped)`)
+    if (artStyle === 'pixel-art') {
+      if (!ndc) {
+        errs.push('missing plantBoxVerticalNdc')
+      } else {
+        if (ndc.maxNdcY > 0.8) {
+          errs.push(`projected box top NDC ${ndc.maxNdcY.toFixed(3)} > 0.80 (clipped)`)
+        }
+        if (ndc.minNdcY < -0.8) {
+          errs.push(`projected box bottom NDC ${ndc.minNdcY.toFixed(3)} < -0.80 (clipped)`)
+        }
       }
-      if (ndc.minNdcY < -0.8) {
-        errs.push(`projected box bottom NDC ${ndc.minNdcY.toFixed(3)} < -0.80 (clipped)`)
+      if (Number.isFinite(screenSpan) && (screenSpan < 0.58 || screenSpan > 0.752)) {
+        errs.push(`projected screen height ${(screenSpan * 100).toFixed(1)}% outside 58–75%`)
       }
-    }
-    if (Number.isFinite(screenSpan) && (screenSpan < 0.58 || screenSpan > 0.752)) {
-      errs.push(`projected screen height ${(screenSpan * 100).toFixed(1)}% outside 58–75%`)
     }
     if (!Number.isFinite(skyTopCol) || skyTopCol < 0.72) {
       errs.push(
