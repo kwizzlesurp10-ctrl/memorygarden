@@ -332,8 +332,15 @@ async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, 
     plantId,
   )
   let ndc = await page.evaluate(
-    (id) => window.__mgWalkCapture?.plantBoxVerticalNdc?.(id) ?? null,
-    plantId,
+    ({ id, watercolor }) => {
+      const b = window.__mgWalkCapture
+      if (!b) return null
+      if (watercolor && typeof b.plantElderReferenceVerticalNdc === 'function') {
+        return b.plantElderReferenceVerticalNdc(id)
+      }
+      return b.plantBoxVerticalNdc?.(id) ?? null
+    },
+    { id: plantId, watercolor: artStyle === 'watercolor' },
   )
   if (
     !ndc &&
