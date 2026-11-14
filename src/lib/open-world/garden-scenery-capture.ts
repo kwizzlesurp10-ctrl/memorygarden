@@ -52,7 +52,7 @@ export const GARDEN_SCENERY_CLOSEUP: Record<GardenSceneryCloseupKind, GardenScen
     aimY: 0.72,
     height: 1.05,
     camDx: 1.1,
-    camDz: 3.4,
+    camDz: 2.75,
   },
   fence: {
     x: GARDEN_AMBIENT_FENCE.x,

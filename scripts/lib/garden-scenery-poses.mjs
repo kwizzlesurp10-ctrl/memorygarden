@@ -4,7 +4,7 @@ const DEFAULT_CAPTURE_FOV = 68
 const GARDEN_AMBIENT_FENCE_YAW = -0.72
 
 const GARDEN_SCENERY_CLOSEUP = {
-  'rock-tiers': { x: -8.25, z: 6, aimY: 0.72, height: 1.05, camDx: 1.1, camDz: 3.4 },
+  'rock-tiers': { x: -8.25, z: 6, aimY: 0.72, height: 1.05, camDx: 1.1, camDz: 2.75 },
   fence: { x: 19, z: 24, aimY: 0.92, height: 0.95, camDx: 4.2, camDz: 3.6 },
   stump: { x: -17, z: 27, aimY: 1.05, height: 0.72, camDx: 2.4, camDz: 3.1 },
 }

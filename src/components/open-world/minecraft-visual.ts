@@ -895,15 +895,11 @@ export function voxelGardenFenceSegment(
   }
   stampPost(-2)
   stampPost(2)
-  for (const lx of [-2, -1, 0, 1, 2]) {
+  for (const lx of [-1, 0, 1]) {
     placeBlock(g, lx, 2, 0, woodMat)
     const rail = g.children[g.children.length - 1]
     if (rail instanceof THREE.Mesh) {
-      if (Math.abs(lx) === 2) {
-        rail.scale.set(VOXEL * 0.38, VOXEL * 0.28, VOXEL * 0.38)
-      } else {
-        rail.scale.set(VOXEL * 0.34, VOXEL * 0.22, VOXEL * 0.34)
-      }
+      rail.scale.set(VOXEL * 0.34, VOXEL * 0.44, VOXEL * 0.34)
     }
   }
   root.add(g)

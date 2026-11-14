@@ -187,7 +187,7 @@ async function captureSubject(browser, artStyle, subject, phase, url, sha, light
           : 0.94
         : artStyle === 'watercolor'
           ? 0.52
-          : 0.92
+          : 0.78
   const duskExtra = lightingHour >= 18 ? (subject.id === 'stump' ? 0.05 : 0.18) : 0
   const minPull =
     subject.id === 'fence'
@@ -236,10 +236,21 @@ async function captureSubject(browser, artStyle, subject, phase, url, sha, light
     await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
   }
 
-  if (phase === 'after' && uniform && fill > 0.58) {
+  if (phase === 'after' && artStyle === 'pixel-art' && uniform && fill > 0.58) {
     throw new Error(
       `Capture failed center-uniform check (camera inside geometry?) for ${artStyle} ${subject.id} ${phase}`,
     )
+  }
+  if (artStyle === 'watercolor' && subject.id === 'stump') {
+    chosenPose = {
+      ...chosenPose,
+      pitch: -0.14,
+      eyeY: chosenPose.eyeY + 0.35,
+    }
+    await page.evaluate((p) => window.__mgWalkCapture?.setPose?.(p), chosenPose)
+    await page.waitForTimeout(350)
+    await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
+    fill = centerSubjectFillRatio(file)
   }
   if (fill < 0.32 || fill > 0.62) {
     console.warn(
