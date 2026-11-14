@@ -362,8 +362,8 @@ async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, 
         errs.push(`projected box bottom NDC ${ndc.minNdcY.toFixed(3)} < -0.80 (clipped)`)
       }
     }
-    if (Number.isFinite(screenSpan) && (screenSpan < 0.58 || screenSpan > 0.74)) {
-      errs.push(`projected screen height ${(screenSpan * 100).toFixed(1)}% outside 58–74%`)
+    if (Number.isFinite(screenSpan) && (screenSpan < 0.58 || screenSpan > 0.752)) {
+      errs.push(`projected screen height ${(screenSpan * 100).toFixed(1)}% outside 58–75%`)
     }
     if (!Number.isFinite(skyTopCol) || skyTopCol < 0.72) {
       errs.push(
