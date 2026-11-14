@@ -8,6 +8,10 @@ import { spawnSync } from 'node:child_process'
 import { chromium } from 'playwright'
 import { PNG } from 'pngjs'
 import { computeGardenSceneryCloseupPose } from './lib/garden-scenery-poses.mjs'
+import {
+  centerSubjectFillRatio,
+  centerTwentyPercentTooUniform,
+} from './lib/scenery-capture-validate.mjs'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const afterSha =
@@ -164,24 +168,59 @@ async function captureSubject(browser, artStyle, subject, phase, url, sha, light
   }
   if (!pose) pose = computeGardenSceneryCloseupPose(subject.id)
   if (!pose) throw new Error(`No scenery pose for ${subject.id}`)
-  if (phase === 'after' && url === afterUrl) {
-    pinnedSceneryPoses[subject.id] = pose
-    writeFileSync(poseCachePath, JSON.stringify(pinnedSceneryPoses, null, 2))
-  }
-  await page.evaluate((p) => window.__mgWalkCapture?.setPose?.(p), pose)
-  await page.waitForTimeout(700)
   const suffix =
     artStyle === 'pixel-art' ? `pixel-art-walk-${subject.slug}` : `watercolor-open-world-${subject.slug}`
   const todTag = lightingHour >= 18 ? 'dusk' : 'day'
   const file = resolve(outDir, `garden-${phase}-${sha}-${suffix}-${todTag}-desktop.png`)
-  await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
-  const fill = measureCenterSubjectFill(file)
-  console.log(`Wrote ${file} centerSubjectFill=${(fill * 100).toFixed(1)}%`)
+
+  let chosenPose = pose
+  let fill = 0
+  let uniform = true
+  let usedPullBack = 1
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const pullBack = 1 + attempt * 0.14
+    usedPullBack = pullBack
+    chosenPose =
+      (await page.evaluate(
+        (kind) => window.__mgWalkCapture?.gardenSceneryCloseupPose?.(kind) ?? null,
+        subject.id,
+      )) ?? computeGardenSceneryCloseupPose(subject.id, undefined, pullBack)
+    if (url !== afterUrl || phase === 'before') {
+      chosenPose = computeGardenSceneryCloseupPose(subject.id, undefined, pullBack)
+    }
+    await page.evaluate((p) => window.__mgWalkCapture?.setPose?.(p), chosenPose)
+    await page.waitForTimeout(650)
+    await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
+    uniform = centerTwentyPercentTooUniform(file)
+    fill = centerSubjectFillRatio(file)
+    if (!uniform && fill >= 0.32 && fill <= 0.62) break
+  }
+
+  if (phase === 'after' && uniform) {
+    throw new Error(
+      `Capture failed center-uniform check (camera inside geometry?) for ${artStyle} ${subject.id} ${phase}`,
+    )
+  }
+  if (fill < 0.32 || fill > 0.62) {
+    console.warn(
+      `fill out of 35-60% band for ${artStyle} ${subject.id} ${phase}: ${(fill * 100).toFixed(1)}%`,
+    )
+  }
+
+  if (phase === 'after' && url === afterUrl) {
+    pinnedSceneryPoses[subject.id] = chosenPose
+    writeFileSync(poseCachePath, JSON.stringify(pinnedSceneryPoses, null, 2))
+  }
+
+  console.log(
+    `Wrote ${file} centerFill=${(fill * 100).toFixed(1)}% uniform=${uniform} pullBack=${usedPullBack.toFixed(2)}`,
+  )
   await context.close()
-  return { file, fill }
+  return { file, fill, subject: subject.id, artStyle, phase, todTag, pullBack: usedPullBack }
 }
 
 const metrics = []
+const shotDescriptions = []
 
 async function runArtStyle(artStyle) {
   const browser = await chromium.launch({ headless: true })
@@ -192,10 +231,18 @@ async function runArtStyle(artStyle) {
         ['before', beforeUrl, beforeSha],
         ['after', afterUrl, afterSha],
       ]) {
-        const { file, fill } = await captureSubject(browser, artStyle, subject, phase, url, sha, 14)
+        const shot = await captureSubject(browser, artStyle, subject, phase, url, sha, 14)
+        const { file, fill } = shot
         poses[`${subject.id}-${phase}`] = file
         const beforeFile = poses[`${subject.id}-before`]
         const afterFile = poses[`${subject.id}-after`]
+        shotDescriptions.push({
+          file: shot.file,
+          artStyle: shot.artStyle,
+          phase: shot.phase,
+          subject: shot.subject,
+          centerFill: shot.fill,
+        })
         if (phase === 'after') {
           const diff = diffRatio(beforeFile, afterFile)
           metrics.push({
@@ -206,8 +253,9 @@ async function runArtStyle(artStyle) {
             after: afterFile,
             pixelDiff: diff,
             afterSubjectFill: fill,
+            note: 'pixel diff is informational only; see SCENERY_SHOT_DESCRIPTIONS',
           })
-          console.log(`${artStyle} ${subject.id} pixelDiff=${(diff * 100).toFixed(2)}% fill=${(fill * 100).toFixed(1)}%`)
+          console.log(`${artStyle} ${subject.id} refDiff=${(diff * 100).toFixed(2)}% fill=${(fill * 100).toFixed(1)}%`)
         }
       }
     }
@@ -227,4 +275,8 @@ writeFileSync(
   `before=${beforeSha} after=${afterSha}\n${spawnSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).stdout.trim()}\n`,
 )
 writeFileSync(resolve(outDir, 'SCENERY_CLOSEUP_METRICS.json'), JSON.stringify(metrics, null, 2))
+writeFileSync(
+  resolve(outDir, 'SCENERY_SHOT_DESCRIPTIONS.json'),
+  JSON.stringify(shotDescriptions, null, 2),
+)
 console.log('Rocks/props artifacts in', outDir)

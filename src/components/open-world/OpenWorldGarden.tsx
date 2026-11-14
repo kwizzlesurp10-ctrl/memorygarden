@@ -322,7 +322,6 @@ export function OpenWorldGarden({
         captureCameraAspect: () => engine.getCaptureCameraAspect(),
         setCaptureFov: (fov) => engine.applyCaptureFov(fov),
         elderCloseupPose: (plantId) => engine.elderDeterministicCapturePose(plantId),
-        elderMainBaselinePose: (plantId) => engine.elderMainBaselineCapturePose(plantId),
         mushroomCloseupPose: (plantId) => engine.mushroomDeterministicCapturePose(plantId),
         plantProjectedBoxScreenY: (plantId) => engine.plantProjectedBoxScreenY(plantId),
         plantProjectedAabbScreen: (plantId) => engine.plantProjectedAabbScreen(plantId),

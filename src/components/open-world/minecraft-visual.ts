@@ -704,15 +704,79 @@ export const MINECRAFT_WALK_ROCK_CLUSTERS: Array<{
 ]
 
 export const ROCK_TIER_BLOCKS: Record<VoxelRockTier, [number, number]> = {
-  small: [4, 7],
-  medium: [8, 12],
-  large: [14, 20],
+  small: [3, 5],
+  medium: [5, 8],
+  large: [7, 11],
 }
 
 const ROCK_TIER_MAX_LAYERS: Record<VoxelRockTier, number> = {
-  small: 3,
-  medium: 5,
-  large: 7,
+  small: 2,
+  medium: 3,
+  large: 3,
+}
+
+/** Wide-low boulder silhouette for capture tier lineup (wider than tall). */
+export function voxelSteppedBoulder(
+  x: number,
+  z: number,
+  seed: number,
+  tier: VoxelRockTier,
+  palette: ScenePalette,
+  root: THREE.Group,
+  track: <T extends { dispose: () => void }>(o: T) => T,
+  blockTopY?: (wx: number, wz: number) => number,
+): void {
+  const rockMat = track(
+    voxelMaterial(palette.bank ?? '#6b6b74', palette.hills[2] ?? '#8a8a94', seed, 'stone'),
+  )
+  const mossMat = track(
+    voxelMaterial(palette.hills[0] ?? '#5fa037', palette.hills[1] ?? '#3d7a34', seed + 3, 'moss_stone'),
+  )
+  const topAt = blockTopY ?? ((wx, wz) => walkCaptureGroundY(wx, wz))
+  const surfaceY = Math.max(0, Math.round(topAt(x, z)))
+  const g = new THREE.Group()
+  g.position.set(x, 0, z)
+  g.userData.gardenRock = true
+  g.userData.boulderTier = tier
+
+  const cells: Array<[number, number, number]> = []
+  if (tier === 'small') {
+    for (const [ix, iz] of [
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [1, 1],
+    ]) {
+      cells.push([ix, 0, iz])
+    }
+  } else if (tier === 'medium') {
+    for (let ix = 0; ix < 3; ix++) {
+      for (let iz = 0; iz < 2; iz++) cells.push([ix, 0, iz])
+    }
+  } else {
+    for (let ix = 0; ix < 3; ix++) {
+      for (let iz = 0; iz < 3; iz++) cells.push([ix, 0, iz])
+    }
+    cells.push([1, 1, 1])
+  }
+
+  const topAtLayer = (ix: number, iz: number, iy: number) =>
+    !cells.some(([cx, cy, cz]) => cx === ix && cz === iz && cy > iy)
+
+  const offsetX = tier === 'small' ? -0.5 : tier === 'medium' ? -1 : -1
+  const offsetZ = tier === 'small' ? -0.5 : tier === 'medium' ? -0.5 : -1
+
+  for (const [ix, iy, iz] of cells) {
+    const mat = topAtLayer(ix, iz, iy) ? mossMat : rockMat
+    placeBlock(g, ix + offsetX, surfaceY + iy, iz + offsetZ, mat)
+    const child = g.children[g.children.length - 1]
+    if (child instanceof THREE.Mesh) {
+      const flat = 0.92 + (seed % 7) * 0.01
+      child.scale.set(VOXEL * flat, VOXEL * (iy === 0 ? 0.86 : 0.92), VOXEL * flat)
+    }
+  }
+
+  root.add(g)
 }
 
 export function voxelRockCluster(

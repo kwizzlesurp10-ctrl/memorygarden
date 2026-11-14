@@ -64,7 +64,6 @@ export interface WalkCaptureBridge {
   captureCameraAspect?: () => number
   setCaptureFov?: (fov: number) => void
   elderCloseupPose?: (plantId: string) => WalkCapturePose | null
-  elderMainBaselinePose?: (plantId: string) => WalkCapturePose | null
   mushroomCloseupPose?: (plantId: string) => WalkCapturePose | null
   plantProjectedBoxScreenY?: (plantId: string) => { top: number; bottom: number } | null
   plantProjectedAabbScreen?: (
