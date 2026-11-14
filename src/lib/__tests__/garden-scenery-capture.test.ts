@@ -17,6 +17,6 @@ describe('garden scenery capture anchors', () => {
   it('defines low close-up framing heights', () => {
     expect(GARDEN_SCENERY_CLOSEUP['rock-tiers'].height).toBeLessThan(1.5)
     expect(GARDEN_SCENERY_CLOSEUP.fence.aimY).toBeGreaterThan(0.8)
-    expect(GARDEN_SCENERY_CLOSEUP.stump.aimY).toBeLessThan(0.8)
+    expect(GARDEN_SCENERY_CLOSEUP.stump.aimY).toBeGreaterThan(0.9)
   })
 })
