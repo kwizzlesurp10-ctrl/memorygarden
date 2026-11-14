@@ -309,80 +309,66 @@ function skyFractionTopBand(pngPath, topFraction = 0.06) {
   return total > 0 ? sky / total : 0
 }
 
+function skyFractionTopCenterColumn(pngPath, centerX01, topFraction = 0.04) {
+  const png = PNG.sync.read(readFileSync(pngPath))
+  const topRows = Math.max(1, Math.ceil(png.height * topFraction))
+  const col = Math.min(png.width - 1, Math.max(0, Math.round(centerX01 * png.width)))
+  let sky = 0
+  let total = 0
+  for (let y = 0; y < topRows; y++) {
+    const i = (png.width * y + col) * 4
+    const r = png.data[i]
+    const g = png.data[i + 1]
+    const b = png.data[i + 2]
+    if (isSkyPixel(r, g, b)) sky++
+    total++
+  }
+  return total > 0 ? sky / total : 0
+}
+
 async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, pose) {
-  const fillPng = measureTreePixelFillFromPng(pngPath)
-  const fillLive = await page.evaluate(() => window.__mgWalkCapture?.plantPixelFill?.() ?? null)
+  const ndc = await page.evaluate(
+    (id) => window.__mgWalkCapture?.plantBoxVerticalNdc?.(id) ?? null,
+    plantId,
+  )
   const projBox = await page.evaluate(
     (id) => window.__mgWalkCapture?.plantProjectedAabbScreen?.(id) ?? null,
     plantId,
   )
-  const projCanopy = await page.evaluate(
-    (id) => window.__mgWalkCapture?.plantProjectedBoxScreenY?.(id) ?? null,
-    plantId,
-  )
-  const projTop = projCanopy?.top ?? projBox?.top ?? null
-  const projBottom = projCanopy?.bottom ?? projBox?.bottom ?? null
-  const cov = fillPng.height
-  const top = fillPng.top
-  const liveH = fillLive?.height ?? cov
-    const topTouch =
-      artStyle === 'watercolor'
-        ? projTop != null && projTop < 0.028
-      : fillPng.canopyTouchesTopRow ||
-        fillLive?.canopyTouchesTopRow === true ||
-        fillPng.canopyInTopBand ||
-        fillLive?.canopyInTopBand === true
-    const metricTop =
-      artStyle === 'watercolor' && projTop != null && projTop >= 0.035 && projTop <= 0.15
-        ? projTop
-        : artStyle === 'pixel-art' && projTop != null && projTop >= 0.035 && projTop <= 0.14
-          ? projTop
-          : artStyle === 'pixel-art'
-            ? Math.min(top, fillLive?.top ?? top)
-            : projTop != null && Number.isFinite(projTop) && projTop >= 0 && projTop <= 0.32
-            ? projTop
-            : Math.min(top, fillLive?.top ?? top)
-  const topMarginPct = (metricTop * 100).toFixed(1)
-  const projCanopyPct =
-    projCanopy?.top != null && Number.isFinite(projCanopy.top)
-      ? (projCanopy.top * 100).toFixed(1)
-      : 'n/a'
+  const screenSpan =
+    ndc && Number.isFinite(ndc.maxNdcY) && Number.isFinite(ndc.minNdcY)
+      ? (ndc.maxNdcY - ndc.minNdcY) / 2
+      : projBox
+        ? projBox.bottom - projBox.top
+        : NaN
+  const centerX =
+    projBox && Number.isFinite(projBox.left) && Number.isFinite(projBox.right)
+      ? (projBox.left + projBox.right) / 2
+      : 0.5
+  const skyTopCol =
+    phase === 'after' ? skyFractionTopCenterColumn(pngPath, centerX, 0.04) : NaN
   console.log(
-    `elder-frame-assert ${phase} ${artStyle} treePxFillH=${(cov * 100).toFixed(1)}% projTop=${(projTop != null ? (projTop * 100).toFixed(1) : 'n/a')}% canopyY=${projCanopyPct}% topMargin=${topMarginPct}% touchRow0=${topTouch} liveH=${(liveH * 100).toFixed(1)}%`,
+    `elder-frame-assert ${phase} ${artStyle} ndcTop=${ndc?.maxNdcY != null ? ndc.maxNdcY.toFixed(3) : 'n/a'} ndcBot=${ndc?.minNdcY != null ? ndc.minNdcY.toFixed(3) : 'n/a'} screenSpan=${Number.isFinite(screenSpan) ? (screenSpan * 100).toFixed(1) : 'n/a'}% centerSkyTop4%=${Number.isFinite(skyTopCol) ? (skyTopCol * 100).toFixed(0) : 'n/a'}%`,
   )
   const errs = []
   if (phase === 'after') {
-    const aabbSpan =
-      projBox &&
-      Number.isFinite(projBox.top) &&
-      projBox.top >= 0 &&
-      projBox.top <= 0.2
-        ? projBox.bottom - projBox.top
-        : null
-    const metricH = artStyle === 'watercolor' && aabbSpan != null ? aabbSpan : liveH
-    if (topTouch) {
-      errs.push('canopy touches or projects above frame top (clipped)')
-    } else if (projTop != null && projTop < 0.01 && metricTop < 0.045) {
-      errs.push('projected canopy above frame while pixel margin < 4.5%')
+    if (!ndc) {
+      errs.push('missing plantBoxVerticalNdc')
+    } else {
+      if (ndc.maxNdcY > 0.8) {
+        errs.push(`projected box top NDC ${ndc.maxNdcY.toFixed(3)} > 0.80 (clipped)`)
+      }
+      if (ndc.minNdcY < -0.8) {
+        errs.push(`projected box bottom NDC ${ndc.minNdcY.toFixed(3)} < -0.80 (clipped)`)
+      }
     }
-    const minFillH = artStyle === 'watercolor' ? 0.565 : 0.58
-    if (metricH < minFillH) {
-      errs.push(`tree fill height ${(metricH * 100).toFixed(1)}% < ${(minFillH * 100).toFixed(1)}%`)
+    if (Number.isFinite(screenSpan) && (screenSpan < 0.58 || screenSpan > 0.74)) {
+      errs.push(`projected screen height ${(screenSpan * 100).toFixed(1)}% outside 58–74%`)
     }
-    const maxH = artStyle === 'watercolor' ? 0.72 : 0.7
-    if (metricH > maxH) {
-      errs.push(`tree fill height ${(metricH * 100).toFixed(1)}% > ${(maxH * 100).toFixed(0)}%`)
-    }
-    const minTop = artStyle === 'watercolor' ? 0.032 : 0.04
-    if (metricTop < minTop) {
-      errs.push(`sky margin above canopy ${(metricTop * 100).toFixed(1)}% < ${(minTop * 100).toFixed(0)}%`)
-    }
-    if (metricTop > 0.21) {
-      errs.push(`sky margin above canopy ${(metricTop * 100).toFixed(1)}% > 21% (tree too small in frame)`)
-    }
-    const trunkBottom = fillLive?.bottom ?? fillPng.bottom
-    if (trunkBottom > 0.945) {
-      errs.push(`trunk base ${(trunkBottom * 100).toFixed(1)}% > 94.5% (base clipped)`)
+    if (!Number.isFinite(skyTopCol) || skyTopCol < 0.72) {
+      errs.push(
+        `top 4% center column sky ${Number.isFinite(skyTopCol) ? (skyTopCol * 100).toFixed(0) : 'n/a'}% < 72%`,
+      )
     }
   }
   if (errs.length) {

@@ -63,6 +63,7 @@ export interface WalkCaptureBridge {
   plantProjectedAabbScreen?: (
     plantId: string,
   ) => { left: number; right: number; top: number; bottom: number } | null
+  plantBoxVerticalNdc?: (plantId: string) => { minNdcY: number; maxNdcY: number } | null
   plantPixelFill?: () => {
     top: number
     bottom: number

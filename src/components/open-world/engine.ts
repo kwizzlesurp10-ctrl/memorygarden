@@ -387,6 +387,15 @@ export class OpenWorldEngine {
     return box.isEmpty() ? null : box
   }
 
+  /** Full tree bounds from mesh vertices — used for elder close-up framing. */
+  private plantPreciseWorldBox(plantId: string): THREE.Box3 | null {
+    const group = this.findPlantGroup(plantId)
+    if (!group) return null
+    group.updateWorldMatrix(true, true)
+    const box = new THREE.Box3().setFromObject(group, true)
+    return box.isEmpty() ? null : box
+  }
+
   /** Tighter AABB for camera framing — full walk bounds include sparse voxel wings that read smaller on screen. */
   private plantFramingBox(plantId: string): THREE.Box3 | null {
     const box = this.plantWorldBox(plantId)
@@ -457,20 +466,17 @@ export class OpenWorldEngine {
 
   plantScreenCoverage(plantId: string, pose?: WalkCapturePose): number {
     if (plantId.includes('elder') && isWalkCaptureSession()) {
-      const saved = pose ? { ...this.player } : null
+      const box = this.plantPreciseWorldBox(plantId) ?? this.plantWorldBox(plantId)
+      if (!box) return 0
       if (pose) {
-        this.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
+        return this.withCapturePose(pose, () => {
+          const ndc = this.projectBoxVerticalInView(box)
+          return ndc ? (ndc.maxNdcY - ndc.minNdcY) / 2 : 0
+        })
       }
-      const fill = this.measureSoloPlantPixelFill()
-      if (saved) {
-        this.player.x = saved.x
-        this.player.z = saved.z
-        this.player.y = saved.y
-        this.player.yaw = saved.yaw
-        this.player.pitch = saved.pitch
-        this.applyCamera()
-      }
-      return fill?.height ?? 0
+      this.renderOnce()
+      const ndc = this.projectBoxVerticalInView(box)
+      return ndc ? (ndc.maxNdcY - ndc.minNdcY) / 2 : 0
     }
     const box = this.plantWorldBox(plantId)
     if (!box) return 0
@@ -586,7 +592,10 @@ export class OpenWorldEngine {
   plantProjectedAabbScreen(
     plantId: string,
   ): { left: number; right: number; top: number; bottom: number } | null {
-    const box = this.plantWorldBox(plantId)
+    const box =
+      plantId.includes('elder') && plantId.endsWith('-walk')
+        ? (this.plantPreciseWorldBox(plantId) ?? this.plantWorldBox(plantId))
+        : this.plantWorldBox(plantId)
     if (!box) return null
     this.renderOnce()
     return this.plantProjectedAabbScreenFromBox(box)
@@ -755,144 +764,58 @@ export class OpenWorldEngine {
   }
 
   elderDeterministicCapturePose(plantId: string): WalkCapturePose | null {
-    if (!isWalkCaptureSession() || !this.renderer) {
-      return this.elderCapturePoseFromGeometry(plantId)
-    }
-    if (this.plantArtStyle !== 'pixel-art') {
-      return this.elderWatercolorCapturePose(plantId)
-    }
-    const worldBox = this.plantFramingBox(plantId) ?? this.plantWorldBox(plantId)
-    const wp = this.world.plants.find((p) => p.id === plantId)
-    if (!worldBox || !wp) return null
-    const size = worldBox.getSize(new THREE.Vector3())
-    const cx = (worldBox.min.x + worldBox.max.x) / 2
-    const cz = (worldBox.min.z + worldBox.max.z) / 2
-    const aimY = worldBox.min.y + size.y * 0.52
-    const aim = new THREE.Vector3(cx, aimY, cz)
-    const yaw = Math.PI / 2
-    const wc = this.plantArtStyle !== 'pixel-art'
-    const elderFrameValid = (fill: PlantPixelFill): boolean =>
-      !fill.canopyTouchesTopRow &&
-      !fill.canopyInTopBand &&
-      fill.top >= 0.045 &&
-      fill.top <= (wc ? 0.14 : 0.13) &&
-      fill.height >= 0.58 &&
-      fill.height <= (wc ? 0.72 : 0.7) &&
-      fill.bottom <= 0.94
-
-    const sampleAt = (
-      dist: number,
-    ): { pose: WalkCapturePose; fill: PlantPixelFill } | null => {
-      const camX = cx + Math.sin(yaw) * dist
-      const camZ = cz + Math.cos(yaw) * dist
-      const foot = this.terrainFootY(camX, camZ)
-      const eyeY = foot + 1.78
-      const posed = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-      const pitch = Math.min(Math.max(posed.pitch, -0.15), -0.032)
-      this.setPlayerPose(camX, camZ, posed.yaw, pitch, eyeY)
-      this.camera.rotation.x = pitch
-      this.renderOnce()
-      const fill = this.measureSoloPlantPixelFill()
-      if (!fill) return null
-      return {
-        pose: { ...posed, pitch, x: camX, z: camZ, eyeY },
-        fill,
-      }
-    }
-
-    let pick: { pose: WalkCapturePose; fill: PlantPixelFill } | null = null
-    let pickGap = Infinity
-    const distLo = wc ? 8.25 : 6.88
-    const distHi = wc ? 10.35 : 7.45
-    for (let dist = distLo; dist <= distHi; dist += 0.04) {
-      const sample = sampleAt(dist)
-      if (!sample || !elderFrameValid(sample.fill)) continue
-      const gap = Math.abs(sample.fill.top - 0.06) + Math.abs(sample.fill.height - 0.65) * 0.35
-      if (gap < pickGap) {
-        pickGap = gap
-        pick = sample
-      }
-    }
-    if (pick) return pick.pose
-
-    for (let dist = 7.0; dist <= 8.15; dist += 0.055) {
-      const sample = sampleAt(dist)
-      if (!sample) continue
-      if (elderFrameValid(sample.fill)) {
-        return sample.pose
-      }
-    }
-
-    let widen = 7.05
-    for (let bump = 0; bump < 12; bump++) {
-      const sample = sampleAt(widen)
-      if (sample && elderFrameValid(sample.fill)) return sample.pose
-      if (sample?.fill.canopyInTopBand || sample?.fill.canopyTouchesTopRow) widen += 0.2
-      else widen -= 0.08
-    }
-
-    return this.elderCapturePoseFromGeometry(plantId)
+    return this.elderGeometryCapturePose(plantId)
   }
 
-  private elderWatercolorCapturePose(plantId: string): WalkCapturePose | null {
-    const worldBox = this.plantWorldBox(plantId)
-    if (!worldBox) return null
-    const size = worldBox.getSize(new THREE.Vector3())
-    const cx = (worldBox.min.x + worldBox.max.x) / 2
-    const cz = (worldBox.min.z + worldBox.max.z) / 2
-    const aimY = worldBox.min.y + size.y * 0.52
-    const aim = new THREE.Vector3(cx, aimY, cz)
-    const yaw = Math.PI / 2
-    let pick: WalkCapturePose | null = null
-    let pickGap = Infinity
-    for (let dist = 14.2; dist <= 16.2; dist += 0.08) {
-      const camX = cx + Math.sin(yaw) * dist
-      const camZ = cz + Math.cos(yaw) * dist
-      const foot = this.terrainFootY(camX, camZ)
-      const eyeY = foot + 1.78
-      const posed = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-      let pitch = Math.min(Math.max(posed.pitch, -0.16), -0.02)
-      this.setPlayerPose(camX, camZ, posed.yaw, pitch, eyeY)
-      this.camera.rotation.x = pitch
-      this.renderOnce()
-      let proj = this.plantProjectedAabbScreenFromBox(worldBox)
-      if (!proj) continue
-      for (let n = 0; n < 6 && (proj.top < 0.045 || proj.bottom - proj.top < 0.58); n++) {
-        pitch -= 0.008
-        this.setPlayerPose(camX, camZ, posed.yaw, pitch, eyeY)
-        this.camera.rotation.x = pitch
-        this.renderOnce()
-        proj = this.plantProjectedAabbScreenFromBox(worldBox)!
-      }
-      if (!proj || proj.top < 0.04 || proj.top > 0.12) continue
-      const span = proj.bottom - proj.top
-      if (span < 0.55 || span > 0.71 || proj.bottom > 0.94) continue
-      const gap = Math.abs(span - 0.64) + Math.abs(proj.top - 0.06) * 2
-      if (gap < pickGap) {
-        pickGap = gap
-        pick = { ...posed, pitch, x: camX, z: camZ, eyeY }
-      }
-    }
-    if (pick) return pick
-    return this.elderCapturePoseFromGeometry(plantId)
+  private elderNdcFrameOk(ndc: { minNdcY: number; maxNdcY: number }): boolean {
+    return ndc.maxNdcY <= 0.8 && ndc.minNdcY >= -0.8
   }
 
-  private elderCapturePoseFromGeometry(plantId: string): WalkCapturePose | null {
-    const box = this.plantFramingBox(plantId) ?? this.plantWorldBox(plantId)
+  private elderGeometryCapturePose(plantId: string): WalkCapturePose | null {
+    const box = this.plantPreciseWorldBox(plantId)
     if (!box) return null
-    const cx = (box.min.x + box.max.x) / 2
-    const cz = (box.min.z + box.max.z) / 2
+    const center = box.getCenter(new THREE.Vector3())
     const H = box.max.y - box.min.y
-    const aim = new THREE.Vector3(cx, box.min.y + H * 0.52, cz)
+    if (!Number.isFinite(H) || H < 0.5) return null
     const yaw = Math.PI / 2
-    const dist = plantId.includes('elder') && this.plantArtStyle !== 'pixel-art' ? 15.4 : 7.12
-    const camX = cx + Math.sin(yaw) * dist
-    const camZ = cz + Math.cos(yaw) * dist
-    const foot = this.terrainFootY(camX, camZ)
-    const eyeY = foot + 1.78
-    const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-    const pitch = Math.min(Math.max(pose.pitch, -0.14), -0.04)
-    return { ...pose, pitch, x: camX, z: camZ, eyeY }
+    const fovRad = (this.camera.fov * Math.PI) / 180
+    const halfTan = Math.tan(fovRad / 2)
+    if (!Number.isFinite(halfTan) || halfTan < 1e-4) return null
+    let dist = (H / 0.66) / (2 * halfTan)
+
+    const applyAt = (d: number): WalkCapturePose => {
+      const camX = center.x + Math.sin(yaw) * d
+      const camZ = center.z + Math.cos(yaw) * d
+      const foot = this.terrainFootY(camX, camZ)
+      const eyeY = foot + 1.78
+      const posed = this.poseLookAt(center, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+      this.setPlayerPose(camX, camZ, posed.yaw, posed.pitch, eyeY)
+      this.camera.rotation.x = posed.pitch
+      this.renderOnce()
+      return { ...posed, x: camX, z: camZ, eyeY }
+    }
+
+    let pose = applyAt(dist)
+    if (this.renderer) {
+      for (let pass = 0; pass < 12; pass++) {
+        const ndc = this.projectBoxVerticalInView(box)
+        if (!ndc) break
+        if (this.elderNdcFrameOk(ndc)) break
+        const topScale = ndc.maxNdcY > 0.8 ? ndc.maxNdcY / 0.78 : 1
+        const botScale = ndc.minNdcY < -0.8 ? Math.abs(ndc.minNdcY) / 0.78 : 1
+        const scale = Math.max(topScale, botScale, 1.02)
+        dist *= scale
+        pose = applyAt(dist)
+      }
+    }
+    return pose
+  }
+
+  plantBoxVerticalNdc(plantId: string): { minNdcY: number; maxNdcY: number } | null {
+    const box = this.plantPreciseWorldBox(plantId)
+    if (!box) return null
+    this.renderOnce()
+    return this.projectBoxVerticalInView(box)
   }
 
   private projectBoxVerticalInView(box: THREE.Box3): { minNdcY: number; maxNdcY: number } | null {
