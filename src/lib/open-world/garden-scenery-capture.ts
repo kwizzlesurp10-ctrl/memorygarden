@@ -113,7 +113,11 @@ export function computeGardenSceneryCloseupPose(
   const yaw = Math.atan2(-dx, -dz)
   const horiz = Math.hypot(dx, dz)
   let pitch = -Math.atan2(dy, horiz)
-  if (pitch > -0.08) pitch = -0.08
+  if (kind === 'stump') {
+    pitch = Math.min(pitch, -0.2)
+  } else if (pitch > -0.08) {
+    pitch = -0.08
+  }
   void TARGET_FILL
   return { x: camX, z: camZ, yaw, pitch, eyeY }
 }

@@ -885,21 +885,25 @@ export function voxelGardenFenceSegment(
   g.rotation.y = yaw
   g.userData.gardenProp = 'fence'
   const stampPost = (lx: number) => {
-    for (let ly = 0; ly < 3; ly++) {
+    for (let ly = 0; ly < 2; ly++) {
       placeBlock(g, lx, ly, 0, woodMat)
       const post = g.children[g.children.length - 1]
       if (post instanceof THREE.Mesh) {
-        post.scale.set(VOXEL * 0.4, VOXEL, VOXEL * 0.4)
+        post.scale.set(VOXEL * 0.38, VOXEL, VOXEL * 0.38)
       }
     }
   }
   stampPost(-2)
   stampPost(2)
-  for (const lx of [-1, 1]) {
-    placeBlock(g, lx, 3, 0, woodMat)
+  for (const lx of [-2, -1, 0, 1, 2]) {
+    placeBlock(g, lx, 2, 0, woodMat)
     const rail = g.children[g.children.length - 1]
     if (rail instanceof THREE.Mesh) {
-      rail.scale.set(VOXEL * 0.36, VOXEL * 0.32, VOXEL * 0.36)
+      if (Math.abs(lx) === 2) {
+        rail.scale.set(VOXEL * 0.38, VOXEL * 0.28, VOXEL * 0.38)
+      } else {
+        rail.scale.set(VOXEL * 0.34, VOXEL * 0.22, VOXEL * 0.34)
+      }
     }
   }
   root.add(g)

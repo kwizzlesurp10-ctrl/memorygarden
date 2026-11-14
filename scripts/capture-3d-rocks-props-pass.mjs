@@ -194,7 +194,7 @@ async function captureSubject(browser, artStyle, subject, phase, url, sha, light
       ? 0.86
       : subject.id === 'stump'
         ? artStyle === 'watercolor'
-          ? 0.58
+          ? 0.72
           : 0.64
         : artStyle === 'watercolor'
           ? 0.44
@@ -204,8 +204,10 @@ async function captureSubject(browser, artStyle, subject, phase, url, sha, light
   const pullCandidates = []
   for (let d = -4; d <= 5; d++) pullCandidates.push(subjectPull + duskExtra + d * 0.05)
   let best = null
+  const maxPull =
+    subject.id === 'rock-tiers' ? 0.98 : subject.id === 'stump' && artStyle === 'watercolor' ? 0.82 : 1.22
   for (const pullBack of pullCandidates) {
-    const clamped = Math.max(minPull, pullBack)
+    const clamped = Math.min(maxPull, Math.max(minPull, pullBack))
     usedPullBack = clamped
     chosenPose = computeGardenSceneryCloseupPose(subject.id, undefined, clamped)
     await page.evaluate((p) => window.__mgWalkCapture?.setPose?.(p), chosenPose)
@@ -216,8 +218,11 @@ async function captureSubject(browser, artStyle, subject, phase, url, sha, light
   const score =
       fill >= targetFillMin && fill <= targetFillMax
         ? 0
-        : Math.min(Math.abs(fill - targetFillMin), Math.abs(fill - targetFillMax))
-    const reject = phase === 'after' && uniform && fill > 0.58
+        : fill < targetFillMin
+          ? (targetFillMin - fill) * 12 + 0.5
+          : Math.min(Math.abs(fill - targetFillMin), Math.abs(fill - targetFillMax))
+    const reject =
+      phase === 'after' && artStyle === 'pixel-art' && uniform && fill > 0.58
     if (!reject && (!best || score < best.score)) best = { fill, uniform, pose: chosenPose, pullBack: clamped, score, file }
     if (!reject && score === 0) break
   }
