@@ -35,6 +35,7 @@ type BlockKind =
   | 'bark'
   | 'leaf'
   | 'gravel'
+  | 'stone'
   | 'mushroom'
   | 'mushroom_stem'
   | 'mushroom_cap'
@@ -158,6 +159,17 @@ export function minecraftBlockTexture(
             ctx.fillRect(x, y, 1, 1)
           }
         }
+      }
+    }
+  } else if (kind === 'stone') {
+    const stones = ['#6a6a72', '#5c5c64', '#787880', '#4e4e56', '#8a8a94']
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const n = hash01(seed + x * 11.9 + y * 17.3)
+        const idx = Math.floor(n * stones.length) % stones.length
+        ctx.fillStyle = stones[idx] ?? '#6a6a72'
+        if (hash01(seed + x * 3 + y * 5) > 0.92) ctx.fillStyle = accent
+        ctx.fillRect(x, y, 1, 1)
       }
     }
   } else if (kind === 'mushroom_stem') {
@@ -592,20 +604,28 @@ export function minecraftGrassTufts(
   palette: ScenePalette,
   root: THREE.Group,
   track: <T extends { dispose: () => void }>(o: T) => T,
+  surfaceBlockY?: (x: number, z: number) => number,
 ): void {
-  const grassMat = track(
-    voxelMaterial(palette.hills[0] ?? '#5a9c48', palette.hills[1] ?? '#3d7a34', 71, 'grass'),
+  const topBlocks = surfaceBlockY ?? ((x, z) => minecraftAnalyticSurfaceY(Math.round(x), Math.round(z)))
+  const grassBright = track(
+    voxelMaterial(palette.hills[0] ?? '#5a9c48', palette.hills[1] ?? '#7ed65a', 71, 'grass'),
+  )
+  const grassDark = track(
+    voxelMaterial(palette.hills[1] ?? '#3d7a34', palette.hills[2] ?? '#2d5a27', 72, 'grass_side'),
   )
   const rng = gardenRng(901)
-  const span = 40
-  const count = 60
+  const span = 42
+  const count = 88
   for (let i = 0; i < count; i++) {
     const x = (rng() * 2 - 1) * span
     const z = (rng() * 2 - 1) * span
     if (Math.hypot(x - world.pond.x, z - world.pond.z) < world.pond.radius + 0.35) continue
-    const tuft = new THREE.Mesh(boxGeo, grassMat)
-    tuft.position.set(x, VOXEL * 0.5, z)
-    tuft.scale.setScalar(VOXEL)
+    const mat = rng() > 0.42 ? grassBright : grassDark
+    const tuft = new THREE.Mesh(boxGeo, mat)
+    const topY = topBlocks(x, z) * VOXEL
+    const tall = 0.55 + rng() * 0.85
+    tuft.position.set(x, topY + VOXEL * tall * 0.5, z)
+    tuft.scale.set(VOXEL, VOXEL * tall, VOXEL)
     tuft.userData.voxel = true
     root.add(tuft)
   }
@@ -618,18 +638,60 @@ export function voxelRockCluster(
   palette: ScenePalette,
   root: THREE.Group,
   track: <T extends { dispose: () => void }>(o: T) => T,
+  blockTopY?: (wx: number, wz: number) => number,
 ): void {
   const rockMat = track(
-    voxelMaterial(palette.bank ?? '#6b5a48', palette.hills[2] ?? '#4a3a2a', seed, 'dirt'),
+    voxelMaterial(palette.bank ?? '#6b6b74', palette.hills[2] ?? '#8a8a94', seed, 'stone'),
   )
+  const mossMat = track(
+    voxelMaterial(palette.hills[0] ?? '#5fa037', palette.hills[1] ?? '#3d7a34', seed + 3, 'grass'),
+  )
+  const topAt = blockTopY ?? ((wx, wz) => walkCaptureGroundY(wx, wz))
+  const surfaceY = topAt(x, z) / VOXEL
   const g = new THREE.Group()
   g.position.set(x, 0, z)
   const rng = gardenRng(seed)
-  const blocks = 2 + Math.floor(rng() * 3)
+  const blocks = 3 + Math.floor(rng() * 4)
+  const placed = new Set<string>()
   for (let b = 0; b < blocks; b++) {
-    placeBlock(g, Math.floor(rng() * 3) - 1, 0, Math.floor(rng() * 3) - 1, rockMat)
+    const ix = Math.floor(rng() * 5) - 2
+    const iz = Math.floor(rng() * 5) - 2
+    const iy = Math.floor(rng() * 2)
+    const key = `${ix},${iy},${iz}`
+    if (placed.has(key)) continue
+    placed.add(key)
+    const mat = iy === 0 && rng() > 0.55 ? mossMat : rockMat
+    placeBlock(g, ix, Math.max(0, iy) + surfaceY, iz, mat)
+    if (rng() > 0.72 && iy === 0) {
+      placeBlock(g, ix, Math.max(0, iy) + surfaceY + 1, iz, rockMat)
+    }
   }
   root.add(g)
+}
+
+export function minecraftWaterBlockTexture(palette: ScenePalette, seed = 44): THREE.CanvasTexture {
+  const base = palette.waterTint[0] ?? '#2a4a6e'
+  const accent = palette.waterTint[1] ?? '#1a3050'
+  const highlight = palette.ripple ?? '#6a9ac8'
+  const tex = minecraftBlockTexture('#4a8ac8', '#2a5080', seed, 'gravel')
+  const img = tex.image as HTMLCanvasElement
+  const ctx = img.getContext('2d')
+  if (ctx) {
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const n = hash01(seed + x * 19.1 + y * 23.7)
+        if (n > 0.88) {
+          ctx.fillStyle = highlight
+          ctx.fillRect(x, y, 1, 1)
+        } else if (n < 0.08) {
+          ctx.fillStyle = accent
+          ctx.fillRect(x, y, 1, 1)
+        }
+      }
+    }
+    tex.needsUpdate = true
+  }
+  return configurePixelTexture(tex)
 }
 
 function usesCompactPixelFooting(kind: PlantVisualRecipe['kind'], stage: PlantStage): boolean {

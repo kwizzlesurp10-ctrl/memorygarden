@@ -5,8 +5,11 @@ import type { GardenWorld } from '@/lib/open-world/types'
 import { isWalkCaptureSession } from '@/lib/open-world/walk-capture-bridge'
 import {
   buildMinecraftSteppedHills,
+  minecraftAnalyticSurfaceY,
   minecraftGrassTexture,
+  minecraftGrassTufts,
   minecraftPathTexture,
+  minecraftWaterBlockTexture,
   voxelRockCluster,
 } from './minecraft-visual'
 
@@ -57,12 +60,30 @@ function grassTexture(palette: ScenePalette): THREE.CanvasTexture {
   if (!ctx) return new THREE.CanvasTexture(c)
   ctx.fillStyle = palette.hills[1] ?? '#2c163c'
   ctx.fillRect(0, 0, 256, 256)
-  for (let i = 0; i < 1400; i++) {
+  for (let i = 0; i < 2200; i++) {
     const x = Math.random() * 256
     const y = Math.random() * 256
-    ctx.fillStyle = i % 5 === 0 ? (palette.hills[0] ?? '#4e2749') : (palette.silSoft ?? '#241536')
-    ctx.globalAlpha = 0.18 + Math.random() * 0.25
-    ctx.fillRect(x, y, 1 + Math.random() * 2, 2 + Math.random() * 4)
+    const band = i % 7
+    ctx.fillStyle =
+      band === 0
+        ? (palette.hills[0] ?? '#4e2749')
+        : band === 1
+          ? (palette.hills[2] ?? palette.silSoft ?? '#3a5a38')
+          : (palette.silSoft ?? '#241536')
+    ctx.globalAlpha = 0.14 + Math.random() * 0.28
+    const h = 2 + Math.random() * (band < 2 ? 5 : 3)
+    ctx.fillRect(x, y, 1 + Math.random() * 2, h)
+  }
+  for (let p = 0; p < 48; p++) {
+    const px = Math.random() * 256
+    const py = Math.random() * 256
+    const pr = 6 + Math.random() * 14
+    const g = ctx.createRadialGradient(px, py, 0, px, py, pr)
+    g.addColorStop(0, palette.hills[0] ?? '#4e2749')
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = g
+    ctx.globalAlpha = 0.22
+    ctx.fillRect(px - pr, py - pr, pr * 2, pr * 2)
   }
   ctx.globalAlpha = 1
   const tex = new THREE.CanvasTexture(c)
@@ -197,6 +218,11 @@ export function buildTerrain(
   root.add(ground)
   const surfaceY = minecraftMode ? buildMinecraftSteppedHills(root, track, palette) : undefined
   const walkCapture = isWalkCaptureSession()
+  if (minecraftMode) {
+    minecraftGrassTufts(world, palette, root, track, (x, z) =>
+      minecraftAnalyticSurfaceY(Math.round(x), Math.round(z)),
+    )
+  }
 
   // ── Gentle Flowerbed Soil Berms ─────────────────────────────────────────
   const soilBermMat = track(
@@ -255,25 +281,76 @@ export function buildTerrain(
   }
 
   // ── Pond & Bank ────────────────────────────────────────────────────────
+  const waterBase = palette.waterTint[1] ?? '#1a0f2b'
+  const waterShallow = palette.waterTint[0] ?? palette.ripple
   const waterMat = track(
-    new THREE.MeshStandardMaterial({
-      color: palette.waterTint[1] ?? '#1a0f2b',
-      roughness: 0.12,
-      metalness: 0.25,
-      transparent: true,
-      opacity: 0.9,
-      emissive: palette.ripple,
-      emissiveIntensity: 0.12,
-    }),
+    minecraftMode
+      ? new THREE.MeshLambertMaterial({
+          map: track(minecraftWaterBlockTexture(palette)),
+          color: new THREE.Color(twilight ? '#8aa8c8' : '#b8dcf8'),
+          transparent: true,
+          opacity: 0.94,
+          emissive: new THREE.Color(palette.ripple),
+          emissiveIntensity: twilight ? 0.08 + starAlpha * 0.06 : 0.14,
+        })
+      : new THREE.MeshStandardMaterial({
+          color: waterBase,
+          roughness: 0.08,
+          metalness: 0.35,
+          transparent: true,
+          opacity: 0.88,
+          emissive: palette.ripple,
+          emissiveIntensity: twilight ? 0.1 + starAlpha * 0.08 : 0.16,
+        }),
   )
-  const water = new THREE.Mesh(track(new THREE.CircleGeometry(world.pond.radius, 36)), waterMat)
+  const waterDiameter = world.pond.radius * 2
+  const water = new THREE.Mesh(
+    track(
+      minecraftMode
+        ? new THREE.PlaneGeometry(waterDiameter, waterDiameter)
+        : new THREE.CircleGeometry(world.pond.radius, 40),
+    ),
+    waterMat,
+  )
   water.rotation.x = -Math.PI / 2
   water.position.set(world.pond.x, 0.05, world.pond.z)
   root.add(water)
 
+  const foamMat = track(
+    minecraftMode
+      ? new THREE.MeshLambertMaterial({
+          color: new THREE.Color(palette.silSoft ?? '#c8e8f0').lerp(new THREE.Color(palette.ripple), 0.35),
+          transparent: true,
+          opacity: 0.72,
+        })
+      : new THREE.MeshStandardMaterial({
+          color: new THREE.Color(palette.silSoft ?? '#b8d8e8').lerp(new THREE.Color(waterShallow), 0.4),
+          roughness: 0.95,
+          transparent: true,
+          opacity: twilight ? 0.55 : 0.65,
+          emissive: palette.ripple,
+          emissiveIntensity: 0.06,
+        }),
+  )
+  const foam = new THREE.Mesh(
+    track(new THREE.RingGeometry(world.pond.radius * 0.86, world.pond.radius * 0.98, 40)),
+    foamMat,
+  )
+  foam.rotation.x = -Math.PI / 2
+  foam.position.set(world.pond.x, 0.052, world.pond.z)
+  root.add(foam)
+
+  const shoreTintMat = track(
+    new THREE.MeshStandardMaterial({
+      color: new THREE.Color(palette.bank).lerp(new THREE.Color(waterShallow), 0.22),
+      roughness: 1,
+      transparent: true,
+      opacity: 0.85,
+    }),
+  )
   const bank = new THREE.Mesh(
     track(new THREE.RingGeometry(world.pond.radius * 0.98, world.pond.radius + 0.65, 36)),
-    track(new THREE.MeshStandardMaterial({ color: palette.bank, roughness: 1 })),
+    shoreTintMat,
   )
   bank.rotation.x = -Math.PI / 2
   bank.position.set(world.pond.x, 0.04, world.pond.z)
@@ -374,11 +451,25 @@ export function buildTerrain(
     { x: 18, z: -12, s: 0.9 },
     { x: -12, z: 18, s: 0.75 },
     { x: 14, z: 16, s: 0.85 },
+    { x: -8, z: 22, s: 0.62 },
+    { x: 22, z: 4, s: 0.7 },
+    { x: -22, z: -6, s: 0.95 },
+    { x: 6, z: -18, s: 0.58 },
   ]
+  if (walkCapture) {
+    rockPositions.push(
+      { x: 10, z: 10, s: 0.55 },
+      { x: -6, z: 8, s: 0.48 },
+      { x: 20, z: 18, s: 0.52 },
+    )
+  }
   for (let ri = 0; ri < rockPositions.length; ri++) {
     const rp = rockPositions[ri]
     if (minecraftMode) {
-      voxelRockCluster(rp.x, rp.z, 300 + ri * 17, palette, root, track)
+      const hillTop =
+        surfaceY ??
+        ((wx: number, wz: number) => minecraftAnalyticSurfaceY(Math.round(wx), Math.round(wz)))
+      voxelRockCluster(rp.x, rp.z, 300 + ri * 17, palette, root, track, (wx, wz) => hillTop(wx, wz))
     } else {
       const rMesh = new THREE.Mesh(rockGeo, rockMat)
       rMesh.scale.set(rp.s * 1.2, rp.s * 0.7, rp.s * 0.9)
@@ -873,25 +964,38 @@ export function buildTerrain(
   if (!minecraftMode && !reducedMotion) {
     const tuftGeo = track(new THREE.ConeGeometry(0.07, 0.28, 5))
     const tuftMat = track(new THREE.MeshStandardMaterial({ color: palette.hills[0] ?? '#4e2749', roughness: 1 }))
-    const count = 480
+    const tuftMatAlt = track(
+      new THREE.MeshStandardMaterial({ color: palette.hills[2] ?? palette.hills[1] ?? '#3a5a38', roughness: 1 }),
+    )
+    const count = 520
     const tufts = new THREE.InstancedMesh(tuftGeo, tuftMat, count)
+    const tuftsLow = new THREE.InstancedMesh(tuftGeo, tuftMatAlt, Math.floor(count * 0.35))
     const rng = gardenRng(7)
     const dummy = new THREE.Object3D()
     let placed = 0
+    let placedAlt = 0
     while (placed < count) {
       const x = (rng() * 2 - 1) * (WORLD_SPAN(world) * 0.48)
       const z = (rng() * 2 - 1) * (WORLD_SPAN(world) * 0.48)
       const inPond = Math.hypot(x - world.pond.x, z - world.pond.z) < world.pond.radius + 0.4
       if (inPond) continue
-      dummy.position.set(x, 0.12, z)
+      const scale = 0.65 + rng() * 1.25
+      dummy.position.set(x, 0.08 + scale * 0.06, z)
       dummy.rotation.y = rng() * Math.PI
-      dummy.scale.setScalar(0.7 + rng() * 1.1)
+      dummy.scale.set(0.9 + rng() * 0.25, scale, 0.9 + rng() * 0.2)
       dummy.updateMatrix()
       tufts.setMatrixAt(placed, dummy.matrix)
       placed++
+      if (placedAlt < tuftsLow.count && rng() > 0.55) {
+        dummy.scale.y *= 0.55
+        dummy.updateMatrix()
+        tuftsLow.setMatrixAt(placedAlt, dummy.matrix)
+        placedAlt++
+      }
     }
     tufts.instanceMatrix.needsUpdate = true
-    root.add(tufts)
+    tuftsLow.instanceMatrix.needsUpdate = true
+    root.add(tufts, tuftsLow)
   }
 
   // ── Celestial Sphere & Stylized Floating Clouds ──────────────────────────
