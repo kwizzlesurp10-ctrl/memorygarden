@@ -365,8 +365,9 @@ async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, 
     } else if (projTop != null && projTop < 0.01 && metricTop < 0.045) {
       errs.push('projected canopy above frame while pixel margin < 4.5%')
     }
-    if (metricH < 0.58) {
-      errs.push(`tree fill height ${(metricH * 100).toFixed(1)}% < 58%`)
+    const minFillH = artStyle === 'watercolor' ? 0.565 : 0.58
+    if (metricH < minFillH) {
+      errs.push(`tree fill height ${(metricH * 100).toFixed(1)}% < ${(minFillH * 100).toFixed(1)}%`)
     }
     const maxH = artStyle === 'watercolor' ? 0.72 : 0.7
     if (metricH > maxH) {
