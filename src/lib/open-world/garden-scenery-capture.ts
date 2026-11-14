@@ -49,10 +49,10 @@ export const GARDEN_SCENERY_CLOSEUP: Record<GardenSceneryCloseupKind, GardenScen
   'rock-tiers': {
     x: ROCK_TIER_LINEUP_CENTER.x,
     z: ROCK_TIER_LINEUP_CENTER.z,
-    aimY: 0.62,
+    aimY: 0.72,
     height: 1.05,
-    camDx: 1.5,
-    camDz: 4.6,
+    camDx: 1.1,
+    camDz: 3.4,
   },
   fence: {
     x: GARDEN_AMBIENT_FENCE.x,
@@ -65,10 +65,10 @@ export const GARDEN_SCENERY_CLOSEUP: Record<GardenSceneryCloseupKind, GardenScen
   stump: {
     x: GARDEN_AMBIENT_STUMP.x,
     z: GARDEN_AMBIENT_STUMP.z,
-    aimY: 0.55,
+    aimY: 1.05,
     height: 0.72,
-    camDx: 1.6,
-    camDz: 2.2,
+    camDx: 2.4,
+    camDz: 3.1,
   },
 }
 

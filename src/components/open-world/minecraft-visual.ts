@@ -885,21 +885,21 @@ export function voxelGardenFenceSegment(
   g.rotation.y = yaw
   g.userData.gardenProp = 'fence'
   const stampPost = (lx: number) => {
-    for (let ly = 0; ly < 2; ly++) {
+    for (let ly = 0; ly < 3; ly++) {
       placeBlock(g, lx, ly, 0, woodMat)
       const post = g.children[g.children.length - 1]
       if (post instanceof THREE.Mesh) {
-        post.scale.set(VOXEL * 0.42, VOXEL * 0.92, VOXEL * 0.42)
+        post.scale.set(VOXEL * 0.4, VOXEL, VOXEL * 0.4)
       }
     }
   }
   stampPost(-2)
   stampPost(2)
-  for (const lx of [-1, 0, 1]) {
-    placeBlock(g, lx, 2, 0, woodMat)
+  for (const lx of [-1, 1]) {
+    placeBlock(g, lx, 3, 0, woodMat)
     const rail = g.children[g.children.length - 1]
     if (rail instanceof THREE.Mesh) {
-      rail.scale.set(VOXEL * 0.34, VOXEL * 0.2, VOXEL * 0.34)
+      rail.scale.set(VOXEL * 0.36, VOXEL * 0.32, VOXEL * 0.36)
     }
   }
   root.add(g)
@@ -917,7 +917,6 @@ export function voxelLogStump(
 ): void {
   const barkMat = track(voxelMaterial('#4a3528', '#3f2817', seed, 'bark'))
   const mossCap = track(voxelMaterial('#5fa037', '#7ed65a', seed + 2, 'grass'))
-  const ringWood = track(voxelMaterial('#6b4f3a', '#4a3528', seed + 4, 'bark'))
   const topAt = blockTopY ?? ((wx, wz) => walkCaptureGroundY(wx, wz))
   const surfaceY = Math.max(0, Math.round(topAt(x, z)))
   const g = new THREE.Group()
@@ -926,17 +925,12 @@ export function voxelLogStump(
   placeBlock(g, 0, surfaceY, 0, barkMat)
   const core = g.children[g.children.length - 1]
   if (core instanceof THREE.Mesh) {
-    core.scale.set(VOXEL * 0.92, VOXEL * 0.84, VOXEL * 0.92)
+    core.scale.set(VOXEL * 0.9, VOXEL * 0.95, VOXEL * 0.9)
   }
-  placeBlock(g, 0, surfaceY + 1, 0, ringWood)
-  const collar = g.children[g.children.length - 1]
-  if (collar instanceof THREE.Mesh) {
-    collar.scale.set(VOXEL * 0.98, VOXEL * 0.26, VOXEL * 0.98)
-  }
-  placeBlock(g, 0, surfaceY + 2, 0, mossCap)
+  placeBlock(g, 0, surfaceY + 1, 0, mossCap)
   const cap = g.children[g.children.length - 1]
   if (cap instanceof THREE.Mesh) {
-    cap.scale.set(VOXEL * 0.96, VOXEL * 0.34, VOXEL * 0.96)
+    cap.scale.set(VOXEL * 0.92, VOXEL * 0.42, VOXEL * 0.92)
   }
   root.add(g)
 }

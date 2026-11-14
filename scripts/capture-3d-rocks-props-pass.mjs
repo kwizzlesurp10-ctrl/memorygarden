@@ -187,10 +187,18 @@ async function captureSubject(browser, artStyle, subject, phase, url, sha, light
           : 0.94
         : artStyle === 'watercolor'
           ? 0.52
-          : 0.82
-  const duskExtra = lightingHour >= 18 ? 0.22 : 0
+          : 0.92
+  const duskExtra = lightingHour >= 18 ? (subject.id === 'stump' ? 0.05 : 0.18) : 0
   const minPull =
-    subject.id === 'fence' ? 0.86 : subject.id === 'stump' ? 0.52 : artStyle === 'watercolor' ? 0.44 : 0.72
+    subject.id === 'fence'
+      ? 0.86
+      : subject.id === 'stump'
+        ? artStyle === 'watercolor'
+          ? 0.58
+          : 0.64
+        : artStyle === 'watercolor'
+          ? 0.44
+          : 0.82
   const targetFillMin = 0.35
   const targetFillMax = 0.52
   const pullCandidates = []
