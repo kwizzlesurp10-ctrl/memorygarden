@@ -825,13 +825,7 @@ export class OpenWorldEngine {
     const ndc = this.projectBoxVerticalInView(box)
     if (ndc) return ndc
     const screen = this.plantProjectedAabbScreenFromBox(box)
-    if (
-      !screen ||
-      !Number.isFinite(screen.top) ||
-      !Number.isFinite(screen.bottom) ||
-      screen.top < -0.05 ||
-      screen.top > 1.05
-    ) {
+    if (!screen || !Number.isFinite(screen.top) || !Number.isFinite(screen.bottom)) {
       return null
     }
     return {

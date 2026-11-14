@@ -327,14 +327,25 @@ function skyFractionTopCenterColumn(pngPath, centerX01, topFraction = 0.04) {
 }
 
 async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, pose) {
-  const ndc = await page.evaluate(
-    (id) => window.__mgWalkCapture?.plantBoxVerticalNdc?.(id) ?? null,
-    plantId,
-  )
   const projBox = await page.evaluate(
     (id) => window.__mgWalkCapture?.plantProjectedAabbScreen?.(id) ?? null,
     plantId,
   )
+  let ndc = await page.evaluate(
+    (id) => window.__mgWalkCapture?.plantBoxVerticalNdc?.(id) ?? null,
+    plantId,
+  )
+  if (
+    !ndc &&
+    projBox &&
+    Number.isFinite(projBox.top) &&
+    Number.isFinite(projBox.bottom)
+  ) {
+    ndc = {
+      maxNdcY: 1 - 2 * projBox.top,
+      minNdcY: 1 - 2 * projBox.bottom,
+    }
+  }
   const screenSpan =
     ndc && Number.isFinite(ndc.maxNdcY) && Number.isFinite(ndc.minNdcY)
       ? (ndc.maxNdcY - ndc.minNdcY) / 2
