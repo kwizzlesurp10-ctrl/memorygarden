@@ -483,6 +483,11 @@ export class OpenWorldEngine {
     } else {
       snapPlantGroupToTerrain(group, footY)
     }
+    const refCenter = ref.getCenter(new THREE.Vector3())
+    const aligned = new THREE.Box3().setFromObject(group, true)
+    const curCenter = aligned.getCenter(new THREE.Vector3())
+    group.position.x += refCenter.x - curCenter.x
+    group.position.z += refCenter.z - curCenter.z
     group.updateWorldMatrix(true, true)
   }
 
@@ -883,19 +888,6 @@ export class OpenWorldEngine {
   }
 
   private elderGeometryCapturePose(plantId: string): WalkCapturePose | null {
-    if (
-      isWalkCaptureSession() &&
-      this.plantArtStyle === 'watercolor' &&
-      plantId.includes('elder')
-    ) {
-      const pinned = this.readElderPoseFromSession(plantId)
-      if (pinned) {
-        this.setPlayerPose(pinned.x, pinned.z, pinned.yaw, pinned.pitch, pinned.eyeY)
-        this.camera.rotation.x = pinned.pitch
-        this.renderOnce()
-        return pinned
-      }
-    }
     const box = this.plantElderFramingBox(plantId)
     if (!box) return null
     const center = box.getCenter(new THREE.Vector3())
