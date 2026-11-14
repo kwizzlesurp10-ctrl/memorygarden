@@ -6,6 +6,8 @@ export type PlantPixelFill = {
   height: number
   width: number
   treePixels: number
+  canopyTouchesTopRow: boolean
+  canopyInTopBand: boolean
 }
 
 export function classifyWalkCapturePixel(
@@ -33,6 +35,9 @@ export function measurePlantPixelFillFromBuffer(
   let minY = height
   let maxY = -1
   let treePixels = 0
+  let canopyTouchesTopRow = false
+  let canopyInTopBand = false
+  const topBandRows = Math.max(2, Math.ceil(height * 0.025))
   for (let y = 0; y < height; y++) {
     const srcY = height - 1 - y
     for (let x = 0; x < width; x++) {
@@ -42,6 +47,8 @@ export function measurePlantPixelFillFromBuffer(
       const b = pixels[i + 2]!
       if (classifyWalkCapturePixel(r, g, b) !== 'tree') continue
       treePixels++
+      if (y === 0) canopyTouchesTopRow = true
+      if (y < topBandRows) canopyInTopBand = true
       minX = Math.min(minX, x)
       maxX = Math.max(maxX, x)
       minY = Math.min(minY, y)
@@ -57,6 +64,8 @@ export function measurePlantPixelFillFromBuffer(
     height: (maxY - minY + 1) / height,
     width: (maxX - minX + 1) / width,
     treePixels,
+    canopyTouchesTopRow,
+    canopyInTopBand,
   }
 }
 

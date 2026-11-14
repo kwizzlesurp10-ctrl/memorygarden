@@ -551,9 +551,11 @@ export class OpenWorldEngine {
   }
 
   plantProjectedBoxScreenY(plantId: string): { top: number; bottom: number } | null {
-    const box = this.plantWorldBox(plantId)
+    const box = this.plantFramingBox(plantId) ?? this.plantWorldBox(plantId)
     if (!box) return null
     this.renderOnce()
+    const full = this.plantProjectedAabbScreenFromBox(box)
+    if (full) return { top: full.top, bottom: full.bottom }
     const cx = (box.min.x + box.max.x) / 2
     const cz = (box.min.z + box.max.z) / 2
     let minTopScreen = Infinity
@@ -756,72 +758,141 @@ export class OpenWorldEngine {
     if (!isWalkCaptureSession() || !this.renderer) {
       return this.elderCapturePoseFromGeometry(plantId)
     }
-    const worldBox = this.plantWorldBox(plantId)
+    if (this.plantArtStyle !== 'pixel-art') {
+      return this.elderWatercolorCapturePose(plantId)
+    }
+    const worldBox = this.plantFramingBox(plantId) ?? this.plantWorldBox(plantId)
     const wp = this.world.plants.find((p) => p.id === plantId)
     if (!worldBox || !wp) return null
     const size = worldBox.getSize(new THREE.Vector3())
     const cx = (worldBox.min.x + worldBox.max.x) / 2
     const cz = (worldBox.min.z + worldBox.max.z) / 2
-    const aimY = worldBox.min.y + size.y * 0.5
+    const aimY = worldBox.min.y + size.y * 0.52
     const aim = new THREE.Vector3(cx, aimY, cz)
     const yaw = Math.PI / 2
-    const targetHeight = 0.7
-    let best: WalkCapturePose | null = null
-    let bestScore = Infinity
+    const wc = this.plantArtStyle !== 'pixel-art'
+    const elderFrameValid = (fill: PlantPixelFill): boolean =>
+      !fill.canopyTouchesTopRow &&
+      !fill.canopyInTopBand &&
+      fill.top >= 0.045 &&
+      fill.top <= (wc ? 0.14 : 0.13) &&
+      fill.height >= 0.58 &&
+      fill.height <= (wc ? 0.72 : 0.7) &&
+      fill.bottom <= 0.94
 
-    for (let step = 0; step < 17; step++) {
-      const dist = 5.75 + (step / 16) * 4.85
+    const sampleAt = (
+      dist: number,
+    ): { pose: WalkCapturePose; fill: PlantPixelFill } | null => {
       const camX = cx + Math.sin(yaw) * dist
       const camZ = cz + Math.cos(yaw) * dist
       const foot = this.terrainFootY(camX, camZ)
       const eyeY = foot + 1.78
       const posed = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-      const pitch = Math.min(posed.pitch, -0.028)
+      const pitch = Math.min(Math.max(posed.pitch, -0.15), -0.032)
       this.setPlayerPose(camX, camZ, posed.yaw, pitch, eyeY)
       this.camera.rotation.x = pitch
       this.renderOnce()
       const fill = this.measureSoloPlantPixelFill()
-      if (!fill) continue
-      const clipPen = fill.top < 0.03 ? 40 + (0.03 - fill.top) * 80 : 0
-      const score =
-        Math.abs(fill.height - targetHeight) +
-        Math.abs(fill.top - 0.09) * 2.2 +
-        clipPen +
-        (fill.width < 0.22 ? (0.22 - fill.width) * 4 : 0)
-      if (
-        fill.top >= 0.035 &&
-        fill.top <= 0.2 &&
-        fill.height >= 0.65 &&
-        fill.height <= 0.76 &&
-        fill.width >= 0.24
-      ) {
-        return { ...posed, pitch, x: camX, z: camZ, eyeY }
-      }
-      if (fill.top >= 0.03 && score < bestScore) {
-        bestScore = score
-        best = { ...posed, pitch, x: camX, z: camZ, eyeY }
+      const proj = this.plantProjectedAabbScreenFromBox(worldBox)
+      if (!fill || !proj || !Number.isFinite(proj.top)) return null
+      return {
+        pose: { ...posed, pitch, x: camX, z: camZ, eyeY },
+        fill,
       }
     }
 
-    if (best) return best
+    let pick: { pose: WalkCapturePose; fill: PlantPixelFill } | null = null
+    let pickGap = Infinity
+    const distLo = wc ? 8.25 : 6.88
+    const distHi = wc ? 10.35 : 7.45
+    for (let dist = distLo; dist <= distHi; dist += 0.04) {
+      const sample = sampleAt(dist)
+      if (!sample || !elderFrameValid(sample.fill)) continue
+      const gap = Math.abs(sample.fill.top - 0.06) + Math.abs(sample.fill.height - 0.65) * 0.35
+      if (gap < pickGap) {
+        pickGap = gap
+        pick = sample
+      }
+    }
+    if (pick) return pick.pose
+
+    for (let dist = 7.0; dist <= 8.15; dist += 0.055) {
+      const sample = sampleAt(dist)
+      if (!sample) continue
+      if (elderFrameValid(sample.fill)) {
+        return sample.pose
+      }
+    }
+
+    let widen = 7.05
+    for (let bump = 0; bump < 12; bump++) {
+      const sample = sampleAt(widen)
+      if (sample && elderFrameValid(sample.fill)) return sample.pose
+      if (sample?.fill.canopyInTopBand || sample?.fill.canopyTouchesTopRow) widen += 0.2
+      else widen -= 0.08
+    }
+
+    return this.elderCapturePoseFromGeometry(plantId)
+  }
+
+  private elderWatercolorCapturePose(plantId: string): WalkCapturePose | null {
+    const worldBox = this.plantWorldBox(plantId)
+    if (!worldBox) return null
+    const size = worldBox.getSize(new THREE.Vector3())
+    const cx = (worldBox.min.x + worldBox.max.x) / 2
+    const cz = (worldBox.min.z + worldBox.max.z) / 2
+    const aimY = worldBox.min.y + size.y * 0.52
+    const aim = new THREE.Vector3(cx, aimY, cz)
+    const yaw = Math.PI / 2
+    let pick: WalkCapturePose | null = null
+    let pickGap = Infinity
+    for (let dist = 14.2; dist <= 16.2; dist += 0.08) {
+      const camX = cx + Math.sin(yaw) * dist
+      const camZ = cz + Math.cos(yaw) * dist
+      const foot = this.terrainFootY(camX, camZ)
+      const eyeY = foot + 1.78
+      const posed = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+      let pitch = Math.min(Math.max(posed.pitch, -0.16), -0.02)
+      this.setPlayerPose(camX, camZ, posed.yaw, pitch, eyeY)
+      this.camera.rotation.x = pitch
+      this.renderOnce()
+      let proj = this.plantProjectedAabbScreenFromBox(worldBox)
+      if (!proj) continue
+      for (let n = 0; n < 6 && (proj.top < 0.045 || proj.bottom - proj.top < 0.58); n++) {
+        pitch -= 0.008
+        this.setPlayerPose(camX, camZ, posed.yaw, pitch, eyeY)
+        this.camera.rotation.x = pitch
+        this.renderOnce()
+        proj = this.plantProjectedAabbScreenFromBox(worldBox)!
+      }
+      if (!proj || proj.top < 0.04 || proj.top > 0.12) continue
+      const span = proj.bottom - proj.top
+      if (span < 0.55 || span > 0.71 || proj.bottom > 0.94) continue
+      const gap = Math.abs(span - 0.64) + Math.abs(proj.top - 0.06) * 2
+      if (gap < pickGap) {
+        pickGap = gap
+        pick = { ...posed, pitch, x: camX, z: camZ, eyeY }
+      }
+    }
+    if (pick) return pick
     return this.elderCapturePoseFromGeometry(plantId)
   }
 
   private elderCapturePoseFromGeometry(plantId: string): WalkCapturePose | null {
-    const box = this.plantWorldBox(plantId)
+    const box = this.plantFramingBox(plantId) ?? this.plantWorldBox(plantId)
     if (!box) return null
     const cx = (box.min.x + box.max.x) / 2
     const cz = (box.min.z + box.max.z) / 2
     const H = box.max.y - box.min.y
-    const aim = new THREE.Vector3(cx, box.min.y + H * 0.5, cz)
+    const aim = new THREE.Vector3(cx, box.min.y + H * 0.52, cz)
     const yaw = Math.PI / 2
-    const dist = 8.35
+    const dist = plantId.includes('elder') && this.plantArtStyle !== 'pixel-art' ? 15.4 : 7.12
     const camX = cx + Math.sin(yaw) * dist
     const camZ = cz + Math.cos(yaw) * dist
     const foot = this.terrainFootY(camX, camZ)
     const eyeY = foot + 1.78
     const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-    const pitch = Math.min(pose.pitch, -0.03)
+    const pitch = Math.min(Math.max(pose.pitch, -0.14), -0.04)
     return { ...pose, pitch, x: camX, z: camZ, eyeY }
   }
 

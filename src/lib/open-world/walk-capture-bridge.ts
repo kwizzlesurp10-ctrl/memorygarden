@@ -71,6 +71,8 @@ export interface WalkCaptureBridge {
     height: number
     width: number
     treePixels: number
+    canopyTouchesTopRow: boolean
+    canopyInTopBand: boolean
   } | null
   pondCloseupPose?: () => WalkCapturePose | null
 }

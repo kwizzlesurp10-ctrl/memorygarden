@@ -21,6 +21,9 @@ export function measureTreePixelFillFromPng(pngPath) {
   let minY = h
   let maxY = -1
   let treePixels = 0
+  let canopyTouchesTopRow = false
+  let canopyInTopBand = false
+  const topBandRows = Math.max(2, Math.ceil(h * 0.025))
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = (w * y + x) * 4
@@ -29,6 +32,8 @@ export function measureTreePixelFillFromPng(pngPath) {
       const b = png.data[i + 2]
       if (classifyWalkCapturePixel(r, g, b) !== 'tree') continue
       treePixels++
+      if (y === 0) canopyTouchesTopRow = true
+      if (y < topBandRows) canopyInTopBand = true
       minX = Math.min(minX, x)
       maxX = Math.max(maxX, x)
       minY = Math.min(minY, y)
@@ -36,7 +41,15 @@ export function measureTreePixelFillFromPng(pngPath) {
     }
   }
   if (treePixels < 60 || maxX < minX) {
-    return { treePixels, height: 0, width: 0, top: NaN, bottom: NaN }
+    return {
+      treePixels,
+      height: 0,
+      width: 0,
+      top: NaN,
+      bottom: NaN,
+      canopyTouchesTopRow: false,
+      canopyInTopBand: false,
+    }
   }
   return {
     treePixels,
@@ -46,5 +59,11 @@ export function measureTreePixelFillFromPng(pngPath) {
     bottom: (maxY + 1) / h,
     left: minX / w,
     right: (maxX + 1) / w,
+    canopyTouchesTopRow,
+    canopyInTopBand,
   }
+}
+
+export function treePixelsTouchTopRowFromPng(pngPath) {
+  return measureTreePixelFillFromPng(pngPath).canopyTouchesTopRow === true
 }

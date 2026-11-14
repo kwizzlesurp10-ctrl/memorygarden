@@ -312,28 +312,61 @@ function skyFractionTopBand(pngPath, topFraction = 0.06) {
 async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, pose) {
   const fillPng = measureTreePixelFillFromPng(pngPath)
   const fillLive = await page.evaluate(() => window.__mgWalkCapture?.plantPixelFill?.() ?? null)
+  const projBox = await page.evaluate(
+    (id) => window.__mgWalkCapture?.plantProjectedAabbScreen?.(id) ?? null,
+    plantId,
+  )
+  const projTop = projBox?.top ?? null
+  const projBottom = projBox?.bottom ?? null
   const cov = fillPng.height
   const top = fillPng.top
   const liveH = fillLive?.height ?? cov
+    const topTouch =
+      artStyle === 'watercolor'
+        ? projTop != null && projTop < 0.028
+      : fillPng.canopyTouchesTopRow ||
+        fillLive?.canopyTouchesTopRow === true ||
+        fillPng.canopyInTopBand ||
+        fillLive?.canopyInTopBand === true
+    const metricTop =
+      artStyle === 'watercolor' && projTop != null && projTop >= 0.035 && projTop <= 0.15
+        ? projTop
+        : projTop != null && Number.isFinite(projTop) && projTop >= 0 && projTop <= 0.32
+          ? projTop
+          : Math.min(top, fillLive?.top ?? top)
+  const topMarginPct = (metricTop * 100).toFixed(1)
   console.log(
-    `elder-frame-assert ${phase} ${artStyle} treePxFillH=${(cov * 100).toFixed(1)}% treePxFillW=${(fillPng.width * 100).toFixed(1)}% canopyTop=${(top * 100).toFixed(1)}% liveH=${(liveH * 100).toFixed(1)}%`,
+    `elder-frame-assert ${phase} ${artStyle} treePxFillH=${(cov * 100).toFixed(1)}% projTop=${(projTop != null ? (projTop * 100).toFixed(1) : 'n/a')}% topMargin=${topMarginPct}% touchRow0=${topTouch} liveH=${(liveH * 100).toFixed(1)}%`,
   )
   const errs = []
   if (phase === 'after') {
-    const metricH = artStyle === 'watercolor' ? liveH : cov
-    const metricTop = artStyle === 'watercolor' && fillLive ? fillLive.top : top
-    if (metricH < 0.64) {
-      errs.push(`tree fill height ${(metricH * 100).toFixed(1)}% < 64%`)
+    const projSpan =
+      projBox && Number.isFinite(projBox.top) && projBox.top >= 0 && projBox.top <= 0.2
+        ? projBox.bottom - projBox.top
+        : null
+    const metricH = artStyle === 'watercolor' && projSpan != null ? projSpan : liveH
+    if (topTouch) {
+      errs.push('canopy touches or projects above frame top (clipped)')
+    } else if (projTop != null && projTop < 0.01 && metricTop < 0.045) {
+      errs.push('projected canopy above frame while pixel margin < 4.5%')
     }
-    const maxH = artStyle === 'watercolor' ? 0.84 : 0.79
+    if (metricH < 0.58) {
+      errs.push(`tree fill height ${(metricH * 100).toFixed(1)}% < 58%`)
+    }
+    const maxH = artStyle === 'watercolor' ? 0.72 : 0.7
     if (metricH > maxH) {
-      errs.push(`tree fill height ${(metricH * 100).toFixed(1)}% > ${(maxH * 100).toFixed(0)}% (clipped)`)
+      errs.push(`tree fill height ${(metricH * 100).toFixed(1)}% > ${(maxH * 100).toFixed(0)}%`)
     }
-    if (metricTop < 0.025 || metricTop > 0.22) {
-      errs.push(`tree top ${(metricTop * 100).toFixed(1)}% outside 2.5–22% band`)
+    const minTop = artStyle === 'watercolor' ? 0.032 : 0.04
+    if (metricTop < minTop) {
+      errs.push(`sky margin above canopy ${(metricTop * 100).toFixed(1)}% < ${(minTop * 100).toFixed(0)}%`)
     }
-    if (fillPng.width < 0.2 && artStyle === 'pixel-art') {
-      errs.push(`tree pixel width fill ${(fillPng.width * 100).toFixed(1)}% < 20%`)
+    if (metricTop > 0.21) {
+      errs.push(`sky margin above canopy ${(metricTop * 100).toFixed(1)}% > 21% (tree too small)`)
+    }
+    const trunkBottom = fillLive?.bottom ?? fillPng.bottom
+    if (trunkBottom > 0.945) {
+      errs.push(`trunk base ${(trunkBottom * 100).toFixed(1)}% > 94.5% (base clipped)`)
     }
   }
   if (errs.length) {
@@ -450,7 +483,7 @@ async function captureShot(page, phase, artStyle, shot, pose) {
       ({ id, p }) => window.__mgWalkCapture?.plantScreenCoverage?.(id, p) ?? 0,
       { id: shot.plantId, p: pose },
     )
-    const minCov = shot.file === 'walk-tree-elder-closeup' ? 0.55 : covThreshold
+    const minCov = shot.file === 'walk-tree-elder-closeup' ? 0.52 : covThreshold
     const flag = cov >= minCov ? 'ok' : 'LOW'
     console.log(`coverage[${flag}]`, phase, artStyle, shot.file, cov.toFixed(3))
     if (
