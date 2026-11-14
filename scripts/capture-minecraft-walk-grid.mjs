@@ -536,7 +536,7 @@ try {
         ]
 
   const styleListForRun =
-    captureOnly === 'mushroom' || captureOnly === 'elder' || captureOnly === 'detail'
+    captureOnly === 'mushroom' || captureOnly === 'detail'
       ? (styles) => styles.filter((s) => s === 'pixel-art')
       : (styles) => styles
 
