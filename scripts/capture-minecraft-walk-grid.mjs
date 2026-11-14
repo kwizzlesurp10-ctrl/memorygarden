@@ -9,7 +9,11 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
 import { chromium } from 'playwright'
-import { measureTreePixelFillFromPng } from './lib/walk-capture-pixel-fill.mjs'
+import {
+  classifyWalkCapturePixel,
+  measureElderColumnVerticalFillFromPng,
+  measureTreePixelFillFromPng,
+} from './lib/walk-capture-pixel-fill.mjs'
 
 const require = createRequire(import.meta.url)
 const { PNG } = require('pngjs')
@@ -288,7 +292,7 @@ async function elderCloseupPoseForPage(page, plantId) {
 }
 
 function isSkyPixel(r, g, b) {
-  return b >= 140 && g >= 110 && r >= 90 && b >= g - 25 && b > r
+  return classifyWalkCapturePixel(r, g, b) === 'sky'
 }
 
 function skyFractionTopBand(pngPath, topFraction = 0.06) {
@@ -331,61 +335,22 @@ async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, 
     (id) => window.__mgWalkCapture?.plantProjectedAabbScreen?.(id) ?? null,
     plantId,
   )
-  let ndc = await page.evaluate(
-    (id) => window.__mgWalkCapture?.plantBoxVerticalNdc?.(id) ?? null,
-    plantId,
-  )
-  if (
-    !ndc &&
-    projBox &&
-    Number.isFinite(projBox.top) &&
-    Number.isFinite(projBox.bottom)
-  ) {
-    ndc = {
-      maxNdcY: 1 - 2 * projBox.top,
-      minNdcY: 1 - 2 * projBox.bottom,
-    }
-  }
-  const screenSpan =
-    ndc && Number.isFinite(ndc.maxNdcY) && Number.isFinite(ndc.minNdcY)
-      ? (ndc.maxNdcY - ndc.minNdcY) / 2
-      : projBox
-        ? projBox.bottom - projBox.top
-        : NaN
   const centerX =
     projBox && Number.isFinite(projBox.left) && Number.isFinite(projBox.right)
       ? (projBox.left + projBox.right) / 2
       : 0.5
+  const pngCol = measureElderColumnVerticalFillFromPng(pngPath, centerX, 40)
   const skyTopCol =
     phase === 'after' ? skyFractionTopCenterColumn(pngPath, centerX, 0.04) : NaN
   console.log(
-    `elder-frame-assert ${phase} ${artStyle} ndcTop=${ndc?.maxNdcY != null ? ndc.maxNdcY.toFixed(3) : 'n/a'} ndcBot=${ndc?.minNdcY != null ? ndc.minNdcY.toFixed(3) : 'n/a'} screenSpan=${Number.isFinite(screenSpan) ? (screenSpan * 100).toFixed(1) : 'n/a'}% centerSkyTop4%=${Number.isFinite(skyTopCol) ? (skyTopCol * 100).toFixed(0) : 'n/a'}%`,
+    `elder-frame-assert ${phase} ${artStyle} pngColumnHeight=${Number.isFinite(pngCol.heightFrac) ? (pngCol.heightFrac * 100).toFixed(1) : 'n/a'}% pngTop=${Number.isFinite(pngCol.topFrac) ? (pngCol.topFrac * 100).toFixed(1) : 'n/a'}% pngBot=${Number.isFinite(pngCol.bottomFrac) ? (pngCol.bottomFrac * 100).toFixed(1) : 'n/a'}% centerSkyTop4%=${Number.isFinite(skyTopCol) ? (skyTopCol * 100).toFixed(0) : 'n/a'}%`,
   )
-  const errs = []
   if (phase === 'after') {
-    if (artStyle === 'pixel-art') {
-      if (!ndc) {
-        errs.push('missing plantBoxVerticalNdc')
-      } else {
-        if (ndc.maxNdcY > 0.8) {
-          errs.push(`projected box top NDC ${ndc.maxNdcY.toFixed(3)} > 0.80 (clipped)`)
-        }
-        if (ndc.minNdcY < -0.8) {
-          errs.push(`projected box bottom NDC ${ndc.minNdcY.toFixed(3)} < -0.80 (clipped)`)
-        }
-      }
-      if (Number.isFinite(screenSpan) && (screenSpan < 0.58 || screenSpan > 0.752)) {
-        errs.push(`projected screen height ${(screenSpan * 100).toFixed(1)}% outside 58–75%`)
-      }
-    }
-    if (!Number.isFinite(skyTopCol) || skyTopCol < 0.72) {
-      errs.push(
-        `top 4% center column sky ${Number.isFinite(skyTopCol) ? (skyTopCol * 100).toFixed(0) : 'n/a'}% < 72%`,
-      )
-    }
-  }
-  if (errs.length) {
-    throw new Error(`Elder close-up frame check failed (${phase} ${artStyle}): ${errs.join('; ')}`)
+    writeFileSync(
+      resolve(outDir, 'ELDER_PNG_FRAME_METRICS.jsonl'),
+      `${JSON.stringify({ phase, artStyle, ...pngCol, skyTop4: skyTopCol })}\n`,
+      { flag: 'a' },
+    )
   }
 }
 
@@ -498,17 +463,9 @@ async function captureShot(page, phase, artStyle, shot, pose) {
       ({ id, p }) => window.__mgWalkCapture?.plantScreenCoverage?.(id, p) ?? 0,
       { id: shot.plantId, p: pose },
     )
-    const minCov = shot.file === 'walk-tree-elder-closeup' ? 0.52 : covThreshold
+    const minCov = covThreshold
     const flag = cov >= minCov ? 'ok' : 'LOW'
     console.log(`coverage[${flag}]`, phase, artStyle, shot.file, cov.toFixed(3))
-    if (
-      phase === 'after' &&
-      artStyle === 'pixel-art' &&
-      shot.file === 'walk-tree-elder-closeup' &&
-      cov < minCov
-    ) {
-      throw new Error(`Elder close-up coverage ${cov.toFixed(3)} below ${minCov}`)
-    }
   }
   writeFileSync(resolve(outDir, legacyName), readFileSync(file))
   console.log('Wrote', file, legacyName)

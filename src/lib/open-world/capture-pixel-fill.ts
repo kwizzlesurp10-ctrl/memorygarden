@@ -78,3 +78,63 @@ export function measurePlantPixelFillFromGl(
   gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
   return measurePlantPixelFillFromBuffer(pixels, width, height)
 }
+
+export type PlantCenterColumnFill = {
+  height: number
+  top: number
+  bottom: number
+  canopyTouchesTopRow: boolean
+  treeRows: number
+}
+
+export function measurePlantCenterColumnFillFromBuffer(
+  pixels: Uint8Array,
+  width: number,
+  height: number,
+  bandPx = 40,
+): PlantCenterColumnFill {
+  const cx = Math.round(width / 2)
+  const x0 = Math.max(0, cx - bandPx)
+  const x1 = Math.min(width - 1, cx + bandPx)
+  let minY = height
+  let maxY = -1
+  let treeRows = 0
+  for (let y = 0; y < height; y++) {
+    const srcY = height - 1 - y
+    let rowTree = false
+    for (let x = x0; x <= x1; x++) {
+      const i = (srcY * width + x) * 4
+      const r = pixels[i]!
+      const g = pixels[i + 1]!
+      const b = pixels[i + 2]!
+      if (classifyWalkCapturePixel(r, g, b) !== 'tree') continue
+      rowTree = true
+      break
+    }
+    if (rowTree) {
+      treeRows++
+      minY = Math.min(minY, y)
+      maxY = Math.max(maxY, y)
+    }
+  }
+  const canopyTouchesTopRow = maxY >= minY && minY === 0
+  const heightFrac = maxY >= minY ? (maxY - minY + 1) / height : 0
+  return {
+    height: heightFrac,
+    top: maxY >= minY ? minY / height : 0,
+    bottom: maxY >= minY ? (maxY + 1) / height : 0,
+    canopyTouchesTopRow,
+    treeRows,
+  }
+}
+
+export function measurePlantCenterColumnFillFromGl(
+  gl: WebGL2RenderingContext | WebGLRenderingContext,
+  width: number,
+  height: number,
+  bandPx = 40,
+): PlantCenterColumnFill {
+  const pixels = new Uint8Array(width * height * 4)
+  gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
+  return measurePlantCenterColumnFillFromBuffer(pixels, width, height, bandPx)
+}

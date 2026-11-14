@@ -67,3 +67,49 @@ export function measureTreePixelFillFromPng(pngPath) {
 export function treePixelsTouchTopRowFromPng(pngPath) {
   return measureTreePixelFillFromPng(pngPath).canopyTouchesTopRow === true
 }
+
+/** Vertical span of tree pixels in center column ± bandPx (excludes sky/grass). */
+export function measureElderColumnVerticalFillFromPng(pngPath, centerX01 = 0.5, bandPx = 40) {
+  const png = PNG.sync.read(readFileSync(pngPath))
+  const w = png.width
+  const h = png.height
+  const cx = Math.min(w - 1, Math.max(0, Math.round(centerX01 * w)))
+  const x0 = Math.max(0, cx - bandPx)
+  const x1 = Math.min(w - 1, cx + bandPx)
+  let minY = h
+  let maxY = -1
+  let treeRows = 0
+  for (let y = 0; y < h; y++) {
+    let rowTree = false
+    for (let x = x0; x <= x1; x++) {
+      const i = (w * y + x) * 4
+      const r = png.data[i]
+      const g = png.data[i + 1]
+      const b = png.data[i + 2]
+      const kind = classifyWalkCapturePixel(r, g, b)
+      if (kind === 'sky' || kind === 'grass') continue
+      if (kind === 'tree') {
+        rowTree = true
+        break
+      }
+    }
+    if (rowTree) {
+      treeRows++
+      minY = Math.min(minY, y)
+      maxY = Math.max(maxY, y)
+    }
+  }
+  const heightFrac = maxY >= minY ? (maxY - minY + 1) / h : 0
+  const topFrac = maxY >= minY ? minY / h : NaN
+  const bottomFrac = maxY >= minY ? (maxY + 1) / h : NaN
+  const canopyTouchesTopRow = maxY >= minY && minY === 0
+  return {
+    heightFrac,
+    topFrac,
+    bottomFrac,
+    treeRows,
+    centerX: cx,
+    bandPx,
+    canopyTouchesTopRow,
+  }
+}

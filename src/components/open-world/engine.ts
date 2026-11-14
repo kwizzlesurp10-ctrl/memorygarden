@@ -22,10 +22,6 @@ import { WALK_SYNTHETIC_POND } from '@/lib/open-world/walk-pond-capture'
 import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
 import { Cc0SceneryLayer, defaultCc0GardenSeed } from './cc0-scenery'
 import { playWaterSfx } from '@/lib/water-sound'
-import {
-  measurePlantPixelFillFromGl,
-  type PlantPixelFill,
-} from '@/lib/open-world/capture-pixel-fill'
 
 export interface EngineHooks {
   onProximity: (plant: WorldPlant | null) => void
@@ -387,176 +383,6 @@ export class OpenWorldEngine {
     return box.isEmpty() ? null : box
   }
 
-  private elderFramingBoxSessionKey(plantId: string): string {
-    return `mg:elder-framing-aabb:${plantId}`
-  }
-
-  private elderPoseSessionKey(plantId: string): string {
-    return `mg:elder-capture-pose:${plantId}`
-  }
-
-  private readElderPoseFromSession(plantId: string): WalkCapturePose | null {
-    if (typeof sessionStorage === 'undefined') return null
-    try {
-      const raw = sessionStorage.getItem(this.elderPoseSessionKey(plantId))
-      if (!raw) return null
-      return JSON.parse(raw) as WalkCapturePose
-    } catch {
-      return null
-    }
-  }
-
-  private writeElderPoseToSession(plantId: string, pose: WalkCapturePose): void {
-    if (typeof sessionStorage === 'undefined') return
-    try {
-      sessionStorage.setItem(this.elderPoseSessionKey(plantId), JSON.stringify(pose))
-    } catch {
-      /* quota */
-    }
-  }
-
-  private readElderFramingBoxFromSession(plantId: string): THREE.Box3 | null {
-    if (typeof sessionStorage === 'undefined') return null
-    try {
-      const raw = sessionStorage.getItem(this.elderFramingBoxSessionKey(plantId))
-      if (!raw) return null
-      const o = JSON.parse(raw) as {
-        minX: number
-        minY: number
-        minZ: number
-        maxX: number
-        maxY: number
-        maxZ: number
-      }
-      return new THREE.Box3(
-        new THREE.Vector3(o.minX, o.minY, o.minZ),
-        new THREE.Vector3(o.maxX, o.maxY, o.maxZ),
-      )
-    } catch {
-      return null
-    }
-  }
-
-  private writeElderFramingBoxToSession(plantId: string, box: THREE.Box3): void {
-    if (typeof sessionStorage === 'undefined') return
-    try {
-      sessionStorage.setItem(
-        this.elderFramingBoxSessionKey(plantId),
-        JSON.stringify({
-          minX: box.min.x,
-          minY: box.min.y,
-          minZ: box.min.z,
-          maxX: box.max.x,
-          maxY: box.max.y,
-          maxZ: box.max.z,
-        }),
-      )
-    } catch {
-      /* quota */
-    }
-  }
-
-  private scaleWatercolorElderToVoxelRef(
-    group: THREE.Group,
-    ref: THREE.Box3,
-    footY: number,
-  ): void {
-    group.updateWorldMatrix(true, true)
-    const box = new THREE.Box3().setFromObject(group, true)
-    if (box.isEmpty()) return
-    const h = box.max.y - box.min.y
-    const refH = ref.max.y - ref.min.y
-    if (h < 0.05 || refH < 0.05) return
-    const s = refH / h
-    group.scale.set(s, s, s)
-    group.updateWorldMatrix(true, true)
-    const footed = new THREE.Box3().setFromObject(group, true)
-    group.position.y += ref.min.y - footed.min.y
-    group.updateWorldMatrix(true, true)
-    const sized = new THREE.Box3().setFromObject(group, true)
-    const h2 = sized.max.y - sized.min.y
-    if (h2 > 0.05 && Math.abs(h2 - refH) > 0.08) {
-      group.scale.y *= refH / h2
-      group.updateWorldMatrix(true, true)
-      const after = new THREE.Box3().setFromObject(group, true)
-      group.position.y += ref.min.y - after.min.y
-    } else {
-      snapPlantGroupToTerrain(group, footY)
-    }
-    const refCenter = ref.getCenter(new THREE.Vector3())
-    const aligned = new THREE.Box3().setFromObject(group, true)
-    const curCenter = aligned.getCenter(new THREE.Vector3())
-    group.position.x += refCenter.x - curCenter.x
-    group.position.z += refCenter.z - curCenter.z
-    group.updateWorldMatrix(true, true)
-  }
-
-  private tightMeshWorldBox(group: THREE.Object3D): THREE.Box3 | null {
-    const box = new THREE.Box3()
-    let any = false
-    group.traverse((obj) => {
-      if (!(obj instanceof THREE.Mesh)) return
-      const geom = obj.geometry
-      if (!geom) return
-      if (!geom.boundingBox) geom.computeBoundingBox()
-      const local = geom.boundingBox
-      if (!local || local.isEmpty()) return
-      const corner = new THREE.Vector3()
-      const world = new THREE.Box3()
-      for (const xs of [local.min.x, local.max.x] as const) {
-        for (const ys of [local.min.y, local.max.y] as const) {
-          for (const zs of [local.min.z, local.max.z] as const) {
-            corner.set(xs, ys, zs).applyMatrix4(obj.matrixWorld)
-            world.expandByPoint(corner)
-          }
-        }
-      }
-      if (!world.isEmpty()) {
-        box.union(world)
-        any = true
-      }
-    })
-    return any ? box : null
-  }
-
-  /** Elder walk framing from occupied mesh vertices (voxels / watercolor meshes). */
-  private plantElderFramingBox(plantId: string): THREE.Box3 | null {
-    const group = this.findPlantGroup(plantId)
-    if (!group) return null
-    group.updateWorldMatrix(true, true)
-    const tight = this.tightMeshWorldBox(group)
-    if (tight) return tight
-    const precise = new THREE.Box3().setFromObject(group, true)
-    if (!precise.isEmpty()) return precise
-    const bounds = new THREE.Box3().setFromObject(group)
-    return bounds.isEmpty() ? null : bounds
-  }
-
-  /** Tighter AABB for camera framing — full walk bounds include sparse voxel wings that read smaller on screen. */
-  private plantFramingBox(plantId: string): THREE.Box3 | null {
-    const box = this.plantWorldBox(plantId)
-    if (!box) return null
-    const wp = this.world.plants.find((p) => p.id === plantId)
-    if (wp?.variety !== 'tree' || !plantId.includes('elder')) return box
-    const size = box.getSize(new THREE.Vector3())
-    const cx = (box.min.x + box.max.x) / 2
-    const cz = (box.min.z + box.max.z) / 2
-    const framed = box.clone()
-    const xzShrink = 0.68
-    framed.min.x = cx - (size.x * 0.5) * xzShrink
-    framed.max.x = cx + (size.x * 0.5) * xzShrink
-    framed.min.z = cz - (size.z * 0.5) * xzShrink
-    framed.max.z = cz + (size.z * 0.5) * xzShrink
-    framed.min.y = box.min.y + size.y * 0.02
-    framed.max.y = box.min.y + size.y * 0.95
-    return framed
-  }
-
-  private projectedScreenSpan(box: THREE.Box3): number {
-    const proj = this.plantProjectedAabbScreenFromBox(box)
-    return proj ? Math.max(0, proj.bottom - proj.top) : 0
-  }
-
   hasPlantGroup(plantId: string): boolean {
     return this.findPlantGroup(plantId) !== null
   }
@@ -601,36 +427,13 @@ export class OpenWorldEngine {
   }
 
   plantScreenCoverage(plantId: string, pose?: WalkCapturePose): number {
-    if (plantId.includes('elder') && isWalkCaptureSession()) {
-    const box = this.plantElderFramingBox(plantId) ?? this.plantWorldBox(plantId)
-    if (!box) return 0
-    if (pose) {
-      return this.withCapturePose(pose, () => {
-        const ndc = this.projectBoxVerticalInView(box)
-        return ndc ? (ndc.maxNdcY - ndc.minNdcY) / 2 : 0
-      })
-    }
-      this.renderOnce()
-      const ndc = this.projectBoxVerticalInView(box)
-      return ndc ? (ndc.maxNdcY - ndc.minNdcY) / 2 : 0
-    }
     const box = this.plantWorldBox(plantId)
     if (!box) return 0
     if (pose) {
-      return this.withCapturePose(pose, () => this.projectedScreenSpan(box))
+      return this.withCapturePose(pose, () => this.screenHeightFraction(box))
     }
     this.renderOnce()
-    return this.projectedScreenSpan(box)
-  }
-
-  measureSoloPlantPixelFill(): PlantPixelFill | null {
-    if (!this.renderer) return null
-    this.renderOnce()
-    const gl = this.renderer.getContext()
-    const w = this.canvas.width
-    const h = this.canvas.height
-    if (w < 8 || h < 8) return null
-    return measurePlantPixelFillFromGl(gl, w, h)
+    return this.screenHeightFraction(box)
   }
 
   private projectBoxCenter(box: THREE.Box3): THREE.Vector3 {
@@ -693,11 +496,9 @@ export class OpenWorldEngine {
   }
 
   plantProjectedBoxScreenY(plantId: string): { top: number; bottom: number } | null {
-    const box = this.plantFramingBox(plantId) ?? this.plantWorldBox(plantId)
+    const box = this.plantWorldBox(plantId)
     if (!box) return null
     this.renderOnce()
-    const full = this.plantProjectedAabbScreenFromBox(box)
-    if (full) return { top: full.top, bottom: full.bottom }
     const cx = (box.min.x + box.max.x) / 2
     const cz = (box.min.z + box.max.z) / 2
     let minTopScreen = Infinity
@@ -728,10 +529,7 @@ export class OpenWorldEngine {
   plantProjectedAabbScreen(
     plantId: string,
   ): { left: number; right: number; top: number; bottom: number } | null {
-    const box =
-      plantId.includes('elder') && plantId.endsWith('-walk')
-        ? (this.plantElderFramingBox(plantId) ?? this.plantWorldBox(plantId))
-        : this.plantWorldBox(plantId)
+    const box = this.plantWorldBox(plantId)
     if (!box) return null
     this.renderOnce()
     return this.plantProjectedAabbScreenFromBox(box)
@@ -814,9 +612,9 @@ export class OpenWorldEngine {
     const R = Math.max(size.x, size.z) * 0.5
     const fovRad = (this.camera.fov * Math.PI) / 180
     const halfFovTan = Math.tan(fovRad / 2)
-    const D_v = (((H * 1.1) / 2) / halfFovTan) * slack
-    const D_h = ((R * 1.14) / (halfFovTan * this.camera.aspect)) * 1.28
-    const D = Math.max(R * 0.88, D_v, D_h) * 0.98
+    const D_v = (((H * 1.18) / 2) / halfFovTan) * slack
+    const D_h = ((R * 1.22) / (halfFovTan * this.camera.aspect)) * 1.34
+    const D = Math.max(R * 0.95, D_v, D_h) * 1.04
     const yaw = -0.52
     const camX = cx + Math.sin(yaw) * D
     const camZ = cz + Math.cos(yaw) * D
@@ -829,7 +627,7 @@ export class OpenWorldEngine {
     this.camera.rotation.x = elderPitch
     this.camera.updateProjectionMatrix()
     this.renderOnce()
-    const frac = this.projectedScreenSpan(box)
+    const frac = this.screenHeightFraction(box)
     const canopy = this.plantProjectedBoxScreenYFromBox(box)
     return {
       ...pose,
@@ -887,7 +685,7 @@ export class OpenWorldEngine {
     let bottom = -Infinity
     for (const [x, y, z] of corners) {
       const p = new THREE.Vector3(x, y, z).project(this.camera)
-      if (p.z > 1 || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue
+      if (p.z < -1 || p.z > 1 || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue
       const screenX = (p.x + 1) / 2
       const screenY = (1 - p.y) / 2
       left = Math.min(left, screenX)
@@ -900,110 +698,72 @@ export class OpenWorldEngine {
   }
 
   elderDeterministicCapturePose(plantId: string): WalkCapturePose | null {
-    return this.elderGeometryCapturePose(plantId)
-  }
-
-  private elderNdcFrameOk(ndc: { minNdcY: number; maxNdcY: number }): boolean {
-    return ndc.maxNdcY <= 0.8 && ndc.minNdcY >= -0.8
-  }
-
-  private elderGeometryCapturePose(plantId: string): WalkCapturePose | null {
-    if (
-      isWalkCaptureSession() &&
-      this.plantArtStyle === 'watercolor' &&
-      plantId.includes('elder')
-    ) {
-      const pinned = this.readElderPoseFromSession(plantId)
-      if (pinned) {
-        this.setPlayerPose(pinned.x, pinned.z, pinned.yaw, pinned.pitch, pinned.eyeY)
-        this.camera.rotation.x = pinned.pitch
-        this.renderOnce()
-        return pinned
-      }
-    }
-    const box = this.plantElderFramingBox(plantId)
-    if (!box) return null
-    const center = box.getCenter(new THREE.Vector3())
-    const H = box.max.y - box.min.y
-    if (!Number.isFinite(H) || H < 0.5) return null
-    const yaw = Math.PI / 2
-    const fovRad = (this.camera.fov * Math.PI) / 180
-    const halfTan = Math.tan(fovRad / 2)
-    if (!Number.isFinite(halfTan) || halfTan < 1e-4) return null
-    let dist = (H / 0.66) / (2 * halfTan)
-
-    const applyAt = (d: number): WalkCapturePose => {
-      const camX = center.x + Math.sin(yaw) * d
-      const camZ = center.z + Math.cos(yaw) * d
+    const box = this.plantWorldBox(plantId)
+    const wp = this.world.plants.find((p) => p.id === plantId)
+    if (!box || !wp) return null
+    const ground = box.min.y
+    const H = box.max.y - ground
+    const cx = (box.min.x + box.max.x) / 2
+    const cz = (box.min.z + box.max.z) / 2
+    const aimY = ground + H * 0.48
+    const aim = new THREE.Vector3(cx, aimY, cz)
+    let bestPose: WalkCapturePose | null = null
+    let bestScore = Infinity
+    const yaws = [-Math.PI / 2, Math.PI / 2, -Math.PI / 4, Math.PI / 4]
+    for (let pass = 0; pass < 64; pass++) {
+      const dist = 11.25 + (pass / 63) * 3.95
+      const yaw = yaws[pass % yaws.length]!
+      const camX = cx + Math.sin(yaw) * dist
+      const camZ = cz + Math.cos(yaw) * dist
       const foot = this.terrainFootY(camX, camZ)
-      const eyeY = foot + 1.78
-      const posed = this.poseLookAt(center, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-      this.setPlayerPose(camX, camZ, posed.yaw, posed.pitch, eyeY)
-      this.camera.rotation.x = posed.pitch
+      const eyeY = foot + 1.82 + (pass % 5) * 0.04
+      const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+      const pitch = Math.min(pose.pitch, -0.035)
+      if (pitch > 0.12) continue
+      this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
+      this.camera.rotation.x = pitch
+      this.camera.updateProjectionMatrix()
       this.renderOnce()
-      return { ...posed, x: camX, z: camZ, eyeY }
-    }
-
-    let pose = applyAt(dist)
-    if (this.renderer) {
-      for (let pass = 0; pass < 18; pass++) {
-        const ndc = this.projectBoxVerticalInView(box)
-        if (!ndc) break
-        const spanHalf = (ndc.maxNdcY - ndc.minNdcY) / 2
-        const spanOk = spanHalf <= 0.752 && spanHalf >= 0.58
-        if (this.elderNdcFrameOk(ndc) && spanOk) break
-        const topScale = ndc.maxNdcY > 0.8 ? ndc.maxNdcY / 0.78 : 1
-        const botScale = ndc.minNdcY < -0.8 ? Math.abs(ndc.minNdcY) / 0.78 : 1
-        const spanScale =
-          spanHalf > 0.752 ? spanHalf / 0.66 : spanHalf < 0.58 ? 0.66 / Math.max(spanHalf, 0.2) : 1
-        const scale = Math.max(topScale, botScale, spanScale, 1.02)
-        dist *= scale
-        pose = applyAt(dist)
+      const span = this.screenHeightFraction(box)
+      const canopy = this.plantProjectedBoxScreenYFromBox(box)
+      const top = canopy?.top ?? 0.5
+      const proj = this.plantProjectedAabbScreenFromBox(box)
+      const widthSpan = proj ? proj.right - proj.left : 0
+      if (
+        top >= 0.04 &&
+        top <= 0.2 &&
+        span >= 0.67 &&
+        span <= 0.79 &&
+        widthSpan >= 0.38
+      ) {
+        return { ...pose, pitch, x: camX, z: camZ, eyeY }
       }
-      const fin = this.projectBoxVerticalInView(box)
-      if (fin) {
-        const spanHalf = (fin.maxNdcY - fin.minNdcY) / 2
-        if (spanHalf < 0.64) {
-          dist *= Math.max(spanHalf, 0.35) / 0.66
-          pose = applyAt(dist)
-        }
+      const clipPen =
+        top < 0.02 ? 20 + Math.abs(top) * 16 : span > 0.88 ? 18 : span > 0.8 ? 8 : 0
+      const topPen = top < 0.06 ? 6 + Math.abs(0.06 - top) * 6 : top > 0.22 ? (top - 0.22) * 8 : 0
+      const widthPen = widthSpan < 0.34 ? (0.34 - widthSpan) * 5 : 0
+      const score = Math.abs(span - 0.7) + Math.abs(top - 0.1) * 2.5 + topPen + widthPen + clipPen
+      if (span > 0.85 || top < 0.03) continue
+      if (score < bestScore) {
+        bestScore = score
+        bestPose = { ...pose, pitch, x: camX, z: camZ, eyeY }
       }
     }
-    if (isWalkCaptureSession() && this.plantArtStyle === 'pixel-art' && plantId.includes('elder')) {
-      const finalBox = this.plantElderFramingBox(plantId)
-      if (finalBox) this.writeElderFramingBoxToSession(plantId, finalBox)
-      this.writeElderPoseToSession(plantId, pose)
-    }
+  if (bestPose) {
+    this.setPlayerPose(bestPose.x, bestPose.z, bestPose.yaw, bestPose.pitch, bestPose.eyeY)
+    this.camera.rotation.x = bestPose.pitch
+    this.renderOnce()
+    const span = this.screenHeightFraction(box)
+    const canopy = this.plantProjectedBoxScreenYFromBox(box)
+    const top = canopy?.top ?? 0.5
+    if (span <= 0.85 && top >= 0.04) return bestPose
+  }
+  const slack = this.elderCapturePoseAtSlack(box, 1.04, -0.045)
+  if (slack && slack.screenSpan <= 0.85 && slack.screenTop >= 0.04) {
+    const { screenSpan: _s, screenTop: _t, ...pose } = slack
     return pose
   }
-
-  plantElderReferenceVerticalNdc(plantId: string): { minNdcY: number; maxNdcY: number } | null {
-    const ref =
-      this.readElderFramingBoxFromSession(plantId) ??
-      this.plantElderFramingBox(plantId) ??
-      this.plantWorldBox(plantId)
-    if (!ref) return null
-    this.renderOnce()
-    return this.projectBoxVerticalInView(ref)
-  }
-
-  plantBoxVerticalNdc(plantId: string): { minNdcY: number; maxNdcY: number } | null {
-    const box =
-      plantId.includes('elder') && plantId.endsWith('-walk')
-        ? (this.plantElderFramingBox(plantId) ?? this.plantWorldBox(plantId))
-        : this.plantWorldBox(plantId)
-    if (!box) return null
-    this.renderOnce()
-    const ndc = this.projectBoxVerticalInView(box)
-    if (ndc) return ndc
-    const screen = this.plantProjectedAabbScreenFromBox(box)
-    if (!screen || !Number.isFinite(screen.top) || !Number.isFinite(screen.bottom)) {
-      return null
-    }
-    return {
-      maxNdcY: 1 - 2 * screen.top,
-      minNdcY: 1 - 2 * screen.bottom,
-    }
+  return bestPose
   }
 
   private projectBoxVerticalInView(box: THREE.Box3): { minNdcY: number; maxNdcY: number } | null {
@@ -1022,7 +782,7 @@ export class OpenWorldEngine {
     let maxNdcY = -Infinity
     for (const [x, y, z] of corners) {
       const p = new THREE.Vector3(x, y, z).project(this.camera)
-      if (p.z > 1 || !Number.isFinite(p.y)) continue
+      if (p.z < -1 || p.z > 1) continue
       minNdcY = Math.min(minNdcY, p.y)
       maxNdcY = Math.max(maxNdcY, p.y)
     }
@@ -1120,7 +880,7 @@ export class OpenWorldEngine {
     const group = this.findPlantGroup(plantId)
     if (!box || !group) return null
 
-    if (isWalkCaptureSession() && plantId.endsWith('-walk')) {
+  if (isWalkCaptureSession() && plantId.endsWith('-walk')) {
       const wp = this.world.plants.find((p) => p.id === plantId)
       const size = box.getSize(new THREE.Vector3())
       if (plantId.includes('tree')) {
@@ -1507,20 +1267,6 @@ export class OpenWorldEngine {
       const group = createPlantGroup(plant, recipe, style)
       if (style === 'watercolor') {
         applyWatercolorWalkTint(group)
-        if (
-          isWalkCaptureSession() &&
-          plant.id.includes('elder') &&
-          plant.id.endsWith('-walk')
-        ) {
-          const ref = this.readElderFramingBoxFromSession(plant.id)
-          if (ref) {
-            this.scaleWatercolorElderToVoxelRef(
-              group,
-              ref,
-              walkCaptureGroundY(plant.x, plant.z),
-            )
-          }
-        }
       }
       if (style === 'pixel-art') {
         snapPlantGroupToTerrain(group, walkCaptureGroundY(plant.x, plant.z))
