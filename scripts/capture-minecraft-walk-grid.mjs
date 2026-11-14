@@ -352,16 +352,14 @@ async function assertElderCloseupFrame(page, plantId, pngPath, phase, artStyle, 
   )
   const errs = []
   if (phase === 'after') {
-    const projSpan =
-      projTop != null &&
-      projBottom != null &&
-      Number.isFinite(projTop) &&
-      projTop >= 0 &&
-      projTop <= 0.2
-        ? projBottom - projTop
+    const aabbSpan =
+      projBox &&
+      Number.isFinite(projBox.top) &&
+      projBox.top >= 0 &&
+      projBox.top <= 0.2
+        ? projBox.bottom - projBox.top
         : null
-    const metricH =
-      projSpan != null && (artStyle === 'watercolor' || artStyle === 'pixel-art') ? projSpan : liveH
+    const metricH = artStyle === 'watercolor' && aabbSpan != null ? aabbSpan : liveH
     if (topTouch) {
       errs.push('canopy touches or projects above frame top (clipped)')
     } else if (projTop != null && projTop < 0.01 && metricTop < 0.045) {
