@@ -36,6 +36,7 @@ type BlockKind =
   | 'leaf'
   | 'gravel'
   | 'stone'
+  | 'moss_stone'
   | 'mushroom'
   | 'mushroom_stem'
   | 'mushroom_cap'
@@ -159,6 +160,22 @@ export function minecraftBlockTexture(
             ctx.fillRect(x, y, 1, 1)
           }
         }
+      }
+    }
+  } else if (kind === 'moss_stone') {
+    const stones = ['#6a6a72', '#5c5c64', '#787880', '#4e4e56']
+    const moss = ['#5fa037', '#62b53a', '#4a8f3a']
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const n = hash01(seed + x * 9.7 + y * 13.1)
+        if (y < 5) {
+          const idx = Math.floor(n * moss.length) % moss.length
+          ctx.fillStyle = moss[idx] ?? '#5fa037'
+        } else {
+          const idx = Math.floor(n * stones.length) % stones.length
+          ctx.fillStyle = stones[idx] ?? '#6a6a72'
+        }
+        ctx.fillRect(x, y, 1, 1)
       }
     }
   } else if (kind === 'stone') {
@@ -611,25 +628,43 @@ export function minecraftGrassTufts(
     voxelMaterial(palette.hills[0] ?? '#5a9c48', palette.hills[1] ?? '#7ed65a', 71, 'grass'),
   )
   const grassDark = track(
-    voxelMaterial(palette.hills[1] ?? '#3d7a34', palette.hills[2] ?? '#2d5a27', 72, 'grass_side'),
+    voxelMaterial(palette.hills[1] ?? '#3d7a34', palette.hills[2] ?? '#62b53a', 72, 'grass'),
   )
   const rng = gardenRng(901)
-  const span = 42
-  const count = 88
-  for (let i = 0; i < count; i++) {
+  const span = 38
+  const count = 52
+  const placed: Array<{ x: number; z: number }> = []
+  let i = 0
+  let attempts = 0
+  while (i < count && attempts < count * 12) {
+    attempts++
     const x = (rng() * 2 - 1) * span
     const z = (rng() * 2 - 1) * span
-    if (Math.hypot(x - world.pond.x, z - world.pond.z) < world.pond.radius + 0.35) continue
-    const mat = rng() > 0.42 ? grassBright : grassDark
-    const tuft = new THREE.Mesh(boxGeo, mat)
+    if (Math.hypot(x - world.pond.x, z - world.pond.z) < world.pond.radius + 0.5) continue
+    if (placed.some((p) => Math.hypot(p.x - x, p.z - z) < 1.8)) continue
+    const mat = rng() > 0.45 ? grassBright : grassDark
     const topY = topBlocks(x, z) * VOXEL
-    const tall = 0.55 + rng() * 0.85
-    tuft.position.set(x, topY + VOXEL * tall * 0.5, z)
-    tuft.scale.set(VOXEL, VOXEL * tall, VOXEL)
-    tuft.userData.voxel = true
-    root.add(tuft)
+    const tall = 0.32 + rng() * 0.38
+    for (const rotY of [0, Math.PI / 2]) {
+      const blade = new THREE.Mesh(planeGeo, mat)
+      blade.position.set(x, topY + tall / 2, z)
+      blade.scale.set(0.42, tall, 1)
+      blade.rotation.y = rotY
+      blade.userData.voxel = true
+      blade.userData.grassTuft = true
+      root.add(blade)
+    }
+    placed.push({ x, z })
+    i++
   }
 }
+
+export const MINECRAFT_WALK_ROCK_CLUSTERS: Array<{ x: number; z: number; seed: number }> = [
+  { x: -11, z: 6, seed: 501 },
+  { x: 13, z: -6, seed: 502 },
+  { x: -16, z: -9, seed: 503 },
+  { x: 18, z: 10, seed: 504 },
+]
 
 export function voxelRockCluster(
   x: number,
@@ -644,27 +679,45 @@ export function voxelRockCluster(
     voxelMaterial(palette.bank ?? '#6b6b74', palette.hills[2] ?? '#8a8a94', seed, 'stone'),
   )
   const mossMat = track(
-    voxelMaterial(palette.hills[0] ?? '#5fa037', palette.hills[1] ?? '#3d7a34', seed + 3, 'grass'),
+    voxelMaterial(palette.hills[0] ?? '#5fa037', palette.hills[1] ?? '#3d7a34', seed + 3, 'moss_stone'),
   )
   const topAt = blockTopY ?? ((wx, wz) => walkCaptureGroundY(wx, wz))
-  const surfaceY = topAt(x, z) / VOXEL
+  const surfaceY = Math.max(0, Math.round(topAt(x, z)))
   const g = new THREE.Group()
   g.position.set(x, 0, z)
   const rng = gardenRng(seed)
-  const blocks = 3 + Math.floor(rng() * 4)
-  const placed = new Set<string>()
-  for (let b = 0; b < blocks; b++) {
-    const ix = Math.floor(rng() * 5) - 2
-    const iz = Math.floor(rng() * 5) - 2
-    const iy = Math.floor(rng() * 2)
-    const key = `${ix},${iy},${iz}`
-    if (placed.has(key)) continue
-    placed.add(key)
-    const mat = iy === 0 && rng() > 0.55 ? mossMat : rockMat
-    placeBlock(g, ix, Math.max(0, iy) + surfaceY, iz, mat)
-    if (rng() > 0.72 && iy === 0) {
-      placeBlock(g, ix, Math.max(0, iy) + surfaceY + 1, iz, rockMat)
-    }
+  const blockCount = 3 + Math.floor(rng() * 4)
+  const used = new Set<string>()
+  const colHeight = new Map<string, number>()
+  const offsets: Array<[number, number]> = [
+    [0, 0],
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [1, 1],
+    [-1, -1],
+  ]
+  let placed = 0
+  let guard = 0
+  while (placed < blockCount && guard < 40) {
+    guard++
+    const pick = offsets[Math.floor(rng() * offsets.length)]!
+    const ix = pick[0]
+    const iz = pick[1]
+    const colKey = `${ix},${iz}`
+    const layer = colHeight.get(colKey) ?? 0
+    if (layer > 1) continue
+    const key = `${colKey},${layer}`
+    if (used.has(key)) continue
+    used.add(key)
+    colHeight.set(colKey, layer + 1)
+    const mat = layer === 0 ? mossMat : rockMat
+    placeBlock(g, ix, surfaceY + layer, iz, mat)
+    const scale = 0.82 + rng() * 0.28
+    const child = g.children[g.children.length - 1]
+    if (child) child.scale.set(VOXEL * scale, VOXEL * scale, VOXEL * scale)
+    placed++
   }
   root.add(g)
 }
@@ -673,7 +726,7 @@ export function minecraftWaterBlockTexture(palette: ScenePalette, seed = 44): TH
   const base = palette.waterTint[0] ?? '#2a4a6e'
   const accent = palette.waterTint[1] ?? '#1a3050'
   const highlight = palette.ripple ?? '#6a9ac8'
-  const tex = minecraftBlockTexture('#4a8ac8', '#2a5080', seed, 'gravel')
+  const tex = minecraftBlockTexture('#3a9ad8', '#1a4878', seed, 'gravel')
   const img = tex.image as HTMLCanvasElement
   const ctx = img.getContext('2d')
   if (ctx) {

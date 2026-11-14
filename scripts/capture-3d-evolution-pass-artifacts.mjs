@@ -57,6 +57,19 @@ runNode('capture-walk-pixel-art-realflow.mjs', {
   AFTER_URL: process.env.AFTER_URL || 'http://127.0.0.1:4174',
 })
 
+runNode('capture-walk-pond-closeup.mjs', {
+  AFTER_URL: process.env.AFTER_URL || 'http://127.0.0.1:4174',
+  BEFORE_URL: process.env.BEFORE_URL || 'http://127.0.0.1:4173',
+  PHASE: 'both',
+})
+
+runNode('capture-walk-pond-closeup.mjs', {
+  AFTER_URL: process.env.AFTER_URL || 'http://127.0.0.1:4174',
+  BEFORE_URL: process.env.BEFORE_URL || 'http://127.0.0.1:4173',
+  PHASE: 'both',
+  NIGHT: '1',
+})
+
 const pairs = [
   {
     dest: 'label-elder-closeup-before-main-312e660.png',
@@ -86,7 +99,32 @@ const pairs = [
   {
     dest: 'label-realflow-desktop-near-elder-after.png',
     src: 'minecraft-walk-realflow-desktop-near-elder.png',
-    title: 'Real flow — near elder (no mg:walk-capture)',
+    title: 'Real flow — facing elder (no capture session, no pointer overlay)',
+  },
+  {
+    dest: 'label-pond-watercolor-before-dusk.png',
+    src: 'walk-pond-before-watercolor-dusk-desktop.png',
+    title: 'Pond close-up — BEFORE watercolor (dusk)',
+  },
+  {
+    dest: 'label-pond-watercolor-after-dusk.png',
+    src: 'walk-pond-after-watercolor-dusk-desktop.png',
+    title: 'Pond close-up — AFTER watercolor (foam + shore)',
+  },
+  {
+    dest: 'label-pond-pixel-art-before-dusk.png',
+    src: 'walk-pond-before-pixel-art-dusk-desktop.png',
+    title: 'Pond close-up — BEFORE pixel-art (dusk)',
+  },
+  {
+    dest: 'label-pond-pixel-art-after-dusk.png',
+    src: 'walk-pond-after-pixel-art-dusk-desktop.png',
+    title: 'Pond close-up — AFTER pixel-art block water + foam',
+  },
+  {
+    dest: 'label-pond-pixel-art-after-night.png',
+    src: 'walk-pond-after-pixel-art-night-desktop.png',
+    title: 'Pond close-up — AFTER pixel-art (night)',
   },
 ]
 

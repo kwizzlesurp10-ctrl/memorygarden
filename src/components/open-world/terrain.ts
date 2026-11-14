@@ -5,6 +5,7 @@ import type { GardenWorld } from '@/lib/open-world/types'
 import { isWalkCaptureSession } from '@/lib/open-world/walk-capture-bridge'
 import {
   buildMinecraftSteppedHills,
+  MINECRAFT_WALK_ROCK_CLUSTERS,
   minecraftAnalyticSurfaceY,
   minecraftGrassTexture,
   minecraftGrassTufts,
@@ -287,9 +288,9 @@ export function buildTerrain(
     minecraftMode
       ? new THREE.MeshLambertMaterial({
           map: track(minecraftWaterBlockTexture(palette)),
-          color: new THREE.Color(twilight ? '#8aa8c8' : '#b8dcf8'),
+          color: new THREE.Color(twilight ? '#9ab8e0' : '#c8e8ff'),
           transparent: true,
-          opacity: 0.94,
+          opacity: 0.97,
           emissive: new THREE.Color(palette.ripple),
           emissiveIntensity: twilight ? 0.08 + starAlpha * 0.06 : 0.14,
         })
@@ -313,7 +314,7 @@ export function buildTerrain(
     waterMat,
   )
   water.rotation.x = -Math.PI / 2
-  water.position.set(world.pond.x, 0.05, world.pond.z)
+  water.position.set(world.pond.x, minecraftMode ? 0.085 : 0.05, world.pond.z)
   root.add(water)
 
   const foamMat = track(
@@ -451,25 +452,11 @@ export function buildTerrain(
     { x: 18, z: -12, s: 0.9 },
     { x: -12, z: 18, s: 0.75 },
     { x: 14, z: 16, s: 0.85 },
-    { x: -8, z: 22, s: 0.62 },
-    { x: 22, z: 4, s: 0.7 },
-    { x: -22, z: -6, s: 0.95 },
-    { x: 6, z: -18, s: 0.58 },
   ]
-  if (walkCapture) {
-    rockPositions.push(
-      { x: 10, z: 10, s: 0.55 },
-      { x: -6, z: 8, s: 0.48 },
-      { x: 20, z: 18, s: 0.52 },
-    )
-  }
   for (let ri = 0; ri < rockPositions.length; ri++) {
     const rp = rockPositions[ri]
     if (minecraftMode) {
-      const hillTop =
-        surfaceY ??
-        ((wx: number, wz: number) => minecraftAnalyticSurfaceY(Math.round(wx), Math.round(wz)))
-      voxelRockCluster(rp.x, rp.z, 300 + ri * 17, palette, root, track, (wx, wz) => hillTop(wx, wz))
+      /* voxel clusters placed below */
     } else {
       const rMesh = new THREE.Mesh(rockGeo, rockMat)
       rMesh.scale.set(rp.s * 1.2, rp.s * 0.7, rp.s * 0.9)
@@ -478,6 +465,16 @@ export function buildTerrain(
       rMesh.castShadow = true
       rMesh.receiveShadow = true
       root.add(rMesh)
+    }
+  }
+
+  if (minecraftMode) {
+    const hillTop =
+      surfaceY ??
+      ((wx: number, wz: number) => minecraftAnalyticSurfaceY(Math.round(wx), Math.round(wz)))
+    const clusters = walkCapture ? MINECRAFT_WALK_ROCK_CLUSTERS : MINECRAFT_WALK_ROCK_CLUSTERS.slice(0, 4)
+    for (const c of clusters) {
+      voxelRockCluster(c.x, c.z, c.seed, palette, root, track, (wx, wz) => hillTop(wx, wz))
     }
   }
 

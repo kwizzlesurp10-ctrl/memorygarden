@@ -29,6 +29,7 @@ interface OpenWorldHudProps {
   onLeaveGift?: (giftType: GardenGiftType) => void
   onOpenGift?: (giftId: string) => void
   captureMode?: boolean
+  hidePointerHint?: boolean
 }
 
 export function OpenWorldHud({
@@ -54,6 +55,7 @@ export function OpenWorldHud({
   onLeaveGift,
   onOpenGift,
   captureMode = false,
+  hidePointerHint = false,
 }: OpenWorldHudProps) {
   if (captureMode) return null
   const groveMilestone = world.groveMilestone
@@ -146,7 +148,7 @@ export function OpenWorldHud({
         </div>
       ) : null}
 
-      {!webglFailed && !locked && !coarse ? (
+      {!webglFailed && !locked && !coarse && !hidePointerHint ? (
         <button
           type="button"
           onClick={onLock}

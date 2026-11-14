@@ -1015,6 +1015,22 @@ export class OpenWorldEngine {
   }
 
 
+  pondCapturePose(): WalkCapturePose {
+    const pond = this.world.pond
+    const camX = pond.x + 1.4
+    const camZ = pond.z + pond.radius + 2.85
+    const foot = this.terrainFootY(camX, camZ)
+    const eyeY = foot + 1.52
+    const aim = new THREE.Vector3(pond.x, 0.35, pond.z)
+    const camPos = new THREE.Vector3(camX, eyeY, camZ)
+    const pose = this.poseLookAt(aim, camPos, eyeY)
+    const pitch = Math.min(pose.pitch, -0.22)
+    this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
+    this.camera.rotation.x = pitch
+    this.renderOnce()
+    return { ...pose, pitch, x: camX, z: camZ, eyeY }
+  }
+
   captureClusterOverviewPose(): WalkCapturePose {
     const walkPlants = this.world.plants.filter(
       (p) => p.id.endsWith('-walk') || p.id.includes('walk-'),
