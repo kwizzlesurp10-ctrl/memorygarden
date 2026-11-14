@@ -5,8 +5,12 @@ import type { GardenWorld } from '@/lib/open-world/types'
 import { isWalkCaptureSession } from '@/lib/open-world/walk-capture-bridge'
 import {
   buildMinecraftSteppedHills,
+  MINECRAFT_WALK_ROCK_CLUSTERS,
+  minecraftAnalyticSurfaceY,
   minecraftGrassTexture,
+  minecraftGrassTufts,
   minecraftPathTexture,
+  minecraftWaterBlockTexture,
   voxelRockCluster,
 } from './minecraft-visual'
 
@@ -57,12 +61,30 @@ function grassTexture(palette: ScenePalette): THREE.CanvasTexture {
   if (!ctx) return new THREE.CanvasTexture(c)
   ctx.fillStyle = palette.hills[1] ?? '#2c163c'
   ctx.fillRect(0, 0, 256, 256)
-  for (let i = 0; i < 1400; i++) {
+  for (let i = 0; i < 2200; i++) {
     const x = Math.random() * 256
     const y = Math.random() * 256
-    ctx.fillStyle = i % 5 === 0 ? (palette.hills[0] ?? '#4e2749') : (palette.silSoft ?? '#241536')
-    ctx.globalAlpha = 0.18 + Math.random() * 0.25
-    ctx.fillRect(x, y, 1 + Math.random() * 2, 2 + Math.random() * 4)
+    const band = i % 7
+    ctx.fillStyle =
+      band === 0
+        ? (palette.hills[0] ?? '#4e2749')
+        : band === 1
+          ? (palette.hills[2] ?? palette.silSoft ?? '#3a5a38')
+          : (palette.silSoft ?? '#241536')
+    ctx.globalAlpha = 0.14 + Math.random() * 0.28
+    const h = 2 + Math.random() * (band < 2 ? 5 : 3)
+    ctx.fillRect(x, y, 1 + Math.random() * 2, h)
+  }
+  for (let p = 0; p < 48; p++) {
+    const px = Math.random() * 256
+    const py = Math.random() * 256
+    const pr = 6 + Math.random() * 14
+    const g = ctx.createRadialGradient(px, py, 0, px, py, pr)
+    g.addColorStop(0, palette.hills[0] ?? '#4e2749')
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = g
+    ctx.globalAlpha = 0.22
+    ctx.fillRect(px - pr, py - pr, pr * 2, pr * 2)
   }
   ctx.globalAlpha = 1
   const tex = new THREE.CanvasTexture(c)
@@ -197,6 +219,11 @@ export function buildTerrain(
   root.add(ground)
   const surfaceY = minecraftMode ? buildMinecraftSteppedHills(root, track, palette) : undefined
   const walkCapture = isWalkCaptureSession()
+  if (minecraftMode) {
+    minecraftGrassTufts(world, palette, root, track, (x, z) =>
+      minecraftAnalyticSurfaceY(Math.round(x), Math.round(z)),
+    )
+  }
 
   // ── Gentle Flowerbed Soil Berms ─────────────────────────────────────────
   const soilBermMat = track(
@@ -255,25 +282,103 @@ export function buildTerrain(
   }
 
   // ── Pond & Bank ────────────────────────────────────────────────────────
+  const waterShallow = palette.waterTint[0] ?? '#5ab8c8'
+  const waterDeep = palette.waterTint[1] ?? '#1a5870'
+  const skySheen = palette.sky[2] ?? palette.ripple ?? '#a8d8f0'
+  const pixelWaterTex = minecraftMode ? track(minecraftWaterBlockTexture(palette)) : null
   const waterMat = track(
-    new THREE.MeshStandardMaterial({
-      color: palette.waterTint[1] ?? '#1a0f2b',
-      roughness: 0.12,
-      metalness: 0.25,
-      transparent: true,
-      opacity: 0.9,
-      emissive: palette.ripple,
-      emissiveIntensity: 0.12,
-    }),
+    minecraftMode && pixelWaterTex
+      ? new THREE.MeshLambertMaterial({
+          map: pixelWaterTex,
+          color: new THREE.Color(isNight ? '#3a6898' : twilight ? '#78b8d8' : '#88cce8'),
+          transparent: true,
+          opacity: 0.94,
+          emissive: new THREE.Color(isNight ? '#5a88c0' : skySheen),
+          emissiveIntensity: isNight ? 0.28 + starAlpha * 0.12 : twilight ? 0.16 : 0.22,
+        })
+      : new THREE.MeshStandardMaterial({
+          color: new THREE.Color(waterShallow).lerp(new THREE.Color(waterDeep), 0.38),
+          roughness: isNight ? 0.06 : 0.04,
+          metalness: 0.48,
+          transparent: true,
+          opacity: isNight ? 0.82 : 0.86,
+          emissive: new THREE.Color(skySheen),
+          emissiveIntensity: isNight ? 0.22 + starAlpha * 0.1 : 0.2,
+        }),
   )
-  const water = new THREE.Mesh(track(new THREE.CircleGeometry(world.pond.radius, 36)), waterMat)
+  const waterDiameter = world.pond.radius * 2
+  const water = new THREE.Mesh(
+    track(
+      minecraftMode
+        ? new THREE.PlaneGeometry(waterDiameter, waterDiameter)
+        : new THREE.CircleGeometry(world.pond.radius, 40),
+    ),
+    waterMat,
+  )
   water.rotation.x = -Math.PI / 2
-  water.position.set(world.pond.x, 0.05, world.pond.z)
+  water.position.set(world.pond.x, minecraftMode ? 0.085 : 0.05, world.pond.z)
   root.add(water)
 
+  const depthMat = track(
+    minecraftMode
+      ? new THREE.MeshLambertMaterial({
+          color: new THREE.Color('#1a5878'),
+          transparent: true,
+          opacity: 0.55,
+        })
+      : new THREE.MeshStandardMaterial({
+          color: new THREE.Color(waterDeep),
+          roughness: 0.2,
+          metalness: 0.15,
+          transparent: true,
+          opacity: 0.72,
+        }),
+  )
+  const waterDepth = new THREE.Mesh(
+    track(new THREE.CircleGeometry(world.pond.radius * 0.88, 32)),
+    depthMat,
+  )
+  waterDepth.rotation.x = -Math.PI / 2
+  waterDepth.position.set(world.pond.x, minecraftMode ? 0.078 : 0.042, world.pond.z)
+  root.add(waterDepth)
+
+  const foamMat = track(
+    minecraftMode
+      ? new THREE.MeshLambertMaterial({
+          color: new THREE.Color('#e8f8ff'),
+          emissive: new THREE.Color('#f8ffff'),
+          emissiveIntensity: isNight ? 0.15 : 0.35,
+          transparent: true,
+          opacity: 0.88,
+        })
+      : new THREE.MeshStandardMaterial({
+          color: new THREE.Color('#e8f4f8'),
+          roughness: 0.92,
+          transparent: true,
+          opacity: isNight ? 0.5 : 0.72,
+          emissive: '#f0f8ff',
+          emissiveIntensity: isNight ? 0.12 : 0.25,
+        }),
+  )
+  const foam = new THREE.Mesh(
+    track(new THREE.RingGeometry(world.pond.radius * 0.86, world.pond.radius * 0.98, 40)),
+    foamMat,
+  )
+  foam.rotation.x = -Math.PI / 2
+  foam.position.set(world.pond.x, 0.052, world.pond.z)
+  root.add(foam)
+
+  const shoreTintMat = track(
+    new THREE.MeshStandardMaterial({
+      color: new THREE.Color(palette.bank).lerp(new THREE.Color(waterShallow), 0.22),
+      roughness: 1,
+      transparent: true,
+      opacity: 0.85,
+    }),
+  )
   const bank = new THREE.Mesh(
     track(new THREE.RingGeometry(world.pond.radius * 0.98, world.pond.radius + 0.65, 36)),
-    track(new THREE.MeshStandardMaterial({ color: palette.bank, roughness: 1 })),
+    shoreTintMat,
   )
   bank.rotation.x = -Math.PI / 2
   bank.position.set(world.pond.x, 0.04, world.pond.z)
@@ -378,7 +483,7 @@ export function buildTerrain(
   for (let ri = 0; ri < rockPositions.length; ri++) {
     const rp = rockPositions[ri]
     if (minecraftMode) {
-      voxelRockCluster(rp.x, rp.z, 300 + ri * 17, palette, root, track)
+      /* voxel clusters placed below */
     } else {
       const rMesh = new THREE.Mesh(rockGeo, rockMat)
       rMesh.scale.set(rp.s * 1.2, rp.s * 0.7, rp.s * 0.9)
@@ -387,6 +492,16 @@ export function buildTerrain(
       rMesh.castShadow = true
       rMesh.receiveShadow = true
       root.add(rMesh)
+    }
+  }
+
+  if (minecraftMode) {
+    const hillTop =
+      surfaceY ??
+      ((wx: number, wz: number) => minecraftAnalyticSurfaceY(Math.round(wx), Math.round(wz)))
+    const clusters = walkCapture ? MINECRAFT_WALK_ROCK_CLUSTERS : MINECRAFT_WALK_ROCK_CLUSTERS.slice(0, 4)
+    for (const c of clusters) {
+      voxelRockCluster(c.x, c.z, c.seed, palette, root, track, (wx, wz) => hillTop(wx, wz))
     }
   }
 
@@ -873,25 +988,38 @@ export function buildTerrain(
   if (!minecraftMode && !reducedMotion) {
     const tuftGeo = track(new THREE.ConeGeometry(0.07, 0.28, 5))
     const tuftMat = track(new THREE.MeshStandardMaterial({ color: palette.hills[0] ?? '#4e2749', roughness: 1 }))
-    const count = 480
+    const tuftMatAlt = track(
+      new THREE.MeshStandardMaterial({ color: palette.hills[2] ?? palette.hills[1] ?? '#3a5a38', roughness: 1 }),
+    )
+    const count = 520
     const tufts = new THREE.InstancedMesh(tuftGeo, tuftMat, count)
+    const tuftsLow = new THREE.InstancedMesh(tuftGeo, tuftMatAlt, Math.floor(count * 0.35))
     const rng = gardenRng(7)
     const dummy = new THREE.Object3D()
     let placed = 0
+    let placedAlt = 0
     while (placed < count) {
       const x = (rng() * 2 - 1) * (WORLD_SPAN(world) * 0.48)
       const z = (rng() * 2 - 1) * (WORLD_SPAN(world) * 0.48)
       const inPond = Math.hypot(x - world.pond.x, z - world.pond.z) < world.pond.radius + 0.4
       if (inPond) continue
-      dummy.position.set(x, 0.12, z)
+      const scale = 0.65 + rng() * 1.25
+      dummy.position.set(x, 0.08 + scale * 0.06, z)
       dummy.rotation.y = rng() * Math.PI
-      dummy.scale.setScalar(0.7 + rng() * 1.1)
+      dummy.scale.set(0.9 + rng() * 0.25, scale, 0.9 + rng() * 0.2)
       dummy.updateMatrix()
       tufts.setMatrixAt(placed, dummy.matrix)
       placed++
+      if (placedAlt < tuftsLow.count && rng() > 0.55) {
+        dummy.scale.y *= 0.55
+        dummy.updateMatrix()
+        tuftsLow.setMatrixAt(placedAlt, dummy.matrix)
+        placedAlt++
+      }
     }
     tufts.instanceMatrix.needsUpdate = true
-    root.add(tufts)
+    tuftsLow.instanceMatrix.needsUpdate = true
+    root.add(tufts, tuftsLow)
   }
 
   // ── Celestial Sphere & Stylized Floating Clouds ──────────────────────────
@@ -1013,6 +1141,11 @@ export function buildTerrain(
       auroraRibbons.forEach((rib, idx) => {
         rib.rotation.y = Math.sin(time * 0.0004 + idx) * 0.12
       })
+
+      if (pixelWaterTex) {
+        const drift = time * 0.00006
+        pixelWaterTex.offset.set(drift, drift * 0.65)
+      }
     },
     dispose: () => {
       disposables.forEach((d) => d.dispose())
@@ -1052,8 +1185,40 @@ export function buildTerrain(
           }
         }
       }
-      waterMat.color.set(next.waterTint[1] ?? '#1a0f2b')
-      waterMat.emissive.set(next.ripple)
+      const nextShallow = next.waterTint[0] ?? '#5ab8c8'
+      const nextDeep = next.waterTint[1] ?? '#1a5870'
+      const nextSheen = next.sky[2] ?? next.ripple ?? '#a8d8f0'
+      if (minecraftMode && waterMat instanceof THREE.MeshLambertMaterial) {
+        if (nextNight) {
+          waterMat.color.set('#2a5888')
+          waterMat.emissive.set('#6a98d0')
+          waterMat.emissiveIntensity = 0.32 + star * 0.14
+        } else if (twilight) {
+          waterMat.color.set('#78b8d8')
+          waterMat.emissive.set(nextSheen)
+          waterMat.emissiveIntensity = 0.14 + star * 0.06
+        } else {
+          waterMat.color.set('#68b8d8')
+          waterMat.emissive.set(nextSheen)
+          waterMat.emissiveIntensity = 0.22
+        }
+      } else if (waterMat instanceof THREE.MeshStandardMaterial) {
+        waterMat.color.copy(new THREE.Color(nextShallow).lerp(new THREE.Color(nextDeep), 0.38))
+        waterMat.emissive.set(nextSheen)
+        waterMat.emissiveIntensity = nextNight ? 0.22 + star * 0.1 : 0.2
+        waterMat.metalness = 0.48
+        waterMat.roughness = nextNight ? 0.06 : 0.04
+      }
+      if (depthMat instanceof THREE.MeshLambertMaterial) {
+        depthMat.color.set(nextNight ? '#0a3858' : '#1a5878')
+      } else if (depthMat instanceof THREE.MeshStandardMaterial) {
+        depthMat.color.set(nextDeep)
+      }
+      if (foamMat instanceof THREE.MeshLambertMaterial) {
+        foamMat.emissiveIntensity = nextNight ? 0.14 : 0.35
+      } else if (foamMat instanceof THREE.MeshStandardMaterial) {
+        foamMat.emissiveIntensity = nextNight ? 0.12 : 0.25
+      }
       const nextHill = next.hills[1] ?? next.hills[0] ?? next.silSoft
       hillMat.color.set(nextHill)
       if (twilight) {

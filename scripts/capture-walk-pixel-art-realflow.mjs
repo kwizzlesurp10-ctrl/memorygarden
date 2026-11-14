@@ -177,7 +177,8 @@ try {
       )
       localStorage.setItem(`memorygarden:${payload.user.id}:memories`, JSON.stringify(payload.memories))
       sessionStorage.setItem('mg:walk-plant-focus', '1')
-      sessionStorage.setItem('mg:walk-capture', '1')
+      sessionStorage.setItem('mg:walk-hide-pointer-hint', '1')
+      sessionStorage.removeItem('mg:walk-capture')
       const OriginalDate = Date
       // eslint-disable-next-line no-global-assign
       Date = class extends OriginalDate {
@@ -206,16 +207,12 @@ try {
   })
   await desktopPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 120_000 })
   await enterWalk(desktopPage)
-  await desktopPage.evaluate(() => {
-    const foot = window.__mgWalkFootAt?.(20.8, 11.5) ?? 0
-    window.__mgWalkNudgePose?.({
-      x: 20.8,
-      z: 11.5,
-      yaw: -0.72,
-      pitch: -0.06,
-      eyeY: foot + 1.62,
-    })
-  })
+  const facedElder = await desktopPage.evaluate(() =>
+    window.__mgWalkFacePlant?.('tree-elder-walk', 'approach'),
+  )
+  if (!facedElder) {
+    throw new Error('Could not face tree-elder-walk in realflow shot')
+  }
   await desktopPage.waitForTimeout(900)
   await shotCanvas(desktopPage, 'minecraft-walk-realflow-desktop-near-elder.png')
 

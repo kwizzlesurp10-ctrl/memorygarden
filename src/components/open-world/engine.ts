@@ -18,6 +18,7 @@ import {
 } from './minecraft-visual'
 import { createPlantGroup, disposePlantGroup } from './plant-mesh'
 import { buildTerrain, type TerrainHandle } from './terrain'
+import { WALK_SYNTHETIC_POND } from '@/lib/open-world/walk-pond-capture'
 import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
 import { Cc0SceneryLayer, defaultCc0GardenSeed } from './cc0-scenery'
 import { playWaterSfx } from '@/lib/water-sound'
@@ -716,8 +717,8 @@ export class OpenWorldEngine {
       if (
         top >= 0.04 &&
         top <= 0.2 &&
-        span >= 0.68 &&
-        span <= 0.8 &&
+        span >= 0.67 &&
+        span <= 0.79 &&
         widthSpan >= 0.38
       ) {
         return { ...pose, pitch, x: camX, z: camZ, eyeY }
@@ -726,7 +727,7 @@ export class OpenWorldEngine {
         top < 0.02 ? 20 + Math.abs(top) * 16 : span > 0.88 ? 18 : span > 0.8 ? 8 : 0
       const topPen = top < 0.06 ? 6 + Math.abs(0.06 - top) * 6 : top > 0.22 ? (top - 0.22) * 8 : 0
       const widthPen = widthSpan < 0.34 ? (0.34 - widthSpan) * 5 : 0
-      const score = Math.abs(span - 0.71) + Math.abs(top - 0.11) * 2.5 + topPen + widthPen + clipPen
+      const score = Math.abs(span - 0.7) + Math.abs(top - 0.1) * 2.5 + topPen + widthPen + clipPen
       if (span > 0.85 || top < 0.03) continue
       if (score < bestScore) {
         bestScore = score
@@ -742,7 +743,7 @@ export class OpenWorldEngine {
     const top = canopy?.top ?? 0.5
     if (span <= 0.85 && top >= 0.04) return bestPose
   }
-  const slack = this.elderCapturePoseAtSlack(box, 1.06, -0.04)
+  const slack = this.elderCapturePoseAtSlack(box, 1.04, -0.045)
   if (slack && slack.screenSpan <= 0.85 && slack.screenTop >= 0.04) {
     const { screenSpan: _s, screenTop: _t, ...pose } = slack
     return pose
@@ -1014,6 +1015,41 @@ export class OpenWorldEngine {
     return this.deterministicPlantCapturePose(plantId)
   }
 
+
+  pondCapturePose(): WalkCapturePose {
+    const camX = WALK_SYNTHETIC_POND.x + 0.85
+    const camZ = WALK_SYNTHETIC_POND.z + WALK_SYNTHETIC_POND.radius + 1.85
+    const foot = this.terrainFootY(camX, camZ)
+    const eyeY = foot + 1.55
+    const aim = new THREE.Vector3(WALK_SYNTHETIC_POND.x, foot + 0.1, WALK_SYNTHETIC_POND.z)
+    const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+    const pitch = Math.min(pose.pitch, -0.38)
+    const framed = { ...pose, pitch, x: camX, z: camZ, eyeY }
+    this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
+    this.camera.rotation.x = pitch
+    this.renderOnce()
+    return framed
+  }
+
+  plantApproachPose(plantId: string, standoff = 10): WalkCapturePose | null {
+    const box = this.plantWorldBox(plantId)
+    if (!box) return null
+    const cx = (box.min.x + box.max.x) / 2
+    const cz = (box.min.z + box.max.z) / 2
+    const ground = box.min.y
+    const h = box.max.y - ground
+    const camX = cx - standoff * 0.48
+    const camZ = cz - standoff * 0.82
+    const foot = this.terrainFootY(camX, camZ)
+    const eyeY = foot + 1.62
+    const aim = new THREE.Vector3(cx, ground + h * 0.55, cz)
+    const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+    const pitch = Math.min(pose.pitch, -0.05)
+    this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
+    this.camera.rotation.x = pitch
+    this.renderOnce()
+    return { ...pose, pitch, x: camX, z: camZ, eyeY }
+  }
 
   captureClusterOverviewPose(): WalkCapturePose {
     const walkPlants = this.world.plants.filter(

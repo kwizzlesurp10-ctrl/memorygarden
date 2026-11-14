@@ -99,6 +99,7 @@ async function captureStyle(browser, artStyle, file) {
     )
     localStorage.setItem(`memorygarden:${payload.user.id}:memories`, JSON.stringify(payload.memories))
     sessionStorage.setItem('mg:walk-plant-focus', '1')
+    sessionStorage.setItem('mg:walk-hide-pointer-hint', '1')
     const OriginalDate = Date
     const { y, m, d, h, min } = payload.night
     // eslint-disable-next-line no-global-assign

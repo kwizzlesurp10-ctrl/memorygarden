@@ -63,10 +63,19 @@ export interface WalkCaptureBridge {
   plantProjectedAabbScreen?: (
     plantId: string,
   ) => { left: number; right: number; top: number; bottom: number } | null
+  pondCloseupPose?: () => WalkCapturePose | null
 }
 
 export const WALK_CAPTURE_SESSION_KEY = 'mg:walk-capture'
 export const WALK_CAPTURE_BASELINE_KEY = 'mg:walk-capture-baseline'
+export const WALK_HIDE_POINTER_HINT_KEY = 'mg:walk-hide-pointer-hint'
+
+export function isWalkHidePointerHint(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    sessionStorage.getItem(WALK_HIDE_POINTER_HINT_KEY) === '1'
+  )
+}
 
 export function isWalkCaptureBaseline(): boolean {
   return (

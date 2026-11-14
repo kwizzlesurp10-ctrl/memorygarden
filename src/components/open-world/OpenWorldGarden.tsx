@@ -41,6 +41,7 @@ import {
 } from '@/lib/garden-gifts'
 import {
   isWalkCaptureSession,
+  isWalkHidePointerHint,
   registerWalkCaptureBridge,
 } from '@/lib/open-world/walk-capture-bridge'
 import { CC0_MODEL_BY_ID, type Cc0ModelId } from '@/lib/open-world/cc0-catalog'
@@ -92,6 +93,7 @@ export function OpenWorldGarden({
     typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches,
   )
   const captureMode = isWalkCaptureSession()
+  const hidePointerHint = isWalkHidePointerHint()
 
   // Gentle Streaks & Dew Currency
   const [streak, setStreak] = useState<GardenStreak>(() => loadGardenStreak())
@@ -253,11 +255,22 @@ export function OpenWorldGarden({
         eyeY?: number
       }) => void
       __mgWalkFootAt?: (x: number, z: number) => number
+      __mgWalkFacePlant?: (plantId: string, mode?: 'closeup' | 'approach') => boolean
     }
     win.__mgWalkSceneReady = () => engine.sceneReady()
     win.__mgWalkNudgePose = (pose) =>
       engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
     win.__mgWalkFootAt = (x: number, z: number) => engine.getTerrainFootY(x, z)
+    win.__mgWalkFacePlant = (plantId: string, mode: 'closeup' | 'approach' = 'closeup') => {
+      const pose =
+        mode === 'approach'
+          ? engine.plantApproachPose(plantId, 11)
+          : (engine.elderDeterministicCapturePose(plantId) ??
+            engine.deterministicPlantCapturePose(plantId))
+      if (!pose) return false
+      engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
+      return true
+    }
     requestAnimationFrame(() => engine.refreshCanvasSize())
     if (captureMode) {
       engine.setPaused(true)
@@ -307,6 +320,7 @@ export function OpenWorldGarden({
         mushroomCloseupPose: (plantId) => engine.mushroomDeterministicCapturePose(plantId),
         plantProjectedBoxScreenY: (plantId) => engine.plantProjectedBoxScreenY(plantId),
         plantProjectedAabbScreen: (plantId) => engine.plantProjectedAabbScreen(plantId),
+        pondCloseupPose: () => engine.pondCapturePose(),
       })
       if (sessionStorage.getItem('mg:tree-young-elder-capture') === '1') {
         engine.setPlayerPose(
@@ -334,6 +348,7 @@ export function OpenWorldGarden({
     return () => {
       delete win.__mgWalkSceneReady
       delete win.__mgWalkNudgePose
+      delete win.__mgWalkFacePlant
       registerWalkCaptureBridge(null)
       engine.dispose()
       engineRef.current = null
@@ -504,6 +519,7 @@ export function OpenWorldGarden({
         onLeaveGift={handleLeaveGift}
         onOpenGift={handleOpenGift}
         captureMode={captureMode}
+        hidePointerHint={hidePointerHint || captureMode}
       />
     </div>
   )
