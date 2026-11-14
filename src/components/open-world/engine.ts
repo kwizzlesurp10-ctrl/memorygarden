@@ -491,17 +491,45 @@ export class OpenWorldEngine {
     group.updateWorldMatrix(true, true)
   }
 
-  /** Elder walk framing from full tree group (vertices when available). */
+  private tightMeshWorldBox(group: THREE.Object3D): THREE.Box3 | null {
+    const box = new THREE.Box3()
+    let any = false
+    group.traverse((obj) => {
+      if (!(obj instanceof THREE.Mesh)) return
+      const geom = obj.geometry
+      if (!geom) return
+      if (!geom.boundingBox) geom.computeBoundingBox()
+      const local = geom.boundingBox
+      if (!local || local.isEmpty()) return
+      const corner = new THREE.Vector3()
+      const world = new THREE.Box3()
+      for (const xs of [local.min.x, local.max.x] as const) {
+        for (const ys of [local.min.y, local.max.y] as const) {
+          for (const zs of [local.min.z, local.max.z] as const) {
+            corner.set(xs, ys, zs).applyMatrix4(obj.matrixWorld)
+            world.expandByPoint(corner)
+          }
+        }
+      }
+      if (!world.isEmpty()) {
+        box.union(world)
+        any = true
+      }
+    })
+    return any ? box : null
+  }
+
+  /** Elder walk framing from occupied mesh vertices (voxels / watercolor meshes). */
   private plantElderFramingBox(plantId: string): THREE.Box3 | null {
     const group = this.findPlantGroup(plantId)
     if (!group) return null
     group.updateWorldMatrix(true, true)
+    const tight = this.tightMeshWorldBox(group)
+    if (tight) return tight
     const precise = new THREE.Box3().setFromObject(group, true)
     if (!precise.isEmpty()) return precise
     const bounds = new THREE.Box3().setFromObject(group)
-    if (bounds.isEmpty()) return null
-    return bounds
-    return box
+    return bounds.isEmpty() ? null : bounds
   }
 
   /** Tighter AABB for camera framing — full walk bounds include sparse voxel wings that read smaller on screen. */
@@ -918,7 +946,7 @@ export class OpenWorldEngine {
 
     let pose = applyAt(dist)
     if (this.renderer) {
-      for (let pass = 0; pass < 16; pass++) {
+      for (let pass = 0; pass < 18; pass++) {
         const ndc = this.projectBoxVerticalInView(box)
         if (!ndc) break
         const spanHalf = (ndc.maxNdcY - ndc.minNdcY) / 2
@@ -931,6 +959,14 @@ export class OpenWorldEngine {
         const scale = Math.max(topScale, botScale, spanScale, 1.02)
         dist *= scale
         pose = applyAt(dist)
+      }
+      const fin = this.projectBoxVerticalInView(box)
+      if (fin) {
+        const spanHalf = (fin.maxNdcY - fin.minNdcY) / 2
+        if (spanHalf < 0.64) {
+          dist *= 0.66 / Math.max(spanHalf, 0.35)
+          pose = applyAt(dist)
+        }
       }
     }
     if (isWalkCaptureSession() && this.plantArtStyle === 'pixel-art' && plantId.includes('elder')) {
