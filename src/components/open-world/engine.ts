@@ -888,6 +888,19 @@ export class OpenWorldEngine {
   }
 
   private elderGeometryCapturePose(plantId: string): WalkCapturePose | null {
+    if (
+      isWalkCaptureSession() &&
+      this.plantArtStyle === 'watercolor' &&
+      plantId.includes('elder')
+    ) {
+      const pinned = this.readElderPoseFromSession(plantId)
+      if (pinned) {
+        this.setPlayerPose(pinned.x, pinned.z, pinned.yaw, pinned.pitch, pinned.eyeY)
+        this.camera.rotation.x = pinned.pitch
+        this.renderOnce()
+        return pinned
+      }
+    }
     const box = this.plantElderFramingBox(plantId)
     if (!box) return null
     const center = box.getCenter(new THREE.Vector3())
@@ -938,7 +951,25 @@ export class OpenWorldEngine {
     return pose
   }
 
+  plantElderReferenceVerticalNdc(plantId: string): { minNdcY: number; maxNdcY: number } | null {
+    const ref =
+      this.readElderFramingBoxFromSession(plantId) ??
+      this.plantElderFramingBox(plantId) ??
+      this.plantWorldBox(plantId)
+    if (!ref) return null
+    this.renderOnce()
+    return this.projectBoxVerticalInView(ref)
+  }
+
   plantBoxVerticalNdc(plantId: string): { minNdcY: number; maxNdcY: number } | null {
+    if (
+      plantId.includes('elder') &&
+      plantId.endsWith('-walk') &&
+      this.plantArtStyle === 'watercolor'
+    ) {
+      const refNdc = this.plantElderReferenceVerticalNdc(plantId)
+      if (refNdc) return refNdc
+    }
     const box =
       plantId.includes('elder') && plantId.endsWith('-walk')
         ? (this.plantElderFramingBox(plantId) ?? this.plantWorldBox(plantId))

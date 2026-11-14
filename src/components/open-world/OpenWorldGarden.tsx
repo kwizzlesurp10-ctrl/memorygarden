@@ -321,6 +321,8 @@ export function OpenWorldGarden({
         plantProjectedBoxScreenY: (plantId) => engine.plantProjectedBoxScreenY(plantId),
         plantProjectedAabbScreen: (plantId) => engine.plantProjectedAabbScreen(plantId),
         plantBoxVerticalNdc: (plantId) => engine.plantBoxVerticalNdc(plantId),
+        plantElderReferenceVerticalNdc: (plantId) =>
+          engine.plantElderReferenceVerticalNdc(plantId),
         plantPixelFill: () => engine.measureSoloPlantPixelFill(),
         pondCloseupPose: () => engine.pondCapturePose(),
       })
