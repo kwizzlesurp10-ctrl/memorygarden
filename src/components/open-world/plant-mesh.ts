@@ -262,7 +262,7 @@ function addSproutLeafPair(
   leafMat: THREE.MeshStandardMaterial,
   leafHighlightMat: THREE.MeshStandardMaterial,
 ): void {
-  addPairedStemLeaves(g, tipY, 0.042, 0.046, 0.072, leafMat, leafHighlightMat)
+  addPairedStemLeaves(g, tipY, 0.052, 0.058, 0.092, leafMat, leafHighlightMat)
 }
 
 let flowerGlowTexture: THREE.CanvasTexture | null = null

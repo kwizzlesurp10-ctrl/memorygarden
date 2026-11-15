@@ -1025,6 +1025,50 @@ export class OpenWorldEngine {
     return this.terrainFootY(x, z) + clearance
   }
 
+  private sproutWalkMainCapturePose(
+    plantId: string,
+    wp: { x: number; z: number },
+    ground: number,
+    sizeY: number,
+  ): { pose: WalkCapturePose; aim: THREE.Vector3 } | null {
+    const aim = new THREE.Vector3(wp.x, ground + sizeY * 0.5, wp.z)
+    const yaw = Math.PI / 4
+    const targetFrac = 0.25
+    let bestPose: WalkCapturePose | null = null
+    let bestDelta = Infinity
+    for (let pass = 0; pass < 18; pass++) {
+      const dist = 0.55 + (pass / 17) * 2.4
+      const camX = wp.x + Math.sin(yaw) * dist
+      const camZ = wp.z + Math.cos(yaw) * dist
+      const eyeY = this.eyeHeightAt(camX, camZ, 0.92)
+      const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+      const fit = this.plantCaptureFitAt(plantId, pose)
+      const frac = fit?.frac ?? 0
+      const centerPen = fit ? Math.abs(fit.centerX) + Math.abs(fit.centerY) : 2
+      const delta = Math.abs(frac - targetFrac) + centerPen * 0.12
+      if (Math.abs(frac - targetFrac) < 0.05 && centerPen < 0.35) {
+        return { pose, aim }
+      }
+      if (delta < bestDelta) {
+        bestDelta = delta
+        bestPose = pose
+      }
+    }
+    if (!bestPose) return null
+    return { pose: bestPose, aim }
+  }
+
+  private sproutWalkPullCameraCloser(
+    base: WalkCapturePose,
+    aim: THREE.Vector3,
+    distanceScale: number,
+  ): WalkCapturePose {
+    const camX = aim.x + (base.x - aim.x) * distanceScale
+    const camZ = aim.z + (base.z - aim.z) * distanceScale
+    const eyeY = this.eyeHeightAt(camX, camZ, 0.92)
+    return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+  }
+
   private poseLookAt(aim: THREE.Vector3, camPos: THREE.Vector3, eyeY: number): WalkCapturePose {
     this.camera.position.set(camPos.x, eyeY, camPos.z)
     this.camera.lookAt(aim)
@@ -1071,29 +1115,18 @@ export class OpenWorldEngine {
       if (wp) {
         const ground = box.min.y
         if (plantId === 'sprout-walk') {
-          const aim = new THREE.Vector3(wp.x, ground + size.y * 0.5, wp.z)
-          const yaw = Math.PI / 4
-          const targetFrac = 0.25
-          let bestPose: WalkCapturePose | null = null
-          let bestDelta = Infinity
-          for (let pass = 0; pass < 18; pass++) {
-            const dist = 0.55 + (pass / 17) * 2.4
-            const camX = wp.x + Math.sin(yaw) * dist
-            const camZ = wp.z + Math.cos(yaw) * dist
-            const eyeY = this.eyeHeightAt(camX, camZ, 0.92)
-            const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-            const fit = this.plantCaptureFitAt(plantId, pose)
-            const frac = fit?.frac ?? 0
-            const centerPen =
-              fit ? Math.abs(fit.centerX) + Math.abs(fit.centerY) : 2
-            const delta = Math.abs(frac - targetFrac) + centerPen * 0.12
-            if (Math.abs(frac - targetFrac) < 0.05 && centerPen < 0.35) return pose
-            if (delta < bestDelta) {
-              bestDelta = delta
-              bestPose = pose
-            }
+          this.resetCaptureFov()
+          const main = this.sproutWalkMainCapturePose(plantId, wp, ground, size.y)
+          if (!main) return null
+          if (this.plantArtStyle === 'pixel-art') return main.pose
+          let chosen = main.pose
+          for (const distanceScale of [0.5, 0.35]) {
+            const pulled = this.sproutWalkPullCameraCloser(main.pose, main.aim, distanceScale)
+            const fit = this.plantCaptureFitAt(plantId, pulled)
+            const centerPen = fit ? Math.abs(fit.centerX) + Math.abs(fit.centerY) : 2
+            if (centerPen < 0.42) chosen = pulled
           }
-          return bestPose
+          return chosen
         }
         if (wp.variety === 'mushroom') {
           return this.mushroomDeterministicCapturePose(plantId)
