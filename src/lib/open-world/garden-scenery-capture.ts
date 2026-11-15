@@ -50,7 +50,7 @@ export function computeGardenSceneryCloseupPose(
   let camX = f.x + f.camDx * pullBack
   let camZ = f.z + f.camDz * pullBack
   if (kind === 'fence') {
-    const dist = 1.05 * pullBack
+    const dist = 0.62 * pullBack
     const fy = GARDEN_AMBIENT_FENCE.yaw
     const fx = GARDEN_AMBIENT_FENCE.x
     const fz = GARDEN_AMBIENT_FENCE.z
@@ -62,10 +62,11 @@ export function computeGardenSceneryCloseupPose(
     camZ = fz + perpZ + alongZ
   }
   const ground = footY(camX, camZ)
-  const eyeY = ground + 1.62
+  const fenceFoot = kind === 'fence' ? footY(f.x, f.z) : ground
+  const eyeY = kind === 'fence' ? fenceFoot + 0.88 : ground + 1.62
   const dx = f.x - camX
   const dz = f.z - camZ
-  const aimY = kind === 'fence' ? footY(f.x, f.z) + f.aimY : f.aimY
+  const aimY = kind === 'fence' ? fenceFoot + f.aimY : f.aimY
   const dy = aimY - eyeY
   const yaw = Math.atan2(-dx, -dz)
   const horiz = Math.hypot(dx, dz)
