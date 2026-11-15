@@ -103,8 +103,8 @@ export function mountStagePlantPreview(
   }
   scene.background = backdrop
 
-  const hemi = new THREE.HemisphereLight(palette.sky[1] ?? '#c4d4ff', palette.bank ?? '#2a1a18', duskGrid ? 1.48 : 1.05)
-  const key = new THREE.DirectionalLight(palette.glow ?? '#ffe8c8', duskGrid ? 1.38 : 0.95)
+  const hemi = new THREE.HemisphereLight(palette.sky[1] ?? '#c4d4ff', palette.bank ?? '#2a1a18', duskGrid ? 1.62 : 1.05)
+  const key = new THREE.DirectionalLight(palette.glow ?? '#ffe8c8', duskGrid ? 1.55 : 0.95)
   key.position.set(2.4, 4.8, 3.2)
   const fill = new THREE.DirectionalLight(palette.hills[0] ?? '#6b8f5a', duskGrid ? 0.82 : 0.42)
   fill.position.set(-3, 2, -2)
@@ -120,7 +120,7 @@ export function mountStagePlantPreview(
   renderer.setSize(width, height, false)
   renderer.outputColorSpace = THREE.SRGBColorSpace
   renderer.toneMapping = THREE.NoToneMapping
-  renderer.toneMappingExposure = star > 0.2 ? 1.78 : 1.12
+  renderer.toneMappingExposure = star > 0.2 ? 2.05 : 1.12
   const canvas = renderer.domElement
   canvas.style.display = 'block'
   canvas.style.width = '100%'
