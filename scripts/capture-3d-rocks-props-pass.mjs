@@ -103,10 +103,15 @@ async function captureSubject(browser, { artStyle, subject, phase, url, sha, lig
       { timeout: 60_000 },
     )
   }
-  let pose = await page.evaluate(
-    ({ subj, pb }) => window.__mgWalkCapture?.gardenSceneryCloseupPose?.(subj, pb) ?? null,
-    { subj: subject, pb: pullBack },
-  )
+  let pose = null
+  try {
+    pose = await page.evaluate(
+      ({ subj, pb }) => window.__mgWalkCapture?.gardenSceneryCloseupPose?.(subj, pb) ?? null,
+      { subj: subject, pb: pullBack },
+    )
+  } catch {
+    pose = null
+  }
   if (!pose) {
     pose = computeGardenSceneryCloseupPose(subject, undefined, pullBack)
   }

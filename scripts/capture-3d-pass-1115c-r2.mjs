@@ -2,7 +2,8 @@
  * PR #238 round 2 — paired before (main preview) / after (branch) captures into agent store only.
  * Env: ARTIFACT_DIR, BEFORE_URL, AFTER_URL, CAPTURE_PHASE=before|after|both|diff
  */
-import { copyFileSync, existsSync, mkdirSync, readFileSync, spawnSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
