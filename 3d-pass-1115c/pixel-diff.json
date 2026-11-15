@@ -37,7 +37,11 @@
   },
   {
     "name": "realflow-hill-step-pixel-art.png",
-    "diffPercent": null,
-    "note": "missing"
+    "beforePath": "3d-pass-1115c/before/minecraft-walk-realflow-desktop-hill-step.png",
+    "afterPath": "3d-pass-1115c/after/minecraft-walk-realflow-desktop-hill-step.png",
+    "lumThreshold": 30,
+    "diffPixels": 71572,
+    "totalPixels": 860160,
+    "diffPercent": 8.320777529761905
   }
 ]
