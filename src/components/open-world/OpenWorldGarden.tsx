@@ -326,7 +326,7 @@ export function OpenWorldGarden({
         plantProjectedBoxScreenY: (plantId) => engine.plantProjectedBoxScreenY(plantId),
         plantProjectedAabbScreen: (plantId) => engine.plantProjectedAabbScreen(plantId),
         pondCloseupPose: () => engine.pondCapturePose(),
-        gardenSceneryCloseupPose: (kind) => engine.gardenSceneryCloseupPose(kind),
+        gardenSceneryCloseupPose: (kind, pullBack) => engine.gardenSceneryCloseupPose(kind, pullBack),
       })
       if (sessionStorage.getItem('mg:tree-young-elder-capture') === '1') {
         engine.setPlayerPose(

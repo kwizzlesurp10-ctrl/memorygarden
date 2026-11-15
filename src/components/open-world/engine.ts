@@ -388,9 +388,9 @@ export class OpenWorldEngine {
     return box.isEmpty() ? null : box
   }
 
-  gardenSceneryCloseupPose(kind: GardenSceneryCloseupKind): WalkCapturePose {
+  gardenSceneryCloseupPose(kind: GardenSceneryCloseupKind, pullBack = 1): WalkCapturePose {
     this.resetCaptureFov()
-    const pose = computeGardenSceneryCloseupPose(kind, (x, z) => this.terrainFootY(x, z))
+    const pose = computeGardenSceneryCloseupPose(kind, (x, z) => this.terrainFootY(x, z), pullBack)
     this.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
     this.renderOnce()
     return pose

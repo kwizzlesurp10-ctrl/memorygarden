@@ -70,7 +70,10 @@ export interface WalkCaptureBridge {
     plantId: string,
   ) => { left: number; right: number; top: number; bottom: number } | null
   pondCloseupPose?: () => WalkCapturePose | null
-  gardenSceneryCloseupPose?: (kind: GardenSceneryCloseupKind) => WalkCapturePose | null
+  gardenSceneryCloseupPose?: (
+    kind: GardenSceneryCloseupKind,
+    pullBack?: number,
+  ) => WalkCapturePose | null
 }
 
 export const WALK_CAPTURE_SESSION_KEY = 'mg:walk-capture'
