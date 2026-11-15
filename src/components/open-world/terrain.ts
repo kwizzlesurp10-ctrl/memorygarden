@@ -187,21 +187,21 @@ function skyTexture(palette: ScenePalette): THREE.CanvasTexture {
 }
 
 /** Watercolor walk — violet/rose zenith with amber horizon and soft bloom (not flat fill). */
-function watercolorSkyTexture(palette: ScenePalette): THREE.CanvasTexture {
+export function watercolorSkyTexture(palette: ScenePalette): THREE.CanvasTexture {
   const c = document.createElement('canvas')
-  c.width = 64
-  c.height = 512
+  c.width = 512
+  c.height = 256
   const ctx = c.getContext('2d')
   if (!ctx) return new THREE.CanvasTexture(c)
-  const g = ctx.createLinearGradient(0, 0, 0, 512)
+  const g = ctx.createLinearGradient(0, 0, 0, 256)
   const sky = palette.sky
   const star = palette.starAlpha ?? 0
   const twilight = star > 0.22
-  const zenith = twilight ? (sky[0] ?? '#12082a') : (sky[0] ?? '#070619')
-  const upper = twilight ? (sky[1] ?? '#3a2868') : (sky[1] ?? '#2a2858')
-  const roseBand = twilight ? (sky[3] ?? '#b878a8') : (sky[2] ?? '#8868a8')
-  const amber = twilight ? (sky[4] ?? '#e8a878') : (sky[3] ?? '#c89888')
-  const horizon = twilight ? '#ffd0a8' : (sky[sky.length - 1] ?? '#e8b8a0')
+  const zenith = twilight ? '#4a3268' : (sky[0] ?? '#070619')
+  const upper = twilight ? '#5a3e6a' : (sky[1] ?? '#2a2858')
+  const roseBand = twilight ? '#7a4f72' : (sky[2] ?? '#8868a8')
+  const amber = twilight ? '#e0a070' : (sky[3] ?? '#c89888')
+  const horizon = twilight ? '#f0c090' : (sky[sky.length - 1] ?? '#e8b8a0')
   g.addColorStop(0, zenith)
   g.addColorStop(0.18, upper)
   g.addColorStop(0.42, roseBand)
@@ -209,17 +209,18 @@ function watercolorSkyTexture(palette: ScenePalette): THREE.CanvasTexture {
   g.addColorStop(0.88, horizon)
   g.addColorStop(1, twilight ? '#ffe8d0' : horizon)
   ctx.fillStyle = g
-  ctx.fillRect(0, 0, 64, 512)
+  ctx.fillRect(0, 0, 512, 256)
   if (twilight) {
-    const bloom = ctx.createRadialGradient(32, 470, 8, 32, 478, 140)
-    bloom.addColorStop(0, 'rgba(255, 220, 175, 0.55)')
-    bloom.addColorStop(0.45, 'rgba(255, 180, 120, 0.22)')
+    const bloom = ctx.createRadialGradient(256, 228, 12, 256, 238, 120)
+    bloom.addColorStop(0, 'rgba(255, 235, 200, 0.72)')
+    bloom.addColorStop(0.35, 'rgba(255, 200, 140, 0.38)')
+    bloom.addColorStop(0.7, 'rgba(255, 168, 110, 0.12)')
     bloom.addColorStop(1, 'rgba(255, 140, 90, 0)')
     ctx.fillStyle = bloom
-    ctx.fillRect(0, 360, 64, 152)
+    ctx.fillRect(0, 170, 512, 86)
     for (let band = 0; band < 5; band++) {
       ctx.fillStyle = `rgba(255, 210, 170, ${0.03 + band * 0.01})`
-      ctx.fillRect(0, 400 + band * 22, 64, 14)
+      ctx.fillRect(0, 200 + band * 11, 512, 8)
     }
   }
   const tex = new THREE.CanvasTexture(c)
@@ -1354,8 +1355,19 @@ export function buildTerrain(
 
   // ── Celestial Sphere & Stylized Floating Clouds ──────────────────────────
   const skyTex = track(minecraftMode ? skyTexture(palette) : watercolorSkyTexture(palette))
-  const skyMat = track(new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, depthWrite: false }))
+  const skyMat = track(
+    new THREE.MeshBasicMaterial({
+      map: skyTex,
+      side: THREE.BackSide,
+      depthWrite: false,
+      // Sky shell is ~180m; scene fog far is 64–92 — without this the dome washes to a flat fog color.
+      fog: minecraftMode,
+      toneMapped: minecraftMode,
+    }),
+  )
   const sky = new THREE.Mesh(track(new THREE.SphereGeometry(180, 16, 12)), skyMat)
+  sky.frustumCulled = false
+  sky.renderOrder = -1000
   root.add(sky)
 
   // Celestial Body (Sun or Moon)
@@ -1630,6 +1642,8 @@ export function buildTerrain(
       const newSky = track(minecraftMode ? skyTexture(next) : watercolorSkyTexture(next))
       skyMat.map?.dispose()
       skyMat.map = newSky
+      skyMat.fog = minecraftMode
+      skyMat.toneMapped = minecraftMode
       skyMat.needsUpdate = true
       disposables.push(newSky)
     },

@@ -18,7 +18,7 @@ import {
   walkCaptureGroundY,
 } from './minecraft-visual'
 import { createPlantGroup, disposePlantGroup } from './plant-mesh'
-import { buildTerrain, type TerrainHandle } from './terrain'
+import { buildTerrain, type TerrainHandle, watercolorSkyTexture } from './terrain'
 import { WALK_SYNTHETIC_POND } from '@/lib/open-world/walk-pond-capture'
 import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
 import { Cc0SceneryLayer, defaultCc0GardenSeed } from './cc0-scenery'
@@ -89,6 +89,7 @@ export class OpenWorldEngine {
   private resizeObserver: ResizeObserver | null = null
 
   private cc0Scenery: Cc0SceneryLayer | null = null
+  private skyBackdropTex: THREE.CanvasTexture | null = null
   private captureBackdrop = false
   private soloCapturePlantId: string | null = null
   private plantArtStyle: ArtStyle
@@ -289,11 +290,10 @@ export class OpenWorldEngine {
       }
     } else if (watercolorDusk) {
       const tw = Math.min(1, (star - 0.18) / 0.5)
-      const skyUpper = new THREE.Color(palette.sky[0] ?? '#1a1838')
-      skyUpper.lerp(new THREE.Color(palette.sky[1] ?? '#4a3878'), 0.62)
-      const fogColor = new THREE.Color(palette.sky[2] ?? '#684a98')
-      fogColor.lerp(new THREE.Color(palette.sky[3] ?? '#a86898'), 0.35 + tw * 0.18)
-      fogColor.lerp(new THREE.Color('#ffb86b'), 0.12 + tw * 0.16)
+      const skyUpper = new THREE.Color('#4a3268')
+      skyUpper.lerp(new THREE.Color('#5a3e6a'), 0.5)
+      const fogColor = new THREE.Color('#7a4f72')
+      fogColor.lerp(new THREE.Color('#e0a070'), 0.28 + tw * 0.22)
       this.renderer?.setClearColor(skyUpper, 1)
       if (this.scene.fog instanceof THREE.Fog) {
         this.scene.fog.color.copy(fogColor)
@@ -317,14 +317,39 @@ export class OpenWorldEngine {
       }
     }
     if (this.captureBackdrop) this.applyCaptureFog()
+    this.applyWatercolorSkyBackdrop(watercolorDusk, palette)
     this.applyRendererExposure()
     this.rebuildPlants()
+  }
+
+  private applyWatercolorSkyBackdrop(active: boolean, palette: ScenePalette): void {
+    const useBackdrop = active && this.plantArtStyle === 'watercolor'
+    if (useBackdrop) {
+      if (this.skyBackdropTex) this.skyBackdropTex.dispose()
+      const tex = watercolorSkyTexture(palette)
+      tex.mapping = THREE.EquirectangularReflectionMapping
+      tex.colorSpace = THREE.SRGBColorSpace
+      this.skyBackdropTex = tex
+      this.scene.background = tex
+      if (this.terrain?.sky) this.terrain.sky.visible = false
+      return
+    }
+    if (this.skyBackdropTex) {
+      this.skyBackdropTex.dispose()
+      this.skyBackdropTex = null
+    }
+    if (this.scene.background instanceof THREE.Texture) this.scene.background = null
+    if (this.terrain?.sky) this.terrain.sky.visible = true
   }
 
   private applyRendererExposure(): void {
     if (!this.renderer) return
     const star = this.palette.starAlpha ?? 0
-    if (star > 0.22) {
+    const watercolorDusk =
+      this.plantArtStyle === 'watercolor' && star > 0.18 && star < 0.72
+    if (watercolorDusk) {
+      this.renderer.toneMappingExposure = 1.02 + star * 0.22
+    } else if (star > 0.22) {
       this.renderer.toneMappingExposure = 1.18 + star * 0.42
     } else {
       this.renderer.toneMappingExposure = 1.02
@@ -1425,6 +1450,10 @@ export class OpenWorldEngine {
     this.resizeObserver?.disconnect()
     this.exitLock()
     this.clearPlants()
+    if (this.skyBackdropTex) {
+      this.skyBackdropTex.dispose()
+      this.skyBackdropTex = null
+    }
     this.terrain?.dispose()
     this.cc0Scenery?.dispose()
     this.cc0Scenery = null
