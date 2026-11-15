@@ -23,7 +23,7 @@ export function measureTreePixelFillFromPng(pngPath) {
   let treePixels = 0
   let canopyTouchesTopRow = false
   let canopyInTopBand = false
-  const topBandRows = Math.max(2, Math.ceil(h * 0.025))
+  const topBandRows = Math.max(2, Math.ceil(h * 0.04))
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = (w * y + x) * 4

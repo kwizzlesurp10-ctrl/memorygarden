@@ -41,6 +41,7 @@ import {
 } from '@/lib/garden-gifts'
 import {
   isWalkCaptureSession,
+  walkCaptureTod,
   isWalkHidePointerHint,
   registerWalkCaptureBridge,
 } from '@/lib/open-world/walk-capture-bridge'
@@ -224,7 +225,7 @@ export function OpenWorldGarden({
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const palette = todPalette(realClockTod(), season)
+    const palette = todPalette(walkCaptureTod() ?? realClockTod(), season)
     const engine = new OpenWorldEngine(canvas, memories, palette, {
       reducedMotion,
       coarsePointer: coarse,
@@ -275,9 +276,12 @@ export function OpenWorldGarden({
     if (captureMode) {
       engine.setPaused(true)
       registerWalkCaptureBridge({
-        setPose: (pose) =>
-          engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY),
+        setPose: (pose) => {
+          engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
+          engine.applyCaptureFov(pose.captureFov)
+        },
         setPalette: (palette) => engine.setPalette(palette),
+        setTodHour: (hour) => engine.setPalette(todPalette(hour, season)),
         setPlantArtStyle: (style) => engine.setPlantArtStyle(style),
         showcaseModel: (id: Cc0ModelId | null) => engine.setCc0Showcase(id),
         showcasePoseFor: (id: Cc0ModelId) =>
@@ -316,11 +320,13 @@ export function OpenWorldGarden({
         plantWorldAabb: (plantId) => engine.plantWorldAabb(plantId),
         captureCameraFov: () => engine.getCaptureCameraFov(),
         captureCameraAspect: () => engine.getCaptureCameraAspect(),
+        setCaptureFov: (fov) => engine.applyCaptureFov(fov),
         elderCloseupPose: (plantId) => engine.elderDeterministicCapturePose(plantId),
         mushroomCloseupPose: (plantId) => engine.mushroomDeterministicCapturePose(plantId),
         plantProjectedBoxScreenY: (plantId) => engine.plantProjectedBoxScreenY(plantId),
         plantProjectedAabbScreen: (plantId) => engine.plantProjectedAabbScreen(plantId),
         pondCloseupPose: () => engine.pondCapturePose(),
+        gardenSceneryCloseupPose: (kind, pullBack) => engine.gardenSceneryCloseupPose(kind, pullBack),
       })
       if (sessionStorage.getItem('mg:tree-young-elder-capture') === '1') {
         engine.setPlayerPose(
@@ -381,9 +387,9 @@ export function OpenWorldGarden({
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      engineRef.current?.setPalette(todPalette(realClockTod(), season))
+      engineRef.current?.setPalette(todPalette(walkCaptureTod() ?? realClockTod(), season))
     }, 4000)
-    engineRef.current?.setPalette(todPalette(realClockTod(), season))
+    engineRef.current?.setPalette(todPalette(walkCaptureTod() ?? realClockTod(), season))
     return () => window.clearInterval(id)
   }, [season])
 

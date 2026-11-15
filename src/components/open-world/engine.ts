@@ -22,6 +22,10 @@ import { WALK_SYNTHETIC_POND } from '@/lib/open-world/walk-pond-capture'
 import type { Cc0ModelId } from '@/lib/open-world/cc0-catalog'
 import { Cc0SceneryLayer, defaultCc0GardenSeed } from './cc0-scenery'
 import { playWaterSfx } from '@/lib/water-sound'
+import {
+  computeGardenSceneryCloseupPose,
+  type GardenSceneryCloseupKind,
+} from '@/lib/open-world/garden-scenery-capture'
 
 export interface EngineHooks {
   onProximity: (plant: WorldPlant | null) => void
@@ -45,6 +49,7 @@ export class OpenWorldEngine {
   failed = false
   private renderer: THREE.WebGLRenderer | null = null
   private readonly scene = new THREE.Scene()
+  private readonly defaultCameraFov = 68
   private readonly camera = new THREE.PerspectiveCamera(68, 1, 0.08, 220)
   private readonly hemi = new THREE.HemisphereLight('#88aacc', '#2a1a18', 0.85)
   private readonly sun = new THREE.DirectionalLight('#fff4d8', 1.15)
@@ -383,6 +388,14 @@ export class OpenWorldEngine {
     return box.isEmpty() ? null : box
   }
 
+  gardenSceneryCloseupPose(kind: GardenSceneryCloseupKind, pullBack = 1): WalkCapturePose {
+    this.resetCaptureFov()
+    const pose = computeGardenSceneryCloseupPose(kind, (x, z) => this.terrainFootY(x, z), pullBack)
+    this.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
+    this.renderOnce()
+    return pose
+  }
+
   hasPlantGroup(plantId: string): boolean {
     return this.findPlantGroup(plantId) !== null
   }
@@ -489,6 +502,24 @@ export class OpenWorldEngine {
 
   getCaptureCameraFov(): number {
     return this.camera.fov
+  }
+
+  applyCaptureFov(fov?: number): void {
+    if (fov !== undefined) this.setCaptureFov(fov)
+    else this.resetCaptureFov()
+    this.renderOnce()
+  }
+
+  private resetCaptureFov(): void {
+    if (this.camera.fov !== this.defaultCameraFov) {
+      this.camera.fov = this.defaultCameraFov
+      this.camera.updateProjectionMatrix()
+    }
+  }
+
+  private setCaptureFov(fov: number): void {
+    this.camera.fov = THREE.MathUtils.clamp(fov, 14, this.defaultCameraFov)
+    this.camera.updateProjectionMatrix()
   }
 
   getCaptureCameraAspect(): number {
@@ -697,7 +728,7 @@ export class OpenWorldEngine {
     return { left, right, top, bottom }
   }
 
-  elderDeterministicCapturePose(plantId: string): WalkCapturePose | null {
+  private elderDeterministicCapturePoseLegacy(plantId: string): WalkCapturePose | null {
     const box = this.plantWorldBox(plantId)
     const wp = this.world.plants.find((p) => p.id === plantId)
     if (!box || !wp) return null
@@ -749,21 +780,26 @@ export class OpenWorldEngine {
         bestPose = { ...pose, pitch, x: camX, z: camZ, eyeY }
       }
     }
-  if (bestPose) {
-    this.setPlayerPose(bestPose.x, bestPose.z, bestPose.yaw, bestPose.pitch, bestPose.eyeY)
-    this.camera.rotation.x = bestPose.pitch
-    this.renderOnce()
-    const span = this.screenHeightFraction(box)
-    const canopy = this.plantProjectedBoxScreenYFromBox(box)
-    const top = canopy?.top ?? 0.5
-    if (span <= 0.85 && top >= 0.04) return bestPose
+    if (bestPose) {
+      this.setPlayerPose(bestPose.x, bestPose.z, bestPose.yaw, bestPose.pitch, bestPose.eyeY)
+      this.camera.rotation.x = bestPose.pitch
+      this.renderOnce()
+      const span = this.screenHeightFraction(box)
+      const canopy = this.plantProjectedBoxScreenYFromBox(box)
+      const top = canopy?.top ?? 0.5
+      if (span <= 0.85 && top >= 0.04) return bestPose
+    }
+    const slack = this.elderCapturePoseAtSlack(box, 1.04, -0.045)
+    if (slack && slack.screenSpan <= 0.85 && slack.screenTop >= 0.04) {
+      const { screenSpan: _s, screenTop: _t, ...pose } = slack
+      return pose
+    }
+    return bestPose
   }
-  const slack = this.elderCapturePoseAtSlack(box, 1.04, -0.045)
-  if (slack && slack.screenSpan <= 0.85 && slack.screenTop >= 0.04) {
-    const { screenSpan: _s, screenTop: _t, ...pose } = slack
-    return pose
-  }
-  return bestPose
+
+  elderDeterministicCapturePose(plantId: string): WalkCapturePose | null {
+    this.resetCaptureFov()
+    return this.elderDeterministicCapturePoseLegacy(plantId)
   }
 
   private projectBoxVerticalInView(box: THREE.Box3): { minNdcY: number; maxNdcY: number } | null {

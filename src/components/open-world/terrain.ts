@@ -11,8 +11,10 @@ import {
   minecraftGrassTufts,
   minecraftPathTexture,
   minecraftWaterBlockTexture,
+  voxelLogStump,
   voxelRockCluster,
 } from './minecraft-visual'
+import { GARDEN_AMBIENT_FENCE, GARDEN_AMBIENT_STUMP } from '@/lib/open-world/garden-scenery-capture'
 
 export interface TerrainHandle {
   root: THREE.Group
@@ -503,6 +505,48 @@ export function buildTerrain(
     for (const c of clusters) {
       voxelRockCluster(c.x, c.z, c.seed, palette, root, track, (wx, wz) => hillTop(wx, wz))
     }
+  }
+
+  const ambientPropWoodMats: THREE.MeshStandardMaterial[] = []
+  const registerWood = (m: THREE.MeshStandardMaterial) => {
+    ambientPropWoodMats.push(m)
+    return m
+  }
+
+  const propFenceWood = registerWood(track(new THREE.MeshStandardMaterial({ color: '#543825', roughness: 0.82 })))
+
+  if (minecraftMode) {
+    const hillTop =
+      surfaceY ??
+      ((wx: number, wz: number) => minecraftAnalyticSurfaceY(Math.round(wx), Math.round(wz)))
+    const hillSampler = (wx: number, wz: number) => hillTop(wx, wz)
+    voxelLogStump(
+      GARDEN_AMBIENT_STUMP.x,
+      GARDEN_AMBIENT_STUMP.z,
+      611,
+      palette,
+      root,
+      track,
+      hillSampler,
+    )
+  } else {
+    const postH = 1.08
+    const postSpan = 0.48
+    const fenceGrp = new THREE.Group()
+    const postGeo = track(new THREE.BoxGeometry(0.12, postH, 0.12))
+    for (const px of [-postSpan, postSpan]) {
+      const post = new THREE.Mesh(postGeo, propFenceWood)
+      post.position.set(px, postH * 0.5, 0)
+      post.castShadow = true
+      fenceGrp.add(post)
+    }
+    const railW = postSpan * 2 + 0.12
+    const rail = new THREE.Mesh(track(new THREE.BoxGeometry(railW, 0.09, 0.11)), propFenceWood)
+    rail.position.set(0, postH * 0.9, 0)
+    fenceGrp.add(rail)
+    fenceGrp.position.set(GARDEN_AMBIENT_FENCE.x, 0, GARDEN_AMBIENT_FENCE.z)
+    fenceGrp.rotation.y = GARDEN_AMBIENT_FENCE.yaw
+    root.add(fenceGrp)
   }
 
   const walkCaptureDecor = isWalkCaptureSession()
@@ -1239,6 +1283,15 @@ export function buildTerrain(
       } else {
         rockMat.emissive.set('#000000')
         rockMat.emissiveIntensity = 0
+      }
+      for (const w of ambientPropWoodMats) {
+        if (nextTwilight) {
+          w.emissive.set(next.hills[0] ?? next.glow ?? next.silSoft)
+          w.emissiveIntensity = 0.08 + star * 0.1
+        } else {
+          w.emissive.set('#000000')
+          w.emissiveIntensity = 0
+        }
       }
       hedgeMat.color.copy(twilightSceneryColor(next, next.hills[2] ?? next.silSoft ?? next.sil, nextTwilight))
       if (nextTwilight) {

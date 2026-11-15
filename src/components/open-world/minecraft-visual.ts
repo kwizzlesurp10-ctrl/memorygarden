@@ -752,6 +752,43 @@ export function voxelRockCluster(
   root.add(g)
 }
 
+
+/** Voxel log stump — pixel walk prop. */
+export function voxelLogStump(
+  x: number,
+  z: number,
+  seed: number,
+  palette: ScenePalette,
+  root: THREE.Group,
+  track: <T extends { dispose: () => void }>(o: T) => T,
+  blockTopY?: (wx: number, wz: number) => number,
+): void {
+  void palette
+  const barkMat = track(voxelMaterial('#4a3528', '#3f2817', seed, 'bark'))
+  const topRing = track(voxelMaterial('#6b4f3a', '#4a3528', seed + 2, 'bark'))
+  const topAt = blockTopY ?? ((wx, wz) => walkCaptureGroundY(wx, wz))
+  const surfaceY = Math.max(0, Math.round(topAt(x, z)))
+  const g = new THREE.Group()
+  g.position.set(x, 0, z)
+  g.userData.gardenProp = 'stump'
+  const stumpW = VOXEL * 1.1
+  const stumpH = VOXEL * 0.8
+  const capH = VOXEL * 0.22
+  placeBlock(g, 0, surfaceY, 0, barkMat)
+  const core = g.children[g.children.length - 1]
+  if (core instanceof THREE.Mesh) {
+    core.scale.set(stumpW, stumpH, stumpW)
+  }
+  const bodyCenterY = (surfaceY + 0.5) * VOXEL
+  const bodyTopY = bodyCenterY + stumpH / 2
+  const cap = new THREE.Mesh(boxGeo, topRing)
+  cap.position.set(0, bodyTopY + capH / 2, 0)
+  cap.scale.set(stumpW, capH, stumpW)
+  cap.userData.voxel = true
+  g.add(cap)
+  root.add(g)
+}
+
 export function minecraftWaterBlockTexture(palette: ScenePalette, seed = 44): THREE.CanvasTexture {
   const tex = minecraftBlockTexture(
     palette.waterTint[0] ?? '#5ec8e8',

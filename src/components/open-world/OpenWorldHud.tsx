@@ -152,6 +152,7 @@ export function OpenWorldHud({
         <button
           type="button"
           onClick={onLock}
+          aria-label="Lock pointer to look around the garden"
           className="pointer-events-auto absolute left-1/2 top-[42%] -translate-x-1/2 rounded-2xl border border-[#f0e7da]/25 bg-black/50 px-5 py-4 text-center backdrop-blur-md"
         >
           <p className="text-sm font-medium">Click to look around</p>

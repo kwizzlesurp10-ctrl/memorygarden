@@ -2,6 +2,7 @@ import type { ArtStyle } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { CC0_MODEL_BY_ID, type Cc0ModelId } from './cc0-catalog'
 import { cc0ShowcaseCapturePose } from './cc0-placement'
+import type { GardenSceneryCloseupKind } from './garden-scenery-capture'
 
 export interface WalkCapturePose {
   x: number
@@ -10,11 +11,15 @@ export interface WalkCapturePose {
   pitch: number
   eyeY?: number
   screenFrac?: number
+  /** Narrowed vertical FOV for elder close-up capture only. */
+  captureFov?: number
 }
 
 export interface WalkCaptureBridge {
   setPose: (pose: WalkCapturePose) => void
   setPalette: (palette: ScenePalette) => void
+  /** Fixed time-of-day for walk capture (hour 0–24). */
+  setTodHour?: (hour: number) => void
   setPlantArtStyle?: (style: ArtStyle) => void
   showcaseModel: (modelId: Cc0ModelId | null) => Promise<void>
   showcasePoseFor: (modelId: Cc0ModelId) => WalkCapturePose
@@ -57,6 +62,7 @@ export interface WalkCaptureBridge {
   } | null
   captureCameraFov?: () => number
   captureCameraAspect?: () => number
+  setCaptureFov?: (fov: number) => void
   elderCloseupPose?: (plantId: string) => WalkCapturePose | null
   mushroomCloseupPose?: (plantId: string) => WalkCapturePose | null
   plantProjectedBoxScreenY?: (plantId: string) => { top: number; bottom: number } | null
@@ -64,9 +70,15 @@ export interface WalkCaptureBridge {
     plantId: string,
   ) => { left: number; right: number; top: number; bottom: number } | null
   pondCloseupPose?: () => WalkCapturePose | null
+  gardenSceneryCloseupPose?: (
+    kind: GardenSceneryCloseupKind,
+    pullBack?: number,
+  ) => WalkCapturePose | null
 }
 
 export const WALK_CAPTURE_SESSION_KEY = 'mg:walk-capture'
+/** When set (0–24), walk capture uses this hour instead of the real clock. */
+export const WALK_CAPTURE_TOD_KEY = 'mg:walk-capture-tod'
 export const WALK_CAPTURE_BASELINE_KEY = 'mg:walk-capture-baseline'
 export const WALK_HIDE_POINTER_HINT_KEY = 'mg:walk-hide-pointer-hint'
 
@@ -85,6 +97,14 @@ export function isWalkCaptureBaseline(): boolean {
 
 export function isWalkCaptureSession(): boolean {
   return typeof window !== 'undefined' && sessionStorage.getItem(WALK_CAPTURE_SESSION_KEY) === '1'
+}
+
+export function walkCaptureTod(): number | null {
+  if (!isWalkCaptureSession()) return null
+  const raw = sessionStorage.getItem(WALK_CAPTURE_TOD_KEY)
+  if (raw === null || raw === '') return null
+  const h = Number(raw)
+  return Number.isFinite(h) ? h : null
 }
 
 export function registerWalkCaptureBridge(bridge: WalkCaptureBridge | null): void {

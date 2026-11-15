@@ -12,7 +12,6 @@ import { chromium } from 'playwright'
 import {
   classifyWalkCapturePixel,
   measureElderColumnVerticalFillFromPng,
-  measureTreePixelFillFromPng,
 } from './lib/walk-capture-pixel-fill.mjs'
 
 const require = createRequire(import.meta.url)
@@ -541,7 +540,7 @@ try {
         ]
 
   const styleListForRun =
-    captureOnly === 'mushroom' || captureOnly === 'detail'
+    captureOnly === 'mushroom'
       ? (styles) => styles.filter((s) => s === 'pixel-art')
       : (styles) => styles
 
