@@ -287,8 +287,8 @@ export class OpenWorldEngine {
       this.renderer?.setClearColor(skyUpper, 1)
       if (this.scene.fog instanceof THREE.Fog) {
         this.scene.fog.color.copy(fogWash)
-        this.scene.fog.near = 10
-        this.scene.fog.far = 52
+        this.scene.fog.near = 8
+        this.scene.fog.far = 46
       }
     } else if (watercolorDusk) {
       const tw = Math.min(1, (star - 0.18) / 0.5)
@@ -1764,8 +1764,8 @@ export class OpenWorldEngine {
         this.renderer?.setClearColor(skyUpper, 1)
         if (this.scene.fog instanceof THREE.Fog) {
           this.scene.fog.color.copy(fogWash)
-          this.scene.fog.near = 10
-          this.scene.fog.far = 52
+          this.scene.fog.near = 8
+          this.scene.fog.far = 46
         }
       } else {
         const skyWash = new THREE.Color(p.sky[3] ?? p.sky[2] ?? '#88aacc')

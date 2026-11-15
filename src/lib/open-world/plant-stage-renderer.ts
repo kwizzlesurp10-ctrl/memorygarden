@@ -110,8 +110,9 @@ export function mountStagePlantPreview(
   fill.position.set(-3, 2, -2)
   const rim = new THREE.DirectionalLight(palette.silSoft ?? palette.glow ?? '#c8e8b0', duskGrid ? 0.62 : 0)
   rim.position.set(-1.2, 3.5, 4.2)
+  const ambientLift = new THREE.AmbientLight(palette.glow ?? '#ffe8c8', duskGrid ? 0.28 : 0)
   scene.add(hemi, key, fill, group)
-  if (duskGrid) scene.add(rim)
+  if (duskGrid) scene.add(rim, ambientLift)
 
   const width = Math.max(120, host.clientWidth || 150)
   const height = Math.max(140, host.clientHeight || 180)
