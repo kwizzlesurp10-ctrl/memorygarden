@@ -298,6 +298,7 @@ export function OpenWorldGarden({
             height: p.height,
           })),
         voxelMeshCount: () => engine.countVoxelMeshes(),
+        isPixelTerrain: () => engine.plantArtStyle === 'pixel-art',
         voxelPlantGroupCount: () => engine.countVoxelPlantGroups(),
         plantCount: () => engine.getWorld().plants.length,
         plantCapturePose: (plantId) => engine.deterministicPlantCapturePose(plantId),

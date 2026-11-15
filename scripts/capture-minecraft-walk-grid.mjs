@@ -32,12 +32,14 @@ const covThreshold = 0.15
 mkdirSync(outDir, { recursive: true })
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const afterSha =
-  process.env.AFTER_SHA ||
-  spawnSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).stdout.trim()
 const beforeSha =
   process.env.BEFORE_SHA ||
   spawnSync('git', ['rev-parse', '--short', 'main'], { cwd: repoRoot, encoding: 'utf8' }).stdout.trim()
+const afterSha =
+  process.env.AFTER_SHA ||
+  (capturePhase === 'before'
+    ? beforeSha
+    : spawnSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).stdout.trim())
 writeFileSync(
   resolve(outDir, 'BUILD_SHA.txt'),
   `before_url=${beforeUrl} before_sha=${beforeSha}\nafter_url=${afterUrl} after_sha=${afterSha}\n`,
@@ -246,6 +248,12 @@ async function bootstrapWalk(page, baseUrl, artStyle) {
     const v = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? 0)
     if (v > 12) {
       throw new Error(`Watercolor walk leaked ${v} voxel meshes (expected pixel decor gated)`)
+    }
+    const pixelTerrain = await page.evaluate(
+      () => window.__mgWalkCapture?.isPixelTerrain?.() === true,
+    )
+    if (pixelTerrain) {
+      throw new Error(`Watercolor walk still on pixel-art terrain at ${baseUrl}`)
     }
   }
 }
@@ -525,6 +533,21 @@ async function captureShot(page, phase, artStyle, shot, pose) {
   }
   if (shot.file === 'walk-mushroom-closeup' && shot.plantId && artStyle === 'pixel-art') {
     await assertMushroomCloseupFrame(page, shot.plantId, file, phase, artStyle, pose)
+  }
+  if (shot.file === 'walk-flower-closeup' && shot.plantId && artStyle === 'pixel-art' && phase === 'after') {
+    const cov = await page.evaluate(
+      ({ id, p }) => window.__mgWalkCapture?.plantScreenCoverage?.(id, p) ?? 0,
+      { id: shot.plantId, p: pose },
+    )
+    if (cov < 0.12) {
+      throw new Error(`Pixel flower close-up coverage ${cov.toFixed(3)} < 0.12 (bark-pillar guard)`)
+    }
+    const treeFill = measureElderColumnVerticalFillFromPng(file)
+    if (Number.isFinite(treeFill.heightFrac) && treeFill.heightFrac > 0.55) {
+      throw new Error(
+        `Pixel flower close-up center column tree fill ${(treeFill.heightFrac * 100).toFixed(0)}% (expected flower, not trunk)`,
+      )
+    }
   }
   if (shot.file === 'walk-sprout-closeup' && shot.plantId && artStyle === 'watercolor' && phase === 'after') {
     const cov = await page.evaluate(

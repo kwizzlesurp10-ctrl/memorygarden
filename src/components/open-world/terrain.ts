@@ -1353,7 +1353,7 @@ export function buildTerrain(
       side: THREE.BackSide,
       depthWrite: false,
       // Sky shell is ~180m; scene fog far is 64–92 — without this the dome washes to a flat fog color.
-      fog: !minecraftMode,
+      fog: minecraftMode,
       toneMapped: minecraftMode,
     }),
   )
@@ -1643,7 +1643,7 @@ export function buildTerrain(
       const newSky = track(minecraftMode ? minecraftSkyTexture(next) : watercolorSkyTexture(next))
       skyMat.map?.dispose()
       skyMat.map = newSky
-      skyMat.fog = !minecraftMode
+      skyMat.fog = minecraftMode
       skyMat.toneMapped = minecraftMode
       skyMat.needsUpdate = true
       disposables.push(newSky)

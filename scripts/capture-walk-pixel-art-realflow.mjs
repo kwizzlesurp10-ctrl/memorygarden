@@ -9,6 +9,7 @@ import { spawnSync } from 'node:child_process'
 import { chromium } from 'playwright'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const capturePhase = (process.env.CAPTURE_PHASE || 'after').toLowerCase()
 const afterSha =
   process.env.AFTER_SHA ||
   spawnSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).stdout.trim()
@@ -221,7 +222,7 @@ try {
     throw new Error('Could not face tree-elder-walk in realflow shot')
   }
   await desktopPage.waitForTimeout(900)
-  const elderName = `minecraft-walk-realflow-after-${afterSha}-desktop-near-elder.png`
+  const elderName = `minecraft-walk-realflow-${capturePhase}-${afterSha}-desktop-near-elder.png`
   const elderLegacy = 'minecraft-walk-realflow-desktop-near-elder.png'
   await shotCanvas(desktopPage, elderName)
   writeFileSync(resolve(outDir, elderLegacy), readFileSync(resolve(outDir, elderName)))

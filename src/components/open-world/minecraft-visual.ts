@@ -1131,7 +1131,7 @@ export function minecraftWaterBlockTexture(palette: ScenePalette, seed = 44): TH
 function usesCompactPixelFooting(kind: PlantVisualRecipe['kind'], stage: PlantStage): boolean {
   const idx = plantStageToIndex(stage)
   if (kind === 'tree') return idx <= 1 || idx >= 6
-  if (kind === 'flower') return idx <= 1 || idx >= 5
+  if (kind === 'flower') return idx <= 1 || idx >= 4
   if (kind === 'mushroom') return idx >= 2
   return false
 }

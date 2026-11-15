@@ -93,10 +93,18 @@ function captureSet(targetDir, url, sha, capPhase, isAfter) {
     PREVIEW_URL: url,
     PLANT_STAGE_3D_ART: stage3dArt,
   })
-  runNode('capture-walk-pixel-art-realflow.mjs', {
+  const realflowEnv = {
     ARTIFACT_DIR: targetDir,
     AFTER_URL: url,
-  })
+    CAPTURE_PHASE: capPhase,
+  }
+  if (isAfter) {
+    realflowEnv.AFTER_SHA = sha
+  } else {
+    realflowEnv.AFTER_SHA = sha
+    realflowEnv.BEFORE_SHA = sha
+  }
+  runNode('capture-walk-pixel-art-realflow.mjs', realflowEnv)
 
   alias(targetDir, `walk-dusk-overview-watercolor-${sha}.png`, 'watercolor-dusk-overview.png')
   alias(
@@ -128,8 +136,20 @@ function captureSet(targetDir, url, sha, capPhase, isAfter) {
   }
   const stageGrid = resolve(targetDir, 'after-tree-stages-2d-3d-stacked.png')
   if (existsSync(stageGrid)) copyFileSync(stageGrid, resolve(targetDir, 'pixel-art-stage-grid.png'))
-  const realflow = resolve(targetDir, `minecraft-walk-realflow-${capPhase}-${sha}-desktop-near-elder.png`)
-  if (existsSync(realflow)) copyFileSync(realflow, resolve(targetDir, 'pixel-art-realflow-near-elder.png'))
+  const realflowCandidates = [
+    resolve(targetDir, `minecraft-walk-realflow-${capPhase}-${sha}-desktop-near-elder.png`),
+    resolve(targetDir, 'minecraft-walk-realflow-desktop-near-elder.png'),
+    resolve(targetDir, `minecraft-walk-realflow-after-${sha}-desktop-near-elder.png`),
+  ]
+  const realflow = realflowCandidates.find((p) => existsSync(p))
+  if (realflow) copyFileSync(realflow, resolve(targetDir, 'pixel-art-realflow-near-elder.png'))
+
+  const buildShaPath = resolve(targetDir, 'BUILD_SHA.txt')
+  if (isAfter) {
+    writeFileSync(buildShaPath, `after_commit=${sha}\n`)
+  } else {
+    writeFileSync(buildShaPath, `before_commit=${sha}\n`)
+  }
 }
 
 const parityPairs = [
