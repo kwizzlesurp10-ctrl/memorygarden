@@ -1,30 +1,39 @@
 [
   {
-    "name": "walk-dusk-overview-pixel-art.png",
-    "beforePath": "/agent/repos/memorygarden/3d-pass-1115c/before/walk-dusk-overview-pixel-art.png",
-    "afterPath": "/agent/repos/memorygarden/3d-pass-1115c/after/walk-dusk-overview-pixel-art.png",
-    "lumThreshold": 30,
-    "diffPixels": 49406,
-    "totalPixels": 860160,
-    "diffPercent": 5.743815104166667
-  },
-  {
     "name": "walk-dusk-overview-watercolor.png",
     "beforePath": "/agent/repos/memorygarden/3d-pass-1115c/before/walk-dusk-overview-watercolor.png",
     "afterPath": "/agent/repos/memorygarden/3d-pass-1115c/after/walk-dusk-overview-watercolor.png",
     "lumThreshold": 30,
-    "diffPixels": 352045,
+    "diffPixels": 364772,
     "totalPixels": 860160,
-    "diffPercent": 40.927850632440474
+    "diffPercent": 42.40745907738095
   },
   {
-    "name": "walk-overview-pixel-art.png",
-    "beforePath": "/agent/repos/memorygarden/3d-pass-1115c/before/walk-overview-pixel-art.png",
-    "afterPath": "/agent/repos/memorygarden/3d-pass-1115c/after/walk-overview-pixel-art.png",
+    "name": "walk-overview-watercolor.png",
+    "beforePath": "/agent/repos/memorygarden/3d-pass-1115c/before/walk-overview-watercolor.png",
+    "afterPath": "/agent/repos/memorygarden/3d-pass-1115c/after/walk-overview-watercolor.png",
     "lumThreshold": 30,
-    "diffPixels": 1015,
+    "diffPixels": 3722,
     "totalPixels": 860160,
-    "diffPercent": 0.11800130208333333
+    "diffPercent": 0.43271019345238093
+  },
+  {
+    "name": "walk-elder-closeup-watercolor.png",
+    "beforePath": "/agent/repos/memorygarden/3d-pass-1115c/before/walk-elder-closeup-watercolor.png",
+    "afterPath": "/agent/repos/memorygarden/3d-pass-1115c/after/walk-elder-closeup-watercolor.png",
+    "lumThreshold": 30,
+    "diffPixels": 11547,
+    "totalPixels": 860160,
+    "diffPercent": 1.3424246651785714
+  },
+  {
+    "name": "walk-flower-closeup-watercolor.png",
+    "beforePath": "/agent/repos/memorygarden/3d-pass-1115c/before/walk-flower-closeup-watercolor.png",
+    "afterPath": "/agent/repos/memorygarden/3d-pass-1115c/after/walk-flower-closeup-watercolor.png",
+    "lumThreshold": 30,
+    "diffPixels": 5093,
+    "totalPixels": 860160,
+    "diffPercent": 0.5920991443452381
   },
   {
     "name": "tree-stages-2d-3d-grid.png",
@@ -34,14 +43,5 @@
     "diffPixels": 0,
     "totalPixels": 1372800,
     "diffPercent": 0
-  },
-  {
-    "name": "realflow-hill-step-pixel-art.png",
-    "beforePath": "3d-pass-1115c/before/minecraft-walk-realflow-desktop-hill-step.png",
-    "afterPath": "3d-pass-1115c/after/minecraft-walk-realflow-desktop-hill-step.png",
-    "lumThreshold": 30,
-    "diffPixels": 71572,
-    "totalPixels": 860160,
-    "diffPercent": 8.320777529761905
   }
 ]

@@ -23,6 +23,10 @@ const viewportMode = process.env.VIEWPORT || 'desktop'
 const mode = process.env.MODE || 'full'
 const captureOnly = process.env.CAPTURE_ONLY || ''
 const capturePhase = (process.env.CAPTURE_PHASE || 'both').toLowerCase()
+const walkArtStyles = (process.env.WALK_ART_STYLES || 'pixel-art,watercolor')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
 const covThreshold = 0.15
 
 mkdirSync(outDir, { recursive: true })
@@ -609,17 +613,20 @@ try {
     if (missing.length) {
       const poseSeedUrl =
         capturePhase === 'before' ? beforeUrl : capturePhase === 'after' ? afterUrl : afterUrl
-      await bootstrapWalk(page, poseSeedUrl, 'pixel-art')
-      const v = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? 0)
-      if (v < 40) throw new Error(`Expected voxels for pose seed at ${poseSeedUrl}, got ${v}`)
+      const poseSeedStyle = walkArtStyles.includes('pixel-art') ? 'pixel-art' : (walkArtStyles[0] ?? 'watercolor')
+      await bootstrapWalk(page, poseSeedUrl, poseSeedStyle)
+      if (poseSeedStyle === 'pixel-art') {
+        const v = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? 0)
+        if (v < 40) throw new Error(`Expected voxels for pose seed at ${poseSeedUrl}, got ${v}`)
+      }
       const derived = await deriveAllPoses(page)
       poses = { ...poses, ...derived }
     }
   }
 
   const runDefs = [
-    { phase: 'after', url: afterUrl, styles: ['pixel-art', 'watercolor'] },
-    { phase: 'before', url: beforeUrl, styles: ['pixel-art', 'watercolor'] },
+    { phase: 'after', url: afterUrl, styles: walkArtStyles },
+    { phase: 'before', url: beforeUrl, styles: walkArtStyles },
   ]
   const runs = runDefs.filter((r) => {
     if (capturePhase === 'both') return true

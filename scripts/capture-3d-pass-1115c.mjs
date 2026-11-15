@@ -1,5 +1,6 @@
 /**
- * Pass 1115c: before @ 4173 (main), after @ 4174 (branch). Artifacts in repo `3d-pass-1115c/`.
+ * Pass 1115c (watercolor-only): before @ 4173 (main), after @ 4174 (branch).
+ * Artifacts in repo `3d-pass-1115c/`.
  */
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
@@ -16,24 +17,27 @@ mkdirSync(afterDir, { recursive: true })
 
 const beforeSha =
   process.env.BEFORE_SHA ||
-  spawnSync('git', ['rev-parse', '--short', 'c5feb72'], { cwd: root, encoding: 'utf8' }).stdout.trim()
+  spawnSync('git', ['rev-parse', '--short', 'main'], { cwd: root, encoding: 'utf8' }).stdout.trim()
 const afterSha =
   process.env.AFTER_SHA ||
   spawnSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim()
+
+const walkEnv = { WALK_ART_STYLES: 'watercolor' }
 
 function runNode(script, env = {}) {
   const r = spawnSync('node', [resolve(root, 'scripts', script)], {
     cwd: root,
     stdio: 'inherit',
-    env: { ...process.env, ...env },
+    env: { ...process.env, ...walkEnv, ...env },
   })
   if (r.status !== 0) process.exit(r.status ?? 1)
 }
 
 function writeBuildSha(dir, label) {
+  const short = dir.includes('before') ? beforeSha : afterSha
   writeFileSync(
     resolve(dir, 'BUILD_SHA.txt'),
-    `${label}_commit=${dir.includes('before') ? beforeSha : afterSha}\nfull=${spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim()}\n`,
+    `${label}_commit=${short}\nfull=${spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim()}\n`,
   )
 }
 
@@ -46,19 +50,35 @@ function aliasDir(srcDir, patterns) {
 }
 
 const aliasList = [
-  { from: `minecraft-walk-before-${beforeSha}-pixel-art-walk-overview-desktop.png`, to: 'walk-overview-pixel-art.png' },
-  { from: `minecraft-walk-before-${beforeSha}-watercolor-walk-overview-desktop.png`, to: 'walk-overview-watercolor.png' },
-  { from: 'minecraft-walk-dusk-before-pixel-art-desktop.png', to: 'walk-dusk-overview-pixel-art.png' },
-  { from: 'after-tree-stages-2d-3d-stacked.png', to: 'tree-stages-2d-3d-grid.png' },
-  { from: 'after-flower-stages-2d-3d-stacked.png', to: 'flower-stages-2d-3d-grid.png' },
-  { from: 'minecraft-walk-realflow-desktop-near-elder.png', to: 'realflow-near-elder-pixel-art.png' },
-  { from: 'minecraft-walk-realflow-desktop-hill-step.png', to: 'realflow-hill-step-pixel-art.png' },
+  {
+    from: `minecraft-walk-before-${beforeSha}-watercolor-walk-overview-desktop.png`,
+    to: 'walk-overview-watercolor.png',
+  },
+  {
+    from: `minecraft-walk-before-${beforeSha}-watercolor-walk-tree-elder-closeup-desktop.png`,
+    to: 'walk-elder-closeup-watercolor.png',
+  },
+  {
+    from: `minecraft-walk-before-${beforeSha}-watercolor-walk-flower-closeup-desktop.png`,
+    to: 'walk-flower-closeup-watercolor.png',
+  },
 ]
 
-const afterAliasList = aliasList.map((p) => ({
-  from: p.from.replace(`before-${beforeSha}`, `after-${afterSha}`).replace('before-', 'after-'),
-  to: p.to,
-}))
+const afterAliasList = [
+  {
+    from: `minecraft-walk-after-${afterSha}-watercolor-walk-overview-desktop.png`,
+    to: 'walk-overview-watercolor.png',
+  },
+  {
+    from: `minecraft-walk-after-${afterSha}-watercolor-walk-tree-elder-closeup-desktop.png`,
+    to: 'walk-elder-closeup-watercolor.png',
+  },
+  {
+    from: `minecraft-walk-after-${afterSha}-watercolor-walk-flower-closeup-desktop.png`,
+    to: 'walk-flower-closeup-watercolor.png',
+  },
+  { from: 'after-tree-stages-2d-3d-stacked.png', to: 'tree-stages-2d-3d-grid.png' },
+]
 
 if (phase === 'before' || phase === 'both') {
   writeBuildSha(beforeDir, 'before')
@@ -70,13 +90,6 @@ if (phase === 'before' || phase === 'both') {
     AFTER_SHA: beforeSha,
     CAPTURE_PHASE: 'before',
   })
-  runNode('capture-walk-dusk-overview.mjs', {
-    ARTIFACT_DIR: beforeDir,
-    BEFORE_URL: process.env.BEFORE_URL || 'http://127.0.0.1:4173',
-    AFTER_URL: process.env.BEFORE_URL || 'http://127.0.0.1:4173',
-    BEFORE_SHA: beforeSha,
-    AFTER_SHA: beforeSha,
-  })
   runNode('capture-walk-dusk-watercolor-overview.mjs', {
     ARTIFACT_DIR: beforeDir,
     PREVIEW_URL: process.env.BEFORE_URL || 'http://127.0.0.1:4173',
@@ -86,11 +99,6 @@ if (phase === 'before' || phase === 'both') {
   runNode('capture-plant-stage-comparison.mjs', {
     ARTIFACT_DIR: beforeDir,
     PREVIEW_URL: process.env.BEFORE_URL || 'http://127.0.0.1:4173',
-  })
-  runNode('capture-walk-pixel-art-realflow.mjs', {
-    ARTIFACT_DIR: beforeDir,
-    AFTER_URL: process.env.BEFORE_URL || 'http://127.0.0.1:4173',
-    AFTER_SHA: beforeSha,
   })
   aliasDir(beforeDir, aliasList)
   const wcDusk = resolve(beforeDir, `walk-dusk-overview-watercolor-${beforeSha}.png`)
@@ -107,13 +115,6 @@ if (phase === 'after' || phase === 'both') {
     AFTER_SHA: afterSha,
     CAPTURE_PHASE: 'after',
   })
-  runNode('capture-walk-dusk-overview.mjs', {
-    ARTIFACT_DIR: afterDir,
-    BEFORE_URL: process.env.BEFORE_URL || 'http://127.0.0.1:4173',
-    AFTER_URL: process.env.AFTER_URL || 'http://127.0.0.1:4174',
-    BEFORE_SHA: beforeSha,
-    AFTER_SHA: afterSha,
-  })
   runNode('capture-walk-dusk-watercolor-overview.mjs', {
     ARTIFACT_DIR: afterDir,
     PREVIEW_URL: process.env.AFTER_URL || 'http://127.0.0.1:4174',
@@ -124,24 +125,22 @@ if (phase === 'after' || phase === 'both') {
     ARTIFACT_DIR: afterDir,
     PREVIEW_URL: process.env.AFTER_URL || 'http://127.0.0.1:4174',
   })
-  runNode('capture-walk-pixel-art-realflow.mjs', {
-    ARTIFACT_DIR: afterDir,
-    AFTER_URL: process.env.AFTER_URL || 'http://127.0.0.1:4174',
-    AFTER_SHA: afterSha,
-  })
   aliasDir(afterDir, afterAliasList)
   const wcDuskA = resolve(afterDir, `walk-dusk-overview-watercolor-${afterSha}.png`)
   if (existsSync(wcDuskA)) copyFileSync(wcDuskA, resolve(afterDir, 'walk-dusk-overview-watercolor.png'))
-  writeFileSync(resolve(afterDir, 'BUILD_SHA.txt'), `after_commit=${afterSha}\nfull=${spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim()}\n`)
+  writeFileSync(
+    resolve(afterDir, 'BUILD_SHA.txt'),
+    `after_commit=${afterSha}\nfull=${spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim()}\n`,
+  )
 }
 
 if (phase === 'both' || phase === 'diff') {
   const pairs = [
-    'walk-dusk-overview-pixel-art.png',
     'walk-dusk-overview-watercolor.png',
-    'walk-overview-pixel-art.png',
+    'walk-overview-watercolor.png',
+    'walk-elder-closeup-watercolor.png',
+    'walk-flower-closeup-watercolor.png',
     'tree-stages-2d-3d-grid.png',
-    'realflow-hill-step-pixel-art.png',
   ]
   const rows = []
   for (const name of pairs) {
@@ -166,4 +165,4 @@ if (phase === 'both' || phase === 'diff') {
   console.log('Pixel diff table:', JSON.stringify(rows, null, 2))
 }
 
-console.log('Pass 1115c artifacts in', passRoot)
+console.log('Pass 1115c (watercolor-only) artifacts in', passRoot)

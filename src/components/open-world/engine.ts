@@ -274,34 +274,34 @@ export class OpenWorldEngine {
     this.cc0Scenery?.setPalette(palette)
     this.applyLighting()
     const star = palette.starAlpha ?? 0
-    const duskBand = star > 0.18 && star < 0.72
-    const pixelDusk = this.plantArtStyle === 'pixel-art' && duskBand
-    const watercolorDusk = this.plantArtStyle === 'watercolor' && duskBand
+    const pixelDusk = this.plantArtStyle === 'pixel-art' && star > 0.18 && star < 0.72
+    const watercolorDusk = this.plantArtStyle === 'watercolor' && star > 0.18 && star < 0.72
     if (pixelDusk) {
       const tw = Math.min(1, (star - 0.18) / 0.5)
       const horizonAmber = new THREE.Color('#ffb86b')
       const skyViolet = new THREE.Color(palette.sky[3] ?? palette.sky[2] ?? '#9a78c8')
-      const skyUpper = new THREE.Color(palette.sky[1] ?? palette.sky[0] ?? '#4a6898')
-      const fogWash = skyViolet.clone().lerp(horizonAmber, 0.45 + tw * 0.38)
-      fogWash.lerp(new THREE.Color(palette.hills[1] ?? '#4a6e52'), 0.14)
-      this.renderer?.setClearColor(skyUpper, 1)
+      const duskSky = skyViolet.clone().lerp(horizonAmber, 0.38 + tw * 0.32)
+      this.renderer?.setClearColor(duskSky, 1)
       if (this.scene.fog instanceof THREE.Fog) {
-        this.scene.fog.color.copy(fogWash)
-        this.scene.fog.near = 8
-        this.scene.fog.far = 46
+        this.scene.fog.color.copy(duskSky)
+        this.scene.fog.near = 22
+        this.scene.fog.far = 76
       }
     } else if (watercolorDusk) {
       const tw = Math.min(1, (star - 0.18) / 0.5)
       const horizonAmber = new THREE.Color('#ffb86b')
-      const skyUpper = new THREE.Color(palette.sky[1] ?? palette.sky[0] ?? '#4a6898')
+      const skyUpper = new THREE.Color(palette.sky[0] ?? '#1a2840').lerp(
+        new THREE.Color(palette.sky[1] ?? '#4a5898'),
+        0.55,
+      )
       const fogColor = new THREE.Color(palette.sky[3] ?? palette.sky[2] ?? '#9a78c8')
-      fogColor.lerp(horizonAmber, 0.38 + tw * 0.35)
-      fogColor.lerp(new THREE.Color(palette.hills[1] ?? palette.bank), 0.2)
+      fogColor.lerp(horizonAmber, 0.48 + tw * 0.42)
+      fogColor.lerp(new THREE.Color(palette.hills[0] ?? palette.silSoft ?? '#5a6e52'), 0.26)
       this.renderer?.setClearColor(skyUpper, 1)
       if (this.scene.fog instanceof THREE.Fog) {
         this.scene.fog.color.copy(fogColor)
-        this.scene.fog.near = 16
-        this.scene.fog.far = 72
+        this.scene.fog.near = 12
+        this.scene.fog.far = 64
       }
     } else {
       this.renderer?.setClearColor(palette.sky[2] ?? '#20123a', 1)
@@ -1758,14 +1758,12 @@ export class OpenWorldEngine {
         this.rim.color.set('#ffba6a')
         this.rim.position.set(-14, 14, 22)
         this.rim.intensity = 0.48 + tw * 0.42
-        const skyUpper = new THREE.Color(p.sky[1] ?? p.sky[0] ?? '#4a6898')
-        const fogWash = skyViolet.clone().lerp(horizonAmber, 0.45 + tw * 0.38)
-        fogWash.lerp(new THREE.Color(p.hills[1] ?? '#4a6e52'), 0.14)
-        this.renderer?.setClearColor(skyUpper, 1)
+        const duskSky = skyViolet.clone().lerp(horizonAmber, 0.38 + tw * 0.32)
+        this.renderer?.setClearColor(duskSky, 1)
         if (this.scene.fog instanceof THREE.Fog) {
-          this.scene.fog.color.copy(fogWash)
-          this.scene.fog.near = 8
-          this.scene.fog.far = 46
+          this.scene.fog.color.copy(duskSky)
+          this.scene.fog.near = 22
+          this.scene.fog.far = 76
         }
       } else {
         const skyWash = new THREE.Color(p.sky[3] ?? p.sky[2] ?? '#88aacc')
@@ -1802,16 +1800,23 @@ export class OpenWorldEngine {
     this.hemi.intensity = deepNight ? 1.05 : twilight ? 1.12 : 0.92
     this.fill.color.set(p.glow ?? p.silSoft)
     if (twilight) this.fill.color.lerp(new THREE.Color(p.sky[4] ?? p.sky[3] ?? p.glow), 0.28)
-    this.fill.intensity = deepNight ? 0.62 : twilight ? 0.58 : 0.24
+    const watercolorTwilight = twilight && this.plantArtStyle === 'watercolor'
+    this.fill.intensity = deepNight ? 0.62 : watercolorTwilight ? 0.72 : twilight ? 0.58 : 0.24
+    if (watercolorTwilight) {
+      this.fill.color.lerp(new THREE.Color('#ffd8b0'), 0.35)
+    }
     this.sun.color.set(p.sun?.disk ?? p.glow)
-    this.sun.intensity = deepNight ? 0.58 : twilight ? 0.95 : 1.18
+    if (watercolorTwilight) {
+      this.sun.color.lerp(new THREE.Color('#ffb86b'), 0.4)
+    }
+    this.sun.intensity = deepNight ? 0.58 : watercolorTwilight ? 1.08 : twilight ? 0.95 : 1.18
     if (p.sun) {
       const u = p.sun.x / 1200 - 0.5
       const v = (470 - p.sun.y) / 400
       this.sun.position.set(u * 55, 8 + v * 36, -18)
       this.rim.position.set(-u * 42, 6 + v * 22, 24)
       this.rim.color.set(p.glow ?? '#ffd9a0')
-      this.rim.intensity = twilight ? 0.42 + star * 0.25 : 0.18
+      this.rim.intensity = watercolorTwilight ? 0.55 + star * 0.32 : twilight ? 0.42 + star * 0.25 : 0.18
     } else if (p.moon) {
       this.sun.position.set((p.moon.x / 1200 - 0.5) * 40, 18, -12)
       this.sun.color.set('#c9d8ea')
