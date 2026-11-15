@@ -7,12 +7,17 @@ import {
   buildMinecraftSteppedHills,
   MINECRAFT_WALK_ROCK_CLUSTERS,
   minecraftAnalyticSurfaceY,
+  minecraftBlockCloud,
   minecraftGrassTexture,
   minecraftGrassTufts,
+  minecraftGroundFlowers,
   minecraftPathTexture,
   minecraftPondShoreTexture,
+  minecraftPondVoxelRim,
+  minecraftSkyTexture,
   minecraftWaterBlockTexture,
   voxelLogStump,
+  voxelMaterial,
   voxelRockCluster,
 } from './minecraft-visual'
 import { GARDEN_AMBIENT_FENCE, GARDEN_AMBIENT_STUMP } from '@/lib/open-world/garden-scenery-capture'
@@ -155,33 +160,6 @@ function watercolorWaterTexture(palette: ScenePalette): THREE.CanvasTexture {
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping
   tex.repeat.set(2.2, 2.2)
   tex.anisotropy = 4
-  tex.needsUpdate = true
-  return tex
-}
-
-function skyTexture(palette: ScenePalette): THREE.CanvasTexture {
-  const c = document.createElement('canvas')
-  c.width = 8
-  c.height = 256
-  const ctx = c.getContext('2d')
-  if (!ctx) return new THREE.CanvasTexture(c)
-  const g = ctx.createLinearGradient(0, 0, 0, 256)
-  const sky = palette.sky
-  const star = palette.starAlpha ?? 0
-  const twilight = star > 0.22
-  const top = sky[0] ?? '#070619'
-  const upper = sky[1] ?? sky[0] ?? '#1d1748'
-  const mid = twilight ? (sky[3] ?? sky[2] ?? '#8a4a7d') : (sky[2] ?? '#472a68')
-  const lower = twilight ? (sky[4] ?? sky[3] ?? '#d97a4e') : (sky[3] ?? sky[2] ?? '#8a4a7d')
-  const horizon = sky[sky.length - 1] ?? '#d98a86'
-  g.addColorStop(0, top)
-  g.addColorStop(0.32, upper)
-  g.addColorStop(0.58, mid)
-  g.addColorStop(0.82, lower)
-  g.addColorStop(1, horizon)
-  ctx.fillStyle = g
-  ctx.fillRect(0, 0, 8, 256)
-  const tex = new THREE.CanvasTexture(c)
   tex.needsUpdate = true
   return tex
 }
@@ -399,9 +377,9 @@ export function buildTerrain(
   const surfaceY = minecraftMode ? buildMinecraftSteppedHills(root, track, palette) : undefined
   const walkCapture = isWalkCaptureSession()
   if (minecraftMode) {
-    minecraftGrassTufts(world, palette, root, track, (x, z) =>
-      minecraftAnalyticSurfaceY(Math.round(x), Math.round(z)),
-    )
+    const hillTop = (x: number, z: number) => minecraftAnalyticSurfaceY(Math.round(x), Math.round(z))
+    minecraftGrassTufts(world, palette, root, track, hillTop)
+    minecraftGroundFlowers(world, root, track, hillTop)
   }
 
   // ── Gentle Flowerbed Soil Berms ─────────────────────────────────────────
@@ -571,6 +549,10 @@ export function buildTerrain(
   bank.receiveShadow = !minecraftMode
   bank.renderOrder = minecraftMode ? 2 : 0
   root.add(bank)
+
+  if (minecraftMode) {
+    minecraftPondVoxelRim(world, root, track)
+  }
 
   if (!minecraftMode) {
     const shoreRng = gardenRng(519)
@@ -1248,9 +1230,17 @@ export function buildTerrain(
     twilightSceneryMat(palette, palette.hills[2] ?? palette.silSoft ?? palette.sil, twilight, starAlpha, 0.9),
   )
   if (!walkCaptureDecor) {
-  const postGeo = track(new THREE.BoxGeometry(0.28, 1.35, 0.28))
-  const railGeo = track(new THREE.BoxGeometry(1, 0.12, 0.1))
-  const fencePostMat = minecraftMode ? wood : hedgeMat
+  const postGeo = track(
+    new THREE.BoxGeometry(minecraftMode ? 0.34 : 0.28, minecraftMode ? 1.42 : 1.35, minecraftMode ? 0.34 : 0.28),
+  )
+  const railGeo = track(
+    new THREE.BoxGeometry(1, minecraftMode ? 0.14 : 0.12, minecraftMode ? 0.14 : 0.1),
+  )
+  const voxelFenceWood = minecraftMode
+    ? track(voxelMaterial('#4a3528', '#3f2817', 87, 'bark'))
+    : null
+  const fencePostMat = minecraftMode && voxelFenceWood ? voxelFenceWood : hedgeMat
+  const fenceRailWood = minecraftMode && voxelFenceWood ? voxelFenceWood : wood
   const addFence = (ax: number, az: number, bx: number, bz: number) => {
     const dist = Math.hypot(bx - ax, bz - az)
     const posts = Math.max(2, Math.round(dist / 2.1))
@@ -1261,10 +1251,11 @@ export function buildTerrain(
       const gateGap = Math.abs(x) < 2.4 && Math.abs(z - world.gate.z) < 1.2
       if (gateGap) continue
       const post = new THREE.Mesh(postGeo, fencePostMat)
-      post.position.set(x, 0.67, z)
+      post.position.set(x, minecraftMode ? 0.7 : 0.67, z)
+      if (minecraftMode) post.userData.voxel = true
       root.add(post)
       if (i < posts) {
-        const rail = new THREE.Mesh(railGeo, wood)
+        const rail = new THREE.Mesh(railGeo, fenceRailWood)
         rail.position.set(x + (bx - ax) / posts / 2, 0.85, z + (bz - az) / posts / 2)
         rail.scale.x = dist / posts
         rail.lookAt(bx, 0.85, bz)
@@ -1354,7 +1345,7 @@ export function buildTerrain(
   }
 
   // ── Celestial Sphere & Stylized Floating Clouds ──────────────────────────
-  const skyTex = track(minecraftMode ? skyTexture(palette) : watercolorSkyTexture(palette))
+  const skyTex = track(minecraftMode ? minecraftSkyTexture(palette) : watercolorSkyTexture(palette))
   const skyMat = track(
     new THREE.MeshBasicMaterial({
       map: skyTex,
@@ -1372,11 +1363,22 @@ export function buildTerrain(
 
   // Celestial Body (Sun or Moon)
   const celestialMat = track(
-    new THREE.MeshBasicMaterial({
-      color: isNight ? '#e2ecf8' : (palette.sun?.disk ?? '#ffe7a0'),
-    }),
+    minecraftMode
+      ? voxelMaterial(
+          isNight ? '#e8f0ff' : (palette.sun?.disk ?? '#ffe7a0'),
+          isNight ? '#c8d8f0' : '#ffb860',
+          54,
+          'flower',
+        )
+      : new THREE.MeshBasicMaterial({
+          color: isNight ? '#e2ecf8' : (palette.sun?.disk ?? '#ffe7a0'),
+        }),
   )
-  const celestialMesh = new THREE.Mesh(track(new THREE.SphereGeometry(isNight ? 3.8 : 4.6, 16, 16)), celestialMat)
+  const celestialGeo = minecraftMode
+    ? track(new THREE.BoxGeometry(isNight ? 3.2 : 4, isNight ? 3.2 : 4, 0.75))
+    : track(new THREE.SphereGeometry(isNight ? 3.8 : 4.6, 16, 16))
+  const celestialMesh = new THREE.Mesh(celestialGeo, celestialMat)
+  if (minecraftMode) celestialMesh.userData.voxel = true
   if (isNight) {
     celestialMesh.position.set(-18, 52, -75)
   } else {
@@ -1412,22 +1414,27 @@ export function buildTerrain(
   ]
 
   cloudConfigs.forEach((cfg) => {
-    const cGroup = new THREE.Group()
-    // Multi-puff cumulus shape
-    const puffs = [
-      { x: 0, y: 0, z: 0, s: 1.0 },
-      { x: -0.7, y: -0.15, z: 0.1, s: 0.75 },
-      { x: 0.7, y: -0.12, z: -0.1, s: 0.8 },
-      { x: -1.3, y: -0.3, z: 0, s: 0.55 },
-      { x: 1.25, y: -0.28, z: 0, s: 0.6 },
-    ]
-    puffs.forEach((p) => {
-      const puff = new THREE.Mesh(cloudSphereGeo, cloudMat)
-      puff.scale.set(p.s * cfg.s * 1.4, p.s * cfg.s * 0.75, p.s * cfg.s * 1.1)
-      puff.position.set(p.x * cfg.s, p.y * cfg.s, p.z * cfg.s)
-      cGroup.add(puff)
-    })
-    cGroup.position.set(cfg.x, cfg.y, cfg.z)
+    const cloudScale = minecraftMode ? cfg.s * 1.42 : cfg.s
+    const cGroup = minecraftMode
+      ? minecraftBlockCloud(cfg.x, cfg.y, cfg.z, cloudScale, palette, track, twilight)
+      : (() => {
+          const grp = new THREE.Group()
+          const puffs = [
+            { x: 0, y: 0, z: 0, s: 1.0 },
+            { x: -0.7, y: -0.15, z: 0.1, s: 0.75 },
+            { x: 0.7, y: -0.12, z: -0.1, s: 0.8 },
+            { x: -1.3, y: -0.3, z: 0, s: 0.55 },
+            { x: 1.25, y: -0.28, z: 0, s: 0.6 },
+          ]
+          puffs.forEach((p) => {
+            const puff = new THREE.Mesh(cloudSphereGeo, cloudMat)
+            puff.scale.set(p.s * cfg.s * 1.4, p.s * cfg.s * 0.75, p.s * cfg.s * 1.1)
+            puff.position.set(p.x * cfg.s, p.y * cfg.s, p.z * cfg.s)
+            grp.add(puff)
+          })
+          grp.position.set(cfg.x, cfg.y, cfg.z)
+          return grp
+        })()
     root.add(cGroup)
     clouds.push({ group: cGroup, speed: cfg.speed, startX: cfg.x })
   })
@@ -1639,7 +1646,7 @@ export function buildTerrain(
         cloudMat.opacity = nextNight ? 0.45 : 0.75
       }
       fogColor.set(next.sky[2] ?? next.bank)
-      const newSky = track(minecraftMode ? skyTexture(next) : watercolorSkyTexture(next))
+      const newSky = track(minecraftMode ? minecraftSkyTexture(next) : watercolorSkyTexture(next))
       skyMat.map?.dispose()
       skyMat.map = newSky
       skyMat.fog = minecraftMode

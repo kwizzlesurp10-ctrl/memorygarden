@@ -249,7 +249,7 @@ export function minecraftBlockTexture(
 
 const matCache = new Map<string, THREE.MeshBasicMaterial>()
 
-function voxelMaterial(
+export function voxelMaterial(
   hex: string,
   accent: string,
   seed: number,
@@ -475,27 +475,43 @@ function buildOakTree(
   stage: PlantStage,
 ): void {
   const idx = plantStageToIndex(stage)
-  if (idx <= 1) {
-    placeCrossPlantSprite(g, 0, 0, 0, 0.8, 0.56, leaf)
+  if (idx === 0) {
+    placeBlock(g, 0, 0, 0, bark)
+    placeBlock(g, 0, 1, 0, leaf)
+    return
+  }
+  if (idx === 1) {
+    placeCrossPlantSprite(g, 0, 0, 0, 0.85, 0.58, leaf)
     return
   }
   if (idx >= 7) {
     buildPixelArtOak(g, bark, leaf, true, seed)
     return
   }
-  if (idx >= 4) {
+  if (idx >= 5) {
     buildPixelArtOak(g, bark, leaf, false, seed)
     return
   }
-  const trunkH = 3
+  if (idx === 2) {
+    for (let y = 0; y < 2; y++) placeBlock(g, 0, y, 0, bark)
+    placeLeafLayer(g, 2, 1, leaf, true, seed + 16, false)
+    placeBlock(g, 0, 3, 0, leaf)
+    return
+  }
+  if (idx === 3) {
+    const trunkH = 3
+    for (let y = 0; y < trunkH; y++) placeBlock(g, 0, y, 0, bark)
+    placeLeafLayer(g, trunkH, 1, leaf, true, seed + 18)
+    placeBlock(g, 0, trunkH + 1, 0, leaf)
+    return
+  }
+  const trunkH = 4
   for (let y = 0; y < trunkH; y++) {
     placeBlock(g, 0, y, 0, bark)
   }
-  placeLeafLayer(g, trunkH, 1, leaf, true, seed + 18)
-  if (idx >= 3) {
-    placeLeafLayer(g, trunkH + 1, 1, leaf, false, seed + 19)
-    placeOakPlusCap(g, trunkH + 2, leaf)
-  }
+  placeLeafLayer(g, trunkH, 2, leaf, true, seed + 18, false)
+  placeLeafLayer(g, trunkH + 1, 1, leaf, false, seed + 19)
+  placeOakPlusCap(g, trunkH + 2, leaf)
 }
 
 function buildFlower(
@@ -509,24 +525,45 @@ function buildFlower(
 ): void {
   const idx = plantStageToIndex(stage)
   if (idx <= 0) {
-    placeBlock(g, 0, 1, 0, stem)
+    placeBlock(g, 0, 0, 0, stem)
     return
   }
   if (idx === 1) {
-    placeCrossPlantSprite(g, 0, 0, 0, 0.8, 0.56, bloom)
+    placeBlock(g, 0, 0, 0, stem)
+    placeCrossPlantSprite(g, 0, 0, 0.55, 0.5, 0.48, bloom)
     return
   }
-  if (idx >= 5) {
+  if (idx >= 6) {
     const petalLight = lerpHex(petalBase, petalAccent, 0.42)
     const poppyMat = voxelMaterial(petalBase, petalLight, seed + 7, 'poppy', true)
-    placeCrossPlantSprite(g, 0, 0, 0, 0.82, 0.62, poppyMat)
+    placeCrossPlantSprite(g, 0, 0, 0, 0.88, 0.66, poppyMat)
+    return
+  }
+  if (idx === 5) {
+    const petalLight = lerpHex(petalBase, petalAccent, 0.35)
+    const poppyMat = voxelMaterial(petalBase, petalLight, seed + 7, 'poppy', true)
+    for (let y = 0; y < 2; y++) placeBlock(g, 0, y, 0, stem)
+    placeCrossPlantSprite(g, 0, 0, 0.72, 0.58, 0.54, poppyMat)
+    return
+  }
+  if (idx === 4) {
+    for (let y = 0; y < 3; y++) placeBlock(g, 0, y, 0, stem)
+    placeCrossSprite(g, 0, 3, 0, bloom, 1.35)
+    placeBlock(g, -1, 3, 0, bloom)
+    placeBlock(g, 1, 3, 0, bloom)
+    return
+  }
+  if (idx === 3) {
+    for (let y = 0; y < 2; y++) placeBlock(g, 0, y, 0, stem)
+    placeBlock(g, 0, 2, 0, bloom)
+    placeBlock(g, 0, 3, 0, bloom)
     return
   }
   const stemH = 2
   for (let y = 0; y < stemH; y++) {
     placeBlock(g, 0, y, 0, stem)
   }
-  placeCrossSprite(g, 0, stemH, 0, bloom, 1.2)
+  placeCrossSprite(g, 0, stemH, 0, bloom, 1.05)
 }
 
 function buildMushroom(
@@ -537,9 +574,26 @@ function buildMushroom(
   stage: PlantStage,
 ): void {
   const idx = plantStageToIndex(stage)
-  if (idx <= 1) {
+  if (idx === 0) {
     placeBlock(g, 0, 0, 0, stem)
-    if (idx === 1) placeBlock(g, 0, 1, 0, cap)
+    return
+  }
+  if (idx === 1) {
+    placeBlock(g, 0, 0, 0, stem)
+    placeBlock(g, 0, 1, 0, cap)
+    return
+  }
+  if (idx === 2) {
+    placeBlock(g, 0, 0, 0, stem)
+    placeBlock(g, 0, 1, 0, stem)
+    placeLeafLayer(g, 2, 1, cap, true, seed + 3, false)
+    return
+  }
+  if (idx === 3 || idx === 4) {
+    placeBlock(g, 0, 0, 0, stem)
+    placeBlock(g, 0, 1, 0, stem)
+    placeLeafLayer(g, 2, 1, cap, true, seed + 5, false)
+    placeBlock(g, 0, 3, 0, cap)
     return
   }
   buildPixelArtMushroom(g, stem, cap, seed)
@@ -636,7 +690,7 @@ export function minecraftGrassTexture(
   const base = '#62b53a'
   const accent = '#7ed64f'
   const seed = 42 + Math.floor(hash01(planeW + planeD) * 120)
-  const tex = minecraftBlockTexture(base, accent, seed, 'grass')
+  const tex = minecraftBlockTexture(base, accent, seed, 'grass_side')
   tex.repeat.set(planeW / MINECRAFT_BLOCK_UNIT, planeD / MINECRAFT_BLOCK_UNIT)
   tex.offset.set(0, 0)
   return tex
@@ -660,6 +714,184 @@ export function minecraftPondShoreTexture(palette: ScenePalette): THREE.CanvasTe
   return configurePixelTexture(tex)
 }
 
+function skyBandColor(palette: ScenePalette, t: number, twilight: boolean): string {
+  const sky = palette.sky
+  const stops = twilight
+    ? [
+        { at: 0, c: sky[0] ?? '#1a1438' },
+        { at: 0.22, c: sky[1] ?? '#3d2d68' },
+        { at: 0.48, c: sky[2] ?? '#7a4a7d' },
+        { at: 0.72, c: sky[3] ?? '#b86898' },
+        { at: 0.88, c: sky[4] ?? '#e0a060' },
+        { at: 1, c: sky[sky.length - 1] ?? '#f0c898' },
+      ]
+    : [
+        { at: 0, c: sky[0] ?? '#4a88d8' },
+        { at: 0.35, c: sky[1] ?? '#78b0e8' },
+        { at: 0.65, c: sky[2] ?? '#a8d0f8' },
+        { at: 1, c: sky[sky.length - 1] ?? '#d0ecff' },
+      ]
+  let i = 0
+  while (i < stops.length - 1 && t > stops[i + 1]!.at) i++
+  const a = stops[i]!
+  const b = stops[Math.min(i + 1, stops.length - 1)]!
+  const span = b.at - a.at || 1
+  const u = Math.max(0, Math.min(1, (t - a.at) / span))
+  return lerpHex(a.c, b.c, u)
+}
+
+/** Banded pixel zenith gradient (dusk = wide amber bands); block sun + stars when twilight. */
+export function minecraftSkyTexture(palette: ScenePalette): THREE.CanvasTexture {
+  const c = document.createElement('canvas')
+  c.width = 64
+  c.height = 128
+  const ctx = c.getContext('2d')
+  if (!ctx) return configurePixelTexture(new THREE.CanvasTexture(c))
+  const star = palette.starAlpha ?? 0
+  const twilight = star > 0.22
+  const bandH = twilight ? 6 : 8
+  for (let y = 0; y < 128; y += bandH) {
+    const t = 1 - (y + bandH / 2) / 128
+    const band = skyBandColor(palette, t, twilight)
+    const stripe = y / bandH
+    ctx.fillStyle = stripe % 2 === 0 ? band : lerpHex(band, twilight ? '#ffb878' : '#88c8f8', 0.18)
+    ctx.fillRect(0, y, 64, bandH)
+  }
+  if (twilight) {
+    const sunX = 44
+    const sunY = 14
+    const sunColors = ['#ffe8a8', '#ffc870', '#ffb040', '#ff9830']
+    for (let dy = 0; dy < 12; dy++) {
+      for (let dx = 0; dx < 12; dx++) {
+        const dist = Math.hypot(dx - 5.5, dy - 5.5)
+        if (dist > 6.2) continue
+        ctx.fillStyle = sunColors[Math.floor(hash01(55 + dx + dy * 3) * sunColors.length) % sunColors.length]!
+        ctx.fillRect(sunX + dx, sunY + dy, 1, 1)
+      }
+    }
+  }
+  if (star > 0.35) {
+    const rng = gardenRng(1204)
+    const starCount = Math.floor(18 + star * 28)
+    for (let i = 0; i < starCount; i++) {
+      const sx = Math.floor(rng() * 30) + 1
+      const sy = Math.floor(rng() * 72) + 2
+      ctx.fillStyle = rng() > 0.4 ? '#f8f8ff' : '#ffe8c8'
+      ctx.fillRect(sx, sy, 1, 1)
+    }
+  }
+  const tex = configurePixelTexture(new THREE.CanvasTexture(c))
+  tex.needsUpdate = true
+  return tex
+}
+
+export function minecraftBlockCloud(
+  centerX: number,
+  centerY: number,
+  centerZ: number,
+  scale: number,
+  palette: ScenePalette,
+  track: <T extends { dispose: () => void }>(o: T) => T,
+  twilight: boolean,
+): THREE.Group {
+  const base = twilight ? (palette.sky[4] ?? '#ffc8a8') : '#f4f0f8'
+  const accent = twilight ? (palette.sky[3] ?? '#e8a0a0') : '#ffffff'
+  const cloudMat = track(voxelMaterial(base, accent, Math.floor(centerX * 3 + centerZ), 'flower'))
+  const g = new THREE.Group()
+  g.position.set(centerX, centerY, centerZ)
+  const puffs: Array<[number, number, number, number]> = [
+    [0, 0, 0, 1],
+    [-0.65, -0.1, 0.15, 0.75],
+    [0.7, -0.12, -0.1, 0.8],
+    [-1.25, -0.28, 0, 0.55],
+    [1.2, -0.26, 0, 0.58],
+    [0.35, 0.15, 0.25, 0.65],
+    [-0.4, 0.1, -0.2, 0.6],
+  ]
+  for (const [px, py, pz, ps] of puffs) {
+    const mesh = new THREE.Mesh(boxGeo, cloudMat)
+    const s = scale * ps
+    mesh.position.set(px * scale, py * scale, pz * scale)
+    mesh.scale.set(s * 1.4, s * 0.75, s * 1.1)
+    mesh.userData.voxel = true
+    g.add(mesh)
+  }
+  g.userData.voxelCloud = true
+  return g
+}
+
+export function minecraftGroundFlowers(
+  world: GardenWorld,
+  root: THREE.Group,
+  track: <T extends { dispose: () => void }>(o: T) => T,
+  surfaceBlockY?: (x: number, z: number) => number,
+): void {
+  const topBlocks = surfaceBlockY ?? ((x, z) => minecraftAnalyticSurfaceY(Math.round(x), Math.round(z)))
+  const poppyRed = track(voxelMaterial('#c44a4a', '#e85a5a', 81, 'poppy', true))
+  const poppyPink = track(voxelMaterial('#d87898', '#f090a8', 82, 'poppy', true))
+  const poppyYellow = track(voxelMaterial('#e8c848', '#f0e070', 83, 'flower', true))
+  const mats = [poppyRed, poppyPink, poppyYellow]
+  const rng = gardenRng(912)
+  const span = 36
+  const count = 58
+  let i = 0
+  let attempts = 0
+  while (i < count && attempts < count * 14) {
+    attempts++
+    const x = (rng() * 2 - 1) * span
+    const z = (rng() * 2 - 1) * span
+    if (Math.hypot(x - world.pond.x, z - world.pond.z) < world.pond.radius + 1.2) continue
+    const topY = topBlocks(x, z) * VOXEL
+    const mat = mats[Math.floor(rng() * mats.length)]!
+    const tall = 0.28 + rng() * 0.22
+    for (const rotY of [0, Math.PI / 2]) {
+      const flower = new THREE.Mesh(planeGeo, mat)
+      flower.position.set(x, topY + tall / 2 + 0.02, z)
+      flower.scale.set(0.38 + rng() * 0.12, tall, 1)
+      flower.rotation.y = rotY
+      flower.userData.voxel = true
+      flower.userData.groundFlower = true
+      root.add(flower)
+    }
+    i++
+  }
+}
+
+export function minecraftPondVoxelRim(
+  world: GardenWorld,
+  root: THREE.Group,
+  track: <T extends { dispose: () => void }>(o: T) => T,
+): void {
+  const gravel = track(voxelMaterial('#c4a888', '#a89070', 94, 'gravel'))
+  const mossy = track(voxelMaterial('#78a858', '#5fa037', 95, 'moss_stone'))
+  const grassSide = track(voxelMaterial('#62b53a', '#5a4332', 96, 'grass_side'))
+  const rng = gardenRng(817)
+  const segments = 44
+  const g = new THREE.Group()
+  g.name = 'pond-voxel-rim'
+  for (let s = 0; s < segments; s++) {
+    const a = (s / segments) * Math.PI * 2
+    const r = world.pond.radius + 0.42 + (rng() > 0.65 ? 0.08 : 0)
+    const wx = world.pond.x + Math.cos(a) * r
+    const wz = world.pond.z + Math.sin(a) * r
+  const matPick = rng() > 0.72 ? mossy : rng() > 0.45 ? grassSide : gravel
+    const mesh = new THREE.Mesh(boxGeo, matPick)
+    mesh.position.set(wx, 0.48, wz)
+    mesh.scale.setScalar(VOXEL * (0.72 + rng() * 0.2))
+    mesh.userData.voxel = true
+    mesh.userData.pondRim = true
+    g.add(mesh)
+    if (rng() > 0.82) {
+      const top = new THREE.Mesh(boxGeo, mossy)
+      top.position.set(wx, 0.48 + VOXEL * 0.85, wz)
+      top.scale.setScalar(VOXEL * 0.55)
+      top.userData.voxel = true
+      g.add(top)
+    }
+  }
+  root.add(g)
+}
+
 export function minecraftGrassTufts(
   world: GardenWorld,
   palette: ScenePalette,
@@ -676,7 +908,7 @@ export function minecraftGrassTufts(
   )
   const rng = gardenRng(901)
   const span = 38
-  const count = 52
+  const count = 68
   const placed: Array<{ x: number; z: number }> = []
   let i = 0
   let attempts = 0
