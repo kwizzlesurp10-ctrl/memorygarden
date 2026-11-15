@@ -771,15 +771,24 @@ export function voxelLogStump(
   const g = new THREE.Group()
   g.position.set(x, 0, z)
   g.userData.gardenProp = 'stump'
+  const bodyScaleX = VOXEL * 1.04
+  const bodyScaleY = VOXEL * 0.82
+  const bodyScaleZ = VOXEL * 1.04
   placeBlock(g, 0, surfaceY, 0, barkMat)
   const core = g.children[g.children.length - 1]
   if (core instanceof THREE.Mesh) {
-    core.scale.set(VOXEL * 0.9, VOXEL * 0.95, VOXEL * 0.9)
+    core.scale.set(bodyScaleX, bodyScaleY, bodyScaleZ)
   }
-  placeBlock(g, 0, surfaceY + 1, 0, topRing)
+  const bodyCenterY = (surfaceY + 0.5) * VOXEL
+  const bodyTopY = bodyCenterY + bodyScaleY / 2
+  const capScaleX = VOXEL * 1.02
+  const capScaleY = VOXEL * 0.28
+  const capScaleZ = VOXEL * 1.02
+  placeBlock(g, 0, surfaceY, 0, topRing)
   const cap = g.children[g.children.length - 1]
   if (cap instanceof THREE.Mesh) {
-    cap.scale.set(VOXEL * 0.92, VOXEL * 0.36, VOXEL * 0.92)
+    cap.scale.set(capScaleX, capScaleY, capScaleZ)
+    cap.position.y = bodyTopY + capScaleY / 2
   }
   root.add(g)
 }

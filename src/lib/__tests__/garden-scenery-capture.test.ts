@@ -5,7 +5,7 @@ describe('garden scenery capture poses', () => {
   const footY = () => 0
 
   it('defines fence and stump close-up anchors', () => {
-    expect(GARDEN_SCENERY_CLOSEUP.fence.aimY).toBeGreaterThan(0.8)
+    expect(GARDEN_SCENERY_CLOSEUP.fence.aimY).toBeGreaterThan(0.4)
     expect(GARDEN_SCENERY_CLOSEUP.stump.aimY).toBeGreaterThan(0.9)
   })
 

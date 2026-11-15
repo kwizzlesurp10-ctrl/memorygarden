@@ -26,7 +26,7 @@ export const GARDEN_SCENERY_CLOSEUP: Record<GardenSceneryCloseupKind, GardenScen
   fence: {
     x: GARDEN_AMBIENT_FENCE.x,
     z: GARDEN_AMBIENT_FENCE.z,
-    aimY: 0.92,
+    aimY: 0.54,
     camDx: 4.2,
     camDz: 3.6,
   },
@@ -49,14 +49,14 @@ export function computeGardenSceneryCloseupPose(
   let camX = f.x + f.camDx * pullBack
   let camZ = f.z + f.camDz * pullBack
   if (kind === 'fence') {
-    const dist = 5.2 * pullBack
+    const dist = 2.15 * pullBack
     const fy = GARDEN_AMBIENT_FENCE.yaw
     const fx = GARDEN_AMBIENT_FENCE.x
     const fz = GARDEN_AMBIENT_FENCE.z
     const perpX = Math.cos(fy) * dist
     const perpZ = Math.sin(fy) * dist
-    const alongX = Math.sin(fy) * 1.4 * pullBack
-    const alongZ = -Math.cos(fy) * 1.4 * pullBack
+    const alongX = Math.sin(fy) * 0.55 * pullBack
+    const alongZ = -Math.cos(fy) * 0.55 * pullBack
     camX = fx + perpX + alongX
     camZ = fz + perpZ + alongZ
   }
