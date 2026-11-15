@@ -186,10 +186,10 @@ function skyTexture(palette: ScenePalette): THREE.CanvasTexture {
   return tex
 }
 
-/** Watercolor walk — deeper violet-to-amber gradient with a soft horizon bloom. */
+/** Watercolor walk — violet/rose zenith with amber horizon and soft bloom (not flat fill). */
 function watercolorSkyTexture(palette: ScenePalette): THREE.CanvasTexture {
   const c = document.createElement('canvas')
-  c.width = 16
+  c.width = 64
   c.height = 512
   const ctx = c.getContext('2d')
   if (!ctx) return new THREE.CanvasTexture(c)
@@ -197,24 +197,29 @@ function watercolorSkyTexture(palette: ScenePalette): THREE.CanvasTexture {
   const sky = palette.sky
   const star = palette.starAlpha ?? 0
   const twilight = star > 0.22
-  const top = sky[0] ?? '#070619'
-  const upper = sky[1] ?? '#2a2858'
-  const mid = twilight ? (sky[3] ?? '#a86898') : (sky[2] ?? '#684a88')
-  const lower = twilight ? (sky[4] ?? '#e8a070') : (sky[3] ?? '#b87888')
-  const horizon = twilight ? '#ffc898' : (sky[sky.length - 1] ?? '#e8a898')
-  g.addColorStop(0, top)
-  g.addColorStop(0.22, upper)
-  g.addColorStop(0.46, mid)
-  g.addColorStop(0.72, lower)
-  g.addColorStop(0.92, horizon)
-  g.addColorStop(1, twilight ? '#ffe0c0' : horizon)
+  const zenith = twilight ? (sky[0] ?? '#12082a') : (sky[0] ?? '#070619')
+  const upper = twilight ? (sky[1] ?? '#3a2868') : (sky[1] ?? '#2a2858')
+  const roseBand = twilight ? (sky[3] ?? '#b878a8') : (sky[2] ?? '#8868a8')
+  const amber = twilight ? (sky[4] ?? '#e8a878') : (sky[3] ?? '#c89888')
+  const horizon = twilight ? '#ffd0a8' : (sky[sky.length - 1] ?? '#e8b8a0')
+  g.addColorStop(0, zenith)
+  g.addColorStop(0.18, upper)
+  g.addColorStop(0.42, roseBand)
+  g.addColorStop(0.68, amber)
+  g.addColorStop(0.88, horizon)
+  g.addColorStop(1, twilight ? '#ffe8d0' : horizon)
   ctx.fillStyle = g
-  ctx.fillRect(0, 0, 16, 512)
+  ctx.fillRect(0, 0, 64, 512)
   if (twilight) {
-    for (let band = 0; band < 6; band++) {
-      ctx.fillStyle = `rgba(255, 220, 180, ${0.04 + band * 0.012})`
-      const y = 380 + band * 18
-      ctx.fillRect(0, y, 16, 12)
+    const bloom = ctx.createRadialGradient(32, 470, 8, 32, 478, 140)
+    bloom.addColorStop(0, 'rgba(255, 220, 175, 0.55)')
+    bloom.addColorStop(0.45, 'rgba(255, 180, 120, 0.22)')
+    bloom.addColorStop(1, 'rgba(255, 140, 90, 0)')
+    ctx.fillStyle = bloom
+    ctx.fillRect(0, 360, 64, 152)
+    for (let band = 0; band < 5; band++) {
+      ctx.fillStyle = `rgba(255, 210, 170, ${0.03 + band * 0.01})`
+      ctx.fillRect(0, 400 + band * 22, 64, 14)
     }
   }
   const tex = new THREE.CanvasTexture(c)
@@ -355,9 +360,12 @@ export function buildTerrain(
       : grassTexture(palette),
   )
   const groundTint = new THREE.Color(palette.hills[1] ?? '#2c163c')
-  if (twilight) {
-    groundTint.lerp(new THREE.Color(palette.hills[0] ?? palette.silSoft), 0.62 + starAlpha * 0.22)
-    groundTint.lerp(new THREE.Color(palette.hills[2] ?? palette.hills[1] ?? '#5a3d52'), 0.18)
+  if (!minecraftMode && twilight) {
+    groundTint.lerp(new THREE.Color(palette.hills[0] ?? palette.silSoft), 0.48 + starAlpha * 0.2)
+    groundTint.lerp(new THREE.Color(palette.hills[2] ?? palette.hills[1] ?? '#6a5a62'), 0.28)
+    groundTint.lerp(new THREE.Color(palette.sky[4] ?? palette.glow ?? '#c8a898'), 0.08 + starAlpha * 0.06)
+  } else if (minecraftMode && twilight) {
+    groundTint.lerp(new THREE.Color(palette.hills[0] ?? palette.silSoft), 0.55 + starAlpha * 0.28)
   }
   const minecraftDayGrassEmissive = new THREE.Color('#5fa037')
   const minecraftNightGrassEmissive = new THREE.Color(palette.hills[1] ?? '#2a4a38').lerp(
@@ -681,7 +689,7 @@ export function buildTerrain(
   const rockGeoBlob = track(new THREE.SphereGeometry(1, 10, 8))
   const rockPositions = [
     { x: world.pond.x + world.pond.radius * 0.95, z: world.pond.z - 0.5, s: 0.65, kind: 0, seed: 41 },
-    { x: world.pond.x - world.pond.radius * 0.85, z: world.pond.z + 1.2, s: 0.8, kind: 1, seed: 42 },
+    { x: -4.55, z: -4.15, s: 1.22, kind: 1, seed: 42 },
     { x: world.pond.x + 0.4, z: world.pond.z + world.pond.radius * 0.98, s: 0.55, kind: 2, seed: 43 },
     { x: -16, z: -14, s: 1.1, kind: 0, seed: 44 },
     { x: 18, z: -12, s: 0.9, kind: 1, seed: 45 },
@@ -738,14 +746,16 @@ export function buildTerrain(
     const pebbleMat = track(
       twilightSceneryMat(palette, palette.bank ?? '#7a6a62', twilight, starAlpha, 0.95),
     )
-    const pebbles = new THREE.InstancedMesh(pebbleGeo, pebbleMat, 36)
+    const pebbleCount = 48
+    const pebbles = new THREE.InstancedMesh(pebbleGeo, pebbleMat, pebbleCount)
     const pebRng = gardenRng(412)
     const dummy = new THREE.Object3D()
     let placed = 0
-    while (placed < 36) {
-      const x = (pebRng() * 2 - 1) * 28
-      const z = (pebRng() * 2 - 1) * 28
-      if (Math.hypot(x - world.pond.x, z - world.pond.z) < world.pond.radius + 0.8) continue
+    while (placed < pebbleCount) {
+      const cluster = placed < 22
+      const x = cluster ? -4.55 + (pebRng() * 2 - 1) * 5.5 : (pebRng() * 2 - 1) * 28
+      const z = cluster ? -4.15 + (pebRng() * 2 - 1) * 5.5 : (pebRng() * 2 - 1) * 28
+      if (Math.hypot(x - world.pond.x, z - world.pond.z) < world.pond.radius + 0.35) continue
       const scale = 0.08 + pebRng() * 0.14
       dummy.position.set(x, scale * 0.35, z)
       dummy.rotation.set(pebRng(), pebRng(), pebRng())
@@ -1605,10 +1615,19 @@ export function buildTerrain(
       lanternGlassMat.emissive.set(next.glow)
       lanternGlassMat.emissiveIntensity = nextNight ? 1.4 : 0.4
       celestialMat.color.set(nextNight ? '#e2ecf8' : (next.sun?.disk ?? '#ffe7a0'))
-      cloudMat.color.set(nextNight ? '#3a2d52' : '#f8f4f9')
-      cloudMat.opacity = nextNight ? 0.45 : 0.75
+      if (!minecraftMode && twilight) {
+        cloudMat.color.set(next.sky[4] ?? '#ffc8a8')
+        cloudMat.emissive?.set(next.sky[3] ?? '#c88898')
+        cloudMat.emissiveIntensity = 0.28 + star * 0.18
+        cloudMat.opacity = 0.58
+      } else {
+        cloudMat.color.set(nextNight ? '#3a2d52' : '#f8f4f9')
+        cloudMat.emissive?.set('#000000')
+        cloudMat.emissiveIntensity = 0
+        cloudMat.opacity = nextNight ? 0.45 : 0.75
+      }
       fogColor.set(next.sky[2] ?? next.bank)
-      const newSky = skyTexture(next)
+      const newSky = track(minecraftMode ? skyTexture(next) : watercolorSkyTexture(next))
       skyMat.map?.dispose()
       skyMat.map = newSky
       skyMat.needsUpdate = true

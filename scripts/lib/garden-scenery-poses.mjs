@@ -4,6 +4,7 @@ const GARDEN_AMBIENT_FENCE_YAW = -0.72
 const GARDEN_SCENERY_CLOSEUP = {
   fence: { x: 19, z: 24, aimY: 0.54, camDx: 4.2, camDz: 3.6 },
   stump: { x: -17, z: 27, aimY: 1.05, camDx: 2.4, camDz: 3.1 },
+  rocks: { x: -4.55, z: -4.15, aimY: 0.52, camDx: 2.35, camDz: 2.75 },
 }
 
 export function walkCaptureGroundY(x, z) {
@@ -39,6 +40,7 @@ export function computeGardenSceneryCloseupPose(kind, footY = walkCaptureGroundY
   let pitch = -Math.atan2(dy, horiz)
   if (kind === 'stump') pitch = Math.min(pitch, -0.2)
   else if (kind === 'fence') pitch = Math.min(pitch, -0.42)
+  else if (kind === 'rocks') pitch = Math.min(pitch, -0.32)
   else if (pitch > -0.08) pitch = -0.08
   return { x: camX, z: camZ, yaw, pitch, eyeY }
 }

@@ -94,25 +94,14 @@ export function mountStagePlantPreview(
   )
   const group = createPlantGroup(plant, recipe)
   const scene = new THREE.Scene()
-  const star = palette.starAlpha ?? 0
-  const duskGrid = star > 0.18
-  const backdrop = new THREE.Color(palette.hills[1] ?? '#2c163c')
-  if (duskGrid) {
-    backdrop.lerp(new THREE.Color(palette.sky[2] ?? palette.hills[0] ?? '#4a3858'), 0.52)
-    backdrop.lerp(new THREE.Color(palette.hills[2] ?? '#3d5a48'), 0.18)
-  }
-  scene.background = backdrop
+  scene.background = new THREE.Color(palette.hills[1] ?? '#2c163c')
 
-  const hemi = new THREE.HemisphereLight(palette.sky[1] ?? '#c4d4ff', palette.bank ?? '#2a1a18', duskGrid ? 1.62 : 1.05)
-  const key = new THREE.DirectionalLight(palette.glow ?? '#ffe8c8', duskGrid ? 1.55 : 0.95)
+  const hemi = new THREE.HemisphereLight(palette.sky[1] ?? '#c4d4ff', palette.bank ?? '#2a1a18', 1.05)
+  const key = new THREE.DirectionalLight(palette.glow ?? '#ffe8c8', 0.95)
   key.position.set(2.4, 4.8, 3.2)
-  const fill = new THREE.DirectionalLight(palette.hills[0] ?? '#6b8f5a', duskGrid ? 0.82 : 0.42)
+  const fill = new THREE.DirectionalLight(palette.hills[0] ?? '#6b8f5a', 0.42)
   fill.position.set(-3, 2, -2)
-  const rim = new THREE.DirectionalLight(palette.silSoft ?? palette.glow ?? '#c8e8b0', duskGrid ? 0.62 : 0)
-  rim.position.set(-1.2, 3.5, 4.2)
-  const ambientLift = new THREE.AmbientLight(palette.glow ?? '#ffe8c8', duskGrid ? 0.28 : 0)
   scene.add(hemi, key, fill, group)
-  if (duskGrid) scene.add(rim, ambientLift)
 
   const width = Math.max(120, host.clientWidth || 150)
   const height = Math.max(140, host.clientHeight || 180)
@@ -121,7 +110,7 @@ export function mountStagePlantPreview(
   renderer.setSize(width, height, false)
   renderer.outputColorSpace = THREE.SRGBColorSpace
   renderer.toneMapping = THREE.NoToneMapping
-  renderer.toneMappingExposure = star > 0.2 ? 2.05 : 1.12
+  renderer.toneMappingExposure = (palette.starAlpha ?? 0) > 0.2 ? 1.42 : 1.12
   const canvas = renderer.domElement
   canvas.style.display = 'block'
   canvas.style.width = '100%'

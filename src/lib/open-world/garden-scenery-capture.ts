@@ -12,7 +12,7 @@ export const GARDEN_AMBIENT_STUMP = {
   z: 27,
 } as const
 
-export type GardenSceneryCloseupKind = 'fence' | 'stump'
+export type GardenSceneryCloseupKind = 'fence' | 'stump' | 'rocks'
 
 export interface GardenSceneryFocus {
   x: number
@@ -37,6 +37,14 @@ export const GARDEN_SCENERY_CLOSEUP: Record<GardenSceneryCloseupKind, GardenScen
     aimY: 1.05,
     camDx: 2.4,
     camDz: 3.1,
+  },
+  /** Pond-edge hero boulder (matches terrain `rockPositions` near x≈-4.6, z≈-4.2). */
+  rocks: {
+    x: -4.55,
+    z: -4.15,
+    aimY: 0.52,
+    camDx: 2.35,
+    camDz: 2.75,
   },
 }
 
@@ -75,6 +83,8 @@ export function computeGardenSceneryCloseupPose(
     pitch = Math.min(pitch, -0.2)
   } else if (kind === 'fence') {
     pitch = Math.min(pitch, -0.42)
+  } else if (kind === 'rocks') {
+    pitch = Math.min(pitch, -0.32)
   } else if (pitch > -0.08) {
     pitch = -0.08
   }

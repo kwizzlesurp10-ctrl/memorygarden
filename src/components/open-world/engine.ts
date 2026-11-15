@@ -289,19 +289,16 @@ export class OpenWorldEngine {
       }
     } else if (watercolorDusk) {
       const tw = Math.min(1, (star - 0.18) / 0.5)
-      const horizonAmber = new THREE.Color('#ffb86b')
-      const skyUpper = new THREE.Color(palette.sky[0] ?? '#1a2840').lerp(
-        new THREE.Color(palette.sky[1] ?? '#4a5898'),
-        0.55,
-      )
-      const fogColor = new THREE.Color(palette.sky[3] ?? palette.sky[2] ?? '#9a78c8')
-      fogColor.lerp(horizonAmber, 0.48 + tw * 0.42)
-      fogColor.lerp(new THREE.Color(palette.hills[0] ?? palette.silSoft ?? '#5a6e52'), 0.26)
+      const skyUpper = new THREE.Color(palette.sky[0] ?? '#1a1838')
+      skyUpper.lerp(new THREE.Color(palette.sky[1] ?? '#4a3878'), 0.62)
+      const fogColor = new THREE.Color(palette.sky[2] ?? '#684a98')
+      fogColor.lerp(new THREE.Color(palette.sky[3] ?? '#a86898'), 0.35 + tw * 0.18)
+      fogColor.lerp(new THREE.Color('#ffb86b'), 0.12 + tw * 0.16)
       this.renderer?.setClearColor(skyUpper, 1)
       if (this.scene.fog instanceof THREE.Fog) {
         this.scene.fog.color.copy(fogColor)
-        this.scene.fog.near = 12
-        this.scene.fog.far = 64
+        this.scene.fog.near = 20
+        this.scene.fog.far = 92
       }
     } else {
       this.renderer?.setClearColor(palette.sky[2] ?? '#20123a', 1)
