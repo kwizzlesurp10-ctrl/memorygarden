@@ -921,3 +921,29 @@ export function applyWatercolorWalkTint(group: THREE.Group): void {
     }
   })
 }
+
+/** Walk close-up mesh boost: smooth any mapped quads/sprites (no crunchy nearest scaling). */
+export function softenWatercolorWalkCloseupTextures(group: THREE.Group): void {
+  group.traverse((obj: THREE.Object3D) => {
+    const tune = (tex: THREE.Texture) => {
+      tex.generateMipmaps = true
+      tex.minFilter = THREE.LinearMipmapLinearFilter
+      tex.magFilter = THREE.LinearFilter
+      tex.needsUpdate = true
+    }
+    if (obj instanceof THREE.Sprite) {
+      const sm = obj.material as THREE.SpriteMaterial
+      if (sm.map) tune(sm.map)
+      return
+    }
+    if (!(obj instanceof THREE.Mesh)) return
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
+    for (const m of mats) {
+      if (m instanceof THREE.MeshStandardMaterial) {
+        if (m.map) tune(m.map)
+        if (m.emissiveMap) tune(m.emissiveMap)
+      }
+      if (m instanceof THREE.MeshBasicMaterial && m.map) tune(m.map)
+    }
+  })
+}

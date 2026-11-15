@@ -22,6 +22,7 @@ const outDir = process.env.ARTIFACT_DIR || '/opt/cursor/artifacts'
 const viewportMode = process.env.VIEWPORT || 'desktop'
 const mode = process.env.MODE || 'full'
 const captureOnly = process.env.CAPTURE_ONLY || ''
+const capturePhase = (process.env.CAPTURE_PHASE || 'both').toLowerCase()
 const covThreshold = 0.15
 
 mkdirSync(outDir, { recursive: true })
@@ -181,6 +182,8 @@ if (captureOnly === 'elder') {
   shots = shots.filter((s) => s.file === 'walk-mushroom-closeup')
 } else if (captureOnly === 'detail') {
   shots = shots.filter((s) => s.file === 'walk-mushroom-closeup' || s.file === 'walk-tree-elder-closeup')
+} else if (captureOnly === 'sprout') {
+  shots = shots.filter((s) => s.file === 'walk-sprout-closeup')
 }
 
 async function enterWalk(page) {
@@ -430,6 +433,9 @@ async function poseForShot(page, shot) {
     if (!window.__mgWalkCapture?.hasPlantGroup?.(s.plantId)) {
       throw new Error(`Missing plant group ${s.plantId}`)
     }
+    if (s.plantId === 'sprout-walk' && window.__mgWalkCapture?.sproutWalkCloseupPose) {
+      return window.__mgWalkCapture.sproutWalkCloseupPose(s.plantId)
+    }
     return window.__mgWalkCapture?.deterministicPlantPose?.(s.plantId) ?? null
   }, shot)
 }
@@ -446,6 +452,7 @@ async function applyPose(page, pose) {
 async function deriveAllPoses(page) {
   const poses = {}
   for (const shot of shots) {
+    if (shot.file === 'walk-sprout-closeup') continue
     const pose = await poseForShot(page, shot)
     if (!pose) throw new Error(`No deterministic pose for ${shot.file}`)
     poses[shot.file] = pose
@@ -458,10 +465,21 @@ async function deriveAllPoses(page) {
 }
 
 async function captureShot(page, phase, artStyle, shot, pose) {
+  if (shot.file === 'walk-sprout-closeup' && shot.plantId) {
+    await page.evaluate((plantId) => {
+      window.__mgWalkCapture?.setSoloPlantFocus?.(plantId ?? null)
+    }, shot.plantId)
+    await page.evaluate(async () => {
+      await window.__mgWalkCapture?.waitCaptureReady?.()
+    })
+    pose = await poseForShot(page, shot)
+  }
   await applyPose(page, pose)
-  await page.evaluate((plantId) => {
-    window.__mgWalkCapture?.setSoloPlantFocus?.(plantId ?? null)
-  }, shot.plantId ?? null)
+  if (shot.file !== 'walk-sprout-closeup') {
+    await page.evaluate((plantId) => {
+      window.__mgWalkCapture?.setSoloPlantFocus?.(plantId ?? null)
+    }, shot.plantId ?? null)
+  }
   await page.evaluate(async () => {
     await window.__mgWalkCapture?.waitCaptureReady?.()
   })
@@ -469,12 +487,43 @@ async function captureShot(page, phase, artStyle, shot, pose) {
   const name = `minecraft-walk-${phase}-${shaTag}-${artStyle}-${shot.file}-${viewportMode}.png`
   const legacyName = `minecraft-walk-${phase}-${artStyle}-${shot.file}-${viewportMode}.png`
   const file = resolve(outDir, name)
+  if (shot.file === 'walk-sprout-closeup' && shot.plantId) {
+    const sproutOk = await page.evaluate(
+      ({ id, p }) => {
+        window.__mgWalkCapture?.setSoloPlantFocus?.(id)
+        window.__mgWalkCapture?.setPose?.(p)
+        const proj = window.__mgWalkCapture?.plantProjectedAabbScreen?.(id)
+        const span = proj && Number.isFinite(proj.bottom) ? proj.bottom - proj.top : 0
+        return { span, proj }
+      },
+      { id: shot.plantId, p: pose },
+    )
+    console.log('sprout-aabb-pre-shot', phase, artStyle, JSON.stringify(sproutOk))
+    if (phase === 'after' && artStyle === 'watercolor' && sproutOk.span < 0.1) {
+      throw new Error(`Sprout watercolor AABB span ${sproutOk.span.toFixed(3)} < 0.10 before screenshot`)
+    }
+    if (phase === 'after' && artStyle === 'watercolor' && sproutOk.span > 0.28) {
+      throw new Error(`Sprout watercolor AABB span ${sproutOk.span.toFixed(3)} > 0.28 (expected 10–25% frame height)`)
+    }
+    await page.evaluate(async () => {
+      await window.__mgWalkCapture?.waitCaptureReady?.()
+    })
+  }
   await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
   if (shot.file === 'walk-tree-elder-closeup' && shot.plantId) {
     await assertElderCloseupFrame(page, shot.plantId, file, phase, artStyle, pose)
   }
   if (shot.file === 'walk-mushroom-closeup' && shot.plantId && artStyle === 'pixel-art') {
     await assertMushroomCloseupFrame(page, shot.plantId, file, phase, artStyle, pose)
+  }
+  if (shot.file === 'walk-sprout-closeup' && shot.plantId && artStyle === 'watercolor' && phase === 'after') {
+    const cov = await page.evaluate(
+      ({ id, p }) => window.__mgWalkCapture?.plantScreenCoverage?.(id, p) ?? 0,
+      { id: shot.plantId, p: pose },
+    )
+    if (cov < 0.03) {
+      throw new Error(`Watercolor sprout coverage ${cov.toFixed(3)} < 0.03 after close-up mesh boost`)
+    }
   }
   if (shot.file === 'walk-tree-young-closeup' && shot.plantId && artStyle === 'watercolor') {
     const proj = await page.evaluate(
@@ -558,24 +607,26 @@ try {
   if (captureOnly !== 'elder' && captureOnly !== 'mushroom' && captureOnly !== 'detail') {
     const missing = shots.filter((s) => !poses[s.file] && !posePinnedExternally.has(s.file))
     if (missing.length) {
-      await bootstrapWalk(page, afterUrl, 'pixel-art')
+      const poseSeedUrl =
+        capturePhase === 'before' ? beforeUrl : capturePhase === 'after' ? afterUrl : afterUrl
+      await bootstrapWalk(page, poseSeedUrl, 'pixel-art')
       const v = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? 0)
-      if (v < 40) throw new Error(`Expected voxels on AFTER build, got ${v}`)
+      if (v < 40) throw new Error(`Expected voxels for pose seed at ${poseSeedUrl}, got ${v}`)
       const derived = await deriveAllPoses(page)
       poses = { ...poses, ...derived }
     }
   }
 
-  const runs =
-    mode === 'overview'
-      ? [
-          { phase: 'after', url: afterUrl, styles: ['pixel-art', 'watercolor'] },
-          { phase: 'before', url: beforeUrl, styles: ['pixel-art', 'watercolor'] },
-        ]
-      : [
-          { phase: 'after', url: afterUrl, styles: ['pixel-art', 'watercolor'] },
-          { phase: 'before', url: beforeUrl, styles: ['pixel-art', 'watercolor'] },
-        ]
+  const runDefs = [
+    { phase: 'after', url: afterUrl, styles: ['pixel-art', 'watercolor'] },
+    { phase: 'before', url: beforeUrl, styles: ['pixel-art', 'watercolor'] },
+  ]
+  const runs = runDefs.filter((r) => {
+    if (capturePhase === 'both') return true
+    if (capturePhase === 'after') return r.phase === 'after'
+    if (capturePhase === 'before') return r.phase === 'before'
+    throw new Error(`Unknown CAPTURE_PHASE=${capturePhase}`)
+  })
 
   const styleListForRun =
     captureOnly === 'mushroom'
@@ -648,7 +699,8 @@ try {
         await page.evaluate(() => window.__mgWalkCapture?.setSoloPlantFocus?.(null))
       }
       for (const shot of shots) {
-        let pose = poses[shot.file]
+        let pose =
+          shot.file === 'walk-sprout-closeup' ? await poseForShot(page, shot) : poses[shot.file]
         if (shot.file === 'walk-tree-elder-closeup') {
           pose = elderPoseForStyle
         }

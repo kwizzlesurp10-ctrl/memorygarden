@@ -158,7 +158,11 @@ try {
     await openGarden(page)
     await openPlantCloseup(page, scenario.memory.id, scenario.expectStage)
     const path = resolve(outDir, scenario.file)
-    await page.screenshot({ path })
+    if (scenario.file.includes('elder-tree')) {
+      await page.getByTestId('memory-plant-closeup-art-panel').screenshot({ path })
+    } else {
+      await page.screenshot({ path })
+    }
     shots.push(path)
     await context.close()
   }

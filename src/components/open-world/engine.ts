@@ -12,6 +12,7 @@ import type { GardenWorld, PlayerState, WorldPlant } from '@/lib/open-world/type
 import {
   applyVoxelPlantNightTint,
   applyWatercolorWalkTint,
+  softenWatercolorWalkCloseupTextures,
   setWalkSurfaceHeightSampler,
   snapPlantGroupToTerrain,
   walkCaptureGroundY,
@@ -406,6 +407,18 @@ export class OpenWorldEngine {
     this.renderOnce()
   }
 
+  /** Enlarges tiny seed/sprout meshes when a walk close-up isolates one plant (not camera-only framing). */
+  private walkEarlyCloseupDisplayScale(plant: WorldPlant, style: ArtStyle): number {
+    if (this.soloCapturePlantId !== plant.id) return 1
+    const early =
+      plant.stage === 'seed' || plant.stage === 'sprout' || plant.stage === 'seedling' || plant.id === 'sprout-walk'
+    if (!early) return 1
+    if (plant.id === 'sprout-walk' && style === 'watercolor' && isWalkCaptureSession()) {
+      return 5
+    }
+    return style === 'watercolor' ? 11 : 2.75
+  }
+
   plantBoxSize(plantId: string): { x: number; y: number; z: number } | null {
     const box = this.plantWorldBox(plantId)
     if (!box) return null
@@ -628,6 +641,89 @@ export class OpenWorldEngine {
     const pitch = Math.min(pose.pitch, -0.1)
     this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
     return { ...pose, pitch, x: camX, z: camZ, eyeY }
+  }
+
+  sproutWalkCloseupPose(plantId: string): WalkCapturePose | null {
+    if (this.soloCapturePlantId !== plantId) {
+      this.soloCapturePlantId = plantId
+      this.rebuildPlants()
+    }
+    this.resetCaptureFov()
+    const box = this.plantWorldBox(plantId)
+    if (!box) return null
+    const ground = box.min.y
+    const H = box.max.y - ground
+    const cx = (box.min.x + box.max.x) / 2
+    const cz = (box.min.z + box.max.z) / 2
+    const aim = new THREE.Vector3(cx, ground + H * 0.52, cz)
+    const watercolorSprout =
+      this.plantArtStyle === 'watercolor' && isWalkCaptureSession()
+    const targetSpan = watercolorSprout ? 0.17 : 0.34
+    const margin = watercolorSprout ? 0.1 : 0.085
+    let bestPose: WalkCapturePose | null = null
+    let bestScore = Infinity
+    const passCount = watercolorSprout ? 72 : 56
+    for (let pass = 0; pass < passCount; pass++) {
+      const dist = watercolorSprout
+        ? 1.75 + (pass / (passCount - 1)) * 7.25
+        : 0.85 + (pass / (passCount - 1)) * 2.85
+      const yaw = -0.55 + (pass % 9) * 0.11
+      const camX = cx + Math.sin(yaw) * dist
+      const camZ = cz + Math.cos(yaw) * dist
+      const eyeY = this.eyeHeightAt(camX, camZ, Math.min(H * 0.38, 2.35))
+      const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+      this.setPlayerPose(camX, camZ, pose.yaw, pose.pitch, eyeY)
+      this.renderOnce()
+      const proj = this.plantProjectedAabbScreenFromBox(box)
+      if (!proj || !Number.isFinite(proj.top)) continue
+      const spanPx = proj.bottom - proj.top
+      const centerPen =
+        Math.abs((proj.left + proj.right) / 2 - 0.5) + Math.abs((proj.top + proj.bottom) / 2 - 0.5)
+      const inFrame =
+        proj.left >= margin &&
+        proj.right <= 1 - margin &&
+        proj.top >= margin &&
+        proj.bottom <= 1 - margin
+      const score =
+        Math.abs(spanPx - targetSpan) +
+        centerPen * 0.35 +
+        (inFrame ? 0 : 2.5) +
+        (watercolorSprout && spanPx > 0.25 ? (spanPx - 0.25) * 6 : 0)
+      const earlyExit =
+        watercolorSprout
+          ? spanPx >= targetSpan - 0.05 && spanPx <= targetSpan + 0.08 && centerPen < 0.28
+          : spanPx >= targetSpan - 0.08 && spanPx <= targetSpan + 0.14 && centerPen < 0.24
+      if (earlyExit) {
+        return { ...pose, x: camX, z: camZ, eyeY }
+      }
+      if (score < bestScore) {
+        bestScore = score
+        bestPose = { ...pose, x: camX, z: camZ, eyeY }
+      }
+    }
+    if (bestPose) {
+      this.setPlayerPose(bestPose.x, bestPose.z, bestPose.yaw, bestPose.pitch, bestPose.eyeY)
+      this.renderOnce()
+      let proj = this.plantProjectedAabbScreenFromBox(box)
+      let span = proj && Number.isFinite(proj.bottom) ? proj.bottom - proj.top : 0
+      if (watercolorSprout && span > targetSpan + 0.06) {
+        const pull = span / targetSpan
+        const dx = bestPose.x - cx
+        const dz = bestPose.z - cz
+        const camX = cx + dx * pull
+        const camZ = cz + dz * pull
+        const eyeY = this.eyeHeightAt(camX, camZ, Math.min(H * 0.38, 2.35))
+        const pulled = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+        bestPose = { ...pulled, x: camX, z: camZ, eyeY }
+        this.setPlayerPose(camX, camZ, pulled.yaw, pulled.pitch, eyeY)
+        this.renderOnce()
+        proj = this.plantProjectedAabbScreenFromBox(box)
+        span = proj && Number.isFinite(proj.bottom) ? proj.bottom - proj.top : 0
+      }
+      if (watercolorSprout && (span < 0.1 || span > 0.26)) return null
+      if (!watercolorSprout && span < 0.18) return null
+    }
+    return bestPose
   }
 
   private elderCapturePoseAtSlack(
@@ -1039,6 +1135,32 @@ export class OpenWorldEngine {
   }
 
   deterministicPlantCapturePose(plantId: string): WalkCapturePose | null {
+    const wpEarly = this.world.plants.find((p) => p.id === plantId)
+    const wantsEarlyCloseupBoost =
+      isWalkCaptureSession() &&
+      wpEarly &&
+      (wpEarly.id === 'sprout-walk' ||
+        wpEarly.stage === 'seed' ||
+        wpEarly.stage === 'sprout' ||
+        wpEarly.stage === 'seedling')
+    const prevSolo = this.soloCapturePlantId
+    let boostedSolo = false
+    if (wantsEarlyCloseupBoost && prevSolo !== plantId) {
+      this.soloCapturePlantId = plantId
+      this.rebuildPlants()
+      boostedSolo = true
+    }
+    try {
+      return this.deterministicPlantCapturePoseWithBox(plantId)
+    } finally {
+      if (boostedSolo) {
+        this.soloCapturePlantId = prevSolo
+        this.rebuildPlants()
+      }
+    }
+  }
+
+  private deterministicPlantCapturePoseWithBox(plantId: string): WalkCapturePose | null {
     const box = this.plantWorldBox(plantId)
     const group = this.findPlantGroup(plantId)
     if (!box || !group) return null
@@ -1068,7 +1190,7 @@ export class OpenWorldEngine {
       }
       if (wp) {
         const ground = box.min.y
-        if (plantId === 'sprout-walk') {
+        if (plantId === 'sprout-walk' && this.soloCapturePlantId !== plantId) {
           const aim = new THREE.Vector3(wp.x, ground + size.y * 0.5, wp.z)
           const yaw = Math.PI / 4
           const targetFrac = 0.25
@@ -1096,17 +1218,21 @@ export class OpenWorldEngine {
         if (wp.variety === 'mushroom') {
           return this.mushroomDeterministicCapturePose(plantId)
         }
-        if (wp.variety === 'flower') {
+        if (wp.variety === 'flower' && plantId !== 'sprout-walk') {
           return this.flowerDeterministicCapturePose(plantId)
         }
-        const aimY = ground + 0.42
-        const aim = new THREE.Vector3(wp.x, aimY, wp.z)
-        const yaw = -0.45
-        const dist = 2.05
-        const camX = wp.x + Math.sin(yaw) * dist
-        const camZ = wp.z + Math.cos(yaw) * dist
-        const eyeY = this.eyeHeightAt(camX, camZ, 1.05)
-        return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+        if (plantId === 'sprout-walk' && this.soloCapturePlantId === plantId) {
+          // Boosted mesh close-up: fall through to bounding-sphere camera fit below.
+        } else {
+          const aimY = ground + 0.42
+          const aim = new THREE.Vector3(wp.x, aimY, wp.z)
+          const yaw = -0.45
+          const dist = 2.05
+          const camX = wp.x + Math.sin(yaw) * dist
+          const camZ = wp.z + Math.cos(yaw) * dist
+          const eyeY = this.eyeHeightAt(camX, camZ, 1.05)
+          return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+        }
       }
     }
 
@@ -1421,8 +1547,19 @@ export class OpenWorldEngine {
         plant.isHybrid,
       )
       const group = createPlantGroup(plant, recipe, style)
+      const closeupBoost = this.walkEarlyCloseupDisplayScale(plant, style)
+      if (closeupBoost > 1) {
+        group.userData.walkVoxelScale = closeupBoost
+        group.scale.setScalar(closeupBoost)
+        if (style === 'watercolor') {
+          softenWatercolorWalkCloseupTextures(group)
+        }
+      }
       if (style === 'watercolor') {
         applyWatercolorWalkTint(group)
+        if (isWalkCaptureSession()) {
+          snapPlantGroupToTerrain(group, walkCaptureGroundY(plant.x, plant.z))
+        }
       }
       if (style === 'pixel-art') {
         snapPlantGroupToTerrain(group, walkCaptureGroundY(plant.x, plant.z))

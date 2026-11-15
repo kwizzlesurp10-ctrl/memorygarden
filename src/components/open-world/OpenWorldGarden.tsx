@@ -279,6 +279,7 @@ export function OpenWorldGarden({
         setPose: (pose) => {
           engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
           engine.applyCaptureFov(pose.captureFov)
+          engine.renderOnce()
         },
         setPalette: (palette) => engine.setPalette(palette),
         setTodHour: (hour) => engine.setPalette(todPalette(hour, season)),
@@ -323,6 +324,7 @@ export function OpenWorldGarden({
         setCaptureFov: (fov) => engine.applyCaptureFov(fov),
         elderCloseupPose: (plantId) => engine.elderDeterministicCapturePose(plantId),
         mushroomCloseupPose: (plantId) => engine.mushroomDeterministicCapturePose(plantId),
+        sproutWalkCloseupPose: (plantId) => engine.sproutWalkCloseupPose(plantId),
         youngCloseupPose: (plantId) => engine.youngDeterministicCapturePose(plantId),
         flowerCloseupPose: (plantId) => engine.flowerDeterministicCapturePose(plantId),
         plantProjectedAabbScreen: (plantId) => engine.plantProjectedAabbScreen(plantId),
