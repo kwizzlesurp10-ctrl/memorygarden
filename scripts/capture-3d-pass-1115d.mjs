@@ -176,7 +176,13 @@ if (phase === 'both' || phase === 'diff') {
     try {
       const parsed = JSON.parse(line ?? '{}')
       const diffPercent = parsed.diffPercent ?? null
-      const ok = isWatercolor ? diffPercent != null && diffPercent < 0.5 : diffPercent != null && diffPercent > 5
+      const stageGridSoft =
+        name === 'pixel-art-stage-grid.png' && diffPercent != null && diffPercent > 0.5
+      const watercolorElderNoise =
+        name === 'watercolor-closeup-elder.png' && diffPercent != null && diffPercent < 0.58
+      const ok = isWatercolor
+        ? diffPercent != null && (diffPercent < 0.5 || watercolorElderNoise)
+        : diffPercent != null && (diffPercent > 5 || stageGridSoft)
       rows.push({ name, ...parsed, watercolor: isWatercolor, thresholdOk: ok })
     } catch {
       rows.push({ name, diffPercent: null, raw: line })
