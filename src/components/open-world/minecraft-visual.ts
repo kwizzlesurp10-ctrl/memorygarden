@@ -650,6 +650,16 @@ export function minecraftPathTexture(palette: ScenePalette, repeatUnits: number)
   return tex
 }
 
+/** Light pond shore gravel — never use dusk `palette.bank` (too dark for Lambert multiply). */
+export function minecraftPondShoreTexture(palette: ScenePalette): THREE.CanvasTexture {
+  const shallow = palette.waterTint[0] ?? '#5ec8e8'
+  const base = lerpHex('#c4a888', shallow, 0.06)
+  const accent = lerpHex('#a89070', shallow, 0.04)
+  const tex = minecraftBlockTexture(base, accent, 23, 'gravel')
+  tex.repeat.set(8, 8)
+  return configurePixelTexture(tex)
+}
+
 export function minecraftGrassTufts(
   world: GardenWorld,
   palette: ScenePalette,
