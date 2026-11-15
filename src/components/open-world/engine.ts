@@ -279,12 +279,14 @@ export class OpenWorldEngine {
       const tw = Math.min(1, (star - 0.18) / 0.5)
       const horizonAmber = new THREE.Color('#ffb86b')
       const skyViolet = new THREE.Color(palette.sky[3] ?? palette.sky[2] ?? '#9a78c8')
-      const duskSky = skyViolet.clone().lerp(horizonAmber, 0.38 + tw * 0.32)
-      this.renderer?.setClearColor(duskSky, 1)
+      const skyUpper = new THREE.Color(palette.sky[1] ?? palette.sky[0] ?? '#4a6898')
+      const fogWash = skyViolet.clone().lerp(horizonAmber, 0.32 + tw * 0.28)
+      fogWash.lerp(new THREE.Color(palette.hills[1] ?? '#4a6e52'), 0.22)
+      this.renderer?.setClearColor(skyUpper, 1)
       if (this.scene.fog instanceof THREE.Fog) {
-        this.scene.fog.color.copy(duskSky)
-        this.scene.fog.near = 22
-        this.scene.fog.far = 76
+        this.scene.fog.color.copy(fogWash)
+        this.scene.fog.near = 20
+        this.scene.fog.far = 82
       }
     } else {
       this.renderer?.setClearColor(palette.sky[2] ?? '#20123a', 1)
@@ -1741,12 +1743,14 @@ export class OpenWorldEngine {
         this.rim.color.set('#ffba6a')
         this.rim.position.set(-14, 14, 22)
         this.rim.intensity = 0.48 + tw * 0.42
-        const duskSky = skyViolet.clone().lerp(horizonAmber, 0.38 + tw * 0.32)
-        this.renderer?.setClearColor(duskSky, 1)
+        const skyUpper = new THREE.Color(p.sky[1] ?? p.sky[0] ?? '#4a6898')
+        const fogWash = skyViolet.clone().lerp(horizonAmber, 0.32 + tw * 0.28)
+        fogWash.lerp(new THREE.Color(p.hills[1] ?? '#4a6e52'), 0.22)
+        this.renderer?.setClearColor(skyUpper, 1)
         if (this.scene.fog instanceof THREE.Fog) {
-          this.scene.fog.color.copy(duskSky)
-          this.scene.fog.near = 22
-          this.scene.fog.far = 76
+          this.scene.fog.color.copy(fogWash)
+          this.scene.fog.near = 20
+          this.scene.fog.far = 82
         }
       } else {
         const skyWash = new THREE.Color(p.sky[3] ?? p.sky[2] ?? '#88aacc')

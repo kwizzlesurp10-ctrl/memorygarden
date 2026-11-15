@@ -169,15 +169,20 @@ function skyTexture(palette: ScenePalette): THREE.CanvasTexture {
   const sky = palette.sky
   const star = palette.starAlpha ?? 0
   const twilight = star > 0.22
+  const pixelDusk = star > 0.18 && star < 0.72
   const top = sky[0] ?? '#070619'
   const upper = sky[1] ?? sky[0] ?? '#1d1748'
   const mid = twilight ? (sky[3] ?? sky[2] ?? '#8a4a7d') : (sky[2] ?? '#472a68')
-  const lower = twilight ? (sky[4] ?? sky[3] ?? '#d97a4e') : (sky[3] ?? sky[2] ?? '#8a4a7d')
-  const horizon = sky[sky.length - 1] ?? '#d98a86'
+  const lower = pixelDusk
+    ? (sky[4] ?? '#e8a070')
+    : twilight
+      ? (sky[4] ?? sky[3] ?? '#d97a4e')
+      : (sky[3] ?? sky[2] ?? '#8a4a7d')
+  const horizon = pixelDusk ? '#ffb86b' : (sky[sky.length - 1] ?? '#d98a86')
   g.addColorStop(0, top)
   g.addColorStop(0.32, upper)
-  g.addColorStop(0.58, mid)
-  g.addColorStop(0.82, lower)
+  g.addColorStop(pixelDusk ? 0.48 : 0.58, mid)
+  g.addColorStop(pixelDusk ? 0.78 : 0.82, lower)
   g.addColorStop(1, horizon)
   ctx.fillStyle = g
   ctx.fillRect(0, 0, 8, 256)
@@ -1105,8 +1110,8 @@ export function buildTerrain(
     new THREE.MeshStandardMaterial({
       color: hillColor,
       roughness: 0.94,
-      emissive: twilight ? (palette.hills[0] ?? palette.silSoft) : '#000000',
-      emissiveIntensity: twilight ? 0.14 + starAlpha * 0.08 : 0,
+      emissive: twilight ? (palette.hills[0] ?? palette.silSoft) : (palette.silSoft ?? '#3a5a48'),
+      emissiveIntensity: twilight ? 0.16 + starAlpha * 0.1 : 0.05,
     }),
   )
   const hillGeo = track(new THREE.SphereGeometry(1, 10, 8))
