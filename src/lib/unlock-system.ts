@@ -17,7 +17,7 @@ import { DEBUG_UNLOCK_ALL } from '../config/debug'
 
 export function createDefaultUnlockState(): UnlockState {
   return {
-    unlockedPalettes: ['earthy'],
+    unlockedPalettes: ['default', 'earthy'],
     unlockedAdornments: ['none'],
     unlockedPatterns: ['solid'],
     unlockedFrames: [],

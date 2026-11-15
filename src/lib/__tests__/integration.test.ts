@@ -208,7 +208,7 @@ describe('Integration: Garden Ecosystem Interactions', () => {
 describe('Integration: Unlock Progression System', () => {
   it('simulates earning cosmetic unlocks through milestones', () => {
     let state = createDefaultUnlockState()
-    expect(state.unlockedPalettes).toEqual(['earthy'])
+    expect(state.unlockedPalettes).toEqual(['default', 'earthy'])
     expect(state.unlockedPatterns).toEqual(['solid'])
     expect(state.unlockedAdornments).toEqual(['none'])
 

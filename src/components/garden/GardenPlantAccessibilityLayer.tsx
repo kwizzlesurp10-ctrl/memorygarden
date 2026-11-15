@@ -11,7 +11,6 @@ interface GardenPlantAccessibilityLayerProps {
   landscapeView?: GardenLandscapeView
   plantLayout?: Map<string, ResolvedMemoryScenePlacement>
   highlightedMemoryIds: Set<string> | null
-  onMemoryClick: (memory: Memory) => void
 }
 
 export function GardenPlantAccessibilityLayer({

@@ -93,7 +93,7 @@ describe('ensureUnlockState', () => {
       achievements: [],
     }
     const state = ensureUnlockState(partial)
-    expect(state.unlockedPalettes).toEqual(['earthy', 'warm'])
+    expect(state.unlockedPalettes).toEqual(['default', 'earthy', 'warm'])
     expect(state.wallet.dew).toBe(10)
     expect(state.counters.totalReflections).toBe(5)
   })
@@ -192,7 +192,7 @@ describe('evaluateUnlocks', () => {
     const state = createDefaultUnlockState()
     const result = evaluateUnlocks(state)
     // 'default' palette always unlocks via () => true; already-unlocked items are excluded
-    expect(result.newPalettes).toEqual(['default'])
+    expect(result.newPalettes).toEqual([])
     expect(result.newPatterns).toHaveLength(0)
     expect(result.newAdornments).toHaveLength(0)
   })
