@@ -788,7 +788,7 @@ export function voxelLogStump(
     cap.scale.set(capScaleX, capScaleY, capScaleZ)
     g.remove(cap)
     core.add(cap)
-    cap.position.set(0, bodyScaleY / 2 + capScaleY / 2, 0)
+    cap.position.set(0, 0.5 + capScaleY / 2, 0)
   }
   root.add(g)
 }
