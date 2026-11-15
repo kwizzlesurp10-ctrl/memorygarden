@@ -167,7 +167,7 @@ try {
       url,
       sha,
       lightingHour: 14,
-      pullBack: 0.88,
+      pullBack: 0.72,
     })
     shotLog.push({ file: wcFence, subject: 'watercolor-fence', phase })
     const pxStump = await captureSubject(browser, {
