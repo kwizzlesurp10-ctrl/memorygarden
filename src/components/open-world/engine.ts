@@ -943,22 +943,26 @@ export class OpenWorldEngine {
     if (!box || !wp) return null
     const ground = box.min.y
     const H = box.max.y - ground
-    const cx = (box.min.x + box.max.x) / 2
-    const cz = (box.min.z + box.max.z) / 2
-    const aimY = ground + H * 0.55
+    const cx = wp.x
+    const cz = wp.z
+    const voxelBloom = this.plantArtStyle === 'pixel-art'
+    const aimY = ground + (voxelBloom ? Math.min(H, 1.35) * 0.88 : H * 0.55)
     const aim = new THREE.Vector3(cx, aimY, cz)
-    const targetSpan = 0.26
+    const targetSpan = voxelBloom ? 0.22 : 0.26
     const margin = 0.08
     let bestPose: WalkCapturePose | null = null
     let bestScore = Infinity
-    for (let pass = 0; pass < 44; pass++) {
-      const dist = 0.85 + (pass / 43) * 1.65
-      const yaw = 0.55 + (pass % 5) * 0.11
+    const passCount = voxelBloom ? 56 : 44
+    for (let pass = 0; pass < passCount; pass++) {
+      const dist = voxelBloom
+        ? 1.05 + (pass / (passCount - 1)) * 1.35
+        : 0.85 + (pass / 43) * 1.65
+      const yaw = voxelBloom ? 0.72 + (pass % 7) * 0.09 : 0.55 + (pass % 5) * 0.11
       const camX = cx + Math.sin(yaw) * dist
       const camZ = cz + Math.cos(yaw) * dist
-      const eyeY = this.eyeHeightAt(camX, camZ, 0.95)
+      const eyeY = this.eyeHeightAt(camX, camZ, voxelBloom ? 1.62 : 0.95)
       const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-      const pitch = Math.min(pose.pitch, -0.22)
+      const pitch = Math.min(pose.pitch, voxelBloom ? -0.24 : -0.22)
       this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
       this.renderOnce()
       const proj = this.plantProjectedAabbScreenFromBox(box)

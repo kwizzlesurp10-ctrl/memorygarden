@@ -548,6 +548,20 @@ async function captureShot(page, phase, artStyle, shot, pose) {
         `Pixel flower close-up center column tree fill ${(treeFill.heightFrac * 100).toFixed(0)}% (expected flower, not trunk)`,
       )
     }
+    const png = PNG.sync.read(readFileSync(file))
+    let warm = 0
+    for (let i = 0; i < png.data.length; i += 4) {
+      const r = png.data[i]!
+      const g = png.data[i + 1]!
+      const b = png.data[i + 2]!
+      if (r > 150 && g > 110 && b < 140) warm++
+    }
+    const warmFrac = warm / (png.width * png.height)
+    if (warmFrac < 0.0025) {
+      throw new Error(
+        `Pixel flower close-up warm petal coverage ${(warmFrac * 100).toFixed(2)}% < 0.25% (off-framing guard)`,
+      )
+    }
   }
   if (shot.file === 'walk-sprout-closeup' && shot.plantId && artStyle === 'watercolor' && phase === 'after') {
     const cov = await page.evaluate(
