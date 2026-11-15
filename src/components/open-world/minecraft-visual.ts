@@ -4,6 +4,7 @@ import type { PlantVisualRecipe } from '@/lib/open-world/plant-visual'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { gardenRng, seedFromGenetics } from '@/lib/garden/prng'
 import { lerpHex } from '@/lib/garden/color'
+import { TONE_DOT } from '@/lib/open-world/constants'
 import { plantStageToIndex } from '@/lib/garden/stage'
 import type { GardenWorld, WorldPlant } from '@/lib/open-world/types'
 
@@ -152,12 +153,8 @@ export function minecraftBlockTexture(
         const r = Math.hypot(dx * 0.95, dy * (kind === 'sapling' ? 1.15 : 1))
         if (kind === 'poppy' && r < 5.5 && y < 13) {
           if (hash01(seed + x * 13 + y * 17) > 0.92) continue
-          ctx.fillStyle =
-            r < 2.2
-              ? '#5a2020'
-              : hash01(seed + x + y * 3) > 0.55
-                ? '#d84848'
-                : '#c43b3b'
+          const petal = hash01(seed + x + y * 3) > 0.55 ? accent : base
+          ctx.fillStyle = r < 2.2 ? lerpHex(base, '#1a140e', 0.35) : petal
           ctx.fillRect(x, y, 1, 1)
         } else if (kind === 'sapling') {
           const spread = y < 8 ? 3 : y < 11 ? 2 : 1
@@ -505,6 +502,8 @@ function buildFlower(
   g: THREE.Group,
   stem: THREE.MeshBasicMaterial,
   bloom: THREE.MeshBasicMaterial,
+  petalBase: string,
+  petalAccent: string,
   seed: number,
   stage: PlantStage,
 ): void {
@@ -518,9 +517,9 @@ function buildFlower(
     return
   }
   if (idx >= 5) {
-    const bloomLight = `#${bloom.color.clone().lerp(new THREE.Color('#f2e8dc'), 0.35).getHexString()}`
-    const poppyMat = voxelMaterial(`#${bloom.color.getHexString()}`, bloomLight, seed + 7, 'poppy', true)
-    placeCrossPlantSprite(g, 0, 0, 0, 0.72, 0.55, poppyMat)
+    const petalLight = lerpHex(petalBase, petalAccent, 0.42)
+    const poppyMat = voxelMaterial(petalBase, petalLight, seed + 7, 'poppy', true)
+    placeCrossPlantSprite(g, 0, 0, 0, 0.82, 0.62, poppyMat)
     return
   }
   const stemH = 2
@@ -786,21 +785,48 @@ export function voxelLogStump(
   }
   const bodyCenterY = (surfaceY + 0.5) * VOXEL
   const bodyTopY = bodyCenterY + stumpH / 2
-  const cap = new THREE.Mesh(boxGeo, topRing)
-  cap.position.set(0, bodyTopY + capH / 2, 0)
-  cap.scale.set(stumpW * 1.04, capH * 0.92, stumpW * 0.96)
-  cap.userData.voxel = true
-  g.add(cap)
   const rng = gardenRng(seed + 91)
-  for (let i = 0; i < 3; i++) {
-    const ang = ((i + rng() * 0.4) / 3) * Math.PI * 2
-    const rad = stumpW * (0.58 + rng() * 0.12)
+  const rootSpread: Array<[number, number]> = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ]
+  for (const [ix, iz] of rootSpread) {
     const root = new THREE.Mesh(boxGeo, barkMat)
-    root.position.set(Math.cos(ang) * rad, surfaceY * VOXEL + stumpH * 0.08, Math.sin(ang) * rad)
-    root.scale.set(VOXEL * (0.34 + rng() * 0.08), VOXEL * (0.22 + rng() * 0.06), VOXEL * (0.32 + rng() * 0.08))
+    const reach = 0.72 + rng() * 0.18
+    root.position.set(ix * stumpW * reach, (surfaceY + 0.12) * VOXEL, iz * stumpW * reach)
+    root.scale.set(
+      VOXEL * (0.46 + rng() * 0.1),
+      VOXEL * (0.26 + rng() * 0.08),
+      VOXEL * (0.44 + rng() * 0.1),
+    )
     root.userData.voxel = true
     g.add(root)
   }
+  for (let i = 0; i < 8; i++) {
+    const ang = (i / 8) * Math.PI * 2
+    const ringR = stumpW * (0.54 + (i % 2 === 0 ? 0.06 : 0))
+    const slab = new THREE.Mesh(boxGeo, i % 2 === 0 ? topRing : barkMat)
+    slab.position.set(
+      Math.cos(ang) * ringR,
+      bodyTopY + capH * 0.35,
+      Math.sin(ang) * ringR,
+    )
+    slab.scale.set(VOXEL * 0.42, VOXEL * (0.18 + (i % 3) * 0.04), VOXEL * 0.42)
+    slab.userData.voxel = true
+    g.add(slab)
+  }
+  const cap = new THREE.Mesh(boxGeo, topRing)
+  cap.position.set(0, bodyTopY + capH * 0.55, 0)
+  cap.scale.set(stumpW * 0.72, capH * 0.55, stumpW * 0.68)
+  cap.userData.voxel = true
+  g.add(cap)
+  const knob = new THREE.Mesh(boxGeo, barkMat)
+  knob.position.set(stumpW * 0.12, bodyTopY + capH * 0.82, -stumpW * 0.08)
+  knob.scale.set(VOXEL * 0.36, VOXEL * 0.28, VOXEL * 0.34)
+  knob.userData.voxel = true
+  g.add(knob)
   root.add(g)
 }
 
@@ -834,7 +860,12 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
   const bark = voxelMaterial(recipe.stem, recipe.foliageAlt, seedN, 'bark')
   const leaf = voxelMaterial(recipe.foliage, recipe.foliageAlt, seedN + 3, 'leaf', true)
   const stemMat = voxelMaterial(recipe.stem, '#4a5f3a', seedN + 5, 'bark')
-  const bloom = voxelMaterial(recipe.bloom, recipe.emissive, seedN + 7, 'flower', true)
+  const petalBase =
+    recipe.kind === 'flower'
+      ? (TONE_DOT[plant.tone] ?? recipe.bloom)
+      : recipe.bloom
+  const petalAccent = recipe.kind === 'flower' ? recipe.emissive : recipe.bloom
+  const bloom = voxelMaterial(petalBase, petalAccent, seedN + 7, 'flower', true)
   const stemMushroom = voxelMaterial('#e8dcc8', '#d9c8ad', seedN + 5, 'mushroom_stem')
   const cap = voxelMaterial('#c44a4a', '#f2e8dc', seedN + 13, 'mushroom_cap')
   const dirt = voxelMaterial('#5a4332', '#3f2e22', seedN + 11, 'dirt')
@@ -853,7 +884,7 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
   } else if (recipe.kind === 'tree') {
     buildOakTree(g, bark, leaf, seedN, stage)
   } else if (recipe.kind === 'flower') {
-    buildFlower(g, stemMat, bloom, seedN, stage)
+    buildFlower(g, stemMat, bloom, petalBase, petalAccent, seedN, stage)
   } else if (recipe.kind === 'mushroom') {
     buildMushroom(g, stemMushroom, cap, seedN, stage)
     if (plantStageToIndex(stage) >= 2) {

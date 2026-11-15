@@ -802,6 +802,133 @@ export class OpenWorldEngine {
     return this.elderDeterministicCapturePoseLegacy(plantId)
   }
 
+  flowerDeterministicCapturePose(plantId: string): WalkCapturePose | null {
+    const box = this.plantWorldBox(plantId)
+    const wp = this.world.plants.find((p) => p.id === plantId)
+    if (!box || !wp) return null
+    const ground = box.min.y
+    const H = box.max.y - ground
+    const cx = (box.min.x + box.max.x) / 2
+    const cz = (box.min.z + box.max.z) / 2
+    const aimY = ground + H * 0.55
+    const aim = new THREE.Vector3(cx, aimY, cz)
+    const targetSpan = 0.26
+    const margin = 0.08
+    let bestPose: WalkCapturePose | null = null
+    let bestScore = Infinity
+    for (let pass = 0; pass < 44; pass++) {
+      const dist = 0.85 + (pass / 43) * 1.65
+      const yaw = 0.55 + (pass % 5) * 0.11
+      const camX = cx + Math.sin(yaw) * dist
+      const camZ = cz + Math.cos(yaw) * dist
+      const eyeY = this.eyeHeightAt(camX, camZ, 0.95)
+      const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+      const pitch = Math.min(pose.pitch, -0.22)
+      this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
+      this.renderOnce()
+      const proj = this.plantProjectedAabbScreenFromBox(box)
+      if (!proj) continue
+      const span = proj.bottom - proj.top
+      const inFrame =
+        proj.left >= margin &&
+        proj.right <= 1 - margin &&
+        proj.top >= margin &&
+        proj.bottom <= 1 - margin
+      const centerPen =
+        Math.abs((proj.left + proj.right) / 2 - 0.5) +
+        Math.abs((proj.top + proj.bottom) / 2 - 0.5)
+      if (inFrame && span >= targetSpan - 0.05 && span <= targetSpan + 0.14 && centerPen < 0.28) {
+        return { ...pose, pitch, x: camX, z: camZ, eyeY }
+      }
+      const score = Math.abs(span - targetSpan) + centerPen * 0.4 + (inFrame ? 0 : 2)
+      if (score < bestScore) {
+        bestScore = score
+        bestPose = { ...pose, pitch, x: camX, z: camZ, eyeY }
+      }
+    }
+    if (bestPose) {
+      bestPose.pitch = Math.min(bestPose.pitch, -0.2)
+      return bestPose
+    }
+    const dist = 1.15
+    const yaw = 0.62
+    const camX = cx + Math.sin(yaw) * dist
+    const camZ = cz + Math.cos(yaw) * dist
+    const eyeY = this.eyeHeightAt(camX, camZ, 0.92)
+    const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+  const pitch = Math.min(pose.pitch, -0.24)
+    return { ...pose, pitch, x: camX, z: camZ, eyeY }
+  }
+
+  youngDeterministicCapturePose(plantId: string): WalkCapturePose | null {
+    const box = this.plantWorldBox(plantId)
+    const wp = this.world.plants.find((p) => p.id === plantId)
+    if (!box || !wp) return null
+    const ground = box.min.y
+    const H = box.max.y - ground
+    const cx = (box.min.x + box.max.x) / 2
+    const cz = (box.min.z + box.max.z) / 2
+    const aimY = ground + H * 0.52
+    const aim = new THREE.Vector3(cx, aimY, cz)
+    const targetSpan = 0.36
+    const margin = 0.06
+    let bestPose: WalkCapturePose | null = null
+    let bestScore = Infinity
+    const distMin = 1.15
+    const distMax = 3.35
+    for (let pass = 0; pass < 56; pass++) {
+      const dist = distMin + (pass / 55) * (distMax - distMin)
+      const yaw = -0.55 + (pass % 7) * 0.14
+      const camX = cx + Math.sin(yaw) * dist
+      const camZ = cz + Math.cos(yaw) * dist
+      const foot = this.terrainFootY(camX, camZ)
+      const eyeY = foot + 1.22 + (pass % 4) * 0.02
+      const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+      const pitch = Math.min(pose.pitch, -0.14)
+      this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
+      this.renderOnce()
+      const proj = this.plantProjectedAabbScreenFromBox(box)
+      if (!proj || !Number.isFinite(proj.top)) continue
+      const span = proj.bottom - proj.top
+      const inFrame =
+        proj.left >= margin &&
+        proj.right <= 1 - margin &&
+        proj.top >= margin &&
+        proj.bottom <= 1 - margin
+      const centerPen =
+        Math.abs((proj.left + proj.right) / 2 - 0.5) +
+        Math.abs((proj.top + proj.bottom) / 2 - 0.5)
+      if (inFrame && span >= targetSpan - 0.04 && span <= targetSpan + 0.12 && centerPen < 0.22) {
+        return { ...pose, pitch, x: camX, z: camZ, eyeY }
+      }
+      const score =
+        Math.abs(span - targetSpan) +
+        centerPen * 0.35 +
+        (inFrame ? 0 : 2.5) +
+        (pitch > -0.08 ? 1.2 : 0)
+      if (score < bestScore) {
+        bestScore = score
+        bestPose = { ...pose, pitch, x: camX, z: camZ, eyeY }
+      }
+    }
+    if (bestPose) {
+      bestPose.pitch = Math.min(bestPose.pitch, -0.12)
+      this.setPlayerPose(bestPose.x, bestPose.z, bestPose.yaw, bestPose.pitch, bestPose.eyeY)
+      this.renderOnce()
+      const proj = this.plantProjectedAabbScreenFromBox(box)
+      const span = proj ? proj.bottom - proj.top : 0
+      if (span >= 0.28) return bestPose
+    }
+    const dist = 2.05
+    const yaw = -0.48
+    const camX = cx + Math.sin(yaw) * dist
+    const camZ = cz + Math.cos(yaw) * dist
+    const eyeY = this.eyeHeightAt(camX, camZ, 1.05)
+    const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+    const pitch = Math.min(pose.pitch, -0.16)
+    return { ...pose, pitch, x: camX, z: camZ, eyeY }
+  }
+
   private projectBoxVerticalInView(box: THREE.Box3): { minNdcY: number; maxNdcY: number } | null {
     const { min, max } = box
     const corners: Array<[number, number, number]> = [
@@ -928,36 +1055,7 @@ export class OpenWorldEngine {
           return this.elderDeterministicCapturePose(plantId)
         }
         if (plantId.includes('young')) {
-          const aimY = ground + size.y * 0.56
-          const aim = new THREE.Vector3(wp.x, aimY, wp.z)
-          const targetFrac = 0.36
-          let bestPose: WalkCapturePose | null = null
-          let bestDelta = Infinity
-          for (let pass = 0; pass < 20; pass++) {
-            const dist = 2.8 + (pass / 19) * 4.6
-            const passYaw = 1.95 + (pass % 6) * 0.08
-            const camX = wp.x + Math.sin(passYaw) * dist
-            const camZ = wp.z + Math.cos(passYaw) * dist
-            const eyeY = this.eyeHeightAt(camX, camZ, Math.min(1.35, size.y * 0.45))
-            const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-            const fit = this.plantCaptureFitAt(plantId, pose)
-            const frac = fit?.frac ?? 0
-            const centerPen = fit ? Math.abs(fit.centerX) + Math.abs(fit.centerY) : 2
-            const delta = Math.abs(frac - targetFrac) + centerPen * 0.14
-            const pitch = Math.min(pose.pitch, -0.08)
-            const tuned = { ...pose, pitch }
-            if (frac >= 0.28 && centerPen < 0.42 && pitch < -0.06) {
-              return tuned
-            }
-            if (delta < bestDelta) {
-              bestDelta = delta
-              bestPose = tuned
-            }
-          }
-          if (bestPose) {
-            bestPose.pitch = Math.min(bestPose.pitch, -0.1)
-            return bestPose
-          }
+          return this.youngDeterministicCapturePose(plantId)
         }
         const aimY = ground + size.y * 0.68
         const aim = new THREE.Vector3(wp.x, aimY, wp.z)
@@ -999,17 +1097,7 @@ export class OpenWorldEngine {
           return this.mushroomDeterministicCapturePose(plantId)
         }
         if (wp.variety === 'flower') {
-          const aimY = ground + 0.44
-          const aim = new THREE.Vector3(wp.x, aimY, wp.z)
-          const yaw = 0.65
-          const dist = 2.55
-          const camX = wp.x + Math.sin(yaw) * dist
-          const camZ = wp.z + Math.cos(yaw) * dist
-          const eyeY = this.eyeHeightAt(camX, camZ, 1.42)
-          const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-          this.camera.rotation.x = -0.42
-          this.camera.updateProjectionMatrix()
-          return { ...pose, pitch: -0.42 }
+          return this.flowerDeterministicCapturePose(plantId)
         }
         const aimY = ground + 0.42
         const aim = new THREE.Vector3(wp.x, aimY, wp.z)
