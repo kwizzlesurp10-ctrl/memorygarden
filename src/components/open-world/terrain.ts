@@ -11,26 +11,10 @@ import {
   minecraftGrassTufts,
   minecraftPathTexture,
   minecraftWaterBlockTexture,
-  voxelGardenFenceSegment,
   voxelLogStump,
   voxelRockCluster,
-  voxelSteppedBoulder,
-  type VoxelRockTier,
 } from './minecraft-visual'
-import {
-  GARDEN_AMBIENT_FENCE,
-  GARDEN_AMBIENT_STUMP,
-  SCENERY_PROP_CLEAR_RADIUS,
-  WALK_ROCK_TIER_SHOWCASE,
-} from '@/lib/open-world/garden-scenery-capture'
-
-function farFromSceneryProps(x: number, z: number): boolean {
-  const near = (px: number, pz: number) => Math.hypot(x - px, z - pz) < SCENERY_PROP_CLEAR_RADIUS
-  if (near(GARDEN_AMBIENT_FENCE.x, GARDEN_AMBIENT_FENCE.z)) return false
-  if (near(GARDEN_AMBIENT_STUMP.x, GARDEN_AMBIENT_STUMP.z)) return false
-  if (near(-8.25, 6)) return false
-  return true
-}
+import { GARDEN_AMBIENT_FENCE, GARDEN_AMBIENT_STUMP } from '@/lib/open-world/garden-scenery-capture'
 
 export interface TerrainHandle {
   root: THREE.Group
@@ -488,46 +472,28 @@ export function buildTerrain(
 
   // ── Mossy River Boulders & Garden Rocks ──────────────────────────────────
   const rockMat = track(twilightSceneryMat(palette, palette.bank, twilight, starAlpha, 0.9))
-  const mossCapMat = track(
-    twilightSceneryMat(palette, palette.hills[0] ?? palette.silSoft, twilight, starAlpha, 0.82),
-  )
+  const rockGeo = track(new THREE.DodecahedronGeometry(1, 1))
   const rockPositions = [
-    { x: world.pond.x + world.pond.radius * 0.95, z: world.pond.z - 0.5, s: 0.65, shape: 0 },
-    { x: world.pond.x - world.pond.radius * 0.85, z: world.pond.z + 1.2, s: 0.8, shape: 1 },
-    { x: world.pond.x + 0.4, z: world.pond.z + world.pond.radius * 0.98, s: 0.55, shape: 2 },
-    { x: -16, z: -14, s: 1.1, shape: 0 },
-    { x: 18, z: -12, s: 0.9, shape: 1 },
-    { x: -12, z: 18, s: 0.75, shape: 2 },
-    { x: 14, z: 16, s: 0.85, shape: 0 },
-  ]
-  const rockGeos = [
-    track(new THREE.IcosahedronGeometry(1, 0)),
-    track(new THREE.OctahedronGeometry(1, 0)),
-    track(new THREE.TetrahedronGeometry(1, 0)),
+    { x: world.pond.x + world.pond.radius * 0.95, z: world.pond.z - 0.5, s: 0.65 },
+    { x: world.pond.x - world.pond.radius * 0.85, z: world.pond.z + 1.2, s: 0.8 },
+    { x: world.pond.x + 0.4, z: world.pond.z + world.pond.radius * 0.98, s: 0.55 },
+    { x: -16, z: -14, s: 1.1 },
+    { x: 18, z: -12, s: 0.9 },
+    { x: -12, z: 18, s: 0.75 },
+    { x: 14, z: 16, s: 0.85 },
   ]
   for (let ri = 0; ri < rockPositions.length; ri++) {
     const rp = rockPositions[ri]
-    if (walkCapture && !farFromSceneryProps(rp.x, rp.z)) continue
     if (minecraftMode) {
       /* voxel clusters placed below */
     } else {
-      const geo = rockGeos[rp.shape % rockGeos.length]!
-      const rMesh = new THREE.Mesh(geo, rockMat)
-      const squash = 0.62 + (ri % 3) * 0.08
-      const stretch = 0.95 + (ri % 2) * 0.14
-      rMesh.scale.set(rp.s * stretch, rp.s * squash, rp.s * (0.88 + (ri % 4) * 0.06))
-      rMesh.position.set(rp.x, rp.s * 0.34, rp.z)
-      rMesh.rotation.set(rp.s * 0.9 + ri * 0.4, rp.s * 1.7 + ri, rp.s * 0.6)
+      const rMesh = new THREE.Mesh(rockGeo, rockMat)
+      rMesh.scale.set(rp.s * 1.2, rp.s * 0.7, rp.s * 0.9)
+      rMesh.position.set(rp.x, rp.s * 0.35, rp.z)
+      rMesh.rotation.set(rp.s * 1.5, rp.s * 2.3, rp.s)
       rMesh.castShadow = true
       rMesh.receiveShadow = true
       root.add(rMesh)
-      if (ri % 2 === 0) {
-        const cap = new THREE.Mesh(track(new THREE.SphereGeometry(0.42, 5, 4)), mossCapMat)
-        cap.scale.set(rp.s * 0.55, rp.s * 0.22, rp.s * 0.5)
-        cap.position.set(rp.x, rp.s * 0.62, rp.z)
-        cap.castShadow = true
-        root.add(cap)
-      }
     }
   }
 
@@ -535,23 +501,9 @@ export function buildTerrain(
     const hillTop =
       surfaceY ??
       ((wx: number, wz: number) => minecraftAnalyticSurfaceY(Math.round(wx), Math.round(wz)))
-    if (walkCapture) {
-      for (const c of WALK_ROCK_TIER_SHOWCASE) {
-        voxelSteppedBoulder(c.x, c.z, c.seed, c.tier, palette, root, track, (wx, wz) => hillTop(wx, wz))
-      }
-    } else {
-      for (const c of MINECRAFT_WALK_ROCK_CLUSTERS.slice(0, 4)) {
-        voxelRockCluster(
-          c.x,
-          c.z,
-          c.seed,
-          palette,
-          root,
-          track,
-          (wx, wz) => hillTop(wx, wz),
-          c.tier ?? 'medium',
-        )
-      }
+    const clusters = walkCapture ? MINECRAFT_WALK_ROCK_CLUSTERS : MINECRAFT_WALK_ROCK_CLUSTERS.slice(0, 4)
+    for (const c of clusters) {
+      voxelRockCluster(c.x, c.z, c.seed, palette, root, track, (wx, wz) => hillTop(wx, wz))
     }
   }
 
@@ -561,27 +513,13 @@ export function buildTerrain(
     return m
   }
 
-  // Garden ambient props (walk + live) — tucked off paths near rock clusters
   const propFenceWood = registerWood(track(new THREE.MeshStandardMaterial({ color: '#543825', roughness: 0.82 })))
-  const propStumpWood = registerWood(track(new THREE.MeshStandardMaterial({ color: '#4a3528', roughness: 0.88 })))
-  const propStumpMoss = track(
-    twilightSceneryMat(palette, palette.hills[0] ?? palette.silSoft, twilight, starAlpha, 0.85),
-  )
 
   if (minecraftMode) {
     const hillTop =
       surfaceY ??
       ((wx: number, wz: number) => minecraftAnalyticSurfaceY(Math.round(wx), Math.round(wz)))
     const hillSampler = (wx: number, wz: number) => hillTop(wx, wz)
-    voxelGardenFenceSegment(
-      GARDEN_AMBIENT_FENCE.x,
-      GARDEN_AMBIENT_FENCE.z,
-      GARDEN_AMBIENT_FENCE.yaw,
-      palette,
-      root,
-      track,
-      hillSampler,
-    )
     voxelLogStump(
       GARDEN_AMBIENT_STUMP.x,
       GARDEN_AMBIENT_STUMP.z,
@@ -592,10 +530,9 @@ export function buildTerrain(
       hillSampler,
     )
   } else {
-    const wcPropScale = walkCapture ? 3.6 : 1
+    const postH = 1.08
+    const postSpan = 0.48
     const fenceGrp = new THREE.Group()
-    const postSpan = walkCapture ? 1.05 : 0.45
-    const postH = walkCapture ? 1.35 : 0.9
     const postGeo = track(new THREE.BoxGeometry(0.12, postH, 0.12))
     for (const px of [-postSpan, postSpan]) {
       const post = new THREE.Mesh(postGeo, propFenceWood)
@@ -603,57 +540,13 @@ export function buildTerrain(
       post.castShadow = true
       fenceGrp.add(post)
     }
-    const railW = postSpan * 2 + 0.15
-    const rail = new THREE.Mesh(track(new THREE.BoxGeometry(railW, 0.1, 0.12)), propFenceWood)
-    rail.position.set(0, postH * 0.88, 0)
+    const railW = postSpan * 2 + 0.12
+    const rail = new THREE.Mesh(track(new THREE.BoxGeometry(railW, 0.09, 0.11)), propFenceWood)
+    rail.position.set(0, postH * 0.9, 0)
     fenceGrp.add(rail)
-    fenceGrp.scale.setScalar(wcPropScale)
     fenceGrp.position.set(GARDEN_AMBIENT_FENCE.x, 0, GARDEN_AMBIENT_FENCE.z)
     fenceGrp.rotation.y = GARDEN_AMBIENT_FENCE.yaw
     root.add(fenceGrp)
-
-    const stump = new THREE.Group()
-    const stumpR = walkCapture ? 0.55 : 0.32
-    const stumpBody = new THREE.Mesh(
-      track(new THREE.CylinderGeometry(stumpR, stumpR * 1.15, walkCapture ? 0.72 : 0.42, 8)),
-      propStumpWood,
-    )
-    stumpBody.position.y = (walkCapture ? 0.72 : 0.42) * 0.5
-    stumpBody.castShadow = true
-    stump.add(stumpBody)
-    const stumpCap = new THREE.Mesh(
-      track(new THREE.CylinderGeometry(stumpR * 1.05, stumpR * 1.05, 0.1, 8)),
-      propStumpMoss,
-    )
-    stumpCap.position.y = (walkCapture ? 0.72 : 0.42) + 0.05
-    stump.add(stumpCap)
-    stump.scale.setScalar(wcPropScale)
-    stump.position.set(GARDEN_AMBIENT_STUMP.x, 0, GARDEN_AMBIENT_STUMP.z)
-    root.add(stump)
-
-    if (walkCapture) {
-      const tierScale: Record<VoxelRockTier, { w: number; h: number }> = {
-        small: { w: 0.95, h: 0.42 },
-        medium: { w: 1.35, h: 0.48 },
-        large: { w: 1.75, h: 0.52 },
-      }
-      for (const rock of WALK_ROCK_TIER_SHOWCASE) {
-        const geo = rockGeos[rock.seed % rockGeos.length]!
-        const s = tierScale[rock.tier]
-        const rMesh = new THREE.Mesh(geo, rockMat)
-        rMesh.scale.set(s.w, s.h, s.w * 0.92)
-        rMesh.position.set(rock.x, s.h * 0.55, rock.z)
-        rMesh.rotation.set(0.15, rock.seed * 0.09, 0.1)
-        rMesh.castShadow = true
-        rMesh.receiveShadow = true
-        root.add(rMesh)
-        const cap = new THREE.Mesh(track(new THREE.SphereGeometry(0.42, 5, 4)), mossCapMat)
-        cap.scale.set(s.w * 0.55, s.h * 0.35, s.w * 0.5)
-        cap.position.set(rock.x, s.h * 1.05, rock.z)
-        cap.castShadow = true
-        root.add(cap)
-      }
-    }
   }
 
   const walkCaptureDecor = isWalkCaptureSession()
