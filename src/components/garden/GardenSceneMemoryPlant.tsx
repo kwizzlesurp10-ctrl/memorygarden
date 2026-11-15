@@ -28,9 +28,8 @@ interface GardenSceneMemoryPlantProps {
   activeLayout: Map<string, ResolvedMemoryScenePlacement>
   memories: Memory[]
   highlightedMemoryIds: Set<string> | null
-  onMemoryClick: (memory: Memory) => void
+  onPlantCloseup: (memory: Memory) => void
   onMemoryMove: (memoryId: string, newPosition: { x: number; y: number }) => void
-  onLensDetail: (memory: Memory) => void
   focusGardenPlant: (memoryId: string) => void
   plantArtStyle?: ArtStyle
 }
@@ -48,19 +47,16 @@ export function GardenSceneMemoryPlant({
   activeLayout,
   memories,
   highlightedMemoryIds,
-  onMemoryClick,
+  onPlantCloseup,
   onMemoryMove,
-  onLensDetail,
   focusGardenPlant,
   plantArtStyle,
 }: GardenSceneMemoryPlantProps) {
   const sc = pos.plantScale
 
   const openMemory = () => {
-    if (lensOn) {
-      onLensDetail(memory)
-    } else if (!draggingMemory) {
-      onMemoryClick(memory)
+    if (!draggingMemory) {
+      onPlantCloseup(memory)
     }
   }
 

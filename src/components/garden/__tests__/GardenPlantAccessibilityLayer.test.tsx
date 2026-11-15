@@ -26,7 +26,6 @@ describe('GardenPlantAccessibilityLayer', () => {
       h(GardenPlantAccessibilityLayer, {
         memories: [memory],
         highlightedMemoryIds: null,
-        onMemoryClick: () => undefined,
       }),
     )
 

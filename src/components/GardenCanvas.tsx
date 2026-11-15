@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
+import { lazy, Suspense, useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import type {
   ArtStyle,
   GardenLandscapeView,
@@ -27,7 +27,11 @@ import {
 } from '@/lib/garden/lens'
 import { GardenSceneSvg, SCENE_W, SCENE_H } from '@/components/garden/GardenSceneSvg'
 import { GardenTodControls } from '@/components/garden/GardenTodControls'
-import { GardenLensDetail } from '@/components/garden/GardenLensDetail'
+const MemoryPlantCloseupOverlay = lazy(() =>
+  import('@/components/garden/MemoryPlantCloseupOverlay').then((m) => ({
+    default: m.MemoryPlantCloseupOverlay,
+  })),
+)
 import { StorageShedPanel } from '@/components/garden/StorageShedPanel'
 import { GardenLayoutToolDock } from '@/components/garden/GardenLayoutToolDock'
 import { GardenPlantAccessibilityLayer } from '@/components/garden/GardenPlantAccessibilityLayer'
@@ -44,7 +48,10 @@ const GARDEN_SEED = 7
 
 interface GardenCanvasProps {
   memories: Memory[]
-  onMemoryClick: (memory: Memory) => void
+  /** Records a visit / growth when a plant is activated from the 2D scene (no memory card). */
+  onPlantInteract: (memory: Memory) => void
+  /** Opens the full memory card from the plant close-up (visit already recorded). */
+  onOpenMemoryDetail?: (memory: Memory) => void
   onMemoryMove: (memoryId: string, newPosition: { x: number; y: number }) => void
   season?: Season
   growingMemories?: Set<string>
@@ -64,7 +71,8 @@ interface GardenCanvasProps {
 
 export function GardenCanvas({
   memories,
-  onMemoryClick,
+  onPlantInteract,
+  onOpenMemoryDetail,
   onMemoryMove,
   season: propSeason,
   growingMemories = new Set(),
@@ -93,7 +101,7 @@ export function GardenCanvas({
   const [lensPos, setLensPos] = useState<Point | null>(null)
   /** Measured CSS size of the scene wrap (matches rendered SVG when wrap is tight). */
   const [sceneSize, setSceneSize] = useState<Size>({ w: SCENE_W, h: SCENE_H })
-  const [detailMemory, setDetailMemory] = useState<Memory | null>(null)
+  const [closeupMemoryId, setCloseupMemoryId] = useState<string | null>(null)
   const [shedOpen, setShedOpen] = useState(false)
   const [dockPanelOpen, setDockPanelOpen] = useState(false)
   const [draggingMemory, setDraggingMemory] = useState<string | null>(null)
@@ -112,7 +120,20 @@ export function GardenCanvas({
   // Parallax tilt fights the loupe (and confuses pointer→scene mapping) — off while lens is active.
   useParallaxCursor(
     { sky: skyRef, far: farRef, mid: midRef, foreground: fgRef, frame: frameRef },
-    motion && !detailMemory && !lensOn,
+    motion && !closeupMemoryId && !lensOn,
+  )
+
+  const closeupMemory = useMemo(
+    () => (closeupMemoryId ? memories.find((m) => m.id === closeupMemoryId) ?? null : null),
+    [closeupMemoryId, memories],
+  )
+
+  const openPlantCloseup = useCallback(
+    (memory: Memory) => {
+      onPlantInteract(memory)
+      setCloseupMemoryId(memory.id)
+    },
+    [onPlantInteract],
   )
 
   useEffect(() => {
@@ -291,9 +312,8 @@ export function GardenCanvas({
             activeLayout={activeLayout}
             memories={memories}
             highlightedMemoryIds={highlightedMemoryIds}
-            onMemoryClick={onMemoryClick}
+            onPlantCloseup={openPlantCloseup}
             onMemoryMove={onMemoryMove}
-            onLensDetail={setDetailMemory}
             focusGardenPlant={focusGardenPlant}
             plantArtStyle={plantArtStyle}
           />
@@ -312,8 +332,8 @@ export function GardenCanvas({
     palette,
     motion,
     draggingMemory,
-    onMemoryClick,
     onMemoryMove,
+    openPlantCloseup,
     focusGardenPlant,
     plantArtStyle,
   ])
@@ -344,7 +364,7 @@ export function GardenCanvas({
           : ''}
       </div>
       <p className="sr-only">
-        Garden plants: Tab to focus a plant. Arrow keys move between plants. Control and arrow keys nudge the selected plant position. Enter or Space opens the memory.
+        Garden plants: Tab to focus a plant. Arrow keys move between plants. Control and arrow keys nudge the selected plant position. Enter or Space opens a plant close-up.
       </p>
       {searchHasNoMatches ? (
         <div
@@ -379,7 +399,6 @@ export function GardenCanvas({
         landscapeView={landscapeView}
         plantLayout={activeLayout}
         highlightedMemoryIds={highlightedMemoryIds}
-        onMemoryClick={onMemoryClick}
       />
 
       <GardenLayoutToolDock
@@ -562,15 +581,21 @@ export function GardenCanvas({
         onClearGarden={() => persistShed((d) => ({ ...d, planted: [] }))}
       />
 
-      {detailMemory && (
-        <GardenLensDetail
-          memory={detailMemory}
-          palette={palette}
-          rimStrength={RIM_STRENGTH}
-          motion={motion}
-          onClose={() => setDetailMemory(null)}
-        />
-      )}
+      {closeupMemory ? (
+        <Suspense fallback={null}>
+          <MemoryPlantCloseupOverlay
+            open
+            memory={closeupMemory}
+            palette={palette}
+            rimStrength={RIM_STRENGTH}
+            motion={motion}
+            plantArtStyle={plantArtStyle}
+            onClose={() => setCloseupMemoryId(null)}
+            onOpenMemoryDetail={onOpenMemoryDetail}
+            returnFocusRef={sceneWrapRef}
+          />
+        </Suspense>
+      ) : null}
     </div>
   )
 }
