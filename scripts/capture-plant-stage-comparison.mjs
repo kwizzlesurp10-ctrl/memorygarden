@@ -23,10 +23,15 @@ async function captureVariety(browser, variety) {
       ? { width: 1320, height: 1040 }
       : { width: 1320, height: 900 }
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1 })
-  await context.addInitScript((v) => {
-    sessionStorage.setItem('mg:plant-stage-grid', '1')
-    sessionStorage.setItem('mg:plant-stage-grid-variety', v)
-  }, variety)
+  const stage3dArt = process.env.PLANT_STAGE_3D_ART || ''
+  await context.addInitScript(
+    ({ v, art }) => {
+      sessionStorage.setItem('mg:plant-stage-grid', '1')
+      sessionStorage.setItem('mg:plant-stage-grid-variety', v)
+      if (art) sessionStorage.setItem('mg:plant-stage-grid-3d-art', art)
+    },
+    { v: variety, art: stage3dArt },
+  )
   await context.route('**/api/**', (route) =>
     route.fulfill({ status: 503, body: '{}', contentType: 'application/json' }),
   )

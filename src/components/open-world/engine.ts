@@ -281,7 +281,7 @@ export class OpenWorldEngine {
       const tw = Math.min(1, (star - 0.18) / 0.5)
       const horizonAmber = new THREE.Color('#ffb86b')
       const skyViolet = new THREE.Color(palette.sky[3] ?? palette.sky[2] ?? '#9a78c8')
-      const duskSky = skyViolet.clone().lerp(horizonAmber, 0.38 + tw * 0.32)
+      const duskSky = skyViolet.clone().lerp(horizonAmber, 0.48 + tw * 0.42)
       this.renderer?.setClearColor(duskSky, 1)
       if (this.scene.fog instanceof THREE.Fog) {
         this.scene.fog.color.copy(duskSky)
@@ -1784,7 +1784,7 @@ export class OpenWorldEngine {
         this.rim.color.set('#ffba6a')
         this.rim.position.set(-14, 14, 22)
         this.rim.intensity = 0.48 + tw * 0.42
-        const duskSky = skyViolet.clone().lerp(horizonAmber, 0.38 + tw * 0.32)
+        const duskSky = skyViolet.clone().lerp(horizonAmber, 0.48 + tw * 0.42)
         this.renderer?.setClearColor(duskSky, 1)
         if (this.scene.fog instanceof THREE.Fog) {
           this.scene.fog.color.copy(duskSky)

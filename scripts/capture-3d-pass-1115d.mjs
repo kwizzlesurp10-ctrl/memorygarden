@@ -89,9 +89,11 @@ function captureSet(targetDir, url, sha, capPhase) {
     ARTIFACT_DIR: targetDir,
     PREVIEW_URL: url,
   })
+  const stage3dArt = capPhase === 'before' ? '' : 'pixel-art'
   runNode('capture-plant-stage-comparison.mjs', {
     ARTIFACT_DIR: targetDir,
     PREVIEW_URL: url,
+    PLANT_STAGE_3D_ART: stage3dArt,
   })
   runNode('capture-walk-pixel-art-realflow.mjs', {
     ARTIFACT_DIR: targetDir,
