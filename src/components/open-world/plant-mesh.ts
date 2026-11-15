@@ -335,6 +335,9 @@ function addFlowerStageMeshes(
 
   if (stageIndex === 1) {
     addSproutLeafPair(g, tipY, leafMat, petalMat)
+    if (plant.id === 'sprout-walk') {
+      g.scale.setScalar(5.5)
+    }
     return
   }
 
@@ -880,14 +883,6 @@ export function createPlantGroup(
       stamenMat,
       rng,
     )
-    if (plant.id === 'sprout-walk' && plant.stage === 'sprout') {
-      const collar = new THREE.Mesh(geo.disk, soilMat)
-      collar.rotation.x = -Math.PI / 2
-      collar.scale.setScalar(0.14)
-      collar.position.y = 0.01
-      g.add(collar)
-      g.scale.setScalar(1.38)
-    }
     addGiftMeshes(g, plant, recipe)
     g.position.set(plant.x, 0, plant.z)
     g.userData.baseScale = 1

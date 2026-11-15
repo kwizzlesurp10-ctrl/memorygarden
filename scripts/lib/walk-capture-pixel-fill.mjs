@@ -68,7 +68,45 @@ export function treePixelsTouchTopRowFromPng(pngPath) {
   return measureTreePixelFillFromPng(pngPath).canopyTouchesTopRow === true
 }
 
-/** Share of frame pixels classified as plant foliage (tree mask in walk captures). */
+/** Cotyledon/stem vertical span in the center band of the frame (green/plant pixel mask). */
+export function measureSproutPlantHeightInPng(pngPath) {
+  const png = PNG.sync.read(readFileSync(pngPath))
+  const w = png.width
+  const h = png.height
+  const x0 = Math.floor(w * 0.28)
+  const x1 = Math.ceil(w * 0.72)
+  let minY = h
+  let maxY = -1
+  let plantRows = 0
+  let plantPixels = 0
+  for (let y = 0; y < h; y++) {
+    let rowPlant = 0
+    for (let x = x0; x < x1; x++) {
+      const i = (w * y + x) * 4
+      const r = png.data[i]
+      const g = png.data[i + 1]
+      const b = png.data[i + 2]
+      const kind = classifyWalkCapturePixel(r, g, b)
+      if (kind !== 'tree') continue
+      rowPlant++
+      plantPixels++
+    }
+    if (rowPlant > Math.max(2, (x1 - x0) * 0.008)) {
+      plantRows++
+      minY = Math.min(minY, y)
+      maxY = Math.max(maxY, y)
+    }
+  }
+  const heightFrac = maxY >= minY ? (maxY - minY + 1) / h : 0
+  return {
+    heightFrac,
+    plantRows,
+    plantPixels,
+    top: maxY >= minY ? minY / h : NaN,
+    bottom: maxY >= minY ? (maxY + 1) / h : NaN,
+  }
+}
+
 export function measurePlantAreaFillFromPng(pngPath) {
   const png = PNG.sync.read(readFileSync(pngPath))
   const w = png.width

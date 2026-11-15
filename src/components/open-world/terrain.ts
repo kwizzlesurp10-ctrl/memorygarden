@@ -165,6 +165,7 @@ export function buildTerrain(
   palette: ScenePalette,
   reducedMotion: boolean,
   minecraftMode = false,
+  soloPlantCapture = false,
 ): TerrainHandle {
   const root = new THREE.Group()
   root.name = 'terrain'
@@ -901,7 +902,7 @@ export function buildTerrain(
 
   // ── Negative-Space Masking: Bed Filler Flora (Wild Clover & Ferns) ──────
   let fillerMat: THREE.MeshStandardMaterial | null = null
-  if (!minecraftMode && world.fillerFlora && world.fillerFlora.length > 0) {
+  if (!minecraftMode && !soloPlantCapture && world.fillerFlora && world.fillerFlora.length > 0) {
     const fillerGeo = track(new THREE.ConeGeometry(0.14, 0.22, 6))
     fillerMat = track(twilightSceneryMat(palette, palette.silSoft ?? '#3e6b3f', twilight, starAlpha, 0.92))
     const fillerInst = new THREE.InstancedMesh(fillerGeo, fillerMat, world.fillerFlora.length)
@@ -1029,7 +1030,7 @@ export function buildTerrain(
   }
 
   // ── Grass Tufts ─────────────────────────────────────────────────────────
-  if (!minecraftMode && !reducedMotion) {
+  if (!minecraftMode && !reducedMotion && !soloPlantCapture) {
     const tuftGeo = track(new THREE.ConeGeometry(0.07, 0.28, 5))
     const tuftMat = track(new THREE.MeshStandardMaterial({ color: palette.hills[0] ?? '#4e2749', roughness: 1 }))
     const tuftMatAlt = track(
