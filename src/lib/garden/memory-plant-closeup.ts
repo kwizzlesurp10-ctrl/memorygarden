@@ -1,7 +1,12 @@
 import type { Memory, PlantStage } from '@/lib/types'
 import { getPlantStage, PLANT_STAGE_VITALITY_FLOOR } from '@/lib/garden-helpers'
-import { plantStageToIndex } from '@/lib/garden/stage'
+import { maxPlantStage, plantStageToIndex } from '@/lib/garden/stage'
 import { PLANT_STAGES_ORDER } from '@/lib/garden/plant-stages'
+
+/** Stage shown in close-up: matches 2D canvas (`plantStage`) and growth metrics. */
+export function closeupPlantStage(memory: Memory): PlantStage {
+  return maxPlantStage(memory.plantStage, getPlantStage(memory))
+}
 
 export interface MemoryPlantStageProgress {
   stage: PlantStage
@@ -10,8 +15,14 @@ export interface MemoryPlantStageProgress {
   progress01: number
 }
 
+export function memoryHasDisplayPhoto(memory: Memory): boolean {
+  const url = memory.photoUrl?.trim()
+  if (!url) return false
+  return !(url.startsWith('data:image') && url.length < 256)
+}
+
 export function memoryPlantStageProgress(memory: Memory): MemoryPlantStageProgress {
-  const stage = getPlantStage(memory)
+  const stage = closeupPlantStage(memory)
   const index = plantStageToIndex(stage)
   const nextStage = index < PLANT_STAGES_ORDER.length - 1 ? PLANT_STAGES_ORDER[index + 1] : null
   if (!nextStage) {

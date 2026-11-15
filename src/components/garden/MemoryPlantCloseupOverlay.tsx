@@ -4,9 +4,12 @@ import XIcon from 'lucide-react/dist/esm/icons/x'
 import type { ArtStyle, Memory } from '@/lib/types'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import {
+  closeupPlantStage,
+  memoryHasDisplayPhoto,
   memoryLastTendedLabel,
   memoryPlantStageProgress,
 } from '@/lib/garden/memory-plant-closeup'
+import { PlantArtStyleDefs } from '@/components/plants/PlantArtStyleDefs'
 import { MemoryPlantCloseupSvg } from '@/components/garden/MemoryPlantCloseupSvg'
 import { formatMemoryDateLabel, memoryBodyFallback, memoryPrimaryLabel } from '@/lib/memory-display'
 import { plantVarietyDisplayLabel } from '@/lib/garden/plant-variety-labels'
@@ -46,6 +49,7 @@ export function MemoryPlantCloseupOverlay({
   const firstFocusRef = useRef<HTMLButtonElement>(null)
 
   const { stage, nextStage, progress01 } = memoryPlantStageProgress(memory)
+  const stageLabel = closeupPlantStage(memory)
   const displayTitle =
     memory.isHybrid && memory.hybridGenome?.name
       ? memory.hybridGenome.name
@@ -140,16 +144,20 @@ export function MemoryPlantCloseupOverlay({
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             <div
-              className="px-3 py-2 sm:px-4"
-              style={{ background: `linear-gradient(180deg, ${palette.sky[0]}22 0%, ${palette.bank} 55%)` }}
+              className="flex min-h-[min(44dvh,280px)] items-end justify-center px-2 py-2 sm:px-3"
+              data-testid="memory-plant-closeup-art-panel"
+              style={{ background: `linear-gradient(180deg, ${palette.sky[0]}28 0%, ${palette.bank} 72%)` }}
             >
+              <svg width={0} height={0} className="absolute overflow-hidden" aria-hidden>
+                <PlantArtStyleDefs />
+              </svg>
               <MemoryPlantCloseupSvg
                 memory={memory}
                 palette={palette}
                 rimStrength={rimStrength}
                 motion={plantMotion}
                 plantArtStyle={plantArtStyle}
-                className="max-h-[min(40dvh,340px)]"
+                className="max-h-[min(48dvh,300px)]"
               />
             </div>
 
@@ -159,25 +167,23 @@ export function MemoryPlantCloseupOverlay({
                   Growth
                 </h3>
                 <p className="mt-1 text-sm capitalize text-[#faf4ec]">
-                  Stage: <span data-testid="memory-plant-closeup-stage">{stage}</span>
+                  Stage: <span data-testid="memory-plant-closeup-stage">{stageLabel}</span>
                 </p>
-                {nextStage ? (
-                  <div className="mt-2 space-y-1.5">
-                    <div className="flex justify-between text-xs text-[#f0e7da]/75">
-                      <span>Toward {nextStage}</span>
-                      <span data-testid="memory-plant-closeup-progress-pct">
-                        {Math.round(progress01 * 100)}%
-                      </span>
-                    </div>
-                    <Progress
-                      value={progress01 * 100}
-                      className="h-2 bg-[#f0e7da]/10"
-                      data-testid="memory-plant-closeup-progress"
-                    />
+                <div className="mt-2 space-y-1.5">
+                  <div className="flex justify-between text-xs text-[#f0e7da]/75">
+                    <span>
+                      {nextStage ? `Toward ${nextStage}` : 'Fully grown'}
+                    </span>
+                    <span data-testid="memory-plant-closeup-progress-pct">
+                      {Math.round((nextStage ? progress01 : 1) * 100)}%
+                    </span>
                   </div>
-                ) : (
-                  <p className="mt-1 text-xs text-[#f0e7da]/70">Fully grown — elder stage</p>
-                )}
+                  <Progress
+                    value={(nextStage ? progress01 : 1) * 100}
+                    className="h-2.5 bg-[#f0e7da]/15"
+                    data-testid="memory-plant-closeup-progress"
+                  />
+                </div>
               </section>
 
               <section aria-labelledby={`${titleId}-memory`}>
@@ -187,7 +193,7 @@ export function MemoryPlantCloseupOverlay({
                 <p className="mt-2 text-sm leading-relaxed text-[#f0e7da]/92" data-testid="memory-plant-closeup-text">
                   {memoryText}
                 </p>
-                {memory.photoUrl?.trim() ? (
+                {memoryHasDisplayPhoto(memory) ? (
                   <img
                     src={memory.photoUrl}
                     alt=""

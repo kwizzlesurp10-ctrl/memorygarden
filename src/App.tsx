@@ -275,9 +275,10 @@ function App() {
       state = applyNewUnlocks(state, newUnlocks)
       const allNew = [...newUnlocks.newPalettes, ...newUnlocks.newPatterns, ...newUnlocks.newAdornments]
       for (const id of allNew) {
-        const item = UNLOCKABLE_ITEMS.find(i => i.id === id)
-        const displayName = item?.name || id
-        toast.success(`🌿 Unlocked: ${displayName}`, { description: 'Check your Garden Collection!' })
+        if (id === 'default') continue
+        const item = UNLOCKABLE_ITEMS.find((i) => i.id === id)
+        if (!item) continue
+        toast.success(`🌿 Unlocked: ${item.name}`, { description: 'Check your Garden Collection!' })
       }
     }
 

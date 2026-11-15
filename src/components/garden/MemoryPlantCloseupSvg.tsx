@@ -4,10 +4,9 @@ import { SeededPlantSvg } from '@/components/plants/SeededPlantSvg'
 import { HybridPlantSvg } from '@/components/plants/hybrid-builder'
 import type { SeededVariety } from '@/components/plants/types'
 import { plantStageToIndex } from '@/lib/garden/stage'
-import { getPlantStage } from '@/lib/garden-helpers'
+import { closeupPlantStage } from '@/lib/garden/memory-plant-closeup'
+import { memoryCloseupSvgLayout } from '@/lib/garden/memory-closeup-frame'
 import { cn } from '@/lib/utils'
-
-const DISPLAY_SCALE = 2.35
 
 export interface MemoryPlantCloseupSvgProps {
   memory: Memory
@@ -26,27 +25,30 @@ export function MemoryPlantCloseupSvg({
   plantArtStyle,
   className,
 }: MemoryPlantCloseupSvgProps) {
-  const stage = getPlantStage(memory)
+  const stage = closeupPlantStage(memory)
   const isHybrid = Boolean(memory.isHybrid && memory.hybridGenome)
+  const variety = (isHybrid ? memory.hybridGenome?.base : memory.plantVariety) as SeededVariety
+  const { viewBox, plantTransform, shadow } = memoryCloseupSvgLayout(variety, stage, isHybrid)
 
   return (
     <svg
       data-testid="memory-plant-closeup-svg"
-      viewBox="0 0 420 340"
-      className={cn('block h-auto w-full max-w-full', className)}
+      data-art-style={plantArtStyle ?? 'watercolor'}
+      viewBox={viewBox}
+      preserveAspectRatio="xMidYMax meet"
+      className={cn('block h-full w-full min-h-[200px] max-h-[min(52dvh,320px)]', className)}
       role="img"
       aria-label={`Enlarged plant at ${stage} stage`}
     >
-      <defs>
-        <linearGradient id="memoryCloseupSoil" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={palette.hills[1]} stopOpacity={0.35} />
-          <stop offset="100%" stopColor={palette.hills[2]} stopOpacity={0.85} />
-        </linearGradient>
-      </defs>
-      <rect width="420" height="340" fill={palette.bank} opacity={0.55} />
-      <ellipse cx={210} cy={268} rx={108} ry={14} fill="#050308" opacity={0.38} />
-      <ellipse cx={210} cy={278} rx={132} ry={22} fill="url(#memoryCloseupSoil)" />
-      <g transform={`translate(210 275) scale(${DISPLAY_SCALE})`}>
+      <ellipse
+        cx={shadow.cx}
+        cy={shadow.cy}
+        rx={shadow.rx}
+        ry={shadow.ry}
+        fill="#050308"
+        opacity={0.32}
+      />
+      <g transform={plantTransform}>
         {isHybrid && memory.hybridGenome ? (
           <HybridPlantSvg
             genome={memory.hybridGenome}

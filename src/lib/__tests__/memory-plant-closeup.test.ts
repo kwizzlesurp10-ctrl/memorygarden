@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { Memory } from '@/lib/types'
-import { memoryPlantStageProgress, memoryLastTendedLabel } from '@/lib/garden/memory-plant-closeup'
+import {
+  closeupPlantStage,
+  memoryHasDisplayPhoto,
+  memoryPlantStageProgress,
+  memoryLastTendedLabel,
+} from '@/lib/garden/memory-plant-closeup'
 
 function baseMemory(overrides: Partial<Memory> = {}): Memory {
   return {
@@ -59,6 +64,48 @@ describe('memoryPlantStageProgress', () => {
     )
     expect(result.nextStage).toBeNull()
     expect(result.progress01).toBe(1)
+  })
+})
+
+describe('closeupPlantStage', () => {
+  it('prefers canvas plantStage when metrics disagree', () => {
+    expect(
+      closeupPlantStage(
+        baseMemory({
+          plantStage: 'seed',
+          growthMetrics: {
+            vitality: 95,
+            height: 120,
+            width: 90,
+            bloomCount: 8,
+            foliageDensity: 95,
+            rarityScore: 20,
+            lastInteractionAt: Date.now(),
+          },
+        }),
+      ),
+    ).toBe('elder')
+    expect(
+      closeupPlantStage(
+        baseMemory({
+          plantStage: 'seed',
+          visitCount: 0,
+          plantedAt: new Date().toISOString(),
+        }),
+      ),
+    ).toBe('seed')
+  })
+})
+
+describe('memoryHasDisplayPhoto', () => {
+  it('skips placeholder data URLs', () => {
+    expect(memoryHasDisplayPhoto(baseMemory({ photoUrl: '' }))).toBe(false)
+    expect(
+      memoryHasDisplayPhoto({
+        ...baseMemory(),
+        photoUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      }),
+    ).toBe(false)
   })
 })
 

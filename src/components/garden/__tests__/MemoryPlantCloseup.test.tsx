@@ -7,9 +7,8 @@ import type { Memory } from '@/lib/types'
 
 const sampleMemory: Memory = {
   id: 'popup-demo-1',
-  photoUrl:
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-  text: 'Synthetic demo — a peaceful pond-side afternoon',
+  photoUrl: '',
+  text: 'Synthetic demo — a peaceful pond-side afternoon.\nWe listened to frogs by the water.',
   date: '2025-06-15',
   plantedAt: '2025-05-01T12:00:00.000Z',
   position: { x: 420, y: 442 },
@@ -89,7 +88,7 @@ describe('MemoryPlantCloseupOverlay', () => {
     expect(document.querySelector('[data-testid="memory-plant-closeup-text"]')?.textContent).toContain('Synthetic demo')
     expect(document.querySelector('[data-testid="memory-plant-closeup-stage"]')?.textContent).toBeTruthy()
     expect(document.querySelector('[data-testid="memory-plant-closeup-svg"]')).toBeTruthy()
-    expect(document.querySelector('[data-testid="memory-plant-closeup-photo"]')).toBeTruthy()
+    expect(document.querySelector('[data-testid="memory-plant-closeup-photo"]')).toBeFalsy()
   })
 
   it('calls onClose when close control is activated', async () => {
