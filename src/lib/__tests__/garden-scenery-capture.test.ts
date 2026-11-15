@@ -9,10 +9,12 @@ describe('garden scenery capture poses', () => {
     expect(GARDEN_SCENERY_CLOSEUP.stump.aimY).toBeGreaterThan(0.9)
   })
 
-  it('returns walk poses for fence and stump', () => {
+  it('returns walk poses for fence, stump, and rocks', () => {
     const fence = computeGardenSceneryCloseupPose('fence', footY)
     const stump = computeGardenSceneryCloseupPose('stump', footY)
+    const rocks = computeGardenSceneryCloseupPose('rocks', footY)
     expect(fence.x).not.toBe(stump.x)
+    expect(rocks.pitch).toBeLessThan(0)
     expect(fence.pitch).toBeLessThan(0)
     expect(stump.pitch).toBeLessThanOrEqual(-0.2)
   })

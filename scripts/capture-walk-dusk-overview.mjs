@@ -17,6 +17,7 @@ const beforeSha =
 
 const afterUrl = process.env.AFTER_URL || 'http://127.0.0.1:4174'
 const beforeUrl = process.env.BEFORE_URL || 'http://127.0.0.1:4173'
+const capturePhase = (process.env.CAPTURE_PHASE || 'both').toLowerCase()
 const outDir = process.env.ARTIFACT_DIR || '/opt/cursor/artifacts'
 const posePath = resolve(outDir, 'minecraft-walk-poses-desktop.json')
 
@@ -129,10 +130,10 @@ try {
     const poses = JSON.parse(readFileSync(posePath, 'utf8'))
     overviewPose = poses['walk-overview'] ?? null
   }
-  for (const [phase, url] of [
-    ['before', beforeUrl],
-    ['after', afterUrl],
-  ]) {
+  const runDefs = []
+  if (capturePhase === 'before' || capturePhase === 'both') runDefs.push(['before', beforeUrl])
+  if (capturePhase === 'after' || capturePhase === 'both') runDefs.push(['after', afterUrl])
+  for (const [phase, url] of runDefs) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
     await context.addInitScript(({ user, memories: seeded }) => {
       sessionStorage.setItem('mg:walk-capture', '1')

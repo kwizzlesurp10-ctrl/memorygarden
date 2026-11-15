@@ -18,6 +18,8 @@ const beforeSha = process.env.BEFORE_SHA || '40da93a'
 const afterUrl = process.env.AFTER_URL || 'http://127.0.0.1:4174'
 const beforeUrl = process.env.BEFORE_URL || 'http://127.0.0.1:4173'
 const outDir = process.env.ARTIFACT_DIR || '/opt/cursor/artifacts/3d-rocks-props-pass'
+const capturePhase = (process.env.CAPTURE_PHASE || 'both').toLowerCase()
+const sceneryOnly = process.env.SCENERY_ONLY === '1'
 mkdirSync(outDir, { recursive: true })
 
 const demoUser = {
@@ -101,17 +103,23 @@ async function captureSubject(browser, { artStyle, subject, phase, url, sha, lig
       { timeout: 60_000 },
     )
   }
-  let pose = await page.evaluate(
-    ({ subj, pb }) => window.__mgWalkCapture?.gardenSceneryCloseupPose?.(subj, pb) ?? null,
-    { subj: subject, pb: pullBack },
-  )
+  let pose = null
+  try {
+    pose = await page.evaluate(
+      ({ subj, pb }) => window.__mgWalkCapture?.gardenSceneryCloseupPose?.(subj, pb) ?? null,
+      { subj: subject, pb: pullBack },
+    )
+  } catch {
+    pose = null
+  }
   if (!pose) {
     pose = computeGardenSceneryCloseupPose(subject, undefined, pullBack)
   }
   if (!pose) throw new Error(`No scenery pose for ${subject}`)
   await page.evaluate((p) => window.__mgWalkCapture?.setPose?.(p), pose)
   await page.waitForTimeout(600)
-  const slug = subject === 'fence' ? 'fence-closeup' : 'stump-closeup'
+  const slug =
+    subject === 'fence' ? 'fence-closeup' : subject === 'rocks' ? 'rocks-closeup' : 'stump-closeup'
   const todTag = lightingHour >= 18 ? 'dusk' : 'day'
   const styleTag =
     artStyle === 'pixel-art' ? `pixel-art-walk-${slug}` : `watercolor-open-world-${slug}`
@@ -167,12 +175,23 @@ async function captureWideOverview(browser, artStyle, phase, url, sha) {
 
 const shotLog = []
 
+const runs = []
+if (capturePhase === 'before' || capturePhase === 'both') runs.push(['before', beforeUrl, beforeSha])
+if (capturePhase === 'after' || capturePhase === 'both') runs.push(['after', afterUrl, afterSha])
+
 const browser = await chromium.launch({ headless: true })
 try {
-  for (const [phase, url, sha] of [
-    ['before', beforeUrl, beforeSha],
-    ['after', afterUrl, afterSha],
-  ]) {
+  for (const [phase, url, sha] of runs) {
+    const wcRocks = await captureSubject(browser, {
+      artStyle: 'watercolor',
+      subject: 'rocks',
+      phase,
+      url,
+      sha,
+      lightingHour: 14,
+      pullBack: 0.72,
+    })
+    shotLog.push({ file: wcRocks, subject: 'watercolor-rocks', phase })
     const wcFence = await captureSubject(browser, {
       artStyle: 'watercolor',
       subject: 'fence',
@@ -183,6 +202,7 @@ try {
       pullBack: 0.78,
     })
     shotLog.push({ file: wcFence, subject: 'watercolor-fence', phase })
+    if (sceneryOnly) continue
     const pxStump = await captureSubject(browser, {
       artStyle: 'pixel-art',
       subject: 'stump',
@@ -198,16 +218,18 @@ try {
       shotLog.push({ file: wide, subject: `${wideStyle}-overview`, phase })
     }
   }
-  const dusk = await captureSubject(browser, {
-    artStyle: 'pixel-art',
-    subject: 'stump',
-    phase: 'after',
-    url: afterUrl,
-    sha: afterSha,
-    lightingHour: 19.5,
-    pullBack: 0.64,
-  })
-  shotLog.push({ file: dusk, subject: 'pixel-stump-dusk', phase: 'after' })
+  if (!sceneryOnly && (capturePhase === 'after' || capturePhase === 'both')) {
+    const dusk = await captureSubject(browser, {
+      artStyle: 'pixel-art',
+      subject: 'stump',
+      phase: 'after',
+      url: afterUrl,
+      sha: afterSha,
+      lightingHour: 19.5,
+      pullBack: 0.64,
+    })
+    shotLog.push({ file: dusk, subject: 'pixel-stump-dusk', phase: 'after' })
+  }
 } finally {
   await browser.close()
 }

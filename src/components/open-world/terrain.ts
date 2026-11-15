@@ -186,6 +186,118 @@ function skyTexture(palette: ScenePalette): THREE.CanvasTexture {
   return tex
 }
 
+/** Watercolor walk — violet/rose zenith with amber horizon and soft bloom (not flat fill). */
+export function watercolorSkyTexture(palette: ScenePalette): THREE.CanvasTexture {
+  const c = document.createElement('canvas')
+  c.width = 512
+  c.height = 256
+  const ctx = c.getContext('2d')
+  if (!ctx) return new THREE.CanvasTexture(c)
+  const g = ctx.createLinearGradient(0, 0, 0, 256)
+  const sky = palette.sky
+  const star = palette.starAlpha ?? 0
+  const twilight = star > 0.22
+  const zenith = twilight ? '#4a3268' : (sky[0] ?? '#070619')
+  const upper = twilight ? '#5a3e6a' : (sky[1] ?? '#2a2858')
+  const roseBand = twilight ? '#7a4f72' : (sky[2] ?? '#8868a8')
+  const amber = twilight ? '#e0a070' : (sky[3] ?? '#c89888')
+  const horizon = twilight ? '#f0c090' : (sky[sky.length - 1] ?? '#e8b8a0')
+  g.addColorStop(0, zenith)
+  g.addColorStop(0.18, upper)
+  g.addColorStop(0.42, roseBand)
+  g.addColorStop(0.68, amber)
+  g.addColorStop(0.88, horizon)
+  g.addColorStop(1, twilight ? '#ffe8d0' : horizon)
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, 512, 256)
+  if (twilight) {
+    const bloom = ctx.createRadialGradient(256, 228, 12, 256, 238, 120)
+    bloom.addColorStop(0, 'rgba(255, 235, 200, 0.72)')
+    bloom.addColorStop(0.35, 'rgba(255, 200, 140, 0.38)')
+    bloom.addColorStop(0.7, 'rgba(255, 168, 110, 0.12)')
+    bloom.addColorStop(1, 'rgba(255, 140, 90, 0)')
+    ctx.fillStyle = bloom
+    ctx.fillRect(0, 170, 512, 86)
+    for (let band = 0; band < 5; band++) {
+      ctx.fillStyle = `rgba(255, 210, 170, ${0.03 + band * 0.01})`
+      ctx.fillRect(0, 200 + band * 11, 512, 8)
+    }
+  }
+  const tex = new THREE.CanvasTexture(c)
+  tex.needsUpdate = true
+  return tex
+}
+
+function watercolorRockTexture(palette: ScenePalette, seed: number): THREE.CanvasTexture {
+  const c = document.createElement('canvas')
+  c.width = 128
+  c.height = 128
+  const ctx = c.getContext('2d')
+  if (!ctx) return new THREE.CanvasTexture(c)
+  const base = palette.bank ?? '#6b5d54'
+  const shadow = palette.hills[1] ?? '#4a3838'
+  const moss = palette.hills[0] ?? palette.silSoft ?? '#5a8a5a'
+  const highlight = palette.hills[2] ?? '#a89888'
+  const rng = gardenRng(seed + 880)
+  const wash = ctx.createRadialGradient(64, 72, 8, 64, 64, 86)
+  wash.addColorStop(0, highlight)
+  wash.addColorStop(0.55, base)
+  wash.addColorStop(1, shadow)
+  ctx.fillStyle = wash
+  ctx.fillRect(0, 0, 128, 128)
+  for (let i = 0; i < 48; i++) {
+    const px = rng() * 128
+    const py = rng() * 128
+    ctx.fillStyle = i % 3 === 0 ? shadow : base
+    ctx.globalAlpha = 0.08 + rng() * 0.14
+    ctx.beginPath()
+    ctx.ellipse(px, py, 4 + rng() * 10, 2 + rng() * 6, rng() * Math.PI, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  for (let m = 0; m < 14; m++) {
+    ctx.fillStyle = moss
+    ctx.globalAlpha = 0.22 + rng() * 0.28
+    const mx = rng() * 128
+    const my = 70 + rng() * 50
+    ctx.beginPath()
+    ctx.ellipse(mx, my, 8 + rng() * 16, 4 + rng() * 8, rng() * Math.PI, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.globalAlpha = 1
+  const tex = new THREE.CanvasTexture(c)
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.anisotropy = 4
+  tex.needsUpdate = true
+  return tex
+}
+
+function watercolorWoodTexture(palette: ScenePalette): THREE.CanvasTexture {
+  const c = document.createElement('canvas')
+  c.width = 128
+  c.height = 128
+  const ctx = c.getContext('2d')
+  if (!ctx) return new THREE.CanvasTexture(c)
+  const grain = palette.bank ?? '#543825'
+  const warm = palette.hills[2] ?? '#8a7058'
+  ctx.fillStyle = grain
+  ctx.fillRect(0, 0, 128, 128)
+  for (let y = 0; y < 128; y += 3) {
+    ctx.strokeStyle = y % 9 === 0 ? warm : grain
+    ctx.globalAlpha = 0.35 + (y % 7) * 0.04
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(0, y + Math.sin(y * 0.2) * 2)
+    ctx.lineTo(128, y + Math.cos(y * 0.15) * 2)
+    ctx.stroke()
+  }
+  ctx.globalAlpha = 1
+  const tex = new THREE.CanvasTexture(c)
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.anisotropy = 4
+  tex.needsUpdate = true
+  return tex
+}
+
 function pathRibbon(points: { x: number; z: number }[], width: number): THREE.BufferGeometry {
   const half = width / 2
   const positions: number[] = []
@@ -249,9 +361,12 @@ export function buildTerrain(
       : grassTexture(palette),
   )
   const groundTint = new THREE.Color(palette.hills[1] ?? '#2c163c')
-  if (twilight) {
-    groundTint.lerp(new THREE.Color(palette.hills[0] ?? palette.silSoft), 0.62 + starAlpha * 0.22)
-    groundTint.lerp(new THREE.Color(palette.hills[2] ?? palette.hills[1] ?? '#5a3d52'), 0.18)
+  if (!minecraftMode && twilight) {
+    groundTint.lerp(new THREE.Color(palette.hills[0] ?? palette.silSoft), 0.48 + starAlpha * 0.2)
+    groundTint.lerp(new THREE.Color(palette.hills[2] ?? palette.hills[1] ?? '#6a5a62'), 0.28)
+    groundTint.lerp(new THREE.Color(palette.sky[4] ?? palette.glow ?? '#c8a898'), 0.08 + starAlpha * 0.06)
+  } else if (minecraftMode && twilight) {
+    groundTint.lerp(new THREE.Color(palette.hills[0] ?? palette.silSoft), 0.55 + starAlpha * 0.28)
   }
   const minecraftDayGrassEmissive = new THREE.Color('#5fa037')
   const minecraftNightGrassEmissive = new THREE.Color(palette.hills[1] ?? '#2a4a38').lerp(
@@ -568,31 +683,92 @@ export function buildTerrain(
     root.add(pad)
   })
 
-  // ── Mossy River Boulders & Garden Rocks ──────────────────────────────────
+  // ── Mossy River Boulders & Garden Rocks (watercolor) ─────────────────────
   const rockMat = track(twilightSceneryMat(palette, palette.bank, twilight, starAlpha, 0.9))
-  const rockGeo = track(new THREE.DodecahedronGeometry(1, 1))
+  const rockGeoDodeca = track(new THREE.DodecahedronGeometry(1, 1))
+  const rockGeoIcosa = track(new THREE.IcosahedronGeometry(1, 1))
+  const rockGeoBlob = track(new THREE.SphereGeometry(1, 10, 8))
   const rockPositions = [
-    { x: world.pond.x + world.pond.radius * 0.95, z: world.pond.z - 0.5, s: 0.65 },
-    { x: world.pond.x - world.pond.radius * 0.85, z: world.pond.z + 1.2, s: 0.8 },
-    { x: world.pond.x + 0.4, z: world.pond.z + world.pond.radius * 0.98, s: 0.55 },
-    { x: -16, z: -14, s: 1.1 },
-    { x: 18, z: -12, s: 0.9 },
-    { x: -12, z: 18, s: 0.75 },
-    { x: 14, z: 16, s: 0.85 },
+    { x: world.pond.x + world.pond.radius * 0.95, z: world.pond.z - 0.5, s: 0.65, kind: 0, seed: 41 },
+    { x: -4.55, z: -4.15, s: 1.22, kind: 1, seed: 42 },
+    { x: world.pond.x + 0.4, z: world.pond.z + world.pond.radius * 0.98, s: 0.55, kind: 2, seed: 43 },
+    { x: -16, z: -14, s: 1.1, kind: 0, seed: 44 },
+    { x: 18, z: -12, s: 0.9, kind: 1, seed: 45 },
+    { x: -12, z: 18, s: 0.75, kind: 2, seed: 46 },
+    { x: 14, z: 16, s: 0.85, kind: 0, seed: 47 },
   ]
   for (let ri = 0; ri < rockPositions.length; ri++) {
     const rp = rockPositions[ri]
     if (minecraftMode) {
       /* voxel clusters placed below */
     } else {
-      const rMesh = new THREE.Mesh(rockGeo, rockMat)
-      rMesh.scale.set(rp.s * 1.2, rp.s * 0.7, rp.s * 0.9)
-      rMesh.position.set(rp.x, rp.s * 0.35, rp.z)
-      rMesh.rotation.set(rp.s * 1.5, rp.s * 2.3, rp.s)
+      const rockTex = track(watercolorRockTexture(palette, rp.seed))
+      const boulderMat = track(
+        new THREE.MeshStandardMaterial({
+          map: rockTex,
+          color: twilightSceneryColor(palette, '#ffffff', twilight),
+          roughness: 0.92,
+          metalness: 0,
+          emissive: twilight ? (palette.hills[0] ?? palette.silSoft) : '#000000',
+          emissiveIntensity: twilight ? 0.18 + starAlpha * 0.16 : 0.04,
+        }),
+      )
+      const geo = rp.kind === 1 ? rockGeoIcosa : rp.kind === 2 ? rockGeoBlob : rockGeoDodeca
+      const rMesh = new THREE.Mesh(geo, boulderMat)
+      const flat = rp.kind === 2
+      rMesh.scale.set(
+        rp.s * (flat ? 1.35 : 1.15),
+        rp.s * (flat ? 0.55 : 0.72),
+        rp.s * (flat ? 1.1 : 0.95),
+      )
+      rMesh.position.set(rp.x, rp.s * 0.32, rp.z)
+      rMesh.rotation.set(rp.s * 1.1, rp.s * 2.1, rp.seed * 0.3)
       rMesh.castShadow = true
       rMesh.receiveShadow = true
       root.add(rMesh)
+      if (rp.s > 0.6 && !reducedMotion) {
+        const mossMat = track(
+          new THREE.MeshStandardMaterial({
+            color: palette.hills[0] ?? palette.silSoft,
+            roughness: 1,
+            transparent: true,
+            opacity: 0.88,
+          }),
+        )
+        const moss = new THREE.Mesh(track(new THREE.SphereGeometry(rp.s * 0.35, 6, 5)), mossMat)
+        moss.scale.set(1.2, 0.35, 1.1)
+        moss.position.set(rp.x + rp.s * 0.2, rp.s * 0.28, rp.z - rp.s * 0.15)
+        root.add(moss)
+      }
     }
+  }
+  if (!minecraftMode && !reducedMotion) {
+    const pebbleGeo = track(new THREE.DodecahedronGeometry(1, 0))
+    const pebbleMat = track(
+      twilightSceneryMat(palette, palette.bank ?? '#7a6a62', twilight, starAlpha, 0.95),
+    )
+    const pebbleCount = 48
+    const pebbles = new THREE.InstancedMesh(pebbleGeo, pebbleMat, pebbleCount)
+    const pebRng = gardenRng(412)
+    const dummy = new THREE.Object3D()
+    let placed = 0
+    while (placed < pebbleCount) {
+      const cluster = placed < 22
+      const x = cluster ? -4.55 + (pebRng() * 2 - 1) * 5.5 : (pebRng() * 2 - 1) * 28
+      const z = cluster ? -4.15 + (pebRng() * 2 - 1) * 5.5 : (pebRng() * 2 - 1) * 28
+      if (Math.hypot(x - world.pond.x, z - world.pond.z) < world.pond.radius + 0.35) continue
+      const scale = 0.08 + pebRng() * 0.14
+      dummy.position.set(x, scale * 0.35, z)
+      dummy.rotation.set(pebRng(), pebRng(), pebRng())
+      dummy.scale.setScalar(scale)
+      dummy.updateMatrix()
+      pebbles.setMatrixAt(placed, dummy.matrix)
+      placed++
+    }
+    pebbles.instanceMatrix.needsUpdate = true
+    pebbles.castShadow = true
+    pebbles.receiveShadow = true
+    root.add(pebbles)
   }
 
   if (minecraftMode) {
@@ -611,7 +787,18 @@ export function buildTerrain(
     return m
   }
 
-  const propFenceWood = registerWood(track(new THREE.MeshStandardMaterial({ color: '#543825', roughness: 0.82 })))
+  const wcWoodTex = minecraftMode ? null : track(watercolorWoodTexture(palette))
+  const propFenceWood = registerWood(
+    track(
+      new THREE.MeshStandardMaterial({
+        color: '#ffffff',
+        map: wcWoodTex ?? undefined,
+        roughness: 0.84,
+        emissive: twilight ? (palette.bank ?? '#3a2818') : '#000000',
+        emissiveIntensity: twilight ? 0.14 + starAlpha * 0.1 : 0,
+      }),
+    ),
+  )
 
   if (minecraftMode) {
     const hillTop =
@@ -649,7 +836,9 @@ export function buildTerrain(
 
   const walkCaptureDecor = isWalkCaptureSession()
   // ── Wooden Garden Pergola / Trellis Arch near Gate ──────────────────────
-  const wood = track(new THREE.MeshStandardMaterial({ color: '#543825', roughness: 0.82 }))
+  const wood = minecraftMode
+    ? track(new THREE.MeshStandardMaterial({ color: '#543825', roughness: 0.82 }))
+    : propFenceWood
   const ivyLeafMat = track(new THREE.MeshStandardMaterial({ color: palette.silSoft, roughness: 0.7 }))
   const archGroup = new THREE.Group()
   const archW = 3.6
@@ -1106,7 +1295,7 @@ export function buildTerrain(
       color: hillColor,
       roughness: 0.94,
       emissive: twilight ? (palette.hills[0] ?? palette.silSoft) : '#000000',
-      emissiveIntensity: twilight ? 0.14 + starAlpha * 0.08 : 0,
+      emissiveIntensity: twilight ? 0.24 + starAlpha * 0.14 : 0,
     }),
   )
   const hillGeo = track(new THREE.SphereGeometry(1, 10, 8))
@@ -1165,9 +1354,20 @@ export function buildTerrain(
   }
 
   // ── Celestial Sphere & Stylized Floating Clouds ──────────────────────────
-  const skyTex = track(skyTexture(palette))
-  const skyMat = track(new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, depthWrite: false }))
+  const skyTex = track(minecraftMode ? skyTexture(palette) : watercolorSkyTexture(palette))
+  const skyMat = track(
+    new THREE.MeshBasicMaterial({
+      map: skyTex,
+      side: THREE.BackSide,
+      depthWrite: false,
+      // Sky shell is ~180m; scene fog far is 64–92 — without this the dome washes to a flat fog color.
+      fog: minecraftMode,
+      toneMapped: minecraftMode,
+    }),
+  )
   const sky = new THREE.Mesh(track(new THREE.SphereGeometry(180, 16, 12)), skyMat)
+  sky.frustumCulled = false
+  sky.renderOrder = -1000
   root.add(sky)
 
   // Celestial Body (Sun or Moon)
@@ -1186,12 +1386,19 @@ export function buildTerrain(
 
   // Floating Low-Poly Clouds
   const clouds: { group: THREE.Group; speed: number; startX: number }[] = []
+  const cloudTwilightWc = !minecraftMode && twilight
   const cloudMat = track(
     new THREE.MeshStandardMaterial({
-      color: isNight ? '#3a2d52' : '#f8f4f9',
+      color: cloudTwilightWc
+        ? (palette.sky[4] ?? '#ffc8a8')
+        : isNight
+          ? '#3a2d52'
+          : '#f8f4f9',
       roughness: 0.9,
       transparent: true,
-      opacity: isNight ? 0.45 : 0.75,
+      opacity: cloudTwilightWc ? 0.62 : isNight ? 0.45 : 0.75,
+      emissive: cloudTwilightWc ? (palette.sky[3] ?? '#c88898') : '#000000',
+      emissiveIntensity: cloudTwilightWc ? 0.35 + starAlpha * 0.2 : 0,
     }),
   )
   const cloudSphereGeo = track(new THREE.SphereGeometry(1, 8, 8))
@@ -1420,12 +1627,23 @@ export function buildTerrain(
       lanternGlassMat.emissive.set(next.glow)
       lanternGlassMat.emissiveIntensity = nextNight ? 1.4 : 0.4
       celestialMat.color.set(nextNight ? '#e2ecf8' : (next.sun?.disk ?? '#ffe7a0'))
-      cloudMat.color.set(nextNight ? '#3a2d52' : '#f8f4f9')
-      cloudMat.opacity = nextNight ? 0.45 : 0.75
+      if (!minecraftMode && twilight) {
+        cloudMat.color.set(next.sky[4] ?? '#ffc8a8')
+        cloudMat.emissive?.set(next.sky[3] ?? '#c88898')
+        cloudMat.emissiveIntensity = 0.28 + star * 0.18
+        cloudMat.opacity = 0.58
+      } else {
+        cloudMat.color.set(nextNight ? '#3a2d52' : '#f8f4f9')
+        cloudMat.emissive?.set('#000000')
+        cloudMat.emissiveIntensity = 0
+        cloudMat.opacity = nextNight ? 0.45 : 0.75
+      }
       fogColor.set(next.sky[2] ?? next.bank)
-      const newSky = skyTexture(next)
+      const newSky = track(minecraftMode ? skyTexture(next) : watercolorSkyTexture(next))
       skyMat.map?.dispose()
       skyMat.map = newSky
+      skyMat.fog = minecraftMode
+      skyMat.toneMapped = minecraftMode
       skyMat.needsUpdate = true
       disposables.push(newSky)
     },
