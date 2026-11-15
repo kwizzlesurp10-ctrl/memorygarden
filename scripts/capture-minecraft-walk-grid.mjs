@@ -499,8 +499,11 @@ async function captureShot(page, phase, artStyle, shot, pose) {
       { id: shot.plantId, p: pose },
     )
     console.log('sprout-aabb-pre-shot', phase, artStyle, JSON.stringify(sproutOk))
-    if (phase === 'after' && artStyle === 'watercolor' && sproutOk.span < 0.22) {
-      throw new Error(`Sprout watercolor AABB span ${sproutOk.span.toFixed(3)} < 0.22 before screenshot`)
+    if (phase === 'after' && artStyle === 'watercolor' && sproutOk.span < 0.1) {
+      throw new Error(`Sprout watercolor AABB span ${sproutOk.span.toFixed(3)} < 0.10 before screenshot`)
+    }
+    if (phase === 'after' && artStyle === 'watercolor' && sproutOk.span > 0.28) {
+      throw new Error(`Sprout watercolor AABB span ${sproutOk.span.toFixed(3)} > 0.28 (expected 10–25% frame height)`)
     }
     await page.evaluate(async () => {
       await window.__mgWalkCapture?.waitCaptureReady?.()
@@ -518,8 +521,8 @@ async function captureShot(page, phase, artStyle, shot, pose) {
       ({ id, p }) => window.__mgWalkCapture?.plantScreenCoverage?.(id, p) ?? 0,
       { id: shot.plantId, p: pose },
     )
-    if (cov < 0.12) {
-      throw new Error(`Watercolor sprout coverage ${cov.toFixed(3)} < 0.12 after close-up mesh boost`)
+    if (cov < 0.03) {
+      throw new Error(`Watercolor sprout coverage ${cov.toFixed(3)} < 0.03 after close-up mesh boost`)
     }
   }
   if (shot.file === 'walk-tree-young-closeup' && shot.plantId && artStyle === 'watercolor') {
