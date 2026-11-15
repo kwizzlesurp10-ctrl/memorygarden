@@ -16,7 +16,7 @@ export function computeGardenSceneryCloseupPose(kind, footY = walkCaptureGroundY
   let camX = f.x + f.camDx * pullBack
   let camZ = f.z + f.camDz * pullBack
   if (kind === 'fence') {
-    const dist = 0.72 * pullBack
+    const dist = 1.05 * pullBack
     const fy = GARDEN_AMBIENT_FENCE_YAW
     const fx = f.x
     const fz = f.z

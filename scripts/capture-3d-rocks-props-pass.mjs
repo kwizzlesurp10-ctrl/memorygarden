@@ -110,9 +110,6 @@ async function captureSubject(browser, { artStyle, subject, phase, url, sha, lig
   }
   if (!pose) throw new Error(`No scenery pose for ${subject}`)
   await page.evaluate((p) => window.__mgWalkCapture?.setPose?.(p), pose)
-  if (subject === 'fence' && artStyle === 'watercolor') {
-    await page.evaluate(() => window.__mgWalkCapture?.setCaptureFov?.(34))
-  }
   await page.waitForTimeout(600)
   const slug = subject === 'fence' ? 'fence-closeup' : 'stump-closeup'
   const todTag = lightingHour >= 18 ? 'dusk' : 'day'
@@ -183,7 +180,7 @@ try {
       url,
       sha,
       lightingHour: 14,
-      pullBack: 0.72,
+      pullBack: 0.78,
     })
     shotLog.push({ file: wcFence, subject: 'watercolor-fence', phase })
     const pxStump = await captureSubject(browser, {
