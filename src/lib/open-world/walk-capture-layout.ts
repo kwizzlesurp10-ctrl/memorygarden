@@ -11,6 +11,7 @@ export function isWalkPlantFocusCapture(): boolean {
 
 const WALK_V2_PIN: Record<string, { x: number; z: number }> = {
   'tree-mature-walk': { x: 0, z: 14 },
+  'tree-young-walk': { x: 0, z: 11 },
   'tree-elder-walk': { x: 24, z: 14 },
   'flower-bloom-walk': { x: -24, z: 14 },
   'mushroom-walk': { x: 0, z: 30 },

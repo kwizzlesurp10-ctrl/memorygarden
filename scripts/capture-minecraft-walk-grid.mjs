@@ -175,6 +175,8 @@ if (captureOnly === 'elder') {
   shots = shots.filter((s) => s.file === 'walk-tree-elder-closeup')
 } else if (captureOnly === 'young') {
   shots = shots.filter((s) => s.file === 'walk-tree-young-closeup')
+} else if (captureOnly === 'flower') {
+  shots = shots.filter((s) => s.file === 'walk-flower-closeup')
 } else if (captureOnly === 'mushroom') {
   shots = shots.filter((s) => s.file === 'walk-mushroom-closeup')
 } else if (captureOnly === 'detail') {
@@ -240,6 +242,26 @@ async function mushroomCloseupPoseForPage(page, plantId) {
     const b = window.__mgWalkCapture
     if (typeof b?.mushroomCloseupPose === 'function') {
       return b.mushroomCloseupPose(id)
+    }
+    return b?.deterministicPlantPose?.(id) ?? null
+  }, plantId)
+}
+
+async function flowerCloseupPoseForPage(page, plantId) {
+  return page.evaluate((id) => {
+    const b = window.__mgWalkCapture
+    if (typeof b?.flowerCloseupPose === 'function') {
+      return b.flowerCloseupPose(id)
+    }
+    return b?.deterministicPlantPose?.(id) ?? null
+  }, plantId)
+}
+
+async function youngCloseupPoseForPage(page, plantId) {
+  return page.evaluate((id) => {
+    const b = window.__mgWalkCapture
+    if (typeof b?.youngCloseupPose === 'function') {
+      return b.youngCloseupPose(id)
     }
     return b?.deterministicPlantPose?.(id) ?? null
   }, plantId)
@@ -454,6 +476,17 @@ async function captureShot(page, phase, artStyle, shot, pose) {
   if (shot.file === 'walk-mushroom-closeup' && shot.plantId && artStyle === 'pixel-art') {
     await assertMushroomCloseupFrame(page, shot.plantId, file, phase, artStyle, pose)
   }
+  if (shot.file === 'walk-tree-young-closeup' && shot.plantId && artStyle === 'watercolor') {
+    const proj = await page.evaluate(
+      (id) => window.__mgWalkCapture?.plantProjectedAabbScreen?.(id) ?? null,
+      shot.plantId,
+    )
+    const span = proj && Number.isFinite(proj.bottom) ? proj.bottom - proj.top : 0
+    console.log(`young-aabb-assert ${phase} ${artStyle} span=${span.toFixed(3)}`, proj ? JSON.stringify(proj) : 'n/a')
+    if (phase === 'after' && span < 0.3) {
+      throw new Error(`Young watercolor AABB span ${span.toFixed(3)} < 0.30 (required >=30% frame height)`)
+    }
+  }
   await page.evaluate(() => window.__mgWalkCapture?.setSoloPlantFocus?.(null))
   if (shot.plantId) {
     const has = await page.evaluate((id) => window.__mgWalkCapture?.hasPlantGroup?.(id) === true, shot.plantId)
@@ -516,7 +549,12 @@ try {
   }
 
   if (!poses) poses = {}
-  const posePinnedExternally = new Set(['walk-tree-elder-closeup', 'walk-mushroom-closeup'])
+  const posePinnedExternally = new Set([
+    'walk-tree-elder-closeup',
+    'walk-mushroom-closeup',
+    'walk-tree-young-closeup',
+    'walk-flower-closeup',
+  ])
   if (captureOnly !== 'elder' && captureOnly !== 'mushroom' && captureOnly !== 'detail') {
     const missing = shots.filter((s) => !poses[s.file] && !posePinnedExternally.has(s.file))
     if (missing.length) {
@@ -546,10 +584,14 @@ try {
 
   for (const run of runs) {
     const elderShot = shots.find((s) => s.file === 'walk-tree-elder-closeup')
+    const youngShot = shots.find((s) => s.file === 'walk-tree-young-closeup')
+    const flowerShot = shots.find((s) => s.file === 'walk-flower-closeup')
     const mushroomShot = shots.find((s) => s.file === 'walk-mushroom-closeup')
     for (const artStyle of styleListForRun(run.styles)) {
       await bootstrapWalk(page, run.url, artStyle)
       let elderPoseForStyle = null
+      let youngPoseForStyle = null
+      let flowerPoseForStyle = null
       let mushroomPoseForStyle = null
       if (elderShot?.plantId) {
         await page.evaluate((plantId) => {
@@ -561,6 +603,34 @@ try {
         elderPoseForStyle = await elderCloseupPoseForPage(page, elderShot.plantId)
         if (!elderPoseForStyle) throw new Error(`No elder close-up pose for ${run.url} ${artStyle}`)
         console.log(`elder pose (${run.phase} ${artStyle})`, JSON.stringify(elderPoseForStyle))
+        await page.evaluate(() => window.__mgWalkCapture?.setSoloPlantFocus?.(null))
+      }
+      if (flowerShot?.plantId) {
+        await page.evaluate((plantId) => {
+          window.__mgWalkCapture?.setSoloPlantFocus?.(plantId ?? null)
+        }, flowerShot.plantId)
+        await page.evaluate(async () => {
+          await window.__mgWalkCapture?.waitCaptureReady?.()
+        })
+        flowerPoseForStyle = await flowerCloseupPoseForPage(page, flowerShot.plantId)
+        if (!flowerPoseForStyle) {
+          throw new Error(`No flower close-up pose for ${run.url} ${artStyle}`)
+        }
+        console.log(`flower pose (${run.phase} ${artStyle})`, JSON.stringify(flowerPoseForStyle))
+        await page.evaluate(() => window.__mgWalkCapture?.setSoloPlantFocus?.(null))
+      }
+      if (youngShot?.plantId) {
+        await page.evaluate((plantId) => {
+          window.__mgWalkCapture?.setSoloPlantFocus?.(plantId ?? null)
+        }, youngShot.plantId)
+        await page.evaluate(async () => {
+          await window.__mgWalkCapture?.waitCaptureReady?.()
+        })
+        youngPoseForStyle = await youngCloseupPoseForPage(page, youngShot.plantId)
+        if (!youngPoseForStyle) {
+          throw new Error(`No young close-up pose for ${run.url} ${artStyle}`)
+        }
+        console.log(`young pose (${run.phase} ${artStyle})`, JSON.stringify(youngPoseForStyle))
         await page.evaluate(() => window.__mgWalkCapture?.setSoloPlantFocus?.(null))
       }
       if (mushroomShot?.plantId) {
@@ -582,6 +652,12 @@ try {
         if (shot.file === 'walk-tree-elder-closeup') {
           pose = elderPoseForStyle
         }
+        if (shot.file === 'walk-tree-young-closeup') {
+          pose = youngPoseForStyle
+        }
+        if (shot.file === 'walk-flower-closeup') {
+          pose = flowerPoseForStyle ?? pose
+        }
         if (shot.file === 'walk-mushroom-closeup') {
           pose = mushroomPoseForStyle
         }
@@ -594,6 +670,8 @@ try {
     const persist = { ...poses }
     delete persist['walk-tree-elder-closeup']
     delete persist['walk-mushroom-closeup']
+    delete persist['walk-tree-young-closeup']
+    delete persist['walk-flower-closeup']
     writeFileSync(posePath, JSON.stringify(persist, null, 2))
   }
 } finally {

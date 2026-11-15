@@ -323,8 +323,10 @@ export function OpenWorldGarden({
         setCaptureFov: (fov) => engine.applyCaptureFov(fov),
         elderCloseupPose: (plantId) => engine.elderDeterministicCapturePose(plantId),
         mushroomCloseupPose: (plantId) => engine.mushroomDeterministicCapturePose(plantId),
-        plantProjectedBoxScreenY: (plantId) => engine.plantProjectedBoxScreenY(plantId),
+        youngCloseupPose: (plantId) => engine.youngDeterministicCapturePose(plantId),
+        flowerCloseupPose: (plantId) => engine.flowerDeterministicCapturePose(plantId),
         plantProjectedAabbScreen: (plantId) => engine.plantProjectedAabbScreen(plantId),
+        plantProjectedBoxScreenY: (plantId) => engine.plantProjectedBoxScreenY(plantId),
         pondCloseupPose: () => engine.pondCapturePose(),
         gardenSceneryCloseupPose: (kind, pullBack) => engine.gardenSceneryCloseupPose(kind, pullBack),
       })
