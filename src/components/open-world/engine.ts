@@ -286,7 +286,7 @@ export class OpenWorldEngine {
       if (this.scene.fog instanceof THREE.Fog) {
         this.scene.fog.color.copy(duskSky)
         this.scene.fog.near = 22
-        this.scene.fog.far = 76
+        this.scene.fog.far = 108
       }
     } else if (watercolorDusk) {
       const tw = Math.min(1, (star - 0.18) / 0.5)
@@ -1789,7 +1789,7 @@ export class OpenWorldEngine {
         if (this.scene.fog instanceof THREE.Fog) {
           this.scene.fog.color.copy(duskSky)
           this.scene.fog.near = 22
-          this.scene.fog.far = 76
+          this.scene.fog.far = 108
         }
       } else {
         const skyWash = new THREE.Color(p.sky[3] ?? p.sky[2] ?? '#88aacc')

@@ -15,6 +15,7 @@ import {
   minecraftPondShoreTexture,
   minecraftPondVoxelRim,
   minecraftSkyTexture,
+  minecraftTwilightSkyStars,
   minecraftWaterBlockTexture,
   voxelLogStump,
   voxelMaterial,
@@ -1359,6 +1360,9 @@ export function buildTerrain(
   const sky = new THREE.Mesh(track(new THREE.SphereGeometry(180, 16, 12)), skyMat)
   sky.frustumCulled = false
   sky.renderOrder = -1000
+  if (minecraftMode && twilight) {
+    minecraftTwilightSkyStars(sky, palette, track)
+  }
   root.add(sky)
 
   // Celestial Body (Sun or Moon)

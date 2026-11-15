@@ -785,6 +785,42 @@ export function minecraftSkyTexture(palette: ScenePalette): THREE.CanvasTexture 
   return tex
 }
 
+export function minecraftTwilightSkyStars(
+  skySphere: THREE.Mesh,
+  palette: ScenePalette,
+  track: <T extends { dispose: () => void }>(o: T) => T,
+): void {
+  const star = palette.starAlpha ?? 0
+  if (star < 0.2) return
+  const starMat = track(voxelMaterial('#f8f8ff', '#ffe8c8', 118, 'flower'))
+  const rng = gardenRng(3321)
+  const count = Math.floor(24 + star * 48)
+  const group = new THREE.Group()
+  group.name = 'minecraft-sky-stars'
+  for (let i = 0; i < count; i++) {
+    const theta = rng() * Math.PI * 2
+    const phi = rng() * Math.PI * 0.42
+    const r = 175
+    const mesh = new THREE.Mesh(boxGeo, starMat)
+    mesh.position.set(
+      Math.sin(phi) * Math.cos(theta) * r,
+      Math.cos(phi) * r * 0.85 + 20,
+      Math.sin(phi) * Math.sin(theta) * r,
+    )
+    const s = 0.55 + rng() * 0.9
+    mesh.scale.setScalar(s)
+    mesh.userData.voxel = true
+    group.add(mesh)
+  }
+  const sunBlock = track(voxelMaterial('#ffe8a0', '#ffb040', 119, 'flower'))
+  const duskSun = new THREE.Mesh(boxGeo, sunBlock)
+  duskSun.position.set(48, 82, -120)
+  duskSun.scale.set(5.5, 5.5, 1.2)
+  duskSun.userData.voxel = true
+  group.add(duskSun)
+  skySphere.add(group)
+}
+
 export function minecraftBlockCloud(
   centerX: number,
   centerY: number,
