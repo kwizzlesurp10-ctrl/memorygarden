@@ -10,6 +10,7 @@ import {
   minecraftGrassTexture,
   minecraftGrassTufts,
   minecraftPathTexture,
+  minecraftPondShoreTexture,
   minecraftWaterBlockTexture,
   voxelLogStump,
   voxelRockCluster,
@@ -126,14 +127,24 @@ function watercolorWaterTexture(palette: ScenePalette): THREE.CanvasTexture {
   depth.addColorStop(1, 'rgba(0,28,48,0.38)')
   ctx.fillStyle = depth
   ctx.fillRect(0, 0, 256, 256)
-  for (let i = 0; i < 8; i++) {
-    const yBase = 24 + i * 30
+  for (let i = 0; i < 11; i++) {
+    const yBase = 18 + i * 22
     ctx.strokeStyle = ripple
-    ctx.globalAlpha = 0.14 + (i % 2) * 0.09
-    ctx.lineWidth = 1 + (i % 3 === 0 ? 1 : 0)
+    ctx.globalAlpha = 0.34 + (i % 2) * 0.16
+    ctx.lineWidth = 2 + (i % 3 === 0 ? 1 : 0)
     ctx.beginPath()
-    for (let x = 0; x <= 256; x += 6) {
-      const y = yBase + Math.sin(x * 0.045 + i * 1.1) * (2.5 + (i % 2))
+    for (let x = 0; x <= 256; x += 5) {
+      const y = yBase + Math.sin(x * 0.048 + i * 1.1) * (3 + (i % 2))
+      if (x === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    }
+    ctx.stroke()
+    ctx.strokeStyle = 'rgba(248,252,255,0.55)'
+    ctx.globalAlpha = 0.12 + (i % 2) * 0.06
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    for (let x = 0; x <= 256; x += 5) {
+      const y = yBase + 1.5 + Math.sin(x * 0.048 + i * 1.1 + 0.4) * (2.5 + (i % 2))
       if (x === 0) ctx.moveTo(x, y)
       else ctx.lineTo(x, y)
     }
@@ -142,7 +153,7 @@ function watercolorWaterTexture(palette: ScenePalette): THREE.CanvasTexture {
   ctx.globalAlpha = 1
   const tex = new THREE.CanvasTexture(c)
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-  tex.repeat.set(2.6, 2.6)
+  tex.repeat.set(2.2, 2.2)
   tex.anisotropy = 4
   tex.needsUpdate = true
   return tex
@@ -352,13 +363,13 @@ export function buildTerrain(
         })
       : new THREE.MeshStandardMaterial({
           map: watercolorWaterTex ?? undefined,
-          color: new THREE.Color(waterShallow).lerp(new THREE.Color(waterDeep), 0.32),
-          roughness: isNight ? 0.08 : 0.06,
-          metalness: 0.42,
+          color: new THREE.Color(waterShallow).lerp(new THREE.Color(waterDeep), 0.38),
+          roughness: isNight ? 0.06 : 0.04,
+          metalness: 0.48,
           transparent: true,
-          opacity: isNight ? 0.84 : 0.88,
+          opacity: isNight ? 0.82 : 0.86,
           emissive: new THREE.Color(skySheen),
-          emissiveIntensity: isNight ? 0.2 + starAlpha * 0.1 : 0.16,
+          emissiveIntensity: isNight ? 0.22 + starAlpha * 0.1 : 0.2,
         }),
   )
   const waterDiameter = world.pond.radius * 2
@@ -423,19 +434,20 @@ export function buildTerrain(
   foam.position.set(world.pond.x, 0.052, world.pond.z)
   root.add(foam)
 
+  const pixelShoreTex = minecraftMode ? track(minecraftPondShoreTexture(palette)) : null
   const shoreTintMat = track(
-    minecraftMode && pathTex
+    minecraftMode && pixelShoreTex
       ? new THREE.MeshLambertMaterial({
-          map: pathTex,
-          color: new THREE.Color(palette.bank).lerp(new THREE.Color('#e8e0d0'), 0.55),
-          transparent: true,
-          opacity: 0.9,
+          map: pixelShoreTex,
+          color: new THREE.Color('#ffffff'),
+          emissive: new THREE.Color(waterShallow).lerp(new THREE.Color('#f0e8d8'), 0.62),
+          emissiveIntensity: 0.22,
         })
       : new THREE.MeshStandardMaterial({
-          color: new THREE.Color(palette.bank).lerp(new THREE.Color(waterShallow), 0.22),
-          roughness: 1,
+          color: new THREE.Color(waterShallow).lerp(new THREE.Color('#d4c4b0'), 0.58),
+          roughness: 0.94,
           transparent: true,
-          opacity: 0.85,
+          opacity: 0.78,
         }),
   )
   const shoreOuter = minecraftMode ? world.pond.radius + 1.05 : world.pond.radius + 0.65
@@ -444,51 +456,37 @@ export function buildTerrain(
     shoreTintMat,
   )
   bank.rotation.x = -Math.PI / 2
-  bank.position.set(world.pond.x, minecraftMode ? 0.082 : 0.04, world.pond.z)
-  bank.receiveShadow = true
+  bank.position.set(world.pond.x, minecraftMode ? 0.091 : 0.04, world.pond.z)
+  bank.receiveShadow = !minecraftMode
+  bank.renderOrder = minecraftMode ? 2 : 0
   root.add(bank)
 
   if (!minecraftMode) {
     const shoreRng = gardenRng(519)
+    const pebbleTone = new THREE.Color('#c8baa8').lerp(new THREE.Color(waterShallow), 0.18)
     const pebbleMat = track(
       new THREE.MeshStandardMaterial({
-        color: new THREE.Color(palette.bank).lerp(new THREE.Color(palette.sil ?? palette.bank), 0.38),
-        roughness: 0.96,
+        color: pebbleTone,
+        roughness: 0.94,
+        metalness: 0.02,
       }),
     )
-    const pebbleGeo = track(new THREE.DodecahedronGeometry(1, 0))
-    for (let i = 0; i < 30; i++) {
-      const a = (i / 30) * Math.PI * 2 + shoreRng() * 0.4
-      const dist = world.pond.radius + 0.32 + shoreRng() * 0.52
+    const pebbleGeo = track(new THREE.SphereGeometry(1, 8, 6))
+    const pebbleCount = 14
+    for (let i = 0; i < pebbleCount; i++) {
+      const a = (i / pebbleCount) * Math.PI * 2 + shoreRng() * 0.25
+      const dist = world.pond.radius * 0.99 + 0.06 + shoreRng() * 0.32
       const pebble = new THREE.Mesh(pebbleGeo, pebbleMat)
-      const s = 0.055 + shoreRng() * 0.075
-      pebble.scale.set(s * 1.15, s * 0.62, s * 0.95)
+      const s = 0.028 + shoreRng() * 0.032
+      pebble.scale.set(s * 1.05, s * 0.72, s)
       pebble.position.set(
         world.pond.x + Math.cos(a) * dist,
-        0.052 + shoreRng() * 0.018,
+        0.048 + shoreRng() * 0.01,
         world.pond.z + Math.sin(a) * dist,
       )
-      pebble.rotation.set(shoreRng() * 2.2, shoreRng() * 3.1, shoreRng() * 1.8)
       pebble.receiveShadow = true
       root.add(pebble)
     }
-    const wetShoreMat = track(
-      new THREE.MeshStandardMaterial({
-        color: new THREE.Color(palette.hills[1] ?? '#2c163c').lerp(new THREE.Color(waterDeep), 0.16),
-        map: grassTex,
-        roughness: 0.98,
-        transparent: true,
-        opacity: 0.62,
-      }),
-    )
-    const wetShore = new THREE.Mesh(
-      track(new THREE.RingGeometry(world.pond.radius + 0.58, world.pond.radius + 1.08, 44)),
-      wetShoreMat,
-    )
-    wetShore.rotation.x = -Math.PI / 2
-    wetShore.position.set(world.pond.x, 0.036, world.pond.z)
-    wetShore.receiveShadow = true
-    root.add(wetShore)
   }
 
   // ── Floating Remembrance Candle Boats on Pond ───────────────────────────
