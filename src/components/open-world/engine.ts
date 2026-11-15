@@ -1074,11 +1074,10 @@ export class OpenWorldEngine {
           const aim = new THREE.Vector3(wp.x, ground + size.y * 0.5, wp.z)
           const yaw = Math.PI / 4
           const targetFrac = 0.25
-          const standoffScale = 0.55
           let bestPose: WalkCapturePose | null = null
           let bestDelta = Infinity
           for (let pass = 0; pass < 18; pass++) {
-            const dist = (0.55 + (pass / 17) * 2.4) * standoffScale
+            const dist = 0.55 + (pass / 17) * 2.4
             const camX = wp.x + Math.sin(yaw) * dist
             const camZ = wp.z + Math.cos(yaw) * dist
             const eyeY = this.eyeHeightAt(camX, camZ, 0.92)
