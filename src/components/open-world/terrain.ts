@@ -372,13 +372,8 @@ export function buildTerrain(
           emissiveIntensity: isNight ? 0.22 + starAlpha * 0.1 : 0.2,
         }),
   )
-  const waterDiameter = world.pond.radius * 2
   const water = new THREE.Mesh(
-    track(
-      minecraftMode
-        ? new THREE.PlaneGeometry(waterDiameter, waterDiameter)
-        : new THREE.CircleGeometry(world.pond.radius, 40),
-    ),
+    track(new THREE.CircleGeometry(world.pond.radius, minecraftMode ? 48 : 40)),
     waterMat,
   )
   water.rotation.x = -Math.PI / 2
