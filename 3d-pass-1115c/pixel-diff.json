@@ -4,27 +4,27 @@
     "beforePath": "/agent/repos/memorygarden/3d-pass-1115c/before/walk-dusk-overview-pixel-art.png",
     "afterPath": "/agent/repos/memorygarden/3d-pass-1115c/after/walk-dusk-overview-pixel-art.png",
     "lumThreshold": 30,
-    "diffPixels": 2685,
+    "diffPixels": 49406,
     "totalPixels": 860160,
-    "diffPercent": 0.31215122767857145
+    "diffPercent": 5.743815104166667
   },
   {
     "name": "walk-dusk-overview-watercolor.png",
     "beforePath": "/agent/repos/memorygarden/3d-pass-1115c/before/walk-dusk-overview-watercolor.png",
     "afterPath": "/agent/repos/memorygarden/3d-pass-1115c/after/walk-dusk-overview-watercolor.png",
     "lumThreshold": 30,
-    "diffPixels": 352033,
+    "diffPixels": 352045,
     "totalPixels": 860160,
-    "diffPercent": 40.92645554315476
+    "diffPercent": 40.927850632440474
   },
   {
     "name": "walk-overview-pixel-art.png",
     "beforePath": "/agent/repos/memorygarden/3d-pass-1115c/before/walk-overview-pixel-art.png",
     "afterPath": "/agent/repos/memorygarden/3d-pass-1115c/after/walk-overview-pixel-art.png",
     "lumThreshold": 30,
-    "diffPixels": 4635,
+    "diffPixels": 1015,
     "totalPixels": 860160,
-    "diffPercent": 0.5388532366071429
+    "diffPercent": 0.11800130208333333
   },
   {
     "name": "tree-stages-2d-3d-grid.png",
