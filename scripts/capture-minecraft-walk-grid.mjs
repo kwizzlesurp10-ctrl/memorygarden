@@ -551,9 +551,9 @@ async function captureShot(page, phase, artStyle, shot, pose) {
     const png = PNG.sync.read(readFileSync(file))
     let warm = 0
     for (let i = 0; i < png.data.length; i += 4) {
-      const r = png.data[i]!
-      const g = png.data[i + 1]!
-      const b = png.data[i + 2]!
+      const r = png.data[i]
+      const g = png.data[i + 1]
+      const b = png.data[i + 2]
       if (r > 150 && g > 110 && b < 140) warm++
     }
     const warmFrac = warm / (png.width * png.height)
