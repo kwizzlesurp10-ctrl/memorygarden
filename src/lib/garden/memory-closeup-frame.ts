@@ -39,7 +39,10 @@ export function memoryCloseupSvgLayout(
   const panelH = 100
   const fill = 0.72
   const rawScale = (panelH * fill) / Math.max(drawH, 14)
-  const scale = Math.max(rawScale, 2.1)
+  const tallVariety = heightRatio > 1.12
+  const scale = tallVariety
+    ? Math.min(Math.max(rawScale, 0.28), 1.45)
+    : Math.max(rawScale, 2.1)
   const scaledW = drawW * scale
   const vbW = Math.ceil(scaledW * 1.22)
   const vbH = panelH

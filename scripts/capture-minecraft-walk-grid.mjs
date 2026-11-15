@@ -476,6 +476,15 @@ async function captureShot(page, phase, artStyle, shot, pose) {
   if (shot.file === 'walk-mushroom-closeup' && shot.plantId && artStyle === 'pixel-art') {
     await assertMushroomCloseupFrame(page, shot.plantId, file, phase, artStyle, pose)
   }
+  if (shot.file === 'walk-sprout-closeup' && shot.plantId && artStyle === 'watercolor' && phase === 'after') {
+    const cov = await page.evaluate(
+      ({ id, p }) => window.__mgWalkCapture?.plantScreenCoverage?.(id, p) ?? 0,
+      { id: shot.plantId, p: pose },
+    )
+    if (cov < 0.12) {
+      throw new Error(`Watercolor sprout coverage ${cov.toFixed(3)} < 0.12 after close-up mesh boost`)
+    }
+  }
   if (shot.file === 'walk-tree-young-closeup' && shot.plantId && artStyle === 'watercolor') {
     const proj = await page.evaluate(
       (id) => window.__mgWalkCapture?.plantProjectedAabbScreen?.(id) ?? null,

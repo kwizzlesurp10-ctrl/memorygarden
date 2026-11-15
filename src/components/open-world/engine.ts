@@ -406,6 +406,15 @@ export class OpenWorldEngine {
     this.renderOnce()
   }
 
+  /** Enlarges tiny seed/sprout meshes when a walk close-up isolates one plant (not camera-only framing). */
+  private walkEarlyCloseupDisplayScale(plant: WorldPlant, style: ArtStyle): number {
+    if (this.soloCapturePlantId !== plant.id) return 1
+    const early =
+      plant.stage === 'seed' || plant.stage === 'sprout' || plant.stage === 'seedling' || plant.id === 'sprout-walk'
+    if (!early) return 1
+    return style === 'watercolor' ? 11 : 2.75
+  }
+
   plantBoxSize(plantId: string): { x: number; y: number; z: number } | null {
     const box = this.plantWorldBox(plantId)
     if (!box) return null
@@ -1039,6 +1048,32 @@ export class OpenWorldEngine {
   }
 
   deterministicPlantCapturePose(plantId: string): WalkCapturePose | null {
+    const wpEarly = this.world.plants.find((p) => p.id === plantId)
+    const wantsEarlyCloseupBoost =
+      isWalkCaptureSession() &&
+      wpEarly &&
+      (wpEarly.id === 'sprout-walk' ||
+        wpEarly.stage === 'seed' ||
+        wpEarly.stage === 'sprout' ||
+        wpEarly.stage === 'seedling')
+    const prevSolo = this.soloCapturePlantId
+    let boostedSolo = false
+    if (wantsEarlyCloseupBoost && prevSolo !== plantId) {
+      this.soloCapturePlantId = plantId
+      this.rebuildPlants()
+      boostedSolo = true
+    }
+    try {
+      return this.deterministicPlantCapturePoseWithBox(plantId)
+    } finally {
+      if (boostedSolo) {
+        this.soloCapturePlantId = prevSolo
+        this.rebuildPlants()
+      }
+    }
+  }
+
+  private deterministicPlantCapturePoseWithBox(plantId: string): WalkCapturePose | null {
     const box = this.plantWorldBox(plantId)
     const group = this.findPlantGroup(plantId)
     if (!box || !group) return null
@@ -1068,7 +1103,7 @@ export class OpenWorldEngine {
       }
       if (wp) {
         const ground = box.min.y
-        if (plantId === 'sprout-walk') {
+        if (plantId === 'sprout-walk' && this.soloCapturePlantId !== plantId) {
           const aim = new THREE.Vector3(wp.x, ground + size.y * 0.5, wp.z)
           const yaw = Math.PI / 4
           const targetFrac = 0.25
@@ -1096,17 +1131,21 @@ export class OpenWorldEngine {
         if (wp.variety === 'mushroom') {
           return this.mushroomDeterministicCapturePose(plantId)
         }
-        if (wp.variety === 'flower') {
+        if (wp.variety === 'flower' && plantId !== 'sprout-walk') {
           return this.flowerDeterministicCapturePose(plantId)
         }
-        const aimY = ground + 0.42
-        const aim = new THREE.Vector3(wp.x, aimY, wp.z)
-        const yaw = -0.45
-        const dist = 2.05
-        const camX = wp.x + Math.sin(yaw) * dist
-        const camZ = wp.z + Math.cos(yaw) * dist
-        const eyeY = this.eyeHeightAt(camX, camZ, 1.05)
-        return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+        if (plantId === 'sprout-walk' && this.soloCapturePlantId === plantId) {
+          // Boosted mesh close-up: fall through to bounding-sphere camera fit below.
+        } else {
+          const aimY = ground + 0.42
+          const aim = new THREE.Vector3(wp.x, aimY, wp.z)
+          const yaw = -0.45
+          const dist = 2.05
+          const camX = wp.x + Math.sin(yaw) * dist
+          const camZ = wp.z + Math.cos(yaw) * dist
+          const eyeY = this.eyeHeightAt(camX, camZ, 1.05)
+          return this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+        }
       }
     }
 
@@ -1421,6 +1460,11 @@ export class OpenWorldEngine {
         plant.isHybrid,
       )
       const group = createPlantGroup(plant, recipe, style)
+      const closeupBoost = this.walkEarlyCloseupDisplayScale(plant, style)
+      if (closeupBoost > 1) {
+        group.userData.walkVoxelScale = closeupBoost
+        group.scale.setScalar(closeupBoost)
+      }
       if (style === 'watercolor') {
         applyWatercolorWalkTint(group)
       }
