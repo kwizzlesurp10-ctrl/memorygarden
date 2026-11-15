@@ -60,9 +60,25 @@ function addTreeCanopyBlobs(
   leafAltMat: THREE.MeshStandardMaterial,
   leafHighlightMat: THREE.MeshStandardMaterial,
   rng: () => number,
+  stageIndex?: number,
 ): void {
   const blobBase = Math.max(blobCount, canopyRadius > 0.12 ? 2 : 0)
   if (blobBase <= 0) return
+
+  if (stageIndex === 3 || stageIndex === 4) {
+    for (const side of [-1, 1] as const) {
+      const puff = new THREE.Mesh(geo.blob, side < 0 ? leafAltMat : leafMat)
+      const rr = canopyRadius * (0.38 + rng() * 0.06)
+      puff.scale.set(rr, rr * 0.82, rr * 0.92)
+      puff.position.set(
+        side * canopyRadius * 0.52,
+        trunkCapY + canopyRadius * 0.28,
+        side * canopyRadius * 0.06,
+      )
+      puff.castShadow = true
+      g.add(puff)
+    }
+  }
 
   const lumpCount = Math.min(10, Math.max(7, blobBase + 3))
   const domeCenterY = canopyY - canopyRadius * 0.05
@@ -215,6 +231,7 @@ function addTreeSeedSprout(
       leafAltMat,
       leafHighlightMat,
       rng,
+      plantStageToIndex(plant.stage),
     )
   }
 }
@@ -982,6 +999,7 @@ export function createPlantGroup(
       leafAltMat,
       leafHighlightMat,
       rng,
+      plantStageToIndex(plant.stage),
     )
 
     if (plant.stage === 'mature' || plant.stage === 'elder') {

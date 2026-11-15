@@ -927,6 +927,38 @@ export class OpenWorldEngine {
         if (elder) {
           return this.elderDeterministicCapturePose(plantId)
         }
+        if (plantId.includes('young')) {
+          const aimY = ground + size.y * 0.56
+          const aim = new THREE.Vector3(wp.x, aimY, wp.z)
+          const targetFrac = 0.36
+          let bestPose: WalkCapturePose | null = null
+          let bestDelta = Infinity
+          for (let pass = 0; pass < 20; pass++) {
+            const dist = 2.8 + (pass / 19) * 4.6
+            const passYaw = 1.95 + (pass % 6) * 0.08
+            const camX = wp.x + Math.sin(passYaw) * dist
+            const camZ = wp.z + Math.cos(passYaw) * dist
+            const eyeY = this.eyeHeightAt(camX, camZ, Math.min(1.35, size.y * 0.45))
+            const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+            const fit = this.plantCaptureFitAt(plantId, pose)
+            const frac = fit?.frac ?? 0
+            const centerPen = fit ? Math.abs(fit.centerX) + Math.abs(fit.centerY) : 2
+            const delta = Math.abs(frac - targetFrac) + centerPen * 0.14
+            const pitch = Math.min(pose.pitch, -0.08)
+            const tuned = { ...pose, pitch }
+            if (frac >= 0.28 && centerPen < 0.42 && pitch < -0.06) {
+              return tuned
+            }
+            if (delta < bestDelta) {
+              bestDelta = delta
+              bestPose = tuned
+            }
+          }
+          if (bestPose) {
+            bestPose.pitch = Math.min(bestPose.pitch, -0.1)
+            return bestPose
+          }
+        }
         const aimY = ground + size.y * 0.68
         const aim = new THREE.Vector3(wp.x, aimY, wp.z)
         const dist = 10.75

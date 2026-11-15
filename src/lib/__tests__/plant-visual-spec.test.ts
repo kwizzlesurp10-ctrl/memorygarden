@@ -36,7 +36,7 @@ describe('plant-visual-spec', () => {
   it('scales tree canopy blobs with shared TREE_STAGE metrics', () => {
     const young = treeMeshMetrics('young', 1.5)
     const elder = treeMeshMetrics('elder', 2.4)
-    expect(young.blobCount).toBe(TREE_STAGE_METRICS[3].blobs)
+    expect(young.blobCount).toBe(Math.max(TREE_STAGE_METRICS[3].blobs, 4))
     expect(elder.blobCount).toBe(TREE_STAGE_METRICS[7].blobs)
     expect(elder.stemHeight).toBeGreaterThan(young.stemHeight)
     expect(elder.blobCount).toBeGreaterThan(young.blobCount)

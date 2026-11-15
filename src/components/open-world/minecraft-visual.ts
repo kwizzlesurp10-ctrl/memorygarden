@@ -3,6 +3,7 @@ import type { PlantStage } from '@/lib/types'
 import type { PlantVisualRecipe } from '@/lib/open-world/plant-visual'
 import type { ScenePalette } from '@/lib/garden/palettes'
 import { gardenRng, seedFromGenetics } from '@/lib/garden/prng'
+import { lerpHex } from '@/lib/garden/color'
 import { plantStageToIndex } from '@/lib/garden/stage'
 import type { GardenWorld, WorldPlant } from '@/lib/open-world/types'
 
@@ -57,7 +58,12 @@ export function minecraftBlockTexture(
   const ctx = c.getContext('2d')
   if (!ctx) return configurePixelTexture(new THREE.CanvasTexture(c))
 
-  const leafGreens = ['#1e4620', '#2d5a27', '#3d7a34', '#4a8f3a', '#5cab48']
+  const leafDeep = lerpHex(base, accent, 0.12)
+  const leafMid = lerpHex(base, accent, 0.38)
+  const leafBright = lerpHex(base, accent, 0.62)
+  const leafLight = lerpHex(base, accent, 0.82)
+  const leafHighlight = lerpHex(accent, '#c8e8a0', 0.22)
+  const leafGreens = [leafDeep, leafMid, base, leafBright, leafLight, leafHighlight]
   const barkBrowns = ['#3f2817', '#4a3018', '#6b4423', '#8b5a2b']
   const grassGreens = ['#5fa037', '#6bb848', '#7ed65a', '#62b53a', '#73c94f', '#579a32']
 
@@ -253,7 +259,7 @@ function voxelMaterial(
   kind: BlockKind,
   transparent = false,
 ): THREE.MeshBasicMaterial {
-  const leafTag = kind === 'leaf' ? '-leafv4' : ''
+  const leafTag = kind === 'leaf' ? '-leafv5' : ''
   const key = `${hex}-${accent}-${seed}-${kind}-${transparent}${leafTag}`
   const hit = matCache.get(key)
   if (hit) return hit
@@ -473,8 +479,7 @@ function buildOakTree(
 ): void {
   const idx = plantStageToIndex(stage)
   if (idx <= 1) {
-    const sapling = voxelMaterial('#5fa037', '#7ed65a', seed + 3, 'sapling', true)
-    placeCrossPlantSprite(g, 0, 0, 0, 0.8, 0.56, sapling)
+    placeCrossPlantSprite(g, 0, 0, 0, 0.8, 0.56, leaf)
     return
   }
   if (idx >= 7) {
@@ -509,13 +514,13 @@ function buildFlower(
     return
   }
   if (idx === 1) {
-    const sapling = voxelMaterial('#5fa037', '#7ed65a', seed + 3, 'sapling', true)
-    placeCrossPlantSprite(g, 0, 0, 0, 0.8, 0.56, sapling)
+    placeCrossPlantSprite(g, 0, 0, 0, 0.8, 0.56, bloom)
     return
   }
   if (idx >= 5) {
-    const poppy = voxelMaterial('#c43b3b', '#e85d5d', seed + 7, 'poppy', true)
-    placeCrossPlantSprite(g, 0, 0, 0, 0.72, 0.55, poppy)
+    const bloomLight = `#${bloom.color.clone().lerp(new THREE.Color('#f2e8dc'), 0.35).getHexString()}`
+    const poppyMat = voxelMaterial(`#${bloom.color.getHexString()}`, bloomLight, seed + 7, 'poppy', true)
+    placeCrossPlantSprite(g, 0, 0, 0, 0.72, 0.55, poppyMat)
     return
   }
   const stemH = 2
@@ -783,9 +788,19 @@ export function voxelLogStump(
   const bodyTopY = bodyCenterY + stumpH / 2
   const cap = new THREE.Mesh(boxGeo, topRing)
   cap.position.set(0, bodyTopY + capH / 2, 0)
-  cap.scale.set(stumpW, capH, stumpW)
+  cap.scale.set(stumpW * 1.04, capH * 0.92, stumpW * 0.96)
   cap.userData.voxel = true
   g.add(cap)
+  const rng = gardenRng(seed + 91)
+  for (let i = 0; i < 3; i++) {
+    const ang = ((i + rng() * 0.4) / 3) * Math.PI * 2
+    const rad = stumpW * (0.58 + rng() * 0.12)
+    const root = new THREE.Mesh(boxGeo, barkMat)
+    root.position.set(Math.cos(ang) * rad, surfaceY * VOXEL + stumpH * 0.08, Math.sin(ang) * rad)
+    root.scale.set(VOXEL * (0.34 + rng() * 0.08), VOXEL * (0.22 + rng() * 0.06), VOXEL * (0.32 + rng() * 0.08))
+    root.userData.voxel = true
+    g.add(root)
+  }
   root.add(g)
 }
 
@@ -834,8 +849,7 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
   }
 
   if (plant.id === 'sprout-walk') {
-    const sapling = voxelMaterial('#5fa037', '#7ed65a', seedN + 3, 'sapling', true)
-    placeCrossPlantSprite(g, 0, 0, 0, 0.8, 0.64, sapling)
+    placeCrossPlantSprite(g, 0, 0, 0, 0.8, 0.64, leaf)
   } else if (recipe.kind === 'tree') {
     buildOakTree(g, bark, leaf, seedN, stage)
   } else if (recipe.kind === 'flower') {
