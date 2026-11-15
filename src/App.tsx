@@ -566,125 +566,145 @@ function App() {
     }, 1200)
   }, [setMemories])
 
-  const handleMemoryClick = (memory: Memory) => {
-    if (pollinationParent) {
-      if (pollinationParent.id === memory.id) {
-        toast.error('Cannot cross-pollinate a memory with itself.')
+  const applyMemoryVisit = useCallback(
+    (memory: Memory): boolean => {
+      if (pollinationParent) {
+        if (pollinationParent.id === memory.id) {
+          toast.error('Cannot cross-pollinate a memory with itself.')
+          setPollinationParent(null)
+          return false
+        }
+        setHybridParents([pollinationParent, memory])
         setPollinationParent(null)
-        return
+        setIsPlantModalOpen(true)
+        toast.success('Parents linked! Now plant your hybrid seed.')
+        return false
       }
-      setHybridParents([pollinationParent, memory])
-      setPollinationParent(null)
-      setIsPlantModalOpen(true)
-      toast.success('Parents linked! Now plant your hybrid seed.')
-      return
-    }
 
-    const nearbyMemories = (memories || []).filter(
-      (m) =>
-        m.id !== memory.id &&
-        Math.abs(m.position.x - memory.position.x) < 300 &&
-        Math.abs(m.position.y - memory.position.y) < 300
-    )
-    
-    setMemories((currentMemories) =>
-      (currentMemories || []).map((m) => {
-        if (m.id === memory.id) {
-          const updatedMemory = {
-            ...m,
-            visitCount: m.visitCount + 1,
-            lastVisited: new Date().toISOString(),
+      const nearbyMemories = (memories || []).filter(
+        (m) =>
+          m.id !== memory.id &&
+          Math.abs(m.position.x - memory.position.x) < 300 &&
+          Math.abs(m.position.y - memory.position.y) < 300,
+      )
+
+      setMemories((currentMemories) =>
+        (currentMemories || []).map((m) => {
+          if (m.id === memory.id) {
+            const updatedMemory = {
+              ...m,
+              visitCount: m.visitCount + 1,
+              lastVisited: new Date().toISOString(),
+            }
+            const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
+            const updatedWithStage = {
+              ...updatedMemory,
+              growthMetrics,
+              plantStage: plantStageAfterGrowth(updatedMemory, growthMetrics),
+            }
+            return {
+              ...updatedWithStage,
+              unlocks: computeUnlocks(updatedWithStage),
+            }
           }
-          const growthMetrics = calculateGrowthMetrics(updatedMemory, nearbyMemories)
-          const updatedWithStage = {
-            ...updatedMemory,
-            growthMetrics,
-            plantStage: plantStageAfterGrowth(updatedMemory, growthMetrics),
-          }
-          return {
-            ...updatedWithStage,
-            unlocks: computeUnlocks(updatedWithStage),
+          return m
+        }),
+      )
+
+      updateUnlockState((state) => {
+        let updated = { ...state, counters: { ...state.counters, totalVisits: state.counters.totalVisits + 1 } }
+
+        const period = todToDayPeriod(todHours)
+        if (period === 'night') {
+          const today = new Date().toISOString().slice(0, 10)
+          if (!updated.counters.nightVisitDates.includes(today)) {
+            updated = {
+              ...updated,
+              counters: {
+                ...updated.counters,
+                nightVisitDates: [...updated.counters.nightVisitDates, today],
+                nightVisitDays: updated.counters.nightVisitDays + 1,
+              },
+            }
           }
         }
-        return m
+
+        const revisitAward = awardForRevisit(memory)
+        if (revisitAward) {
+          updated = { ...updated, wallet: applyAward(updated.wallet, revisitAward) }
+          const daysSincePlanted = Math.floor(
+            (Date.now() - new Date(memory.plantedAt).getTime()) / 86400000,
+          )
+          if (daysSincePlanted >= 60) {
+            updated = {
+              ...updated,
+              counters: {
+                ...updated.counters,
+                uniqueOldMemoriesRevisited: updated.counters.uniqueOldMemoriesRevisited + 1,
+              },
+            }
+          }
+        }
+
+        const clusterAward = awardForClusterTending(nearbyMemories.length)
+        if (clusterAward) {
+          updated = {
+            ...updated,
+            wallet: applyAward(updated.wallet, clusterAward),
+            counters: { ...updated.counters, clustersTended: updated.counters.clustersTended + 1 },
+          }
+        }
+
+        const currentStage = getPlantStage(memory)
+        if (currentStage === 'mature' || currentStage === 'elder') {
+          let reachedMature = 0
+          let reachedElder = 0
+          for (const m of memories || []) {
+            const s = getPlantStage(m)
+            if (s === 'mature' || s === 'elder') reachedMature++
+            if (s === 'elder') reachedElder++
+          }
+          updated = {
+            ...updated,
+            counters: {
+              ...updated.counters,
+              memoriesReachedMature: reachedMature,
+              memoriesReachedElder: reachedElder,
+            },
+          }
+        }
+
+        return updated
       })
-    )
-    
-    const updatedMemory = (memories || []).find((m) => m.id === memory.id)
-    setSelectedMemory(updatedMemory || memory)
-    setAiReflection('')
 
-    // Track visit counters and award currencies
-    updateUnlockState((state) => {
-      let updated = { ...state, counters: { ...state.counters, totalVisits: state.counters.totalVisits + 1 } }
+      return true
+    },
+    [memories, pollinationParent, setMemories, todHours, updateUnlockState],
+  )
 
-      // Night visit tracking
-      const period = todToDayPeriod(todHours)
-      if (period === 'night') {
-        const today = new Date().toISOString().slice(0, 10)
-        if (!updated.counters.nightVisitDates.includes(today)) {
-          updated = {
-            ...updated,
-            counters: {
-              ...updated.counters,
-              nightVisitDates: [...updated.counters.nightVisitDates, today],
-              nightVisitDays: updated.counters.nightVisitDays + 1,
-            },
-          }
-        }
-      }
+  const handleOpenMemoryDetail = useCallback(
+    (memory: Memory) => {
+      const updatedMemory = (memories || []).find((m) => m.id === memory.id)
+      setSelectedMemory(updatedMemory || memory)
+      setAiReflection('')
+    },
+    [memories],
+  )
 
-      // Sunlight for revisiting old memories
-      const revisitAward = awardForRevisit(memory)
-      if (revisitAward) {
-        updated = { ...updated, wallet: applyAward(updated.wallet, revisitAward) }
-        const daysSincePlanted = Math.floor(
-          (Date.now() - new Date(memory.plantedAt).getTime()) / 86400000
-        )
-        if (daysSincePlanted >= 60) {
-          updated = {
-            ...updated,
-            counters: {
-              ...updated.counters,
-              uniqueOldMemoriesRevisited: updated.counters.uniqueOldMemoriesRevisited + 1,
-            },
-          }
-        }
-      }
+  const handleGardenPlantInteract = useCallback(
+    (memory: Memory) => {
+      applyMemoryVisit(memory)
+    },
+    [applyMemoryVisit],
+  )
 
-      // Pollen for cluster interactions
-      const clusterAward = awardForClusterTending(nearbyMemories.length)
-      if (clusterAward) {
-        updated = {
-          ...updated,
-          wallet: applyAward(updated.wallet, clusterAward),
-          counters: { ...updated.counters, clustersTended: updated.counters.clustersTended + 1 },
-        }
-      }
-
-      // Track mature/elder milestones
-      const currentStage = getPlantStage(memory)
-      if (currentStage === 'mature' || currentStage === 'elder') {
-        let reachedMature = 0
-        let reachedElder = 0
-        for (const m of (memories || [])) {
-          const s = getPlantStage(m)
-          if (s === 'mature' || s === 'elder') reachedMature++
-          if (s === 'elder') reachedElder++
-        }
-        updated = {
-          ...updated,
-          counters: {
-            ...updated.counters,
-            memoriesReachedMature: reachedMature,
-            memoriesReachedElder: reachedElder,
-          },
-        }
-      }
-
-      return updated
-    })
-  }
+  const handleMemoryClick = useCallback(
+    (memory: Memory) => {
+      if (!applyMemoryVisit(memory)) return
+      handleOpenMemoryDetail(memory)
+    },
+    [applyMemoryVisit, handleOpenMemoryDetail],
+  )
 
   const handleProtocolAction = useCallback((action: ProtocolAction) => {
     switch (action.type) {
@@ -1472,7 +1492,8 @@ function App() {
                 <SectionErrorBoundary label="garden view">
                   <GardenCanvas
                     memories={safeMemories}
-                    onMemoryClick={handleMemoryClick}
+                    onPlantInteract={handleGardenPlantInteract}
+                    onOpenMemoryDetail={handleOpenMemoryDetail}
                     onMemoryMove={handleMemoryMove}
                     season={season}
                     growingMemories={growingMemories}

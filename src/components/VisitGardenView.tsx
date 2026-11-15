@@ -47,7 +47,7 @@ export function VisitGardenView({
       <div className="flex-1 relative">
         <GardenCanvas
           memories={memories}
-          onMemoryClick={() => {}}
+          onPlantInteract={() => {}}
           onMemoryMove={() => {}}
           season="spring"
           growingMemories={new Set()}
