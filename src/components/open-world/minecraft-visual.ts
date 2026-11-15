@@ -542,21 +542,20 @@ function buildFlower(
   if (idx === 5) {
     const petalLight = lerpHex(petalBase, petalAccent, 0.35)
     const poppyMat = voxelMaterial(petalBase, petalLight, seed + 7, 'poppy', true)
-    for (let y = 0; y < 2; y++) placeBlock(g, 0, y, 0, stem)
-    placeCrossPlantSprite(g, 0, 0, 0.72, 0.58, 0.54, poppyMat)
+    placeBlock(g, 0, 0, 0, stem)
+    placeCrossPlantSprite(g, 0, 0, 0.38, 0.78, 0.58, poppyMat)
     return
   }
   if (idx === 4) {
-    for (let y = 0; y < 3; y++) placeBlock(g, 0, y, 0, stem)
-    placeCrossSprite(g, 0, 3, 0, bloom, 1.35)
-    placeBlock(g, -1, 3, 0, bloom)
-    placeBlock(g, 1, 3, 0, bloom)
+    placeBlock(g, 0, 0, 0, stem)
+    placeBlock(g, 0, 1, 0, stem)
+    const bud = voxelMaterial(petalBase, petalAccent, seed + 9, 'flower', true)
+    placeCrossSprite(g, 0, 2, 0, bud, 1.12)
     return
   }
   if (idx === 3) {
-    for (let y = 0; y < 2; y++) placeBlock(g, 0, y, 0, stem)
-    placeBlock(g, 0, 2, 0, bloom)
-    placeBlock(g, 0, 3, 0, bloom)
+    placeBlock(g, 0, 0, 0, stem)
+    placeCrossSprite(g, 0, 1, 0, bloom, 0.92)
     return
   }
   const stemH = 2
@@ -690,7 +689,7 @@ export function minecraftGrassTexture(
   const base = '#62b53a'
   const accent = '#7ed64f'
   const seed = 42 + Math.floor(hash01(planeW + planeD) * 120)
-  const tex = minecraftBlockTexture(base, accent, seed, 'grass_side')
+  const tex = minecraftBlockTexture(base, accent, seed, 'grass')
   tex.repeat.set(planeW / MINECRAFT_BLOCK_UNIT, planeD / MINECRAFT_BLOCK_UNIT)
   tex.offset.set(0, 0)
   return tex
@@ -807,17 +806,11 @@ export function minecraftTwilightSkyStars(
       Math.cos(phi) * r * 0.85 + 20,
       Math.sin(phi) * Math.sin(theta) * r,
     )
-    const s = 0.55 + rng() * 0.9
+    const s = 0.35 + rng() * 0.45
     mesh.scale.setScalar(s)
     mesh.userData.voxel = true
     group.add(mesh)
   }
-  const sunBlock = track(voxelMaterial('#ffe8a0', '#ffb040', 119, 'flower'))
-  const duskSun = new THREE.Mesh(boxGeo, sunBlock)
-  duskSun.position.set(48, 82, -120)
-  duskSun.scale.set(5.5, 5.5, 1.2)
-  duskSun.userData.voxel = true
-  group.add(duskSun)
   skySphere.add(group)
 }
 
@@ -856,6 +849,7 @@ export function minecraftBlockCloud(
   return g
 }
 
+/** Small walk-field poppies — pixel-art terrain only (parent must be minecraft terrain root). */
 export function minecraftGroundFlowers(
   world: GardenWorld,
   root: THREE.Group,
@@ -864,31 +858,45 @@ export function minecraftGroundFlowers(
 ): void {
   const topBlocks = surfaceBlockY ?? ((x, z) => minecraftAnalyticSurfaceY(Math.round(x), Math.round(z)))
   const poppyRed = track(voxelMaterial('#c44a4a', '#e85a5a', 81, 'poppy', true))
-  const poppyPink = track(voxelMaterial('#d87898', '#f090a8', 82, 'poppy', true))
-  const poppyYellow = track(voxelMaterial('#e8c848', '#f0e070', 83, 'flower', true))
-  const mats = [poppyRed, poppyPink, poppyYellow]
+  const dandelion = track(voxelMaterial('#e8c848', '#f0e070', 83, 'sapling', true))
+  const mats = [poppyRed, dandelion]
   const rng = gardenRng(912)
-  const span = 36
-  const count = 58
+  const span = 32
+  const count = 26
+  const placed: Array<{ x: number; z: number }> = []
+  const keepouts: Array<{ x: number; z: number; r: number }> = [
+    { x: world.pond.x, z: world.pond.z, r: world.pond.radius + 2.2 },
+    { x: 9.5, z: 9, r: 6 },
+    { x: 39, z: 14, r: 7 },
+    { x: -22, z: 15, r: 5 },
+    { x: 2, z: 31, r: 5 },
+    { x: 7, z: 34, r: 8 },
+  ]
   let i = 0
   let attempts = 0
-  while (i < count && attempts < count * 14) {
+  while (i < count && attempts < count * 20) {
     attempts++
     const x = (rng() * 2 - 1) * span
     const z = (rng() * 2 - 1) * span
-    if (Math.hypot(x - world.pond.x, z - world.pond.z) < world.pond.radius + 1.2) continue
-    const topY = topBlocks(x, z) * VOXEL
+    if (keepouts.some((k) => Math.hypot(x - k.x, z - k.z) < k.r)) continue
+    if (placed.some((p) => Math.hypot(p.x - x, p.z - z) < 2.4)) continue
+    const hy = topBlocks(x, z)
+    if (hy > 1.05) continue
+    const groundY = hy * VOXEL + 0.055
     const mat = mats[Math.floor(rng() * mats.length)]!
-    const tall = 0.28 + rng() * 0.22
+    const tall = 0.12 + rng() * 0.08
+    const wide = 0.11 + rng() * 0.04
     for (const rotY of [0, Math.PI / 2]) {
       const flower = new THREE.Mesh(planeGeo, mat)
-      flower.position.set(x, topY + tall / 2 + 0.02, z)
-      flower.scale.set(0.38 + rng() * 0.12, tall, 1)
+      flower.position.set(x, groundY + tall / 2, z)
+      flower.scale.set(wide, tall, 1)
       flower.rotation.y = rotY
       flower.userData.voxel = true
       flower.userData.groundFlower = true
+      flower.userData.minecraftDecor = true
       root.add(flower)
     }
+    placed.push({ x, z })
     i++
   }
 }
@@ -905,6 +913,7 @@ export function minecraftPondVoxelRim(
   const segments = 44
   const g = new THREE.Group()
   g.name = 'pond-voxel-rim'
+  g.userData.minecraftDecor = true
   for (let s = 0; s < segments; s++) {
     const a = (s / segments) * Math.PI * 2
     const r = world.pond.radius + 0.42 + (rng() > 0.65 ? 0.08 : 0)
@@ -1137,7 +1146,10 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
 
   const bark = voxelMaterial(recipe.stem, recipe.foliageAlt, seedN, 'bark')
   const leaf = voxelMaterial(recipe.foliage, recipe.foliageAlt, seedN + 3, 'leaf', true)
-  const stemMat = voxelMaterial(recipe.stem, '#4a5f3a', seedN + 5, 'bark')
+  const stemMat =
+    recipe.kind === 'flower'
+      ? voxelMaterial('#5da848', '#4a9038', seedN + 5, 'sapling')
+      : voxelMaterial(recipe.stem, '#4a5f3a', seedN + 5, 'bark')
   const petalBase =
     recipe.kind === 'flower'
       ? (TONE_DOT[plant.tone] ?? recipe.bloom)

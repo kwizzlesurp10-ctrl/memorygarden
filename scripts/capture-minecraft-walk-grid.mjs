@@ -242,6 +242,12 @@ async function bootstrapWalk(page, baseUrl, artStyle) {
       throw new Error(`Expected voxels in pixel-art walk at ${baseUrl}, got ${v}`)
     }
   }
+  if (artStyle === 'watercolor') {
+    const v = await page.evaluate(() => window.__mgWalkCapture?.voxelMeshCount?.() ?? 0)
+    if (v > 12) {
+      throw new Error(`Watercolor walk leaked ${v} voxel meshes (expected pixel decor gated)`)
+    }
+  }
 }
 
 async function mushroomCloseupPoseForPage(page, plantId) {

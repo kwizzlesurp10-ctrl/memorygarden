@@ -1353,7 +1353,7 @@ export function buildTerrain(
       side: THREE.BackSide,
       depthWrite: false,
       // Sky shell is ~180m; scene fog far is 64–92 — without this the dome washes to a flat fog color.
-      fog: false,
+      fog: !minecraftMode,
       toneMapped: minecraftMode,
     }),
   )
@@ -1367,22 +1367,12 @@ export function buildTerrain(
 
   // Celestial Body (Sun or Moon)
   const celestialMat = track(
-    minecraftMode
-      ? voxelMaterial(
-          isNight ? '#e8f0ff' : (palette.sun?.disk ?? '#ffe7a0'),
-          isNight ? '#c8d8f0' : '#ffb860',
-          54,
-          'flower',
-        )
-      : new THREE.MeshBasicMaterial({
-          color: isNight ? '#e2ecf8' : (palette.sun?.disk ?? '#ffe7a0'),
-        }),
+    new THREE.MeshBasicMaterial({
+      color: isNight ? '#e2ecf8' : (palette.sun?.disk ?? '#ffe7a0'),
+    }),
   )
-  const celestialGeo = minecraftMode
-    ? track(new THREE.BoxGeometry(isNight ? 3.2 : 4, isNight ? 3.2 : 4, 0.75))
-    : track(new THREE.SphereGeometry(isNight ? 3.8 : 4.6, 16, 16))
+  const celestialGeo = track(new THREE.SphereGeometry(isNight ? 3.8 : 4.6, minecraftMode ? 8 : 16, minecraftMode ? 8 : 16))
   const celestialMesh = new THREE.Mesh(celestialGeo, celestialMat)
-  if (minecraftMode) celestialMesh.userData.voxel = true
   if (isNight) {
     celestialMesh.position.set(-18, 52, -75)
   } else {
@@ -1653,7 +1643,7 @@ export function buildTerrain(
       const newSky = track(minecraftMode ? minecraftSkyTexture(next) : watercolorSkyTexture(next))
       skyMat.map?.dispose()
       skyMat.map = newSky
-      skyMat.fog = false
+      skyMat.fog = !minecraftMode
       skyMat.toneMapped = minecraftMode
       skyMat.needsUpdate = true
       disposables.push(newSky)
