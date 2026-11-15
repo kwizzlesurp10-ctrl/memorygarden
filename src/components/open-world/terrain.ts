@@ -1277,22 +1277,12 @@ export function buildTerrain(
       const nextTwilight = star > 0.22
       const sceneryRock = twilightSceneryColor(next, next.bank, nextTwilight)
       rockMat.color.copy(sceneryRock)
-      mossCapMat.color.copy(twilightSceneryColor(next, next.hills[0] ?? next.silSoft, nextTwilight))
-      propStumpMoss.color.copy(twilightSceneryColor(next, next.hills[0] ?? next.silSoft, nextTwilight))
       if (nextTwilight) {
         rockMat.emissive.set(next.hills[0] ?? next.glow ?? next.silSoft)
         rockMat.emissiveIntensity = 0.14 + star * 0.16
-        mossCapMat.emissive.set(next.hills[0] ?? next.glow ?? next.silSoft)
-        mossCapMat.emissiveIntensity = 0.12 + star * 0.14
-        propStumpMoss.emissive.set(next.hills[0] ?? next.glow ?? next.silSoft)
-        propStumpMoss.emissiveIntensity = 0.12 + star * 0.14
       } else {
         rockMat.emissive.set('#000000')
         rockMat.emissiveIntensity = 0
-        mossCapMat.emissive.set('#000000')
-        mossCapMat.emissiveIntensity = 0
-        propStumpMoss.emissive.set('#000000')
-        propStumpMoss.emissiveIntensity = 0
       }
       for (const w of ambientPropWoodMats) {
         if (nextTwilight) {
