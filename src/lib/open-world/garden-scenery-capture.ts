@@ -72,6 +72,8 @@ export function computeGardenSceneryCloseupPose(
   let pitch = -Math.atan2(dy, horiz)
   if (kind === 'stump') {
     pitch = Math.min(pitch, -0.2)
+  } else if (kind === 'fence') {
+    pitch = Math.min(pitch, -0.28)
   } else if (pitch > -0.08) {
     pitch = -0.08
   }

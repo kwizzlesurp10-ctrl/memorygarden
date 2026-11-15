@@ -784,11 +784,11 @@ export function voxelLogStump(
   const capScaleZ = VOXEL * 1.02
   placeBlock(g, 0, surfaceY, 0, topRing)
   const cap = g.children[g.children.length - 1]
-  if (cap instanceof THREE.Mesh && core instanceof THREE.Mesh) {
+  if (cap instanceof THREE.Mesh) {
     cap.scale.set(capScaleX, capScaleY, capScaleZ)
-    g.remove(cap)
-    core.add(cap)
-    cap.position.set(0, 0.5 + capScaleY / 2, 0)
+    const bodyCenterY = (surfaceY + 0.5) * VOXEL
+    const bodyTopY = bodyCenterY + bodyScaleY / 2
+    cap.position.y = bodyTopY + capScaleY / 2 - 0.01
   }
   root.add(g)
 }

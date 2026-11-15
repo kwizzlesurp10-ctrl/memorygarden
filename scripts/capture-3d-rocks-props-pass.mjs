@@ -6,6 +6,7 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
 import { chromium } from 'playwright'
+import { computeGardenSceneryCloseupPose } from './lib/garden-scenery-poses.mjs'
 import { centerTwentyPercentTooUniform } from './lib/scenery-capture-validate.mjs'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -93,10 +94,20 @@ async function captureSubject(browser, { artStyle, subject, phase, url, sha, lig
   await page.goto(url, { waitUntil: 'networkidle', timeout: 120_000 })
   await enterWalk(page)
   await page.evaluate((s) => window.__mgWalkCapture?.setPlantArtStyle?.(s), artStyle)
-  const pose = await page.evaluate(
+  if (phase === 'after') {
+    await page.waitForFunction(
+      () => typeof window.__mgWalkCapture?.gardenSceneryCloseupPose === 'function',
+      undefined,
+      { timeout: 60_000 },
+    )
+  }
+  let pose = await page.evaluate(
     ({ subj, pb }) => window.__mgWalkCapture?.gardenSceneryCloseupPose?.(subj, pb) ?? null,
     { subj: subject, pb: pullBack },
   )
+  if (!pose) {
+    pose = computeGardenSceneryCloseupPose(subject, undefined, pullBack)
+  }
   if (!pose) throw new Error(`No scenery pose for ${subject}`)
   await page.evaluate((p) => window.__mgWalkCapture?.setPose?.(p), pose)
   await page.waitForTimeout(600)
