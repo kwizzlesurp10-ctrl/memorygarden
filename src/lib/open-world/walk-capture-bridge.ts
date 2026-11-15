@@ -67,6 +67,7 @@ export interface WalkCaptureBridge {
   youngCloseupPose?: (plantId: string) => WalkCapturePose | null
   flowerCloseupPose?: (plantId: string) => WalkCapturePose | null
   mushroomCloseupPose?: (plantId: string) => WalkCapturePose | null
+  sproutWalkCloseupPose?: (plantId: string) => WalkCapturePose | null
   plantProjectedBoxScreenY?: (plantId: string) => { top: number; bottom: number } | null
   plantProjectedAabbScreen?: (
     plantId: string,

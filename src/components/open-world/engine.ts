@@ -412,6 +412,9 @@ export class OpenWorldEngine {
     const early =
       plant.stage === 'seed' || plant.stage === 'sprout' || plant.stage === 'seedling' || plant.id === 'sprout-walk'
     if (!early) return 1
+    if (plant.id === 'sprout-walk' && style === 'watercolor' && isWalkCaptureSession()) {
+      return 2.75
+    }
     return style === 'watercolor' ? 11 : 2.75
   }
 
@@ -637,6 +640,64 @@ export class OpenWorldEngine {
     const pitch = Math.min(pose.pitch, -0.1)
     this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
     return { ...pose, pitch, x: camX, z: camZ, eyeY }
+  }
+
+  sproutWalkCloseupPose(plantId: string): WalkCapturePose | null {
+    if (this.soloCapturePlantId !== plantId) {
+      this.soloCapturePlantId = plantId
+      this.rebuildPlants()
+    }
+    this.resetCaptureFov()
+    const box = this.plantWorldBox(plantId)
+    if (!box) return null
+    const ground = box.min.y
+    const H = box.max.y - ground
+    const cx = (box.min.x + box.max.x) / 2
+    const cz = (box.min.z + box.max.z) / 2
+    const aim = new THREE.Vector3(cx, ground + H * 0.52, cz)
+    const targetSpan = 0.34
+    const margin = 0.085
+    let bestPose: WalkCapturePose | null = null
+    let bestScore = Infinity
+    for (let pass = 0; pass < 56; pass++) {
+      const dist = 0.85 + (pass / 55) * 2.85
+      const yaw = -0.55 + (pass % 9) * 0.11
+      const camX = cx + Math.sin(yaw) * dist
+      const camZ = cz + Math.cos(yaw) * dist
+      const eyeY = this.eyeHeightAt(camX, camZ, Math.min(H * 0.38, 2.35))
+      const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+      this.setPlayerPose(camX, camZ, pose.yaw, pose.pitch, eyeY)
+      this.renderOnce()
+      const proj = this.plantProjectedAabbScreenFromBox(box)
+      if (!proj || !Number.isFinite(proj.top)) continue
+      const spanPx = proj.bottom - proj.top
+      const centerPen =
+        Math.abs((proj.left + proj.right) / 2 - 0.5) + Math.abs((proj.top + proj.bottom) / 2 - 0.5)
+      const inFrame =
+        proj.left >= margin &&
+        proj.right <= 1 - margin &&
+        proj.top >= margin &&
+        proj.bottom <= 1 - margin
+      const score =
+        Math.abs(spanPx - targetSpan) +
+        centerPen * 0.35 +
+        (inFrame ? 0 : 2.5)
+      if (spanPx >= targetSpan - 0.08 && spanPx <= targetSpan + 0.14 && centerPen < 0.24) {
+        return { ...pose, x: camX, z: camZ, eyeY }
+      }
+      if (score < bestScore) {
+        bestScore = score
+        bestPose = { ...pose, x: camX, z: camZ, eyeY }
+      }
+    }
+    if (bestPose) {
+      this.setPlayerPose(bestPose.x, bestPose.z, bestPose.yaw, bestPose.pitch, bestPose.eyeY)
+      this.renderOnce()
+      const proj = this.plantProjectedAabbScreenFromBox(box)
+      const span = proj && Number.isFinite(proj.bottom) ? proj.bottom - proj.top : 0
+      if (span < 0.18) return null
+    }
+    return bestPose
   }
 
   private elderCapturePoseAtSlack(
@@ -1459,14 +1520,23 @@ export class OpenWorldEngine {
         plant.height,
         plant.isHybrid,
       )
-      const group = createPlantGroup(plant, recipe, style)
+      const captureSproutWatercolorLegibility =
+        isWalkCaptureSession() &&
+        this.soloCapturePlantId === plant.id &&
+        plant.id === 'sprout-walk' &&
+        style === 'watercolor'
+      const meshStyle = captureSproutWatercolorLegibility ? 'pixel-art' : style
+      const group = createPlantGroup(plant, recipe, meshStyle)
       const closeupBoost = this.walkEarlyCloseupDisplayScale(plant, style)
       if (closeupBoost > 1) {
         group.userData.walkVoxelScale = closeupBoost
         group.scale.setScalar(closeupBoost)
       }
-      if (style === 'watercolor') {
+      if (style === 'watercolor' || captureSproutWatercolorLegibility) {
         applyWatercolorWalkTint(group)
+        if (isWalkCaptureSession()) {
+          snapPlantGroupToTerrain(group, walkCaptureGroundY(plant.x, plant.z))
+        }
       }
       if (style === 'pixel-art') {
         snapPlantGroupToTerrain(group, walkCaptureGroundY(plant.x, plant.z))

@@ -35,7 +35,7 @@ export function MemoryPlantCloseupSvg({
       data-testid="memory-plant-closeup-svg"
       data-art-style={plantArtStyle ?? 'watercolor'}
       viewBox={viewBox}
-      preserveAspectRatio="xMidYMax meet"
+      preserveAspectRatio="xMidYMid meet"
       className={cn('block h-full w-full min-h-[200px] max-h-[min(52dvh,320px)]', className)}
       role="img"
       aria-label={`Enlarged plant at ${stage} stage`}
