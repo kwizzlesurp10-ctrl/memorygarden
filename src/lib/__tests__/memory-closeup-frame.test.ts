@@ -7,7 +7,7 @@ describe('memoryCloseupSvgLayout', () => {
     const tree = memoryCloseupSvgLayout('tree', 'bloom', false)
     const lotusScale = Number(lotus.plantTransform.match(/scale\(([\d.]+)\)/)?.[1] ?? 0)
     const treeScale = Number(tree.plantTransform.match(/scale\(([\d.]+)\)/)?.[1] ?? 0)
-    expect(lotusScale).toBeGreaterThanOrEqual(1.35)
+    expect(lotusScale).toBeGreaterThanOrEqual(2.1)
     expect(treeScale).toBeGreaterThan(0.2)
     expect(lotus.viewBox).toMatch(/^0 0 \d+ 100$/)
     expect(tree.viewBox).toMatch(/^0 0 \d+ 100$/)
