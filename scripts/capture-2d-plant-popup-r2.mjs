@@ -115,7 +115,7 @@ async function openPlantCloseup(page, memoryId) {
   await plant.focus()
   await page.keyboard.press('Enter')
   await page.getByTestId('memory-plant-closeup-dialog').waitFor({ state: 'visible', timeout: 15_000 })
-  await dismissToasts(page)
+  await page.getByRole('dialog').waitFor({ state: 'visible', timeout: 5000 })
   await page.waitForTimeout(400)
 }
 
