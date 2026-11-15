@@ -45,8 +45,7 @@ ${markup}
     }
 
     const rasterize = () => {
-      const sharpMul = scale >= 2 ? 3.5 : 2
-      const renderW = Math.max(32, Math.round(box.width * sharpMul * Math.max(1, scale * 0.45)))
+      const renderW = Math.max(32, Math.round(box.width * 2))
       const renderH = Math.max(32, Math.round((box.height / box.width) * renderW))
       const lowW = plantPixelRasterWidth(renderW, PIXEL_ART_BLOCK_SCREEN_PX)
       const lowH = Math.max(4, Math.round((renderH / renderW) * lowW))

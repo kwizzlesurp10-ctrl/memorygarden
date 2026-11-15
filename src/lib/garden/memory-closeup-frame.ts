@@ -21,50 +21,7 @@ const APPROX_HEIGHT_RATIO: Partial<Record<SeededVariety, number>> = {
   fern: 1.2,
 }
 
-/** Tall varieties reframe from measured plant geometry so crowns are not clipped. */
-const MEASURED_FRAME_VARIETIES = new Set<SeededVariety>(['tree', 'vine', 'fern'])
-
-export function closeupUsesMeasuredPlantFrame(variety: SeededVariety): boolean {
-  return MEASURED_FRAME_VARIETIES.has(variety)
-}
-
-export interface SvgBBox {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
-/** View box that tightly frames rendered plant geometry with ~marginRatio padding on each side. */
-export function closeupViewBoxFromPlantBBox(bbox: SvgBBox, marginRatio = 0.08): string {
-  const padX = Math.max(2, bbox.width * marginRatio)
-  const padY = Math.max(2, bbox.height * marginRatio)
-  const x = bbox.x - padX
-  const y = bbox.y - padY
-  const w = bbox.width + padX * 2
-  const h = bbox.height + padY * 2
-  return `${x} ${y} ${w} ${h}`
-}
-
-export function closeupShadowFromPlantBBox(bbox: SvgBBox, marginRatio = 0.08): {
-  cx: number
-  cy: number
-  rx: number
-  ry: number
-} {
-  const padX = Math.max(2, bbox.width * marginRatio)
-  const cx = bbox.x + bbox.width / 2
-  const groundY = bbox.y + bbox.height
-  const shadowRx = Math.max(bbox.width * 0.38, 14)
-  return {
-    cx,
-    cy: groundY + padX * 0.15,
-    rx: shadowRx,
-    ry: Math.max(3, shadowRx * 0.12),
-  }
-}
-
-/** Tight SVG framing so the plant fills ~65% of the art panel height (r3 baseline; tall plants reframe client-side). */
+/** Tight SVG framing so the plant fills ~65% of the art panel height. */
 export function memoryCloseupSvgLayout(
   variety: SeededVariety,
   stage: PlantStage,
@@ -72,7 +29,6 @@ export function memoryCloseupSvgLayout(
 ): {
   viewBox: string
   plantTransform: string
-  scale: number
   shadow: { cx: number; cy: number; rx: number; ry: number }
 } {
   const stageT = plantStageToIndex(stage) / 7
@@ -93,7 +49,6 @@ export function memoryCloseupSvgLayout(
   return {
     viewBox: `0 0 ${vbW} ${vbH}`,
     plantTransform: `translate(${cx} ${groundY}) scale(${scale})`,
-    scale,
     shadow: {
       cx,
       cy: groundY - 4,
@@ -101,32 +56,4 @@ export function memoryCloseupSvgLayout(
       ry: Math.max(3.5, shadowRx * 0.14),
     },
   }
-}
-
-export function plantArtPanelFillRatio(svg: SVGSVGElement, plantGroup: SVGGElement): number {
-  const panel = svg.closest('[data-testid="memory-plant-closeup-art-panel"]')
-  if (!panel || typeof plantGroup.getBBox !== 'function') return 0
-  const vb = svg.viewBox.baseVal
-  if (vb.height < 1) return 0
-  const bbox = plantGroup.getBBox()
-  const svgRect = svg.getBoundingClientRect()
-  const panelH = panel.getBoundingClientRect().height
-  if (panelH < 1) return 0
-  const scale = Math.min(svgRect.width / vb.width, svgRect.height / vb.height)
-  const plantPxH = bbox.height * scale
-  return plantPxH / panelH
-}
-
-export function assertCloseupPlantFill(
-  fillRatio: number,
-  stage: PlantStage,
-): { ok: boolean; reason?: string } {
-  if (plantStageToIndex(stage) < plantStageToIndex('bloom')) return { ok: true }
-  if (fillRatio < 0.45) {
-    return { ok: false, reason: `fill ${fillRatio.toFixed(3)} below 0.45` }
-  }
-  if (fillRatio > 0.95) {
-    return { ok: false, reason: `fill ${fillRatio.toFixed(3)} above 0.95 (cropped)` }
-  }
-  return { ok: true }
 }
