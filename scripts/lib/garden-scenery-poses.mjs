@@ -16,7 +16,7 @@ export function computeGardenSceneryCloseupPose(kind, footY = walkCaptureGroundY
   let camX = f.x + f.camDx * pullBack
   let camZ = f.z + f.camDz * pullBack
   if (kind === 'fence') {
-    const dist = 0.62 * pullBack
+    const dist = 0.22 * pullBack
     const fy = GARDEN_AMBIENT_FENCE_YAW
     const fx = f.x
     const fz = f.z
@@ -38,7 +38,7 @@ export function computeGardenSceneryCloseupPose(kind, footY = walkCaptureGroundY
   const horiz = Math.hypot(dx, dz)
   let pitch = -Math.atan2(dy, horiz)
   if (kind === 'stump') pitch = Math.min(pitch, -0.2)
-  else if (kind === 'fence') pitch = Math.min(pitch, -0.28)
+  else if (kind === 'fence') pitch = Math.min(pitch, -0.42)
   else if (pitch > -0.08) pitch = -0.08
   return { x: camX, z: camZ, yaw, pitch, eyeY }
 }
