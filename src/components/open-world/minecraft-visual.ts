@@ -608,11 +608,9 @@ export function buildMinecraftSteppedHills(
   const span = 52
   const star = palette.starAlpha ?? 0
   const duskHills = star > 0.18 && star < 0.72
-  const grassBase = duskHills
-    ? (palette.hills[0] ?? '#5a8f48')
-    : '#62b53a'
+  const grassBase = duskHills ? lerpHex('#62b53a', palette.hills[0] ?? '#5a8f48', 0.72) : '#62b53a'
   const grassAccent = duskHills
-    ? (palette.hills[2] ?? palette.hills[1] ?? '#7ed64f')
+    ? lerpHex('#7ed64f', palette.hills[2] ?? palette.glow ?? '#c8e090', 0.55)
     : '#7ed64f'
   const dirtBase = duskHills ? lerpHex('#5a4332', palette.bank ?? '#4a3828', 0.35) : '#5a4332'
   const dirtAccent = duskHills ? lerpHex('#3f2e22', palette.bank ?? '#3a2818', 0.25) : '#3f2e22'

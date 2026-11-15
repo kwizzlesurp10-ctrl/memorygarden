@@ -151,7 +151,7 @@ if (phase === 'both' || phase === 'diff') {
       rows.push({ name, diffPercent: null, note: 'missing' })
       continue
     }
-    const r = spawnSync('node', [resolve(root, 'scripts/measure-png-pair-diff.mjs'), b, a], {
+    const r = spawnSync('node', [resolve(root, 'scripts/measure-png-pair-diff.mjs'), b, a, '30'], {
       cwd: root,
       encoding: 'utf8',
     })

@@ -244,6 +244,7 @@ export function buildTerrain(
   const starAlpha = palette.starAlpha ?? 0
   const isNight = starAlpha > 0.45
   const twilight = starAlpha > 0.22
+  const pixelDuskBand = starAlpha > 0.18 && starAlpha < 0.72
 
   // ── Ground Plane ────────────────────────────────────────────────────────
   const planeW = world.bounds.maxX - world.bounds.minX + 16
@@ -267,9 +268,15 @@ export function buildTerrain(
     minecraftMode
       ? new THREE.MeshLambertMaterial({
           map: grassTex,
-          color: new THREE.Color(twilight ? '#5a6e62' : '#ffffff'),
+          color: new THREE.Color(
+            pixelDuskBand ? '#8a9e88' : twilight ? '#5a6e62' : '#ffffff',
+          ),
           emissive: twilight ? minecraftNightGrassEmissive : minecraftDayGrassEmissive,
-          emissiveIntensity: twilight ? 0.05 + starAlpha * 0.09 : 0.32,
+          emissiveIntensity: pixelDuskBand
+            ? 0.18 + starAlpha * 0.14
+            : twilight
+              ? 0.05 + starAlpha * 0.09
+              : 0.32,
         })
       : new THREE.MeshStandardMaterial({
           map: grassTex,
@@ -1111,7 +1118,7 @@ export function buildTerrain(
       color: hillColor,
       roughness: 0.94,
       emissive: twilight ? (palette.hills[0] ?? palette.silSoft) : (palette.silSoft ?? '#3a5a48'),
-      emissiveIntensity: twilight ? 0.16 + starAlpha * 0.1 : 0.05,
+      emissiveIntensity: twilight ? 0.2 + starAlpha * 0.12 : 0.09,
     }),
   )
   const hillGeo = track(new THREE.SphereGeometry(1, 10, 8))
