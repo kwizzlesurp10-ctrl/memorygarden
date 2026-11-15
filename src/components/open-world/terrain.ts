@@ -439,9 +439,9 @@ export function buildTerrain(
     minecraftMode && pixelShoreTex
       ? new THREE.MeshLambertMaterial({
           map: pixelShoreTex,
-          color: new THREE.Color('#ffffff'),
-          emissive: new THREE.Color(waterShallow).lerp(new THREE.Color('#f0e8d8'), 0.62),
-          emissiveIntensity: 0.22,
+          color: new THREE.Color('#d0b898'),
+          emissive: new THREE.Color('#a89070'),
+          emissiveIntensity: 0.09,
         })
       : new THREE.MeshStandardMaterial({
           color: new THREE.Color(waterShallow).lerp(new THREE.Color('#d4c4b0'), 0.58),
@@ -450,9 +450,10 @@ export function buildTerrain(
           opacity: 0.78,
         }),
   )
-  const shoreOuter = minecraftMode ? world.pond.radius + 1.05 : world.pond.radius + 0.65
+  const shoreInner = minecraftMode ? world.pond.radius * 1.002 : world.pond.radius * 0.98
+  const shoreOuter = minecraftMode ? world.pond.radius + 0.48 : world.pond.radius + 0.65
   const bank = new THREE.Mesh(
-    track(new THREE.RingGeometry(world.pond.radius * 0.98, shoreOuter, 40)),
+    track(new THREE.RingGeometry(shoreInner, shoreOuter, 40)),
     shoreTintMat,
   )
   bank.rotation.x = -Math.PI / 2
