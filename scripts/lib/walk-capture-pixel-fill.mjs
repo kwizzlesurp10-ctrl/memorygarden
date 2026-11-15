@@ -68,6 +68,25 @@ export function treePixelsTouchTopRowFromPng(pngPath) {
   return measureTreePixelFillFromPng(pngPath).canopyTouchesTopRow === true
 }
 
+/** Share of frame pixels classified as plant foliage (tree mask in walk captures). */
+export function measurePlantAreaFillFromPng(pngPath) {
+  const png = PNG.sync.read(readFileSync(pngPath))
+  const w = png.width
+  const h = png.height
+  const tree = measureTreePixelFillFromPng(pngPath)
+  return {
+    areaFrac: tree.treePixels / (w * h),
+    plantPixels: tree.treePixels,
+    framePixels: w * h,
+    maskHeightFrac: tree.height,
+    maskWidthFrac: tree.width,
+    maskTop: tree.top,
+    maskBottom: tree.bottom,
+    maskLeft: tree.left,
+    maskRight: tree.right,
+  }
+}
+
 /** Vertical span of tree pixels in center column ± bandPx (excludes sky/grass). */
 export function measureElderColumnVerticalFillFromPng(pngPath, centerX01 = 0.5, bandPx = 40) {
   const png = PNG.sync.read(readFileSync(pngPath))

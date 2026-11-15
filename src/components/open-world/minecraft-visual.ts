@@ -880,7 +880,7 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
   }
 
   if (plant.id === 'sprout-walk') {
-    placeCrossPlantSprite(g, 0, 0, 0, 0.8, 0.64, leaf)
+    placeCrossPlantSprite(g, 0, 0, 0, 1.02, 0.82, leaf)
   } else if (recipe.kind === 'tree') {
     buildOakTree(g, bark, leaf, seedN, stage)
   } else if (recipe.kind === 'flower') {
