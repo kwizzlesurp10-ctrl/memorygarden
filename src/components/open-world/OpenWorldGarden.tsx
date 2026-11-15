@@ -267,7 +267,6 @@ export function OpenWorldGarden({
         mode === 'approach'
           ? engine.plantApproachPose(plantId, 11)
           : (engine.elderDeterministicCapturePose(plantId) ??
-            engine.sproutDeterministicCapturePose(plantId) ??
             engine.deterministicPlantCapturePose(plantId))
       if (!pose) return false
       engine.setPlayerPose(pose.x, pose.z, pose.yaw, pose.pitch, pose.eyeY)
@@ -323,7 +322,7 @@ export function OpenWorldGarden({
         captureCameraAspect: () => engine.getCaptureCameraAspect(),
         setCaptureFov: (fov) => engine.applyCaptureFov(fov),
         elderCloseupPose: (plantId) => engine.elderDeterministicCapturePose(plantId),
-        sproutCloseupPose: (plantId) => engine.sproutDeterministicCapturePose(plantId),
+        sproutCloseupPose: (plantId) => engine.deterministicPlantCapturePose(plantId),
         mushroomCloseupPose: (plantId) => engine.mushroomDeterministicCapturePose(plantId),
         youngCloseupPose: (plantId) => engine.youngDeterministicCapturePose(plantId),
         flowerCloseupPose: (plantId) => engine.flowerDeterministicCapturePose(plantId),

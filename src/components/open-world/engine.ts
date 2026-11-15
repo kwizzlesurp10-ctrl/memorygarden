@@ -403,7 +403,6 @@ export class OpenWorldEngine {
 
   setSoloPlantFocus(plantId: string | null): void {
     this.soloCapturePlantId = plantId
-    this.rebuildTerrain()
     this.rebuildPlants()
     this.renderOnce()
   }
@@ -805,77 +804,6 @@ export class OpenWorldEngine {
     return this.elderDeterministicCapturePoseLegacy(plantId)
   }
 
-  sproutDeterministicCapturePose(plantId: string): WalkCapturePose | null {
-    const wp = this.world.plants.find((p) => p.id === plantId)
-    if (!wp || wp.stage !== 'sprout') return null
-    const box = this.plantWorldBox(plantId)
-    if (!box) return null
-    const sproutCaptureFov = 24
-    this.setCaptureFov(sproutCaptureFov)
-    const ground = box.min.y
-    const H = Math.max(0.05, box.max.y - ground)
-    const cx = (box.min.x + box.max.x) / 2
-    const cz = (box.min.z + box.max.z) / 2
-    const aimY = ground + H * 0.52
-    const aim = new THREE.Vector3(cx, aimY, cz)
-    const targetSpan = 0.34
-    const margin = 0.06
-    let bestPose: WalkCapturePose | null = null
-    let bestScore = Infinity
-    for (let pass = 0; pass < 44; pass++) {
-      const dist = 0.15 + (pass / 43) * 0.26
-      const yaw = 0.5 + (pass % 7) * 0.09
-      const camX = cx + Math.sin(yaw) * dist
-      const camZ = cz + Math.cos(yaw) * dist
-      const foot = this.terrainFootY(camX, camZ)
-      const eyeY = Math.max(foot + 0.05, ground + 0.04) + (pass % 4) * 0.015
-      const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-      const pitch = Math.min(pose.pitch, -0.2)
-      this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
-      this.camera.rotation.x = pitch
-      this.renderOnce()
-      const proj = this.plantProjectedAabbScreenFromBox(box)
-      if (!proj || !Number.isFinite(proj.top)) continue
-      const span = proj.bottom - proj.top
-      const centerY = (proj.top + proj.bottom) / 2
-      const centerX = (proj.left + proj.right) / 2
-      const inFrame =
-        proj.left >= margin &&
-        proj.right <= 1 - margin &&
-        proj.top >= margin &&
-        proj.bottom <= 1 - margin
-      const trial: WalkCapturePose = {
-        ...pose,
-        pitch,
-        x: camX,
-        z: camZ,
-        eyeY,
-        captureFov: sproutCaptureFov,
-      }
-      if (
-        inFrame &&
-        span >= 0.25 &&
-        span <= 0.45 &&
-        centerY >= 0.38 &&
-        centerY <= 0.56 &&
-        centerX >= 0.36 &&
-        centerX <= 0.64
-      ) {
-        return trial
-      }
-      const score =
-        Math.abs(span - targetSpan) +
-        Math.abs(centerY - 0.47) * 1.4 +
-        Math.abs(centerX - 0.5) * 0.8 +
-        (inFrame ? 0 : 2.5)
-      if (score < bestScore) {
-        bestScore = score
-        bestPose = trial
-      }
-    }
-    return bestPose
-  }
-
   flowerDeterministicCapturePose(plantId: string): WalkCapturePose | null {
     const box = this.plantWorldBox(plantId)
     const wp = this.world.plants.find((p) => p.id === plantId)
@@ -1142,8 +1070,31 @@ export class OpenWorldEngine {
       }
       if (wp) {
         const ground = box.min.y
-        if (plantId === 'sprout-walk' || wp.stage === 'sprout') {
-          return this.sproutDeterministicCapturePose(plantId)
+        if (plantId === 'sprout-walk') {
+          const aim = new THREE.Vector3(wp.x, ground + size.y * 0.5, wp.z)
+          const yaw = Math.PI / 4
+          const targetFrac = 0.25
+          const standoffScale = 0.55
+          let bestPose: WalkCapturePose | null = null
+          let bestDelta = Infinity
+          for (let pass = 0; pass < 18; pass++) {
+            const dist = (0.55 + (pass / 17) * 2.4) * standoffScale
+            const camX = wp.x + Math.sin(yaw) * dist
+            const camZ = wp.z + Math.cos(yaw) * dist
+            const eyeY = this.eyeHeightAt(camX, camZ, 0.92)
+            const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
+            const fit = this.plantCaptureFitAt(plantId, pose)
+            const frac = fit?.frac ?? 0
+            const centerPen =
+              fit ? Math.abs(fit.centerX) + Math.abs(fit.centerY) : 2
+            const delta = Math.abs(frac - targetFrac) + centerPen * 0.12
+            if (Math.abs(frac - targetFrac) < 0.05 && centerPen < 0.35) return pose
+            if (delta < bestDelta) {
+              bestDelta = delta
+              bestPose = pose
+            }
+          }
+          return bestPose
         }
         if (wp.variety === 'mushroom') {
           return this.mushroomDeterministicCapturePose(plantId)
@@ -1449,14 +1400,7 @@ export class OpenWorldEngine {
       this.terrain.dispose()
     }
     const minecraftMode = this.plantArtStyle === 'pixel-art'
-    const soloPlantCapture = this.soloCapturePlantId !== null
-    this.terrain = buildTerrain(
-      this.world,
-      this.palette,
-      this.reducedMotion,
-      minecraftMode,
-      soloPlantCapture,
-    )
+    this.terrain = buildTerrain(this.world, this.palette, this.reducedMotion, minecraftMode)
     this.scene.add(this.terrain.root)
     if (minecraftMode && this.terrain.surfaceY) {
       setWalkSurfaceHeightSampler(this.terrain.surfaceY)
