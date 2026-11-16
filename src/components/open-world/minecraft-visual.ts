@@ -435,13 +435,6 @@ function buildPixelArtMushroom(
   placeBlock(g, 0, 1, 0, stem)
   const capY = 2
   placeLeafLayer(g, capY, 1, cap, true, seed + 7, false)
-  const spotMat = voxelMaterial('#f4f4ec', '#ffffff', seed + 12, 'flower', true)
-  for (let i = 0; i < 6; i++) {
-    const dx = Math.round((hash01(seed + i * 3.7) - 0.5) * 2)
-    const dz = Math.round((hash01(seed + i * 5.1 + 2) - 0.5) * 2)
-    if (Math.abs(dx) + Math.abs(dz) > 2) continue
-    placeBlock(g, dx, capY + 1, dz, spotMat)
-  }
 }
 
 export function snapPlantGroupToTerrain(g: THREE.Group, terrainTop: number): void {
@@ -489,46 +482,27 @@ function buildOakTree(
   stage: PlantStage,
 ): void {
   const idx = plantStageToIndex(stage)
-  if (idx === 0) {
-    placeBlock(g, 0, 0, 0, bark)
-    placeBlock(g, 0, 1, 0, leaf)
-    return
-  }
-  if (idx === 1) {
-    placeCrossPlantSprite(g, 0, 0, 0, 0.85, 0.58, leaf)
+  if (idx <= 1) {
+    placeCrossPlantSprite(g, 0, 0, 0, 0.8, 0.56, leaf)
     return
   }
   if (idx >= 7) {
     buildPixelArtOak(g, bark, leaf, true, seed)
     return
   }
-  if (idx >= 5) {
+  if (idx >= 4) {
     buildPixelArtOak(g, bark, leaf, false, seed)
     return
   }
-  if (idx === 2) {
-    for (let y = 0; y < 2; y++) placeBlock(g, 0, y, 0, bark)
-    placeLeafLayer(g, 2, 1, leaf, true, seed + 16, false)
-    placeBlock(g, 0, 3, 0, leaf)
-    return
-  }
-  if (idx === 3) {
-    const trunkH = 3
-    for (let y = 0; y < trunkH; y++) placeBlock(g, 0, y, 0, bark)
-    placeLeafLayer(g, trunkH, 1, leaf, true, seed + 18)
-    placeBlock(g, 0, trunkH + 1, 0, leaf)
-    return
-  }
-  const trunkH = 4
+  const trunkH = 3
   for (let y = 0; y < trunkH; y++) {
     placeBlock(g, 0, y, 0, bark)
   }
-  placeLeafLayer(g, trunkH, 2, leaf, true, seed + 18, false)
-  placeLeafLayer(g, trunkH + 1, 1, leaf, false, seed + 19)
-  placeOakPlusCap(g, trunkH + 2, leaf)
-  const fruit = voxelMaterial('#e0c040', '#c8a828', seed + 27, 'poppy', true)
-  placeBlock(g, 2, trunkH + 2, 0, fruit)
-  placeBlock(g, -1, trunkH + 3, 1, fruit)
+  placeLeafLayer(g, trunkH, 1, leaf, true, seed + 18)
+  if (idx >= 3) {
+    placeLeafLayer(g, trunkH + 1, 1, leaf, false, seed + 19)
+    placeOakPlusCap(g, trunkH + 2, leaf)
+  }
 }
 
 function buildFlower(
@@ -542,47 +516,24 @@ function buildFlower(
 ): void {
   const idx = plantStageToIndex(stage)
   if (idx <= 0) {
-    placeBlock(g, 0, 0, 0, stem)
+    placeBlock(g, 0, 1, 0, stem)
     return
   }
   if (idx === 1) {
-    placeBlock(g, 0, 0, 0, stem)
-    placeCrossPlantSprite(g, 0, 0, 0.55, 0.5, 0.48, bloom)
+    placeCrossPlantSprite(g, 0, 0, 0, 0.8, 0.56, bloom)
     return
   }
   if (idx >= 5) {
-    const petalLight = lerpHex(petalBase, petalAccent, idx >= 6 ? 0.42 : 0.35)
+    const petalLight = lerpHex(petalBase, petalAccent, 0.42)
     const poppyMat = voxelMaterial(petalBase, petalLight, seed + 7, 'poppy', true)
-    const petalBlock = voxelMaterial(petalAccent, petalBase, seed + 13, 'flower', true)
-    placeCrossPlantSprite(g, 0, 0, 0, idx >= 6 ? 0.92 : 0.86, idx >= 6 ? 0.68 : 0.64, poppyMat)
-    for (const [dx, dz] of [
-      [1, 0],
-      [-1, 0],
-      [0, 1],
-      [0, -1],
-    ] as const) {
-      placeBlock(g, dx, 0, dz, petalBlock)
-    }
-    placeBlock(g, 0, 1, 0, petalBlock)
-    return
-  }
-  if (idx === 4) {
-    placeBlock(g, 0, 0, 0, stem)
-    placeBlock(g, 0, 1, 0, stem)
-    const bud = voxelMaterial(petalBase, petalAccent, seed + 9, 'flower', true)
-    placeCrossSprite(g, 0, 2, 0, bud, 1.12)
-    return
-  }
-  if (idx === 3) {
-    placeBlock(g, 0, 0, 0, stem)
-    placeCrossSprite(g, 0, 1, 0, bloom, 0.92)
+    placeCrossPlantSprite(g, 0, 0, 0, 0.82, 0.62, poppyMat)
     return
   }
   const stemH = 2
   for (let y = 0; y < stemH; y++) {
     placeBlock(g, 0, y, 0, stem)
   }
-  placeCrossSprite(g, 0, stemH, 0, bloom, 1.05)
+  placeCrossSprite(g, 0, stemH, 0, bloom, 1.2)
 }
 
 function buildMushroom(
@@ -593,26 +544,9 @@ function buildMushroom(
   stage: PlantStage,
 ): void {
   const idx = plantStageToIndex(stage)
-  if (idx === 0) {
+  if (idx <= 1) {
     placeBlock(g, 0, 0, 0, stem)
-    return
-  }
-  if (idx === 1) {
-    placeBlock(g, 0, 0, 0, stem)
-    placeBlock(g, 0, 1, 0, cap)
-    return
-  }
-  if (idx === 2) {
-    placeBlock(g, 0, 0, 0, stem)
-    placeBlock(g, 0, 1, 0, stem)
-    placeLeafLayer(g, 2, 1, cap, true, seed + 3, false)
-    return
-  }
-  if (idx === 3 || idx === 4) {
-    placeBlock(g, 0, 0, 0, stem)
-    placeBlock(g, 0, 1, 0, stem)
-    placeLeafLayer(g, 2, 1, cap, true, seed + 5, false)
-    placeBlock(g, 0, 3, 0, cap)
+    if (idx === 1) placeBlock(g, 0, 1, 0, cap)
     return
   }
   buildPixelArtMushroom(g, stem, cap, seed)
@@ -884,7 +818,7 @@ export function minecraftGroundFlowers(
   const mats = [poppyRed, dandelion]
   const rng = gardenRng(912)
   const span = 36
-  const count = 78
+  const count = 44
   const placed: Array<{ x: number; z: number }> = []
   const keepouts: Array<{ x: number; z: number; r: number }> = [
     { x: world.pond.x, z: world.pond.z, r: world.pond.radius + 2.2 },
@@ -906,8 +840,8 @@ export function minecraftGroundFlowers(
     if (hy > 1.05) continue
     const groundY = hy * VOXEL + 0.055
     const mat = mats[Math.floor(rng() * mats.length)]!
-    const tall = 0.22 + rng() * 0.2
-    const wide = 0.2 + rng() * 0.16
+    const tall = 0.14 + rng() * 0.12
+    const wide = 0.14 + rng() * 0.1
     for (const rotY of [0, Math.PI / 2]) {
       const flower = new THREE.Mesh(planeGeo, mat)
       flower.position.set(x, groundY + tall / 2, z)
@@ -974,7 +908,7 @@ export function minecraftGrassTufts(
   )
   const rng = gardenRng(901)
   const span = 38
-  const count = 128
+  const count = 52
   const placed: Array<{ x: number; z: number }> = []
   let i = 0
   let attempts = 0
@@ -986,11 +920,11 @@ export function minecraftGrassTufts(
     if (placed.some((p) => Math.hypot(p.x - x, p.z - z) < 1.8)) continue
     const mat = rng() > 0.45 ? grassBright : grassDark
     const topY = topBlocks(x, z) * VOXEL
-    const tall = 0.52 + rng() * 0.55
+    const tall = 0.32 + rng() * 0.38
     for (const rotY of [0, Math.PI / 2]) {
       const blade = new THREE.Mesh(planeGeo, mat)
       blade.position.set(x, topY + tall / 2, z)
-      blade.scale.set(0.62, tall, 1)
+      blade.scale.set(0.42, tall, 1)
       blade.rotation.y = rotY
       blade.userData.voxel = true
       blade.userData.grassTuft = true

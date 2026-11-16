@@ -13,7 +13,6 @@ import {
   minecraftGroundFlowers,
   minecraftPathTexture,
   minecraftPondShoreTexture,
-  minecraftPondVoxelRim,
   minecraftSkyTexture,
   minecraftTwilightSkyStars,
   minecraftWaterBlockTexture,
@@ -161,6 +160,34 @@ function watercolorWaterTexture(palette: ScenePalette): THREE.CanvasTexture {
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping
   tex.repeat.set(2.2, 2.2)
   tex.anisotropy = 4
+  tex.needsUpdate = true
+  return tex
+}
+
+/** Pixel day sky — smooth gradient (no banded arcs). */
+function skyTexture(palette: ScenePalette): THREE.CanvasTexture {
+  const c = document.createElement('canvas')
+  c.width = 8
+  c.height = 256
+  const ctx = c.getContext('2d')
+  if (!ctx) return new THREE.CanvasTexture(c)
+  const g = ctx.createLinearGradient(0, 0, 0, 256)
+  const sky = palette.sky
+  const star = palette.starAlpha ?? 0
+  const twilight = star > 0.22
+  const top = sky[0] ?? '#070619'
+  const upper = sky[1] ?? sky[0] ?? '#1d1748'
+  const mid = twilight ? (sky[3] ?? sky[2] ?? '#8a4a7d') : (sky[2] ?? '#472a68')
+  const lower = twilight ? (sky[4] ?? sky[3] ?? '#d97a4e') : (sky[3] ?? sky[2] ?? '#8a4a7d')
+  const horizon = sky[sky.length - 1] ?? '#d98a86'
+  g.addColorStop(0, top)
+  g.addColorStop(0.32, upper)
+  g.addColorStop(0.58, mid)
+  g.addColorStop(0.82, lower)
+  g.addColorStop(1, horizon)
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, 8, 256)
+  const tex = new THREE.CanvasTexture(c)
   tex.needsUpdate = true
   return tex
 }
@@ -452,8 +479,8 @@ export function buildTerrain(
           color: new THREE.Color(isNight ? '#3a6898' : twilight ? '#68b8e8' : '#88cce8'),
           transparent: true,
           opacity: 0.96,
-          emissive: new THREE.Color(isNight ? '#5a88c0' : '#5ec8e8'),
-          emissiveIntensity: isNight ? 0.28 + starAlpha * 0.12 : twilight ? 0.26 : 0.22,
+          emissive: new THREE.Color(isNight ? '#5a88c0' : skySheen),
+          emissiveIntensity: isNight ? 0.28 + starAlpha * 0.12 : twilight ? 0.16 : 0.22,
         })
       : new THREE.MeshStandardMaterial({
           map: watercolorWaterTex ?? undefined,
@@ -472,9 +499,6 @@ export function buildTerrain(
   )
   water.rotation.x = -Math.PI / 2
   water.position.set(world.pond.x, minecraftMode ? 0.085 : 0.05, world.pond.z)
-  if (minecraftMode) {
-    water.renderOrder = 5
-  }
   root.add(water)
 
   const depthMat = track(
@@ -542,8 +566,8 @@ export function buildTerrain(
           opacity: 0.78,
         }),
   )
-  const shoreInner = minecraftMode ? world.pond.radius + 0.14 : world.pond.radius * 0.98
-  const shoreOuter = minecraftMode ? world.pond.radius + 0.52 : world.pond.radius + 0.65
+  const shoreInner = minecraftMode ? world.pond.radius * 1.002 : world.pond.radius * 0.98
+  const shoreOuter = minecraftMode ? world.pond.radius + 0.48 : world.pond.radius + 0.65
   const bank = new THREE.Mesh(
     track(new THREE.RingGeometry(shoreInner, shoreOuter, 40)),
     shoreTintMat,
@@ -551,12 +575,8 @@ export function buildTerrain(
   bank.rotation.x = -Math.PI / 2
   bank.position.set(world.pond.x, minecraftMode ? 0.091 : 0.04, world.pond.z)
   bank.receiveShadow = !minecraftMode
-  bank.renderOrder = minecraftMode ? 1 : 0
+  bank.renderOrder = minecraftMode ? 2 : 0
   root.add(bank)
-
-  if (minecraftMode) {
-    minecraftPondVoxelRim(world, root, track)
-  }
 
   if (!minecraftMode) {
     const shoreRng = gardenRng(519)
@@ -1349,14 +1369,16 @@ export function buildTerrain(
   }
 
   // ── Celestial Sphere & Stylized Floating Clouds ──────────────────────────
-  const skyTex = track(minecraftMode ? minecraftSkyTexture(palette) : watercolorSkyTexture(palette))
+  const pixelSkyTex =
+    minecraftMode && twilight ? minecraftSkyTexture(palette) : minecraftMode ? skyTexture(palette) : null
+  const skyTex = track(minecraftMode ? pixelSkyTex! : watercolorSkyTexture(palette))
   const skyMat = track(
     new THREE.MeshBasicMaterial({
       map: skyTex,
       side: THREE.BackSide,
       depthWrite: false,
-      // Pixel sky shows painted bands/stars — fog would wash it to amber dusk fog color.
-      fog: !minecraftMode,
+      // c0c289c: watercolor sky unfogged; pixel dusk needs unfogged banded texture (day uses smooth gradient).
+      fog: minecraftMode ? false : false,
       toneMapped: minecraftMode,
     }),
   )
@@ -1644,10 +1666,16 @@ export function buildTerrain(
         cloudMat.opacity = nextNight ? 0.45 : 0.75
       }
       fogColor.set(next.sky[2] ?? next.bank)
-      const newSky = track(minecraftMode ? minecraftSkyTexture(next) : watercolorSkyTexture(next))
+      const nextPixelSky =
+        minecraftMode && nextTwilight
+          ? minecraftSkyTexture(next)
+          : minecraftMode
+            ? skyTexture(next)
+            : null
+      const newSky = track(minecraftMode ? nextPixelSky! : watercolorSkyTexture(next))
       skyMat.map?.dispose()
       skyMat.map = newSky
-      skyMat.fog = !minecraftMode
+      skyMat.fog = minecraftMode ? false : false
       skyMat.toneMapped = minecraftMode
       skyMat.needsUpdate = true
       disposables.push(newSky)

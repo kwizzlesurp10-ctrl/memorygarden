@@ -281,12 +281,12 @@ export class OpenWorldEngine {
       const tw = Math.min(1, (star - 0.18) / 0.5)
       const horizonAmber = new THREE.Color('#ffb86b')
       const skyViolet = new THREE.Color(palette.sky[3] ?? palette.sky[2] ?? '#9a78c8')
-      const duskSky = skyViolet.clone().lerp(horizonAmber, 0.48 + tw * 0.42)
+      const duskSky = skyViolet.clone().lerp(horizonAmber, 0.38 + tw * 0.32)
       this.renderer?.setClearColor(duskSky, 1)
       if (this.scene.fog instanceof THREE.Fog) {
         this.scene.fog.color.copy(duskSky)
         this.scene.fog.near = 22
-        this.scene.fog.far = 108
+        this.scene.fog.far = 76
       }
     } else if (watercolorDusk) {
       const tw = Math.min(1, (star - 0.18) / 0.5)
@@ -943,30 +943,22 @@ export class OpenWorldEngine {
     if (!box || !wp) return null
     const ground = box.min.y
     const H = box.max.y - ground
-    const cx = wp.x
-    const cz = wp.z
-    const voxelBloom = this.plantArtStyle === 'pixel-art'
-    const aimY = ground + (voxelBloom ? Math.min(H, 1.35) * 0.88 : H * 0.55)
+    const cx = (box.min.x + box.max.x) / 2
+    const cz = (box.min.z + box.max.z) / 2
+    const aimY = ground + H * 0.55
     const aim = new THREE.Vector3(cx, aimY, cz)
-    const targetSpan = voxelBloom ? 0.22 : 0.26
+    const targetSpan = 0.26
     const margin = 0.08
     let bestPose: WalkCapturePose | null = null
     let bestScore = Infinity
-    const passCount = voxelBloom ? 56 : 44
-    const yawStride = voxelBloom ? 0.09 : 0.11
-    const yawBase = voxelBloom ? 0.72 : 0.55
-    const yawMod = voxelBloom ? 11 : 7
-    for (let pass = 0; pass < passCount; pass++) {
-      const dist = voxelBloom
-        ? 1.05 + (pass / (passCount - 1)) * 1.35
-        : 0.85 + (pass / 43) * 1.65
-      const yaw =
-        yawBase + ((pass + poseSeed * 2) % yawMod) * yawStride + poseSeed * 0.21
+    for (let pass = 0; pass < 44; pass++) {
+      const dist = 0.85 + (pass / 43) * 1.65
+      const yaw = 0.55 + ((pass + poseSeed * 3) % 5) * 0.11
       const camX = cx + Math.sin(yaw) * dist
       const camZ = cz + Math.cos(yaw) * dist
-      const eyeY = this.eyeHeightAt(camX, camZ, voxelBloom ? 1.62 : 0.95)
+      const eyeY = this.eyeHeightAt(camX, camZ, 0.95)
       const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-      const pitch = Math.min(pose.pitch, voxelBloom ? -0.24 : -0.22)
+      const pitch = Math.min(pose.pitch, -0.22)
       this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
       this.renderOnce()
       const proj = this.plantProjectedAabbScreenFromBox(box)
@@ -999,7 +991,7 @@ export class OpenWorldEngine {
     const camZ = cz + Math.cos(yaw) * dist
     const eyeY = this.eyeHeightAt(camX, camZ, 0.92)
     const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-  const pitch = Math.min(pose.pitch, -0.24)
+    const pitch = Math.min(pose.pitch, -0.22)
     return { ...pose, pitch, x: camX, z: camZ, eyeY }
   }
 
@@ -1792,12 +1784,12 @@ export class OpenWorldEngine {
         this.rim.color.set('#ffba6a')
         this.rim.position.set(-14, 14, 22)
         this.rim.intensity = 0.48 + tw * 0.42
-        const duskSky = skyViolet.clone().lerp(horizonAmber, 0.48 + tw * 0.42)
+        const duskSky = skyViolet.clone().lerp(horizonAmber, 0.38 + tw * 0.32)
         this.renderer?.setClearColor(duskSky, 1)
         if (this.scene.fog instanceof THREE.Fog) {
           this.scene.fog.color.copy(duskSky)
           this.scene.fog.near = 22
-          this.scene.fog.far = 108
+          this.scene.fog.far = 76
         }
       } else {
         const skyWash = new THREE.Color(p.sky[3] ?? p.sky[2] ?? '#88aacc')
