@@ -739,7 +739,7 @@ try {
       let youngPoseForStyle = null
       let flowerPoseForStyle = null
       let mushroomPoseForStyle = null
-      if (elderShot?.plantId) {
+      if (mode !== 'overview' && elderShot?.plantId) {
         await page.evaluate((plantId) => {
           window.__mgWalkCapture?.setSoloPlantFocus?.(plantId ?? null)
         }, elderShot.plantId)
@@ -751,7 +751,7 @@ try {
         console.log(`elder pose (${run.phase} ${artStyle})`, JSON.stringify(elderPoseForStyle))
         await page.evaluate(() => window.__mgWalkCapture?.setSoloPlantFocus?.(null))
       }
-      if (flowerShot?.plantId) {
+      if (mode !== 'overview' && flowerShot?.plantId) {
         await page.evaluate((plantId) => {
           window.__mgWalkCapture?.setSoloPlantFocus?.(plantId ?? null)
         }, flowerShot.plantId)
@@ -770,7 +770,7 @@ try {
         console.log(`flower pose (${run.phase} ${artStyle})`, JSON.stringify(flowerPoseForStyle))
         await page.evaluate(() => window.__mgWalkCapture?.setSoloPlantFocus?.(null))
       }
-      if (youngShot?.plantId) {
+      if (mode !== 'overview' && youngShot?.plantId) {
         await page.evaluate((plantId) => {
           window.__mgWalkCapture?.setSoloPlantFocus?.(plantId ?? null)
         }, youngShot.plantId)
@@ -784,7 +784,7 @@ try {
         console.log(`young pose (${run.phase} ${artStyle})`, JSON.stringify(youngPoseForStyle))
         await page.evaluate(() => window.__mgWalkCapture?.setSoloPlantFocus?.(null))
       }
-      if (mushroomShot?.plantId) {
+      if (mode !== 'overview' && mushroomShot?.plantId) {
         await page.evaluate((plantId) => {
           window.__mgWalkCapture?.setSoloPlantFocus?.(plantId ?? null)
         }, mushroomShot.plantId)
