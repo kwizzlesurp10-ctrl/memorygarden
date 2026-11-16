@@ -533,17 +533,10 @@ function buildFlower(
     placeCrossPlantSprite(g, 0, 0, 0.55, 0.5, 0.48, bloom)
     return
   }
-  if (idx >= 6) {
-    const petalLight = lerpHex(petalBase, petalAccent, 0.42)
+  if (idx >= 5) {
+    const petalLight = lerpHex(petalBase, petalAccent, idx >= 6 ? 0.42 : 0.35)
     const poppyMat = voxelMaterial(petalBase, petalLight, seed + 7, 'poppy', true)
-    placeCrossPlantSprite(g, 0, 0, 0, 0.88, 0.66, poppyMat)
-    return
-  }
-  if (idx === 5) {
-    const petalLight = lerpHex(petalBase, petalAccent, 0.35)
-    const poppyMat = voxelMaterial(petalBase, petalLight, seed + 7, 'poppy', true)
-    placeBlock(g, 0, 0, 0, stem)
-    placeCrossPlantSprite(g, 0, 0, 0.38, 0.78, 0.58, poppyMat)
+    placeCrossPlantSprite(g, 0, 0, 0, idx >= 6 ? 0.88 : 0.82, idx >= 6 ? 0.66 : 0.62, poppyMat)
     return
   }
   if (idx === 4) {

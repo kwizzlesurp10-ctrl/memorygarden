@@ -941,22 +941,6 @@ export class OpenWorldEngine {
     const box = this.plantWorldBox(plantId)
     const wp = this.world.plants.find((p) => p.id === plantId)
     if (!box || !wp) return null
-    if (
-      isWalkCaptureSession() &&
-      plantId === 'flower-bloom-walk' &&
-      this.plantArtStyle === 'pixel-art'
-    ) {
-      const foot = this.terrainFootY(wp.x, wp.z)
-      const yaw = 0.88
-      const dist = 1.08
-      const camX = wp.x + Math.sin(yaw) * dist
-      const camZ = wp.z + Math.cos(yaw) * dist
-      const eyeY = foot + 1.62
-      const aim = new THREE.Vector3(wp.x, foot + 0.95, wp.z)
-      const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-      const pitch = -0.22
-      return { ...pose, pitch, x: camX, z: camZ, eyeY }
-    }
     const ground = box.min.y
     const H = box.max.y - ground
     const cx = wp.x

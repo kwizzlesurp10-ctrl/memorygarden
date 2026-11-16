@@ -554,7 +554,7 @@ async function captureShot(page, phase, artStyle, shot, pose) {
       const r = png.data[i]
       const g = png.data[i + 1]
       const b = png.data[i + 2]
-      if (r > 150 && g > 110 && b < 140) warm++
+      if ((r > 150 && g > 110 && b < 140) || (r > 130 && g < 115 && r > g + 12)) warm++
     }
     const warmFrac = warm / (png.width * png.height)
     if (warmFrac < 0.0025) {
