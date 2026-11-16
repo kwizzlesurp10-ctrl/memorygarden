@@ -937,7 +937,7 @@ export class OpenWorldEngine {
     return this.elderDeterministicCapturePoseLegacy(plantId)
   }
 
-  flowerDeterministicCapturePose(plantId: string): WalkCapturePose | null {
+  flowerDeterministicCapturePose(plantId: string, poseSeed = 0): WalkCapturePose | null {
     const box = this.plantWorldBox(plantId)
     const wp = this.world.plants.find((p) => p.id === plantId)
     if (!box || !wp) return null
@@ -953,11 +953,15 @@ export class OpenWorldEngine {
     let bestPose: WalkCapturePose | null = null
     let bestScore = Infinity
     const passCount = voxelBloom ? 56 : 44
+    const yawStride = voxelBloom ? 0.09 : 0.11
+    const yawBase = voxelBloom ? 0.72 : 0.55
+    const yawMod = voxelBloom ? 11 : 7
     for (let pass = 0; pass < passCount; pass++) {
       const dist = voxelBloom
         ? 1.05 + (pass / (passCount - 1)) * 1.35
         : 0.85 + (pass / 43) * 1.65
-      const yaw = voxelBloom ? 0.72 + (pass % 7) * 0.09 : 0.55 + (pass % 5) * 0.11
+      const yaw =
+        yawBase + ((pass + poseSeed * 2) % yawMod) * yawStride + poseSeed * 0.21
       const camX = cx + Math.sin(yaw) * dist
       const camZ = cz + Math.cos(yaw) * dist
       const eyeY = this.eyeHeightAt(camX, camZ, voxelBloom ? 1.62 : 0.95)

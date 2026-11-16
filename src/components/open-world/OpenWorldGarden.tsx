@@ -327,7 +327,8 @@ export function OpenWorldGarden({
         mushroomCloseupPose: (plantId) => engine.mushroomDeterministicCapturePose(plantId),
         sproutWalkCloseupPose: (plantId) => engine.sproutWalkCloseupPose(plantId),
         youngCloseupPose: (plantId) => engine.youngDeterministicCapturePose(plantId),
-        flowerCloseupPose: (plantId) => engine.flowerDeterministicCapturePose(plantId),
+        flowerCloseupPose: (plantId, poseSeed) =>
+          engine.flowerDeterministicCapturePose(plantId, poseSeed ?? 0),
         plantProjectedAabbScreen: (plantId) => engine.plantProjectedAabbScreen(plantId),
         plantProjectedBoxScreenY: (plantId) => engine.plantProjectedBoxScreenY(plantId),
         pondCloseupPose: () => engine.pondCapturePose(),

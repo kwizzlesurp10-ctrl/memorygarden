@@ -268,14 +268,17 @@ async function mushroomCloseupPoseForPage(page, plantId) {
   }, plantId)
 }
 
-async function flowerCloseupPoseForPage(page, plantId) {
-  return page.evaluate((id) => {
-    const b = window.__mgWalkCapture
-    if (typeof b?.flowerCloseupPose === 'function') {
-      return b.flowerCloseupPose(id)
-    }
-    return b?.deterministicPlantPose?.(id) ?? null
-  }, plantId)
+async function flowerCloseupPoseForPage(page, plantId, poseSeed = 0) {
+  return page.evaluate(
+    ({ id, poseSeed }) => {
+      const b = window.__mgWalkCapture
+      if (typeof b?.flowerCloseupPose === 'function') {
+        return b.flowerCloseupPose(id, poseSeed)
+      }
+      return b?.deterministicPlantPose?.(id) ?? null
+    },
+    { id: plantId, poseSeed },
+  )
 }
 
 async function youngCloseupPoseForPage(page, plantId) {
@@ -535,32 +538,44 @@ async function captureShot(page, phase, artStyle, shot, pose) {
     await assertMushroomCloseupFrame(page, shot.plantId, file, phase, artStyle, pose)
   }
   if (shot.file === 'walk-flower-closeup' && shot.plantId && artStyle === 'pixel-art' && phase === 'after') {
-    const cov = await page.evaluate(
-      ({ id, p }) => window.__mgWalkCapture?.plantScreenCoverage?.(id, p) ?? 0,
-      { id: shot.plantId, p: pose },
-    )
-    if (cov < 0.12) {
-      throw new Error(`Pixel flower close-up coverage ${cov.toFixed(3)} < 0.12 (bark-pillar guard)`)
-    }
-    const treeFill = measureElderColumnVerticalFillFromPng(file)
-    if (Number.isFinite(treeFill.heightFrac) && treeFill.heightFrac > 0.55) {
-      throw new Error(
-        `Pixel flower close-up center column tree fill ${(treeFill.heightFrac * 100).toFixed(0)}% (expected flower, not trunk)`,
+    let accepted = false
+    for (let seed = 0; seed < 14; seed++) {
+      if (seed > 0) {
+        const retryPose = await flowerCloseupPoseForPage(page, shot.plantId, seed)
+        if (!retryPose) continue
+        await applyPose(page, retryPose)
+        await page.evaluate((plantId) => {
+          window.__mgWalkCapture?.setSoloPlantFocus?.(plantId ?? null)
+        }, shot.plantId)
+        await page.evaluate(async () => {
+          await window.__mgWalkCapture?.waitCaptureReady?.()
+        })
+        await page.locator('[data-testid="open-world-garden"] canvas').first().screenshot({ path: file })
+        pose = retryPose
+      }
+      const cov = await page.evaluate(
+        ({ id, p }) => window.__mgWalkCapture?.plantScreenCoverage?.(id, p) ?? 0,
+        { id: shot.plantId, p: pose },
       )
+      if (cov < 0.12) continue
+      const treeFill = measureElderColumnVerticalFillFromPng(file)
+      if (Number.isFinite(treeFill.heightFrac) && treeFill.heightFrac > 0.55) continue
+      const png = PNG.sync.read(readFileSync(file))
+      let warm = 0
+      for (let i = 0; i < png.data.length; i += 4) {
+        const r = png.data[i]
+        const g = png.data[i + 1]
+        const b = png.data[i + 2]
+        if ((r > 150 && g > 110 && b < 140) || (r > 130 && g < 115 && r > g + 12)) warm++
+      }
+      const warmFrac = warm / (png.width * png.height)
+      if (warmFrac < 0.0025) continue
+      accepted = true
+      if (seed > 0) console.log(`flower pose seed ${seed} after tree-fill retry`)
+      break
     }
-    const png = PNG.sync.read(readFileSync(file))
-    let warm = 0
-    for (let i = 0; i < png.data.length; i += 4) {
-      const r = png.data[i]
-      const g = png.data[i + 1]
-      const b = png.data[i + 2]
-      if ((r > 150 && g > 110 && b < 140) || (r > 130 && g < 115 && r > g + 12)) warm++
-    }
-    const warmFrac = warm / (png.width * png.height)
-    if (warmFrac < 0.0025) {
-      throw new Error(
-        `Pixel flower close-up warm petal coverage ${(warmFrac * 100).toFixed(2)}% < 0.25% (off-framing guard)`,
-      )
+    if (!accepted) {
+      throw new Error('Pixel flower close-up failed coverage / tree-fill / warm-petal guards after retries')
     }
   }
   if (shot.file === 'walk-sprout-closeup' && shot.plantId && artStyle === 'watercolor' && phase === 'after') {
