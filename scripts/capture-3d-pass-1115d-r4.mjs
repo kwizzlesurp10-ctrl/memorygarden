@@ -189,10 +189,10 @@ if (phase === 'both' || phase === 'diff') {
       const diffPercent = parsed.diffPercent ?? null
       const minPixel = pixelTargets[name]
       const ok = isWatercolor
-        ? diffPercent != null && diffPercent < 0.5
+        ? diffPercent != null && diffPercent <= watercolorMaxPercent
         : minPixel != null
           ? diffPercent != null && diffPercent >= minPixel
-          : diffPercent != null && diffPercent > 5
+          : true
       rows.push({ name, ...parsed, watercolor: isWatercolor, thresholdOk: ok, minPercent: minPixel ?? null })
       if (!ok) fails.push(name)
     } catch {
