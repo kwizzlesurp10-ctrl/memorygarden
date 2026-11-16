@@ -770,7 +770,8 @@ export function minecraftSkyTexture(palette: ScenePalette): THREE.CanvasTexture 
   const twilight = star > 0.22
   const bandH = twilight ? 5 : 8
   for (let y = 0; y < 128; y += bandH) {
-    const t = 1 - (y + bandH / 2) / 128
+    const tNorm = (y + bandH / 2) / 128
+    const t = twilight ? tNorm : 1 - tNorm
     const band = skyBandColor(palette, t, twilight)
     const stripe = y / bandH
     const alt = twilight ? (stripe % 2 === 0 ? '#ffb878' : '#c86898') : '#88c8f8'
@@ -891,7 +892,7 @@ export function minecraftGroundFlowers(
     { x: 39, z: 14, r: 7 },
     { x: -22, z: 15, r: 5 },
     { x: 2, z: 31, r: 5 },
-    { x: 7, z: 34, r: 8 },
+    { x: 7, z: 34, r: 4.2 },
   ]
   let i = 0
   let attempts = 0
