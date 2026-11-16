@@ -778,8 +778,8 @@ export function minecraftSkyTexture(palette: ScenePalette): THREE.CanvasTexture 
     ctx.fillRect(0, y, 64, bandH)
   }
   if (twilight) {
-    const sunX = 42
-    const sunY = 10
+    const sunX = 8
+    const sunY = 22
     const sunColors = ['#ffe8a8', '#ffc870', '#ffb040', '#ff9830']
     for (let dy = 0; dy < 12; dy++) {
       for (let dx = 0; dx < 12; dx++) {
@@ -883,7 +883,7 @@ export function minecraftGroundFlowers(
   const mats = [poppyRed, dandelion]
   const rng = gardenRng(912)
   const span = 36
-  const count = 44
+  const count = 78
   const placed: Array<{ x: number; z: number }> = []
   const keepouts: Array<{ x: number; z: number; r: number }> = [
     { x: world.pond.x, z: world.pond.z, r: world.pond.radius + 2.2 },
@@ -905,8 +905,8 @@ export function minecraftGroundFlowers(
     if (hy > 1.05) continue
     const groundY = hy * VOXEL + 0.055
     const mat = mats[Math.floor(rng() * mats.length)]!
-    const tall = 0.14 + rng() * 0.12
-    const wide = 0.14 + rng() * 0.1
+    const tall = 0.22 + rng() * 0.2
+    const wide = 0.2 + rng() * 0.16
     for (const rotY of [0, Math.PI / 2]) {
       const flower = new THREE.Mesh(planeGeo, mat)
       flower.position.set(x, groundY + tall / 2, z)
@@ -973,7 +973,7 @@ export function minecraftGrassTufts(
   )
   const rng = gardenRng(901)
   const span = 38
-  const count = 86
+  const count = 128
   const placed: Array<{ x: number; z: number }> = []
   let i = 0
   let attempts = 0
@@ -985,11 +985,11 @@ export function minecraftGrassTufts(
     if (placed.some((p) => Math.hypot(p.x - x, p.z - z) < 1.8)) continue
     const mat = rng() > 0.45 ? grassBright : grassDark
     const topY = topBlocks(x, z) * VOXEL
-    const tall = 0.38 + rng() * 0.42
+    const tall = 0.52 + rng() * 0.55
     for (const rotY of [0, Math.PI / 2]) {
       const blade = new THREE.Mesh(planeGeo, mat)
       blade.position.set(x, topY + tall / 2, z)
-      blade.scale.set(0.48, tall, 1)
+      blade.scale.set(0.62, tall, 1)
       blade.rotation.y = rotY
       blade.userData.voxel = true
       blade.userData.grassTuft = true
