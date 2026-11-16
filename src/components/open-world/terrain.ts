@@ -449,11 +449,11 @@ export function buildTerrain(
     minecraftMode && pixelWaterTex
       ? new THREE.MeshLambertMaterial({
           map: pixelWaterTex,
-          color: new THREE.Color(isNight ? '#3a6898' : twilight ? '#78b8d8' : '#88cce8'),
+          color: new THREE.Color(isNight ? '#3a6898' : twilight ? '#68b8e8' : '#88cce8'),
           transparent: true,
-          opacity: 0.94,
-          emissive: new THREE.Color(isNight ? '#5a88c0' : skySheen),
-          emissiveIntensity: isNight ? 0.28 + starAlpha * 0.12 : twilight ? 0.16 : 0.22,
+          opacity: 0.96,
+          emissive: new THREE.Color(isNight ? '#5a88c0' : '#5ec8e8'),
+          emissiveIntensity: isNight ? 0.28 + starAlpha * 0.12 : twilight ? 0.26 : 0.22,
         })
       : new THREE.MeshStandardMaterial({
           map: watercolorWaterTex ?? undefined,
@@ -472,6 +472,9 @@ export function buildTerrain(
   )
   water.rotation.x = -Math.PI / 2
   water.position.set(world.pond.x, minecraftMode ? 0.085 : 0.05, world.pond.z)
+  if (minecraftMode) {
+    water.renderOrder = 5
+  }
   root.add(water)
 
   const depthMat = track(
@@ -539,8 +542,8 @@ export function buildTerrain(
           opacity: 0.78,
         }),
   )
-  const shoreInner = minecraftMode ? world.pond.radius * 1.002 : world.pond.radius * 0.98
-  const shoreOuter = minecraftMode ? world.pond.radius + 0.48 : world.pond.radius + 0.65
+  const shoreInner = minecraftMode ? world.pond.radius + 0.14 : world.pond.radius * 0.98
+  const shoreOuter = minecraftMode ? world.pond.radius + 0.52 : world.pond.radius + 0.65
   const bank = new THREE.Mesh(
     track(new THREE.RingGeometry(shoreInner, shoreOuter, 40)),
     shoreTintMat,
@@ -548,7 +551,7 @@ export function buildTerrain(
   bank.rotation.x = -Math.PI / 2
   bank.position.set(world.pond.x, minecraftMode ? 0.091 : 0.04, world.pond.z)
   bank.receiveShadow = !minecraftMode
-  bank.renderOrder = minecraftMode ? 2 : 0
+  bank.renderOrder = minecraftMode ? 1 : 0
   root.add(bank)
 
   if (minecraftMode) {
@@ -1352,8 +1355,8 @@ export function buildTerrain(
       map: skyTex,
       side: THREE.BackSide,
       depthWrite: false,
-      // Sky shell is ~180m; scene fog far is 64–92 — without this the dome washes to a flat fog color.
-      fog: minecraftMode,
+      // Pixel sky shows painted bands/stars — fog would wash it to amber dusk fog color.
+      fog: !minecraftMode,
       toneMapped: minecraftMode,
     }),
   )
@@ -1373,6 +1376,7 @@ export function buildTerrain(
   )
   const celestialGeo = track(new THREE.SphereGeometry(isNight ? 3.8 : 4.6, minecraftMode ? 8 : 16, minecraftMode ? 8 : 16))
   const celestialMesh = new THREE.Mesh(celestialGeo, celestialMat)
+  celestialMesh.visible = !minecraftMode
   if (isNight) {
     celestialMesh.position.set(-18, 52, -75)
   } else {
@@ -1643,7 +1647,7 @@ export function buildTerrain(
       const newSky = track(minecraftMode ? minecraftSkyTexture(next) : watercolorSkyTexture(next))
       skyMat.map?.dispose()
       skyMat.map = newSky
-      skyMat.fog = minecraftMode
+      skyMat.fog = !minecraftMode
       skyMat.toneMapped = minecraftMode
       skyMat.needsUpdate = true
       disposables.push(newSky)
