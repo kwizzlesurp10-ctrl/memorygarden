@@ -408,17 +408,17 @@ function buildPixelArtOak(
     placeLeafLayer(g, capY + 5, 1, leaf, false, seed + 45, false)
     placeOakSideBranches(g, capY, bark, leaf, seed)
     const fruit = voxelMaterial('#d84848', '#b83838', seed + 55, 'poppy', true)
-    placeBlock(g, 2, capY + 3, 1, fruit)
-    placeBlock(g, -2, capY + 4, -1, fruit)
-    placeBlock(g, 1, capY + 5, 2, fruit)
+    placeBlock(g, 1, capY + 1, 0, fruit)
+    placeBlock(g, -1, capY + 2, 1, fruit)
+    placeBlock(g, 2, capY + 2, -1, fruit)
   } else {
     placeLeafLayer(g, capY, 2, leaf, true, seed + 20)
     placeLeafLayer(g, capY + 1, 2, leaf, true, seed + 21)
     placeLeafLayer(g, capY + 2, 1, leaf, false, seed + 22)
     placeOakPlusCap(g, capY + 3, leaf)
     const fruit = voxelMaterial('#e8b838', '#d0a028', seed + 33, 'poppy', true)
-    placeBlock(g, 1, capY + 2, 2, fruit)
-    placeBlock(g, -1, capY + 3, -1, fruit)
+    placeBlock(g, 1, capY + 1, 1, fruit)
+    placeBlock(g, -1, capY + 2, -1, fruit)
   }
 }
 
@@ -708,13 +708,14 @@ export function minecraftSkyTexture(palette: ScenePalette): THREE.CanvasTexture 
     const t = twilight ? tNorm : 1 - tNorm
     const band = skyBandColor(palette, t, twilight)
     const stripe = y / bandH
-    const alt = twilight ? (stripe % 2 === 0 ? '#ffb878' : '#c86898') : '#88c8f8'
-    ctx.fillStyle = stripe % 2 === 0 ? band : lerpHex(band, alt, twilight ? 0.32 : 0.18)
+    const alt = twilight ? (stripe % 2 === 0 ? '#b87898' : '#a06888') : '#88c8f8'
+    const stripeMix = twilight ? (tNorm < 0.2 ? 0 : 0.11) : 0.18
+    ctx.fillStyle = stripe % 2 === 0 ? band : lerpHex(band, alt, stripeMix)
     ctx.fillRect(0, y, 64, bandH)
   }
   if (twilight) {
-    const sunX = 8
-    const sunY = 22
+    const sunX = 48
+    const sunY = 108
     const sunColors = ['#ffe8a8', '#ffc870', '#ffb040', '#ff9830']
     for (let dy = 0; dy < 12; dy++) {
       for (let dx = 0; dx < 12; dx++) {

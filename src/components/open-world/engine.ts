@@ -378,6 +378,10 @@ export class OpenWorldEngine {
     return n
   }
 
+  isPixelArtTerrain(): boolean {
+    return this.plantArtStyle === 'pixel-art'
+  }
+
   countVoxelPlantGroups(): number {
     let n = 0
     for (const group of this.plantGroups.values()) {

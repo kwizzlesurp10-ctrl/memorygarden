@@ -33,6 +33,7 @@ export interface WalkCaptureBridge {
     height: number
   }>
   voxelMeshCount?: () => number
+  isPixelTerrain?: () => boolean
   voxelPlantGroupCount?: () => number
   plantCount?: () => number
   plantCapturePose?: (plantId: string) => WalkCapturePose | null

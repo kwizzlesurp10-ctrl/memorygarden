@@ -7,14 +7,12 @@ import {
   buildMinecraftSteppedHills,
   MINECRAFT_WALK_ROCK_CLUSTERS,
   minecraftAnalyticSurfaceY,
-  minecraftBlockCloud,
   minecraftGrassTexture,
   minecraftGrassTufts,
   minecraftGroundFlowers,
   minecraftPathTexture,
   minecraftPondShoreTexture,
   minecraftSkyTexture,
-  minecraftTwilightSkyStars,
   minecraftWaterBlockTexture,
   voxelLogStump,
   voxelMaterial,
@@ -1385,9 +1383,6 @@ export function buildTerrain(
   const sky = new THREE.Mesh(track(new THREE.SphereGeometry(180, 16, 12)), skyMat)
   sky.frustumCulled = false
   sky.renderOrder = -1000
-  if (minecraftMode && twilight) {
-    minecraftTwilightSkyStars(sky, palette, track)
-  }
   root.add(sky)
 
   // Celestial Body (Sun or Moon)
@@ -1434,27 +1429,22 @@ export function buildTerrain(
   ]
 
   cloudConfigs.forEach((cfg) => {
-    const cloudScale = minecraftMode ? cfg.s * 1.42 : cfg.s
-    const cGroup = minecraftMode
-      ? minecraftBlockCloud(cfg.x, cfg.y, cfg.z, cloudScale, palette, track, twilight)
-      : (() => {
-          const grp = new THREE.Group()
-          const puffs = [
-            { x: 0, y: 0, z: 0, s: 1.0 },
-            { x: -0.7, y: -0.15, z: 0.1, s: 0.75 },
-            { x: 0.7, y: -0.12, z: -0.1, s: 0.8 },
-            { x: -1.3, y: -0.3, z: 0, s: 0.55 },
-            { x: 1.25, y: -0.28, z: 0, s: 0.6 },
-          ]
-          puffs.forEach((p) => {
-            const puff = new THREE.Mesh(cloudSphereGeo, cloudMat)
-            puff.scale.set(p.s * cfg.s * 1.4, p.s * cfg.s * 0.75, p.s * cfg.s * 1.1)
-            puff.position.set(p.x * cfg.s, p.y * cfg.s, p.z * cfg.s)
-            grp.add(puff)
-          })
-          grp.position.set(cfg.x, cfg.y, cfg.z)
-          return grp
-        })()
+    const cGroup = new THREE.Group()
+    const puffScale = minecraftMode ? cfg.s * 1.42 : cfg.s
+    const puffs = [
+      { x: 0, y: 0, z: 0, s: 1.0 },
+      { x: -0.7, y: -0.15, z: 0.1, s: 0.75 },
+      { x: 0.7, y: -0.12, z: -0.1, s: 0.8 },
+      { x: -1.3, y: -0.3, z: 0, s: 0.55 },
+      { x: 1.25, y: -0.28, z: 0, s: 0.6 },
+    ]
+    puffs.forEach((p) => {
+      const puff = new THREE.Mesh(cloudSphereGeo, cloudMat)
+      puff.scale.set(p.s * puffScale * 1.4, p.s * puffScale * 0.75, p.s * puffScale * 1.1)
+      puff.position.set(p.x * puffScale, p.y * puffScale, p.z * puffScale)
+      cGroup.add(puff)
+    })
+    cGroup.position.set(cfg.x, cfg.y, cfg.z)
     root.add(cGroup)
     clouds.push({ group: cGroup, speed: cfg.speed, startX: cfg.x })
   })
