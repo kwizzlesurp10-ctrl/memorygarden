@@ -63,6 +63,14 @@ import { resolvePaidCheckoutSession } from '@/lib/payments/apply-return'
 const NeonAuthPanel = lazy(() => import('@/components/auth/NeonAuthPanel').then((m) => ({ default: m.NeonAuthPanel })))
 import { isNeonAuthConfigured } from '@/lib/auth/config'
 import { applyRestoredEntitlementsToUnlockState } from '@/lib/auth/restore-purchases'
+import {
+  archiveActiveAndStartNewGarden,
+  ensurePersonalGardensMigrated,
+  personalGardenMemoriesKey,
+  selectPersonalGarden,
+  type PersonalGardenRegistry,
+} from '@/lib/garden/personal-gardens'
+import { StartNewGardenDialog } from '@/components/StartNewGardenDialog'
 
 function describeSyncStatus(status: SyncStatus): string | null {
   switch (status.kind) {
@@ -111,9 +119,18 @@ function App() {
   // keys are stable for the entire component lifecycle.
   const localUser: LocalUser = getLocalUser()
   migrateLegacyData(localUser.id)
+  ensurePersonalGardensMigrated(localUser.id)
 
   const [user, _setUser] = useState<LocalUser | null>(localUser)
-  const [memories, setMemories] = useMemoriesKV(`${localUser.id}:memories`, [])
+  const [personalGardens, setPersonalGardens] = useState<PersonalGardenRegistry>(() =>
+    ensurePersonalGardensMigrated(localUser.id),
+  )
+  const activePersonalGardenId = personalGardens.activeGardenId
+  const activePersonalGarden = personalGardens.gardens.find((g) => g.id === activePersonalGardenId)
+  const memoriesStorageKey = personalGardenMemoriesKey(localUser.id, activePersonalGardenId)
+  const [memories, setMemories] = useMemoriesKV(memoriesStorageKey, [])
+  const [startNewGardenOpen, setStartNewGardenOpen] = useState(false)
+  const [personalGardenRevision, setPersonalGardenRevision] = useState(0)
   const [sharedMemories, setSharedMemories] = useKV<Record<string, SharedMemory>>('shared-memories', {})
   const [preferences, setPreferences] = useKV<UserPreferences>(`${localUser.id}:preferences`, {
     hasCompletedOnboarding: false,
@@ -1256,11 +1273,30 @@ function App() {
     userId: localUser.id,
     memories: safeMemories,
     preferences: safePreferences,
+    personalGardenRevision,
     onPulled: (mergedMemories, mergedPreferences) => {
       setMemories(mergedMemories)
       setPreferences(mergedPreferences)
     },
   })
+
+  const handleConfirmStartNewGarden = useCallback(() => {
+    const next = archiveActiveAndStartNewGarden(localUser.id)
+    setPersonalGardens(next)
+    setStartNewGardenOpen(false)
+    setSelectedMemory(null)
+    setPersonalGardenRevision((r) => r + 1)
+    toast.success('Fresh garden ready — your previous garden is saved in the garden switcher.')
+  }, [localUser.id])
+
+  const handleSelectPersonalGarden = useCallback((gardenId: string) => {
+    if (gardenId === personalGardens.activeGardenId) return
+    const next = selectPersonalGarden(localUser.id, gardenId)
+    setPersonalGardens(next)
+    setSelectedMemory(null)
+    setPersonalGardenRevision((r) => r + 1)
+    toast.message(`Switched to ${next.gardens.find((g) => g.id === gardenId)?.name ?? 'garden'}`)
+  }, [localUser.id, personalGardens.activeGardenId])
 
   useKeyboardShortcuts({
     shortcuts: [
@@ -1394,6 +1430,13 @@ function App() {
         onComplete={handleCompleteOnboarding}
       />
 
+      <StartNewGardenDialog
+        open={startNewGardenOpen}
+        onOpenChange={setStartNewGardenOpen}
+        onConfirm={handleConfirmStartNewGarden}
+        currentGardenName={activePersonalGarden?.name ?? 'My Garden'}
+      />
+
       <div className="w-full h-screen flex flex-col overflow-hidden">
         <AppHeader
           user={user}
@@ -1408,6 +1451,10 @@ function App() {
           cloudSyncStatusLabel={describeSyncStatus(syncStatus)}
           onSelectGarden={handleSelectGarden}
           onCreateGarden={() => setIsCreateGardenOpen(true)}
+          personalGardens={personalGardens.gardens}
+          activePersonalGardenId={activePersonalGardenId}
+          onSelectPersonalGarden={handleSelectPersonalGarden}
+          onRequestStartNewGarden={() => setStartNewGardenOpen(true)}
           onViewModeChange={handleViewModeChange}
           onToggleSound={(checked) => {
             setPreferences((c) => ({
@@ -1492,6 +1539,7 @@ function App() {
               >
                 <SectionErrorBoundary label="garden view">
                   <GardenCanvas
+                    key={activePersonalGardenId}
                     memories={safeMemories}
                     onPlantInteract={handleGardenPlantInteract}
                     onOpenMemoryDetail={handleOpenMemoryDetail}
@@ -1509,6 +1557,7 @@ function App() {
                     searchHasNoMatches={gardenSearchHasNoMatches}
                     onClearSearch={clearSearchAndFilters}
                     plantArtStyle={safePreferences.plantStylePreference?.artStyle}
+                    personalGardenId={activePersonalGardenId}
                   />
                 </SectionErrorBoundary>
               </motion.div>

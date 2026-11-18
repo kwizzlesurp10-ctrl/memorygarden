@@ -35,6 +35,8 @@ import { SeasonIndicator } from '@/components/SeasonIndicator'
 import { WeatherIndicator } from '@/components/WeatherIndicator'
 import { GardenSelector } from '@/components/GardenSelector'
 import type { CollaborativeGarden, GardenMood, Season } from '@/lib/types'
+import type { PersonalGardenEntry } from '@/lib/garden/personal-gardens'
+import { PersonalGardenSwitcher } from '@/components/PersonalGardenSwitcher'
 import type { LocalUser } from '@/lib/local-user'
 import { cn } from '@/lib/utils'
 
@@ -70,6 +72,10 @@ export interface AppHeaderProps {
   accountEmail?: string | null
   onOpenSignIn?: () => void
   onSignOut?: () => void
+  personalGardens?: PersonalGardenEntry[]
+  activePersonalGardenId?: string
+  onSelectPersonalGarden?: (gardenId: string) => void
+  onRequestStartNewGarden?: () => void
 }
 
 const VIEW_ITEMS: { value: ViewMode; label: string; title: string; Icon: PhosphorIcon }[] = [
@@ -112,6 +118,10 @@ export function AppHeader(props: AppHeaderProps) {
     accountEmail = null,
     onOpenSignIn,
     onSignOut,
+    personalGardens = [],
+    activePersonalGardenId,
+    onSelectPersonalGarden,
+    onRequestStartNewGarden,
   } = props
 
   const showProtocolTest = import.meta.env.DEV
@@ -161,6 +171,15 @@ export function AppHeader(props: AppHeaderProps) {
         </nav>
 
         <div className="flex min-w-0 flex-shrink-0 items-center justify-end gap-2 md:gap-2 md:justify-self-end lg:gap-3">
+          {personalGardens.length > 0 && activePersonalGardenId && onSelectPersonalGarden ? (
+            <PersonalGardenSwitcher
+              gardens={personalGardens}
+              activeGardenId={activePersonalGardenId}
+              onSelectGarden={onSelectPersonalGarden}
+              onStartNewGarden={() => onRequestStartNewGarden?.()}
+              className="hidden sm:flex"
+            />
+          ) : null}
           <GardenSelector
             gardens={gardens}
             activeGardenId={activeGardenId}
@@ -221,6 +240,12 @@ export function AppHeader(props: AppHeaderProps) {
                 <CloudArrowDown size={16} className="mr-2" />
                 Backup &amp; restore
               </DropdownMenuItem>
+              {onRequestStartNewGarden ? (
+                <DropdownMenuItem onClick={onRequestStartNewGarden}>
+                  <Tree size={16} className="mr-2" weight="duotone" />
+                  Start new garden
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuItem onClick={onOpenPlantStyle}>
                 <Palette size={16} className="mr-2" />
                 Plant Art Style

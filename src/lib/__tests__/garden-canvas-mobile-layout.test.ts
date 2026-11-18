@@ -25,7 +25,8 @@ describe('mobile garden scene layout', () => {
 
   it('renders the SVG to cover the scene wrap', () => {
     expect(sceneSvg).toContain('garden-scene-svg')
-    expect(sceneSvg).toContain('preserveAspectRatio="xMidYMid slice"')
+    expect(sceneSvg).toContain('preserveAspectRatio={preserveAspectRatio}')
+    expect(canvas).toContain('data-testid="fit-garden-view"')
     expect(sceneSvg).toContain('h-full w-full')
   })
 })

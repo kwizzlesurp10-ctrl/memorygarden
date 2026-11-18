@@ -63,6 +63,7 @@ export interface GardenSceneSvgProps {
     foreground: RefObject<SVGGElement | null>
   }
   plantArtStyle?: ArtStyle
+  preserveAspectRatio?: string
 }
 
 interface PlantAtProps {
@@ -964,6 +965,7 @@ export function GardenSceneSvg({
   starterDecor,
   layerRefs,
   plantArtStyle,
+  preserveAspectRatio = 'xMidYMid meet',
 }: GardenSceneSvgProps) {
   const resolvedView = resolveGardenLandscapeView(landscapeView)
   const resolvedArtStyle = resolvePlantArtStyle(plantArtStyle)
@@ -975,7 +977,7 @@ export function GardenSceneSvg({
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox={sceneViewBox ?? `-120 0 ${SCENE_W + 240} ${SCENE_H}`}
-      preserveAspectRatio="xMidYMid slice"
+      preserveAspectRatio={preserveAspectRatio}
       width={SCENE_W}
       height={SCENE_H}
       className="garden-scene-svg block h-full w-full min-h-0 max-w-full"

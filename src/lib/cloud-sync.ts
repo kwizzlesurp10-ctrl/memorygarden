@@ -11,6 +11,7 @@
  */
 
 import { authFetch } from '@/lib/auth/auth-fetch'
+import { activePersonalGardenId } from '@/lib/garden/personal-gardens'
 import { loadShed, mergeStorageShed, sanitizeShedForSync, saveShed } from '@/lib/garden/shed-storage'
 import type { Memory, StorageShedData, UserPreferences } from '@/lib/types'
 
@@ -66,7 +67,8 @@ export async function pushDocument(
   memories: Memory[],
   preferences: UserPreferences,
 ): Promise<string | null> {
-  const storageShed = sanitizeShedForSync(loadShed(userId)) ?? undefined
+  const gardenId = activePersonalGardenId(userId)
+  const storageShed = sanitizeShedForSync(loadShed(userId, gardenId)) ?? undefined
   const document: SyncDocument = {
     memories: stripBlobs(memories),
     preferences,
@@ -90,8 +92,9 @@ export async function pushDocument(
  */
 export function mergePulledStorageShed(userId: string, remote: StorageShedData | undefined): void {
   if (!remote) return
-  const merged = mergeStorageShed(loadShed(userId), remote)
-  saveShed(userId, merged)
+  const gardenId = activePersonalGardenId(userId)
+  const merged = mergeStorageShed(loadShed(userId, gardenId), remote)
+  saveShed(userId, merged, gardenId)
 }
 
 export function mergePulledMemories(local: Memory[], pulled: SyncMemory[]): Memory[] {
