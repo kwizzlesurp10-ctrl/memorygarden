@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { chromium } from 'playwright'
 
@@ -152,6 +152,30 @@ async function prepareContext(browser, vp) {
   return context
 }
 
+async function composeLandscapeCompare(browser, vp, dir, shotPrefix) {
+  const b64s = landscapes.map((view) => {
+    const file = resolve(dir, `${shotPrefix}-${view}-${vp.label}.png`)
+    return readFileSync(file).toString('base64')
+  })
+  const page = await browser.newPage({
+    viewport: { width: vp.width * landscapes.length, height: vp.height + 48 },
+  })
+  const labels = landscapes.join(' · ')
+  await page.setContent(`<!DOCTYPE html><html><body style="margin:0;background:#111">
+    <p style="margin:8px 12px;color:#f0e7da;font:12px system-ui">${labels} @ ${vp.label}</p>
+    <div style="display:flex;flex-direction:row">${b64s
+      .map(
+        (b, i) =>
+          `<figure style="margin:0"><figcaption style="color:#ccc;font:11px system-ui;padding:4px 8px">${landscapes[i]}</figcaption><img src="data:image/png;base64,${b}" width="${vp.width}" height="${vp.height}" style="display:block" /></figure>`,
+      )
+      .join('')}</div></body></html>`)
+  await page.screenshot({
+    path: resolve(dir, `${shotPrefix}-compare-all-landscapes-${vp.label}.png`),
+    fullPage: true,
+  })
+  await page.close()
+}
+
 async function dismissChrome(page) {
   await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 120_000 })
   for (let i = 0; i < 5; i++) {
@@ -187,6 +211,9 @@ try {
         path: resolve(outDir, `${prefix}-${view}-${vp.label}.png`),
       })
     }
+    if (vp.label === '1440x900' || vp.label === '390x844') {
+      await composeLandscapeCompare(browser, vp, outDir, prefix)
+    }
     await context.close()
   }
 
@@ -203,10 +230,11 @@ try {
     await page.waitForTimeout(300)
     await page.screenshot({ path: resolve(outDir, `${prefix}-start-new-garden-confirm.png`) })
     await page.getByTestId('start-new-garden-confirm').click()
-    await page.waitForTimeout(900)
+    await page.locator('[data-slot="dialog-overlay"]').waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => {})
+    await page.waitForTimeout(600)
     await page.screenshot({ path: resolve(outDir, `${prefix}-empty-new-garden.png`) })
 
-    await page.getByTestId('personal-garden-switcher').click()
+    await page.getByTestId('personal-garden-switcher').click({ force: true })
     await page.waitForTimeout(350)
     await page.screenshot({ path: resolve(outDir, `${prefix}-garden-switcher-open.png`) })
 

@@ -2,6 +2,7 @@ import type { GardenLandscapeView, Memory } from '@/lib/types'
 import { SCENE_H, SCENE_W } from '@/lib/garden/scene-constants'
 import { plantStageToIndex } from '@/lib/garden/stage'
 import {
+  layoutMemoryPlantsForView,
   treeFootprintHalfW,
   type ResolvedMemoryScenePlacement,
 } from '@/lib/garden/memory-scene-layout'
@@ -11,8 +12,8 @@ import { WORLD_COTTAGE } from '@/lib/garden/landscape-world-layout'
 const SCENE_ART_BLEED = 120
 const MOBILE_MAX_PX = 640
 const EDGE_PAD = 36
-const HUD_SCENE_PAD = 40
 const LANDMARK_PAD = 48
+const FRAMING_REFERENCE_VIEW = 'pond' as const satisfies GardenLandscapeView
 const FULL_MIN_X = -SCENE_ART_BLEED
 const FULL_MAX_X = SCENE_W + SCENE_ART_BLEED
 const FULL_SPAN_X = FULL_MAX_X - FULL_MIN_X
@@ -161,19 +162,29 @@ export interface GardenSceneFraming {
   preserveAspectRatio: typeof GARDEN_SCENE_ASPECT
 }
 
+function mobileFitScale(
+  layout: Map<string, ResolvedMemoryScenePlacement>,
+  memories: readonly Memory[],
+  viewport: { w: number; h: number },
+): number {
+  const bounds = sceneBounds(layout, memories)
+  if (!bounds) return 1
+  const edgePad = viewport.w < 400 ? 48 : EDGE_PAD
+  const span = bounds.maxX - bounds.minX + edgePad * 2
+  const visibleW = visibleSceneWidthForSlice(viewport)
+  return Math.min(1, visibleW / span)
+}
+
 function mobileScaleLayout(
   layout: Map<string, ResolvedMemoryScenePlacement>,
   memories: readonly Memory[],
   viewport: { w: number; h: number },
 ): Map<string, ResolvedMemoryScenePlacement> {
+  const fitScale = mobileFitScale(layout, memories, viewport)
+  if (fitScale >= 0.999) return layout
   const bounds = sceneBounds(layout, memories)
   if (!bounds) return layout
-
   const centerX = (bounds.minX + bounds.maxX) / 2
-  const edgePad = viewport.w < 400 ? 48 : EDGE_PAD
-  const span = bounds.maxX - bounds.minX + edgePad * 2
-  const visibleW = visibleSceneWidthForSlice(viewport)
-  const fitScale = Math.min(1, visibleW / span)
 
   const nextLayout = new Map<string, ResolvedMemoryScenePlacement>()
   for (const memory of memories) {
@@ -188,32 +199,71 @@ function mobileScaleLayout(
   return nextLayout
 }
 
+function scaleLayoutUniform(
+  layout: Map<string, ResolvedMemoryScenePlacement>,
+  memories: readonly Memory[],
+  fitScale: number,
+): Map<string, ResolvedMemoryScenePlacement> {
+  if (fitScale >= 0.999) return layout
+  const bounds = sceneBounds(layout, memories)
+  if (!bounds) return layout
+  const centerX = (bounds.minX + bounds.maxX) / 2
+
+  const nextLayout = new Map<string, ResolvedMemoryScenePlacement>()
+  for (const memory of memories) {
+    const pos = layout.get(memory.id)
+    if (!pos) continue
+    nextLayout.set(memory.id, {
+      ...pos,
+      x: centerX + (pos.x - centerX) * fitScale,
+      plantScale: pos.plantScale * fitScale,
+    })
+  }
+  return nextLayout
+}
+
+/** Pond framing defines zoom for every landscape tab. */
+function pondReferenceViewBox(
+  memories: readonly Memory[],
+  viewport: { w: number; h: number },
+  isMobile: boolean,
+  edgePad: number,
+): string {
+  const pondLayout = layoutMemoryPlantsForView(memories, FRAMING_REFERENCE_VIEW)
+  const pondLandmarks = landmarkBounds(FRAMING_REFERENCE_VIEW)
+  const pondScaled =
+    isMobile && memories.length > 0 ? mobileScaleLayout(pondLayout, memories, viewport) : pondLayout
+  const pondBounds = sceneBounds(pondScaled, memories)
+  const fitBounds = pondBounds
+    ? mergeBounds(pondBounds, pondLandmarks)
+    : mergeBounds(fullSceneBounds(), pondLandmarks)
+
+  if (isMobile && memories.length > 0) {
+    return mobileSliceViewBox(pondScaled, memories, viewport, edgePad)
+  }
+  return sliceViewBoxFullHeight(fitBounds, viewport, edgePad)
+}
+
 export function frameGardenSceneForViewport(
   layout: Map<string, ResolvedMemoryScenePlacement>,
   memories: readonly Memory[],
   viewport: { w: number; h: number },
-  landscapeView: GardenLandscapeView,
+  _landscapeView: GardenLandscapeView,
 ): GardenSceneFraming {
-  const landmarks = landmarkBounds(landscapeView)
-  const plantBounds = sceneBounds(layout, memories)
   const isMobile = viewport.w < MOBILE_MAX_PX
-
-  const activeLayout =
-    isMobile && memories.length > 0 ? mobileScaleLayout(layout, memories, viewport) : layout
-
-  const layoutBounds =
-    isMobile && memories.length > 0 ? sceneBounds(activeLayout, memories) : plantBounds
-
-  const fitBounds = layoutBounds
-    ? mergeBounds(layoutBounds, landmarks)
-    : mergeBounds(fullSceneBounds(), landmarks)
-
   const edgePad = isMobile ? (viewport.w < 400 ? 48 : EDGE_PAD) : 32
+  const viewBox = pondReferenceViewBox(memories, viewport, isMobile, edgePad)
 
-  const viewBox =
-    isMobile && memories.length > 0
-      ? mobileSliceViewBox(activeLayout, memories, viewport, edgePad)
-      : sliceViewBoxFullHeight(fitBounds, viewport, edgePad)
+  let activeLayout = layout
+  if (isMobile && memories.length > 0) {
+    const pondLayout = layoutMemoryPlantsForView(memories, FRAMING_REFERENCE_VIEW)
+    const fitScale = mobileFitScale(pondLayout, memories, viewport)
+    if (_landscapeView === FRAMING_REFERENCE_VIEW) {
+      activeLayout = mobileScaleLayout(pondLayout, memories, viewport)
+    } else {
+      activeLayout = scaleLayoutUniform(layout, memories, fitScale)
+    }
+  }
 
   return {
     layout: activeLayout,

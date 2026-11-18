@@ -58,6 +58,26 @@ describe('frameGardenSceneForViewport', () => {
     expect(vb.x + vb.w).toBeGreaterThanOrEqual(1100)
   })
 
+  it('keeps the same viewBox for every landscape tab (pond reference zoom)', () => {
+    const memories = edgeMemories()
+    const vp = { w: 1440, h: 900 }
+    const pond = frameGardenSceneForViewport(
+      layoutMemoryPlantsForView(memories, 'pond'),
+      memories,
+      vp,
+      'pond',
+    ).viewBox
+    for (const view of ['lakeside', 'meadow', 'garden_path'] as const) {
+      const other = frameGardenSceneForViewport(
+        layoutMemoryPlantsForView(memories, view),
+        memories,
+        vp,
+        view,
+      ).viewBox
+      expect(other).toBe(pond)
+    }
+  })
+
   it('fills mobile with full scene height (no vertical letterbox window)', () => {
     const memories = edgeMemories()
     const layout = layoutMemoryPlantsForView(memories, 'lakeside')
