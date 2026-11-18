@@ -1397,6 +1397,15 @@ export function buildTerrain(
   }
   root.add(celestialMesh)
 
+  const pixelDuskSky = (star: number) => minecraftMode && star > 0.18 && star < 0.72
+  const applyPixelDuskSkyDecor = (star: number) => {
+    const hide = pixelDuskSky(star)
+    celestialMesh.visible = !hide
+    smoothCloudGroups.forEach((g) => {
+      g.visible = !hide
+    })
+  }
+
   // Floating Low-Poly Clouds
   const clouds: { group: THREE.Group; speed: number; startX: number }[] = []
   const cloudTwilightWc = !minecraftMode && twilight
@@ -1424,10 +1433,9 @@ export function buildTerrain(
     { x: 35, y: 52, z: -65, s: 7, speed: 0.38 },
   ]
 
-  // Pixel dusk: banded sky only — no smooth sphere puffs (day pixel + watercolor keep clouds).
-  const skipSmoothClouds = minecraftMode && twilight
+  const smoothCloudGroups: THREE.Group[] = []
 
-  if (!skipSmoothClouds) cloudConfigs.forEach((cfg) => {
+  cloudConfigs.forEach((cfg) => {
     const cGroup = new THREE.Group()
     const puffs = [
       { x: 0, y: 0, z: 0, s: 1.0 },
@@ -1444,8 +1452,11 @@ export function buildTerrain(
     })
     cGroup.position.set(cfg.x, cfg.y, cfg.z)
     root.add(cGroup)
+    smoothCloudGroups.push(cGroup)
     clouds.push({ group: cGroup, speed: cfg.speed, startX: cfg.x })
   })
+
+  applyPixelDuskSkyDecor(starAlpha)
 
   const fogColor = hexColor(palette.sky[2] ?? palette.bank)
 
@@ -1642,6 +1653,7 @@ export function buildTerrain(
       lanternGlassMat.emissive.set(next.glow)
       lanternGlassMat.emissiveIntensity = nextNight ? 1.4 : 0.4
       celestialMat.color.set(nextNight ? '#e2ecf8' : (next.sun?.disk ?? '#ffe7a0'))
+      applyPixelDuskSkyDecor(star)
       if (!minecraftMode && twilight) {
         cloudMat.color.set(next.sky[4] ?? '#ffc8a8')
         cloudMat.emissive?.set(next.sky[3] ?? '#c88898')
