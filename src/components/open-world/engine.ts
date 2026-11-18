@@ -378,6 +378,10 @@ export class OpenWorldEngine {
     return n
   }
 
+  isPixelArtTerrain(): boolean {
+    return this.plantArtStyle === 'pixel-art'
+  }
+
   countVoxelPlantGroups(): number {
     let n = 0
     for (const group of this.plantGroups.values()) {
@@ -937,7 +941,7 @@ export class OpenWorldEngine {
     return this.elderDeterministicCapturePoseLegacy(plantId)
   }
 
-  flowerDeterministicCapturePose(plantId: string): WalkCapturePose | null {
+  flowerDeterministicCapturePose(plantId: string, poseSeed = 0): WalkCapturePose | null {
     const box = this.plantWorldBox(plantId)
     const wp = this.world.plants.find((p) => p.id === plantId)
     if (!box || !wp) return null
@@ -953,12 +957,12 @@ export class OpenWorldEngine {
     let bestScore = Infinity
     for (let pass = 0; pass < 44; pass++) {
       const dist = 0.85 + (pass / 43) * 1.65
-      const yaw = 0.55 + (pass % 5) * 0.11
+      const yaw = 0.55 + ((pass + poseSeed * 3) % 5) * 0.11
       const camX = cx + Math.sin(yaw) * dist
       const camZ = cz + Math.cos(yaw) * dist
       const eyeY = this.eyeHeightAt(camX, camZ, 0.95)
       const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-      const pitch = Math.min(pose.pitch, -0.22)
+      const pitch = Math.min(pose.pitch, -0.24)
       this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
       this.renderOnce()
       const proj = this.plantProjectedAabbScreenFromBox(box)
@@ -991,7 +995,7 @@ export class OpenWorldEngine {
     const camZ = cz + Math.cos(yaw) * dist
     const eyeY = this.eyeHeightAt(camX, camZ, 0.92)
     const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-  const pitch = Math.min(pose.pitch, -0.24)
+    const pitch = Math.min(pose.pitch, -0.24)
     return { ...pose, pitch, x: camX, z: camZ, eyeY }
   }
 

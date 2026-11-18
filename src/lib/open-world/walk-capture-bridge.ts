@@ -33,6 +33,7 @@ export interface WalkCaptureBridge {
     height: number
   }>
   voxelMeshCount?: () => number
+  isPixelTerrain?: () => boolean
   voxelPlantGroupCount?: () => number
   plantCount?: () => number
   plantCapturePose?: (plantId: string) => WalkCapturePose | null
@@ -65,7 +66,7 @@ export interface WalkCaptureBridge {
   setCaptureFov?: (fov: number) => void
   elderCloseupPose?: (plantId: string) => WalkCapturePose | null
   youngCloseupPose?: (plantId: string) => WalkCapturePose | null
-  flowerCloseupPose?: (plantId: string) => WalkCapturePose | null
+  flowerCloseupPose?: (plantId: string, poseSeed?: number) => WalkCapturePose | null
   mushroomCloseupPose?: (plantId: string) => WalkCapturePose | null
   sproutWalkCloseupPose?: (plantId: string) => WalkCapturePose | null
   plantProjectedBoxScreenY?: (plantId: string) => { top: number; bottom: number } | null

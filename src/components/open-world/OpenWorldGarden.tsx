@@ -298,6 +298,7 @@ export function OpenWorldGarden({
             height: p.height,
           })),
         voxelMeshCount: () => engine.countVoxelMeshes(),
+        isPixelTerrain: () => engine.isPixelArtTerrain(),
         voxelPlantGroupCount: () => engine.countVoxelPlantGroups(),
         plantCount: () => engine.getWorld().plants.length,
         plantCapturePose: (plantId) => engine.deterministicPlantCapturePose(plantId),
@@ -326,7 +327,8 @@ export function OpenWorldGarden({
         mushroomCloseupPose: (plantId) => engine.mushroomDeterministicCapturePose(plantId),
         sproutWalkCloseupPose: (plantId) => engine.sproutWalkCloseupPose(plantId),
         youngCloseupPose: (plantId) => engine.youngDeterministicCapturePose(plantId),
-        flowerCloseupPose: (plantId) => engine.flowerDeterministicCapturePose(plantId),
+        flowerCloseupPose: (plantId, poseSeed) =>
+          engine.flowerDeterministicCapturePose(plantId, poseSeed ?? 0),
         plantProjectedAabbScreen: (plantId) => engine.plantProjectedAabbScreen(plantId),
         plantProjectedBoxScreenY: (plantId) => engine.plantProjectedBoxScreenY(plantId),
         pondCloseupPose: () => engine.pondCapturePose(),

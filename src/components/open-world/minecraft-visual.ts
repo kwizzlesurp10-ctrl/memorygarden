@@ -249,7 +249,7 @@ export function minecraftBlockTexture(
 
 const matCache = new Map<string, THREE.MeshBasicMaterial>()
 
-function voxelMaterial(
+export function voxelMaterial(
   hex: string,
   accent: string,
   seed: number,
@@ -407,11 +407,18 @@ function buildPixelArtOak(
     placeLeafLayer(g, capY + 4, 2, leaf, true, seed + 44, false)
     placeLeafLayer(g, capY + 5, 1, leaf, false, seed + 45, false)
     placeOakSideBranches(g, capY, bark, leaf, seed)
+    const fruit = voxelMaterial('#d84848', '#b83838', seed + 55, 'poppy', true)
+    placeBlock(g, 1, capY + 1, 0, fruit)
+    placeBlock(g, -1, capY + 2, 1, fruit)
+    placeBlock(g, 2, capY + 2, -1, fruit)
   } else {
     placeLeafLayer(g, capY, 2, leaf, true, seed + 20)
     placeLeafLayer(g, capY + 1, 2, leaf, true, seed + 21)
     placeLeafLayer(g, capY + 2, 1, leaf, false, seed + 22)
     placeOakPlusCap(g, capY + 3, leaf)
+    const fruit = voxelMaterial('#e8b838', '#d0a028', seed + 33, 'poppy', true)
+    placeBlock(g, 1, capY + 1, 1, fruit)
+    placeBlock(g, -1, capY + 2, -1, fruit)
   }
 }
 
@@ -660,6 +667,232 @@ export function minecraftPondShoreTexture(palette: ScenePalette): THREE.CanvasTe
   return configurePixelTexture(tex)
 }
 
+function skyBandColor(palette: ScenePalette, t: number, twilight: boolean): string {
+  const sky = palette.sky
+  const stops = twilight
+    ? [
+        { at: 0, c: sky[0] ?? '#1a1438' },
+        { at: 0.22, c: sky[1] ?? '#3d2d68' },
+        { at: 0.48, c: sky[2] ?? '#7a4a7d' },
+        { at: 0.72, c: sky[3] ?? '#b86898' },
+        { at: 0.88, c: sky[4] ?? '#e0a060' },
+        { at: 1, c: sky[sky.length - 1] ?? '#f0c898' },
+      ]
+    : [
+        { at: 0, c: sky[0] ?? '#4a88d8' },
+        { at: 0.35, c: sky[1] ?? '#78b0e8' },
+        { at: 0.65, c: sky[2] ?? '#a8d0f8' },
+        { at: 1, c: sky[sky.length - 1] ?? '#d0ecff' },
+      ]
+  let i = 0
+  while (i < stops.length - 1 && t > stops[i + 1]!.at) i++
+  const a = stops[i]!
+  const b = stops[Math.min(i + 1, stops.length - 1)]!
+  const span = b.at - a.at || 1
+  const u = Math.max(0, Math.min(1, (t - a.at) / span))
+  return lerpHex(a.c, b.c, u)
+}
+
+/** Banded pixel zenith gradient (dusk = wide amber bands); block sun + stars when twilight. */
+export function minecraftSkyTexture(palette: ScenePalette): THREE.CanvasTexture {
+  const c = document.createElement('canvas')
+  c.width = 64
+  c.height = 128
+  const ctx = c.getContext('2d')
+  if (!ctx) return configurePixelTexture(new THREE.CanvasTexture(c))
+  const star = palette.starAlpha ?? 0
+  const twilight = star > 0.22
+  const bandH = twilight ? 5 : 8
+  for (let y = 0; y < 128; y += bandH) {
+    const tNorm = (y + bandH / 2) / 128
+    const t = twilight ? tNorm : 1 - tNorm
+    const band = skyBandColor(palette, t, twilight)
+    const stripe = y / bandH
+    const alt = twilight ? (stripe % 2 === 0 ? '#b87898' : '#a06888') : '#88c8f8'
+    const stripeMix = twilight ? (tNorm < 0.2 ? 0 : 0.11) : 0.18
+    ctx.fillStyle = stripe % 2 === 0 ? band : lerpHex(band, alt, stripeMix)
+    ctx.fillRect(0, y, 64, bandH)
+  }
+  if (twilight) {
+    const sunX = 48
+    const sunY = 108
+    const sunColors = ['#ffe8a8', '#ffc870', '#ffb040', '#ff9830']
+    for (let dy = 0; dy < 12; dy++) {
+      for (let dx = 0; dx < 12; dx++) {
+        const dist = Math.hypot(dx - 5.5, dy - 5.5)
+        if (dist > 6.2) continue
+        ctx.fillStyle = sunColors[Math.floor(hash01(55 + dx + dy * 3) * sunColors.length) % sunColors.length]!
+        ctx.fillRect(sunX + dx, sunY + dy, 1, 1)
+      }
+    }
+  }
+  if (twilight && star > 0.2) {
+    const rng = gardenRng(1204)
+    const starCount = Math.floor(22 + star * 34)
+    for (let i = 0; i < starCount; i++) {
+      const sx = Math.floor(rng() * 30) + 1
+      const sy = Math.floor(rng() * 72) + 2
+      ctx.fillStyle = rng() > 0.4 ? '#f8f8ff' : '#ffe8c8'
+      ctx.fillRect(sx, sy, 1, 1)
+    }
+  }
+  const tex = configurePixelTexture(new THREE.CanvasTexture(c))
+  tex.needsUpdate = true
+  return tex
+}
+
+export function minecraftTwilightSkyStars(
+  skySphere: THREE.Mesh,
+  palette: ScenePalette,
+  track: <T extends { dispose: () => void }>(o: T) => T,
+): void {
+  const star = palette.starAlpha ?? 0
+  if (star < 0.2) return
+  const starMat = track(voxelMaterial('#f8f8ff', '#ffe8c8', 118, 'flower'))
+  const rng = gardenRng(3321)
+  const count = Math.floor(24 + star * 48)
+  const group = new THREE.Group()
+  group.name = 'minecraft-sky-stars'
+  for (let i = 0; i < count; i++) {
+    const theta = rng() * Math.PI * 2
+    const phi = rng() * Math.PI * 0.42
+    const r = 175
+    const mesh = new THREE.Mesh(boxGeo, starMat)
+    mesh.position.set(
+      Math.sin(phi) * Math.cos(theta) * r,
+      Math.cos(phi) * r * 0.85 + 20,
+      Math.sin(phi) * Math.sin(theta) * r,
+    )
+    const s = 0.35 + rng() * 0.45
+    mesh.scale.setScalar(s)
+    mesh.userData.voxel = true
+    group.add(mesh)
+  }
+  skySphere.add(group)
+}
+
+export function minecraftBlockCloud(
+  centerX: number,
+  centerY: number,
+  centerZ: number,
+  scale: number,
+  palette: ScenePalette,
+  track: <T extends { dispose: () => void }>(o: T) => T,
+  twilight: boolean,
+): THREE.Group {
+  const base = twilight ? (palette.sky[4] ?? '#ffc8a8') : '#f4f0f8'
+  const accent = twilight ? (palette.sky[3] ?? '#e8a0a0') : '#ffffff'
+  const cloudMat = track(voxelMaterial(base, accent, Math.floor(centerX * 3 + centerZ), 'flower'))
+  const g = new THREE.Group()
+  g.position.set(centerX, centerY, centerZ)
+  const puffs: Array<[number, number, number, number]> = [
+    [0, 0, 0, 1],
+    [-0.65, -0.1, 0.15, 0.75],
+    [0.7, -0.12, -0.1, 0.8],
+    [-1.25, -0.28, 0, 0.55],
+    [1.2, -0.26, 0, 0.58],
+    [0.35, 0.15, 0.25, 0.65],
+    [-0.4, 0.1, -0.2, 0.6],
+  ]
+  for (const [px, py, pz, ps] of puffs) {
+    const mesh = new THREE.Mesh(boxGeo, cloudMat)
+    const s = scale * ps
+    mesh.position.set(px * scale, py * scale, pz * scale)
+    mesh.scale.set(s * 1.4, s * 0.75, s * 1.1)
+    mesh.userData.voxel = true
+    g.add(mesh)
+  }
+  g.userData.voxelCloud = true
+  return g
+}
+
+/** Small walk-field poppies — pixel-art terrain only (parent must be minecraft terrain root). */
+export function minecraftGroundFlowers(
+  world: GardenWorld,
+  root: THREE.Group,
+  track: <T extends { dispose: () => void }>(o: T) => T,
+  surfaceBlockY?: (x: number, z: number) => number,
+): void {
+  const topBlocks = surfaceBlockY ?? ((x, z) => minecraftAnalyticSurfaceY(Math.round(x), Math.round(z)))
+  const poppyRed = track(voxelMaterial('#c44a4a', '#e85a5a', 81, 'poppy', true))
+  const dandelion = track(voxelMaterial('#e8c848', '#f0e070', 83, 'sapling', true))
+  const mats = [poppyRed, dandelion]
+  const rng = gardenRng(912)
+  const span = 36
+  const count = 44
+  const placed: Array<{ x: number; z: number }> = []
+  const keepouts: Array<{ x: number; z: number; r: number }> = [
+    { x: world.pond.x, z: world.pond.z, r: world.pond.radius + 2.2 },
+    { x: 9.5, z: 9, r: 6 },
+    { x: 39, z: 14, r: 7 },
+    { x: -22, z: 15, r: 5 },
+    { x: 2, z: 31, r: 5 },
+    { x: 7, z: 34, r: 4.2 },
+  ]
+  let i = 0
+  let attempts = 0
+  while (i < count && attempts < count * 20) {
+    attempts++
+    const x = (rng() * 2 - 1) * span
+    const z = (rng() * 2 - 1) * span
+    if (keepouts.some((k) => Math.hypot(x - k.x, z - k.z) < k.r)) continue
+    if (placed.some((p) => Math.hypot(p.x - x, p.z - z) < 2.4)) continue
+    const hy = topBlocks(x, z)
+    if (hy > 1.05) continue
+    const groundY = hy * VOXEL + 0.055
+    const mat = mats[Math.floor(rng() * mats.length)]!
+    const tall = 0.14 + rng() * 0.12
+    const wide = 0.14 + rng() * 0.1
+    for (const rotY of [0, Math.PI / 2]) {
+      const flower = new THREE.Mesh(planeGeo, mat)
+      flower.position.set(x, groundY + tall / 2, z)
+      flower.scale.set(wide, tall, 1)
+      flower.rotation.y = rotY
+      flower.userData.voxel = true
+      flower.userData.groundFlower = true
+      flower.userData.minecraftDecor = true
+      root.add(flower)
+    }
+    placed.push({ x, z })
+    i++
+  }
+}
+
+export function minecraftPondVoxelRim(
+  world: GardenWorld,
+  root: THREE.Group,
+  track: <T extends { dispose: () => void }>(o: T) => T,
+): void {
+  const gravel = track(voxelMaterial('#c4a888', '#a89070', 94, 'gravel'))
+  const mossy = track(voxelMaterial('#78a858', '#5fa037', 95, 'moss_stone'))
+  const rng = gardenRng(817)
+  const segments = 44
+  const g = new THREE.Group()
+  g.name = 'pond-voxel-rim'
+  g.userData.minecraftDecor = true
+  for (let s = 0; s < segments; s++) {
+    const a = (s / segments) * Math.PI * 2
+    const r = world.pond.radius + 0.48 + (rng() > 0.65 ? 0.1 : 0)
+    const wx = world.pond.x + Math.cos(a) * r
+    const wz = world.pond.z + Math.sin(a) * r
+    const matPick = rng() > 0.55 ? mossy : gravel
+    const mesh = new THREE.Mesh(boxGeo, matPick)
+    mesh.position.set(wx, 0.32, wz)
+    mesh.scale.setScalar(VOXEL * (0.68 + rng() * 0.18))
+    mesh.userData.voxel = true
+    mesh.userData.pondRim = true
+    g.add(mesh)
+    if (rng() > 0.82) {
+      const top = new THREE.Mesh(boxGeo, mossy)
+      top.position.set(wx, 0.32 + VOXEL * 0.85, wz)
+      top.scale.setScalar(VOXEL * 0.55)
+      top.userData.voxel = true
+      g.add(top)
+    }
+  }
+  root.add(g)
+}
+
 export function minecraftGrassTufts(
   world: GardenWorld,
   palette: ScenePalette,
@@ -854,7 +1087,7 @@ export function minecraftWaterBlockTexture(palette: ScenePalette, seed = 44): TH
 function usesCompactPixelFooting(kind: PlantVisualRecipe['kind'], stage: PlantStage): boolean {
   const idx = plantStageToIndex(stage)
   if (kind === 'tree') return idx <= 1 || idx >= 6
-  if (kind === 'flower') return idx <= 1 || idx >= 5
+  if (kind === 'flower') return idx <= 1 || idx >= 4
   if (kind === 'mushroom') return idx >= 2
   return false
 }
@@ -869,7 +1102,10 @@ export function createVoxelPlantGroup(plant: WorldPlant, recipe: PlantVisualReci
 
   const bark = voxelMaterial(recipe.stem, recipe.foliageAlt, seedN, 'bark')
   const leaf = voxelMaterial(recipe.foliage, recipe.foliageAlt, seedN + 3, 'leaf', true)
-  const stemMat = voxelMaterial(recipe.stem, '#4a5f3a', seedN + 5, 'bark')
+  const stemMat =
+    recipe.kind === 'flower'
+      ? voxelMaterial('#5da848', '#4a9038', seedN + 5, 'sapling')
+      : voxelMaterial(recipe.stem, '#4a5f3a', seedN + 5, 'bark')
   const petalBase =
     recipe.kind === 'flower'
       ? (TONE_DOT[plant.tone] ?? recipe.bloom)

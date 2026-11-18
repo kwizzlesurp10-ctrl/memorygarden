@@ -11,8 +11,10 @@ import {
   minecraftGrassTufts,
   minecraftPathTexture,
   minecraftPondShoreTexture,
+  minecraftSkyTexture,
   minecraftWaterBlockTexture,
   voxelLogStump,
+  voxelMaterial,
   voxelRockCluster,
 } from './minecraft-visual'
 import { GARDEN_AMBIENT_FENCE, GARDEN_AMBIENT_STUMP } from '@/lib/open-world/garden-scenery-capture'
@@ -159,6 +161,7 @@ function watercolorWaterTexture(palette: ScenePalette): THREE.CanvasTexture {
   return tex
 }
 
+/** Pixel day sky — smooth gradient (no banded arcs). */
 function skyTexture(palette: ScenePalette): THREE.CanvasTexture {
   const c = document.createElement('canvas')
   c.width = 8
@@ -399,9 +402,8 @@ export function buildTerrain(
   const surfaceY = minecraftMode ? buildMinecraftSteppedHills(root, track, palette) : undefined
   const walkCapture = isWalkCaptureSession()
   if (minecraftMode) {
-    minecraftGrassTufts(world, palette, root, track, (x, z) =>
-      minecraftAnalyticSurfaceY(Math.round(x), Math.round(z)),
-    )
+    const hillTop = (x: number, z: number) => minecraftAnalyticSurfaceY(Math.round(x), Math.round(z))
+    minecraftGrassTufts(world, palette, root, track, hillTop)
   }
 
   // ── Gentle Flowerbed Soil Berms ─────────────────────────────────────────
@@ -470,9 +472,9 @@ export function buildTerrain(
     minecraftMode && pixelWaterTex
       ? new THREE.MeshLambertMaterial({
           map: pixelWaterTex,
-          color: new THREE.Color(isNight ? '#3a6898' : twilight ? '#78b8d8' : '#88cce8'),
+          color: new THREE.Color(isNight ? '#3a6898' : twilight ? '#68b8e8' : '#88cce8'),
           transparent: true,
-          opacity: 0.94,
+          opacity: 0.96,
           emissive: new THREE.Color(isNight ? '#5a88c0' : skySheen),
           emissiveIntensity: isNight ? 0.28 + starAlpha * 0.12 : twilight ? 0.16 : 0.22,
         })
@@ -1248,9 +1250,17 @@ export function buildTerrain(
     twilightSceneryMat(palette, palette.hills[2] ?? palette.silSoft ?? palette.sil, twilight, starAlpha, 0.9),
   )
   if (!walkCaptureDecor) {
-  const postGeo = track(new THREE.BoxGeometry(0.28, 1.35, 0.28))
-  const railGeo = track(new THREE.BoxGeometry(1, 0.12, 0.1))
-  const fencePostMat = minecraftMode ? wood : hedgeMat
+  const postGeo = track(
+    new THREE.BoxGeometry(minecraftMode ? 0.34 : 0.28, minecraftMode ? 1.42 : 1.35, minecraftMode ? 0.34 : 0.28),
+  )
+  const railGeo = track(
+    new THREE.BoxGeometry(1, minecraftMode ? 0.14 : 0.12, minecraftMode ? 0.14 : 0.1),
+  )
+  const voxelFenceWood = minecraftMode
+    ? track(voxelMaterial('#4a3528', '#3f2817', 87, 'bark'))
+    : null
+  const fencePostMat = minecraftMode && voxelFenceWood ? voxelFenceWood : hedgeMat
+  const fenceRailWood = minecraftMode && voxelFenceWood ? voxelFenceWood : wood
   const addFence = (ax: number, az: number, bx: number, bz: number) => {
     const dist = Math.hypot(bx - ax, bz - az)
     const posts = Math.max(2, Math.round(dist / 2.1))
@@ -1261,10 +1271,11 @@ export function buildTerrain(
       const gateGap = Math.abs(x) < 2.4 && Math.abs(z - world.gate.z) < 1.2
       if (gateGap) continue
       const post = new THREE.Mesh(postGeo, fencePostMat)
-      post.position.set(x, 0.67, z)
+      post.position.set(x, minecraftMode ? 0.7 : 0.67, z)
+      if (minecraftMode) post.userData.voxel = true
       root.add(post)
       if (i < posts) {
-        const rail = new THREE.Mesh(railGeo, wood)
+        const rail = new THREE.Mesh(railGeo, fenceRailWood)
         rail.position.set(x + (bx - ax) / posts / 2, 0.85, z + (bz - az) / posts / 2)
         rail.scale.x = dist / posts
         rail.lookAt(bx, 0.85, bz)
@@ -1354,14 +1365,16 @@ export function buildTerrain(
   }
 
   // ── Celestial Sphere & Stylized Floating Clouds ──────────────────────────
-  const skyTex = track(minecraftMode ? skyTexture(palette) : watercolorSkyTexture(palette))
+  const pixelSkyTex =
+    minecraftMode && twilight ? minecraftSkyTexture(palette) : minecraftMode ? skyTexture(palette) : null
+  const skyTex = track(minecraftMode ? pixelSkyTex! : watercolorSkyTexture(palette))
   const skyMat = track(
     new THREE.MeshBasicMaterial({
       map: skyTex,
       side: THREE.BackSide,
       depthWrite: false,
-      // Sky shell is ~180m; scene fog far is 64–92 — without this the dome washes to a flat fog color.
-      fog: minecraftMode,
+      // Day pixel sky matches c0 (fogged dome); dusk banded texture stays unfogged in applyPalette.
+      fog: minecraftMode && !twilight,
       toneMapped: minecraftMode,
     }),
   )
@@ -1383,6 +1396,15 @@ export function buildTerrain(
     celestialMesh.position.set(24, 60, -78)
   }
   root.add(celestialMesh)
+
+  const pixelDuskSky = (star: number) => minecraftMode && star > 0.18 && star < 0.72
+  const applyPixelDuskSkyDecor = (star: number) => {
+    const hide = pixelDuskSky(star)
+    celestialMesh.visible = !hide
+    smoothCloudGroups.forEach((g) => {
+      g.visible = !hide
+    })
+  }
 
   // Floating Low-Poly Clouds
   const clouds: { group: THREE.Group; speed: number; startX: number }[] = []
@@ -1411,9 +1433,10 @@ export function buildTerrain(
     { x: 35, y: 52, z: -65, s: 7, speed: 0.38 },
   ]
 
+  const smoothCloudGroups: THREE.Group[] = []
+
   cloudConfigs.forEach((cfg) => {
     const cGroup = new THREE.Group()
-    // Multi-puff cumulus shape
     const puffs = [
       { x: 0, y: 0, z: 0, s: 1.0 },
       { x: -0.7, y: -0.15, z: 0.1, s: 0.75 },
@@ -1429,8 +1452,11 @@ export function buildTerrain(
     })
     cGroup.position.set(cfg.x, cfg.y, cfg.z)
     root.add(cGroup)
+    smoothCloudGroups.push(cGroup)
     clouds.push({ group: cGroup, speed: cfg.speed, startX: cfg.x })
   })
+
+  applyPixelDuskSkyDecor(starAlpha)
 
   const fogColor = hexColor(palette.sky[2] ?? palette.bank)
 
@@ -1627,6 +1653,7 @@ export function buildTerrain(
       lanternGlassMat.emissive.set(next.glow)
       lanternGlassMat.emissiveIntensity = nextNight ? 1.4 : 0.4
       celestialMat.color.set(nextNight ? '#e2ecf8' : (next.sun?.disk ?? '#ffe7a0'))
+      applyPixelDuskSkyDecor(star)
       if (!minecraftMode && twilight) {
         cloudMat.color.set(next.sky[4] ?? '#ffc8a8')
         cloudMat.emissive?.set(next.sky[3] ?? '#c88898')
@@ -1639,10 +1666,16 @@ export function buildTerrain(
         cloudMat.opacity = nextNight ? 0.45 : 0.75
       }
       fogColor.set(next.sky[2] ?? next.bank)
-      const newSky = track(minecraftMode ? skyTexture(next) : watercolorSkyTexture(next))
+      const nextPixelSky =
+        minecraftMode && nextTwilight
+          ? minecraftSkyTexture(next)
+          : minecraftMode
+            ? skyTexture(next)
+            : null
+      const newSky = track(minecraftMode ? nextPixelSky! : watercolorSkyTexture(next))
       skyMat.map?.dispose()
       skyMat.map = newSky
-      skyMat.fog = minecraftMode
+      skyMat.fog = minecraftMode && !nextTwilight
       skyMat.toneMapped = minecraftMode
       skyMat.needsUpdate = true
       disposables.push(newSky)

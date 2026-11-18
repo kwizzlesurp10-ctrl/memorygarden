@@ -92,7 +92,10 @@ export function mountStagePlantPreview(
     plant.height,
     false,
   )
-  const group = createPlantGroup(plant, recipe)
+  const pixelGrid =
+    typeof sessionStorage !== 'undefined' &&
+    sessionStorage.getItem('mg:plant-stage-grid-3d-art') === 'pixel-art'
+  const group = createPlantGroup(plant, recipe, pixelGrid ? 'pixel-art' : undefined)
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(palette.hills[1] ?? '#2c163c')
 
@@ -105,8 +108,8 @@ export function mountStagePlantPreview(
 
   const width = Math.max(120, host.clientWidth || 150)
   const height = Math.max(140, host.clientHeight || 180)
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+  const renderer = new THREE.WebGLRenderer({ antialias: !pixelGrid, alpha: false })
+  renderer.setPixelRatio(pixelGrid ? 1 : Math.min(window.devicePixelRatio || 1, 2))
   renderer.setSize(width, height, false)
   renderer.outputColorSpace = THREE.SRGBColorSpace
   renderer.toneMapping = THREE.NoToneMapping
