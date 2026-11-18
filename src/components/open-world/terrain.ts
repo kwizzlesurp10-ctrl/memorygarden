@@ -1424,7 +1424,10 @@ export function buildTerrain(
     { x: 35, y: 52, z: -65, s: 7, speed: 0.38 },
   ]
 
-  cloudConfigs.forEach((cfg) => {
+  // Pixel dusk: banded sky only — no smooth sphere puffs (day pixel + watercolor keep clouds).
+  const skipSmoothClouds = minecraftMode && twilight
+
+  if (!skipSmoothClouds) cloudConfigs.forEach((cfg) => {
     const cGroup = new THREE.Group()
     const puffs = [
       { x: 0, y: 0, z: 0, s: 1.0 },
