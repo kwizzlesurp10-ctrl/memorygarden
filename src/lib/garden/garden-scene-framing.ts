@@ -11,10 +11,14 @@ import { WORLD_COTTAGE } from '@/lib/garden/landscape-world-layout'
 const SCENE_ART_BLEED = 120
 const MOBILE_MAX_PX = 640
 const EDGE_PAD = 36
-const HUD_SCENE_PAD = 52
+const HUD_SCENE_PAD = 40
 const LANDMARK_PAD = 48
+const FULL_MIN_X = -SCENE_ART_BLEED
+const FULL_MAX_X = SCENE_W + SCENE_ART_BLEED
+const FULL_SPAN_X = FULL_MAX_X - FULL_MIN_X
 
-export const GARDEN_SCENE_ASPECT = 'xMidYMid meet' as const
+/** Fills the scene wrap edge-to-edge; viewBox is tuned to include composition. */
+export const GARDEN_SCENE_ASPECT = 'xMidYMid slice' as const
 
 export function visibleSceneWidthForSlice(viewport: { w: number; h: number }): number {
   const fullW = SCENE_W + SCENE_ART_BLEED * 2
@@ -74,8 +78,8 @@ function landmarkBounds(view: GardenLandscapeView): { minX: number; maxX: number
 
 function fullSceneBounds(): { minX: number; maxX: number; minY: number; maxY: number } {
   return {
-    minX: -SCENE_ART_BLEED,
-    maxX: SCENE_W + SCENE_ART_BLEED,
+    minX: FULL_MIN_X,
+    maxX: FULL_MAX_X,
     minY: 0,
     maxY: SCENE_H,
   }
@@ -93,60 +97,62 @@ function mergeBounds(
   }
 }
 
-function aspectFitViewBox(
-  bounds: { minX: number; maxX: number; minY: number; maxY: number },
+function clampViewWindow(minX: number, viewW: number): { minX: number; viewW: number } {
+  if (viewW >= FULL_SPAN_X) {
+    return { minX: FULL_MIN_X, viewW: FULL_SPAN_X }
+  }
+  let x0 = minX
+  if (x0 < FULL_MIN_X) x0 = FULL_MIN_X
+  if (x0 + viewW > FULL_MAX_X) x0 = FULL_MAX_X - viewW
+  x0 = Math.max(FULL_MIN_X, Math.min(FULL_MAX_X - viewW, x0))
+  return { minX: x0, viewW }
+}
+
+/**
+ * Slice-friendly viewBox: always full scene height so mobile/desktop fill the canvas
+ * without letterbox bands; horizontal window matches viewport aspect × SCENE_H.
+ */
+function sliceViewBoxFullHeight(
+  fitBounds: { minX: number; maxX: number },
   viewport: { w: number; h: number },
   edgePad: number,
 ): string {
-  let minX = bounds.minX - edgePad
-  let maxX = bounds.maxX + edgePad
-  let minY = Math.max(0, bounds.minY - edgePad - HUD_SCENE_PAD * 0.35)
-  let maxY = Math.min(SCENE_H, bounds.maxY + edgePad)
+  const ar = viewport.w / Math.max(1, viewport.h)
+  const contentMin = fitBounds.minX - edgePad
+  const contentMax = fitBounds.maxX + edgePad
+  const contentW = Math.max(80, contentMax - contentMin)
+  const cx = (contentMin + contentMax) / 2
 
-  let w = maxX - minX
-  let h = maxY - minY
-  if (w < 80) w = 80
-  if (h < 80) h = 80
+  let viewW = Math.max(SCENE_H * ar, contentW)
+  viewW = Math.min(FULL_SPAN_X, viewW)
 
-  const ar = viewport.w / viewport.h
-  const contentAr = w / h
+  const { minX, viewW: w } = clampViewWindow(cx - viewW / 2, viewW)
+  return `${minX} 0 ${w} ${SCENE_H}`
+}
 
-  if (contentAr < ar) {
-    const newW = h * ar
-    const cx = (minX + maxX) / 2
-    minX = cx - newW / 2
-    maxX = cx + newW / 2
-  } else if (contentAr > ar) {
-    const newH = w / ar
-    const cy = (minY + maxY) / 2
-    minY = cy - newH / 2
-    maxY = cy + newH / 2
+function mobileSliceViewBox(
+  layout: Map<string, ResolvedMemoryScenePlacement>,
+  memories: readonly Memory[],
+  viewport: { w: number; h: number },
+  edgePad: number,
+): string {
+  let fitMin = Infinity
+  let fitMax = -Infinity
+  for (const memory of memories) {
+    const pos = layout.get(memory.id)
+    if (!pos) continue
+    const half = plantHalfWidth(memory, pos)
+    fitMin = Math.min(fitMin, pos.x - half)
+    fitMax = Math.max(fitMax, pos.x + half)
   }
 
-  minX = Math.max(-SCENE_ART_BLEED, minX)
-  maxX = Math.min(SCENE_W + SCENE_ART_BLEED, maxX)
-  w = maxX - minX
-
-  if (minY < 0) {
-    maxY -= minY
-    minY = 0
-  }
-  if (maxY > SCENE_H) {
-    const overflow = maxY - SCENE_H
-    minY = Math.max(0, minY - overflow)
-    maxY = SCENE_H
-  }
-  let fitH = maxY - minY
-
-  if (w / fitH < ar) {
-    const fitW = fitH * ar
-    const cx = (minX + maxX) / 2
-    minX = Math.max(-SCENE_ART_BLEED, cx - fitW / 2)
-    maxX = Math.min(SCENE_W + SCENE_ART_BLEED, minX + fitW)
-    w = maxX - minX
-  }
-
-  return `${minX} ${minY} ${w} ${fitH}`
+  const ar = viewport.w / Math.max(1, viewport.h)
+  const minVisibleW = SCENE_H * ar
+  const span = fitMax - fitMin + edgePad * 2
+  const viewW = Math.min(FULL_SPAN_X, Math.max(minVisibleW, span))
+  const cx = (fitMin + fitMax) / 2
+  const { minX, viewW: w } = clampViewWindow(cx - viewW / 2, viewW)
+  return `${minX} 0 ${w} ${SCENE_H}`
 }
 
 export interface GardenSceneFraming {
@@ -190,23 +196,24 @@ export function frameGardenSceneForViewport(
 ): GardenSceneFraming {
   const landmarks = landmarkBounds(landscapeView)
   const plantBounds = sceneBounds(layout, memories)
-  const content = plantBounds
-    ? mergeBounds(plantBounds, landmarks)
-    : mergeBounds(fullSceneBounds(), landmarks)
+  const isMobile = viewport.w < MOBILE_MAX_PX
 
-  const edgePad = viewport.w < MOBILE_MAX_PX ? (viewport.w < 400 ? 48 : EDGE_PAD) : 28
   const activeLayout =
-    viewport.w < MOBILE_MAX_PX && memories.length > 0
-      ? mobileScaleLayout(layout, memories, viewport)
-      : layout
+    isMobile && memories.length > 0 ? mobileScaleLayout(layout, memories, viewport) : layout
 
   const layoutBounds =
-    viewport.w < MOBILE_MAX_PX && memories.length > 0
-      ? sceneBounds(activeLayout, memories)
-      : plantBounds
+    isMobile && memories.length > 0 ? sceneBounds(activeLayout, memories) : plantBounds
 
-  const fitBounds = layoutBounds ? mergeBounds(layoutBounds, landmarks) : content
-  const viewBox = aspectFitViewBox(fitBounds, viewport, edgePad)
+  const fitBounds = layoutBounds
+    ? mergeBounds(layoutBounds, landmarks)
+    : mergeBounds(fullSceneBounds(), landmarks)
+
+  const edgePad = isMobile ? (viewport.w < 400 ? 48 : EDGE_PAD) : 32
+
+  const viewBox =
+    isMobile && memories.length > 0
+      ? mobileSliceViewBox(activeLayout, memories, viewport, edgePad)
+      : sliceViewBoxFullHeight(fitBounds, viewport, edgePad)
 
   return {
     layout: activeLayout,

@@ -45,24 +45,25 @@ function parseViewBox(viewBox: string): { x: number; y: number; w: number; h: nu
 }
 
 describe('frameGardenSceneForViewport', () => {
-  it('uses meet and an aspect-matched viewBox on wide desktop', () => {
+  it('uses slice and full scene height on wide desktop', () => {
     const memories = edgeMemories()
     const layout = layoutMemoryPlantsForView(memories, 'pond')
     const framed = frameGardenSceneForViewport(layout, memories, { w: 1920, h: 1080 }, 'pond')
     expect(framed.preserveAspectRatio).toBe(GARDEN_SCENE_ASPECT)
     const vb = parseViewBox(framed.viewBox)
     const ar = 1920 / 1080
+    expect(vb.h).toBe(700)
     expect(vb.w / vb.h).toBeCloseTo(ar, 2)
     expect(vb.x).toBeLessThanOrEqual(80)
     expect(vb.x + vb.w).toBeGreaterThanOrEqual(1100)
   })
 
-  it('includes full scene height band on short laptop viewports', () => {
+  it('fills mobile with full scene height (no vertical letterbox window)', () => {
     const memories = edgeMemories()
     const layout = layoutMemoryPlantsForView(memories, 'lakeside')
-    const framed = frameGardenSceneForViewport(layout, memories, { w: 1366, h: 650 }, 'lakeside')
+    const framed = frameGardenSceneForViewport(layout, memories, { w: 390, h: 844 }, 'lakeside')
     const vb = parseViewBox(framed.viewBox)
-    expect(vb.y).toBeGreaterThanOrEqual(0)
-    expect(vb.y + vb.h).toBeLessThanOrEqual(700.5)
+    expect(vb.y).toBe(0)
+    expect(vb.h).toBe(700)
   })
 })

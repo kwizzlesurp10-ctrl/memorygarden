@@ -965,7 +965,7 @@ export function GardenSceneSvg({
   starterDecor,
   layerRefs,
   plantArtStyle,
-  preserveAspectRatio = 'xMidYMid meet',
+  preserveAspectRatio = 'xMidYMid slice',
 }: GardenSceneSvgProps) {
   const resolvedView = resolveGardenLandscapeView(landscapeView)
   const resolvedArtStyle = resolvePlantArtStyle(plantArtStyle)

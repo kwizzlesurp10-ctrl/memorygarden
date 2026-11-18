@@ -36,7 +36,6 @@ import { WeatherIndicator } from '@/components/WeatherIndicator'
 import { GardenSelector } from '@/components/GardenSelector'
 import type { CollaborativeGarden, GardenMood, Season } from '@/lib/types'
 import type { PersonalGardenEntry } from '@/lib/garden/personal-gardens'
-import { PersonalGardenSwitcher } from '@/components/PersonalGardenSwitcher'
 import type { LocalUser } from '@/lib/local-user'
 import { cn } from '@/lib/utils'
 
@@ -138,7 +137,7 @@ export function AppHeader(props: AppHeaderProps) {
 
         <nav
           aria-label="Main views"
-          className="relative z-20 hidden w-full min-w-0 justify-center overflow-x-auto md:flex md:w-auto md:max-w-[min(100%,42rem)] md:justify-self-center"
+          className="relative z-20 hidden w-full min-w-0 justify-center overflow-x-auto md:flex md:w-auto md:max-w-[min(100%,36rem)] lg:max-w-[min(100%,38rem)] md:justify-self-center"
         >
           <div
             role="list"
@@ -170,21 +169,16 @@ export function AppHeader(props: AppHeaderProps) {
           </div>
         </nav>
 
-        <div className="flex min-w-0 flex-shrink-0 items-center justify-end gap-2 md:gap-2 md:justify-self-end lg:gap-3">
-          {personalGardens.length > 0 && activePersonalGardenId && onSelectPersonalGarden ? (
-            <PersonalGardenSwitcher
-              gardens={personalGardens}
-              activeGardenId={activePersonalGardenId}
-              onSelectGarden={onSelectPersonalGarden}
-              onStartNewGarden={() => onRequestStartNewGarden?.()}
-              className="hidden sm:flex"
-            />
-          ) : null}
+        <div className="flex min-w-0 max-w-full shrink items-center justify-end gap-1.5 md:gap-2 md:justify-self-end">
           <GardenSelector
             gardens={gardens}
             activeGardenId={activeGardenId}
             onSelectGarden={onSelectGarden}
             onCreateGarden={onCreateGarden}
+            personalGardens={personalGardens}
+            activePersonalGardenId={activePersonalGardenId}
+            onSelectPersonalGarden={onSelectPersonalGarden}
+            onStartNewPersonalGarden={onRequestStartNewGarden}
           />
           {activeGarden && onToggleActivityPanel && (
             <Button
