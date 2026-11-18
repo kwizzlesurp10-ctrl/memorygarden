@@ -203,11 +203,15 @@ async function selectLandscapeTab(page, view) {
   const tab = page.getByRole('radio', { name: label, exact: true })
   await tab.waitFor({ state: 'visible', timeout: 15_000 })
   await tab.click()
-  await page.waitForFunction(
-    (v) => document.querySelector('[data-landscape-view]')?.getAttribute('data-landscape-view') === v,
-    view,
-    { timeout: 15_000 },
-  )
+  if (legacyMain) {
+    await page.waitForTimeout(500)
+  } else {
+    await page.waitForFunction(
+      (v) => document.querySelector('[data-landscape-view]')?.getAttribute('data-landscape-view') === v,
+      view,
+      { timeout: 15_000 },
+    )
+  }
   const checked = await tab.getAttribute('aria-checked')
   if (checked !== 'true') {
     throw new Error(`Capture assert failed: tab "${label}" aria-checked is ${checked}`)
