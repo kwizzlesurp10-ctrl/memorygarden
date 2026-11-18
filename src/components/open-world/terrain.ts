@@ -9,7 +9,6 @@ import {
   minecraftAnalyticSurfaceY,
   minecraftGrassTexture,
   minecraftGrassTufts,
-  minecraftGroundFlowers,
   minecraftPathTexture,
   minecraftPondShoreTexture,
   minecraftSkyTexture,
@@ -405,7 +404,6 @@ export function buildTerrain(
   if (minecraftMode) {
     const hillTop = (x: number, z: number) => minecraftAnalyticSurfaceY(Math.round(x), Math.round(z))
     minecraftGrassTufts(world, palette, root, track, hillTop)
-    minecraftGroundFlowers(world, root, track, hillTop)
   }
 
   // ── Gentle Flowerbed Soil Berms ─────────────────────────────────────────
@@ -1375,8 +1373,8 @@ export function buildTerrain(
       map: skyTex,
       side: THREE.BackSide,
       depthWrite: false,
-      // c0c289c: watercolor sky unfogged; pixel dusk needs unfogged banded texture (day uses smooth gradient).
-      fog: minecraftMode ? false : false,
+      // Day pixel sky matches c0 (fogged dome); dusk banded texture stays unfogged in applyPalette.
+      fog: minecraftMode && !twilight,
       toneMapped: minecraftMode,
     }),
   )
@@ -1391,9 +1389,7 @@ export function buildTerrain(
       color: isNight ? '#e2ecf8' : (palette.sun?.disk ?? '#ffe7a0'),
     }),
   )
-  const celestialGeo = track(new THREE.SphereGeometry(isNight ? 3.8 : 4.6, minecraftMode ? 8 : 16, minecraftMode ? 8 : 16))
-  const celestialMesh = new THREE.Mesh(celestialGeo, celestialMat)
-  celestialMesh.visible = !minecraftMode
+  const celestialMesh = new THREE.Mesh(track(new THREE.SphereGeometry(isNight ? 3.8 : 4.6, 16, 16)), celestialMat)
   if (isNight) {
     celestialMesh.position.set(-18, 52, -75)
   } else {
@@ -1430,7 +1426,6 @@ export function buildTerrain(
 
   cloudConfigs.forEach((cfg) => {
     const cGroup = new THREE.Group()
-    const puffScale = minecraftMode ? cfg.s * 1.42 : cfg.s
     const puffs = [
       { x: 0, y: 0, z: 0, s: 1.0 },
       { x: -0.7, y: -0.15, z: 0.1, s: 0.75 },
@@ -1440,8 +1435,8 @@ export function buildTerrain(
     ]
     puffs.forEach((p) => {
       const puff = new THREE.Mesh(cloudSphereGeo, cloudMat)
-      puff.scale.set(p.s * puffScale * 1.4, p.s * puffScale * 0.75, p.s * puffScale * 1.1)
-      puff.position.set(p.x * puffScale, p.y * puffScale, p.z * puffScale)
+      puff.scale.set(p.s * cfg.s * 1.4, p.s * cfg.s * 0.75, p.s * cfg.s * 1.1)
+      puff.position.set(p.x * cfg.s, p.y * cfg.s, p.z * cfg.s)
       cGroup.add(puff)
     })
     cGroup.position.set(cfg.x, cfg.y, cfg.z)
@@ -1665,7 +1660,7 @@ export function buildTerrain(
       const newSky = track(minecraftMode ? nextPixelSky! : watercolorSkyTexture(next))
       skyMat.map?.dispose()
       skyMat.map = newSky
-      skyMat.fog = minecraftMode ? false : false
+      skyMat.fog = minecraftMode && !nextTwilight
       skyMat.toneMapped = minecraftMode
       skyMat.needsUpdate = true
       disposables.push(newSky)

@@ -55,7 +55,7 @@ function captureSide(dir, url, sha, phase) {
     AFTER_SHA: sha,
     BEFORE_SHA: beforeSha,
     WALK_ART_STYLES: 'pixel-art,watercolor',
-    MODE: 'overview',
+    MODE: 'full',
   })
   runNode('capture-minecraft-walk-grid.mjs', {
     ARTIFACT_DIR: dir,

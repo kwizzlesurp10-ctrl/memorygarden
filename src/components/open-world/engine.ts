@@ -962,7 +962,7 @@ export class OpenWorldEngine {
       const camZ = cz + Math.cos(yaw) * dist
       const eyeY = this.eyeHeightAt(camX, camZ, 0.95)
       const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-      const pitch = Math.min(pose.pitch, -0.22)
+      const pitch = Math.min(pose.pitch, -0.24)
       this.setPlayerPose(camX, camZ, pose.yaw, pitch, eyeY)
       this.renderOnce()
       const proj = this.plantProjectedAabbScreenFromBox(box)
@@ -995,7 +995,7 @@ export class OpenWorldEngine {
     const camZ = cz + Math.cos(yaw) * dist
     const eyeY = this.eyeHeightAt(camX, camZ, 0.92)
     const pose = this.poseLookAt(aim, new THREE.Vector3(camX, eyeY, camZ), eyeY)
-    const pitch = Math.min(pose.pitch, -0.22)
+    const pitch = Math.min(pose.pitch, -0.24)
     return { ...pose, pitch, x: camX, z: camZ, eyeY }
   }
 
