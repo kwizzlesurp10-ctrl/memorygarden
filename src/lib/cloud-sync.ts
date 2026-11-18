@@ -39,7 +39,7 @@ export function isSyncAvailable(): Promise<boolean> {
     if (typeof fetch === 'undefined') return false
     try {
       const res = await authFetch('/api/sync?userId=__probe__', { method: 'GET' })
-      // 400 (invalid id) means the route exists and KV is configured.
+      // 400/401 on probe means the route exists and KV is configured.
       // 503 means env vars missing. 404 wouldn't happen for the probe id.
       return res.status !== 503 && res.status !== 404
     } catch {

@@ -22,6 +22,32 @@ function stripeEventKey(eventId: string): string {
   return `mg:stripe:event:${eventId}`
 }
 
+function stripePaymentIntentKey(paymentIntentId: string): string {
+  return `mg:stripe:pi:${paymentIntentId}`
+}
+
+export async function writeCheckoutPaymentIndex(
+  env: SyncEnv,
+  paymentIntentId: string,
+  userId: string,
+  sessionId: string,
+): Promise<void> {
+  if (!paymentIntentId) return
+  await kvSet(
+    env,
+    stripePaymentIntentKey(paymentIntentId),
+    JSON.stringify({ userId, sessionId }),
+  )
+}
+
+export async function readCheckoutPaymentIndex(
+  env: SyncEnv,
+  paymentIntentId: string,
+): Promise<string | null> {
+  if (!paymentIntentId) return null
+  return kvGet(env, stripePaymentIntentKey(paymentIntentId))
+}
+
 export async function kvGet(env: SyncEnv, key: string): Promise<string | null> {
   const res = await fetch(`${env.url}/get/${encodeURIComponent(key)}`, {
     headers: { authorization: `Bearer ${env.token}` },

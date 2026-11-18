@@ -9,6 +9,7 @@ import { UNLOCKABLE_ITEMS, ACHIEVEMENT_RULES, getCurrencyInfo, getRarityInfo, en
 
 import { Button } from '@/components/ui/button'
 import { COSMETIC_PACKS, PAYMENT_SKUS } from '@/lib/payments/catalog'
+import { CheckoutLegalLinks } from '@/components/CheckoutLegalLinks'
 
 interface GardenUnlocksProps {
   open: boolean
@@ -119,6 +120,7 @@ export function GardenUnlocks({
                 Buy {starlightSku.displayPrice}
               </Button>
             </div>
+            <CheckoutLegalLinks className="px-6 pb-1" />
           </div>
         )}
 

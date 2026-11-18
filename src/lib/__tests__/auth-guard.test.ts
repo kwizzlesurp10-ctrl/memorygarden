@@ -1,10 +1,22 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { assertLocalUserIdAllowed } from '../../../api/lib/auth-guard'
 
 describe('assertLocalUserIdAllowed', () => {
-  it('allows any valid user id in legacy mode', async () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('allows any valid user id in legacy mode when auth cutover is off', async () => {
+    vi.stubEnv('NEON_AUTH_BASE_URL', '')
     const result = await assertLocalUserIdAllowed({ mode: 'legacy' }, 'abcdefghijklmnop', null)
     expect(result.ok).toBe(true)
+  })
+
+  it('rejects legacy mode when auth cutover is on', async () => {
+    vi.stubEnv('NEON_AUTH_BASE_URL', 'https://auth.example.com')
+    const result = await assertLocalUserIdAllowed({ mode: 'legacy' }, 'abcdefghijklmnop', null)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.status).toBe(401)
   })
 
   it('denies unrelated local ids for verified sessions', async () => {

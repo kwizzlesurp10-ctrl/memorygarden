@@ -6,6 +6,7 @@ import { Sparkle, Lightning, Crown, Drop, CheckCircle } from '@phosphor-icons/re
 import { cn } from '@/lib/utils'
 import { FertilizerParticles } from '@/components/FertilizerParticles'
 import type { Memory } from '@/lib/types'
+import { CheckoutLegalLinks } from '@/components/CheckoutLegalLinks'
 
 interface FertilizerBoostModalProps {
   open: boolean
@@ -347,6 +348,9 @@ export function FertilizerBoostModal({
                   })}
                 </div>
 
+                {selectedBoost !== 'standard' && selectedBoost !== null ? (
+                  <CheckoutLegalLinks className="mb-3 px-1" />
+                ) : null}
                 <div className="flex gap-3">
                   <Button
                     variant="outline"

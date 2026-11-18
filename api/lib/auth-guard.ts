@@ -49,7 +49,12 @@ export async function assertLocalUserIdAllowed(
   localUserId: string,
   sql: SqlTag | null,
 ): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
-  if (auth.mode === 'legacy') return { ok: true }
+  if (auth.mode === 'legacy') {
+    if (process.env.NEON_AUTH_BASE_URL?.trim()) {
+      return { ok: false, status: 401, error: 'Sign-in required' }
+    }
+    return { ok: true }
+  }
 
   if (auth.linkedLocalUserIds.includes(localUserId)) {
     return { ok: true }

@@ -3,6 +3,7 @@ import {
   shouldFulfillCheckoutSession,
   parseCheckoutSessionMetadata,
   fulfillCheckoutIntoEntitlements,
+  revokeEntitlementsForStripeSession,
 } from '@/lib/payments/stripe-fulfillment'
 import {
   applyCosmeticPackToUnlockState,
@@ -66,6 +67,17 @@ describe('entitlement storage helpers', () => {
       sku: 'cosmetic-starlight-pack',
     })
     expect(second.entitlements).toHaveLength(1)
+  })
+
+  it('revokes entitlements when checkout is refunded', () => {
+    const list = fulfillCheckoutIntoEntitlements(createEmptyEntitlementList(), 'cs_test_refund', {
+      userId: 'user-12345678',
+      sku: 'fertilizer-premium',
+      memoryId: 'memory-abc',
+    })
+    expect(list.entitlements).toHaveLength(1)
+    const revoked = revokeEntitlementsForStripeSession(list, 'cs_test_refund')
+    expect(revoked.entitlements).toHaveLength(0)
   })
 
   it('finds active fertilizer entitlement for memory', () => {

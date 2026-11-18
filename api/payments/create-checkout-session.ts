@@ -1,6 +1,7 @@
 import Stripe from 'stripe'
 import { z } from 'zod'
-import { assertLocalUserIdAllowed, resolveRequestAuth } from '../lib/auth-guard'
+import { resolveRequestAuth } from '../lib/auth-guard'
+import { resolveLocalUserIdForProtectedRoute } from '../lib/session-user-id'
 import { getNeonSql } from '../lib/db'
 import {
   isPaymentSkuId,
@@ -12,7 +13,7 @@ import {
 export const config = { runtime: 'edge' }
 
 const bodySchema = z.object({
-  userId: z.string().regex(/^[a-zA-Z0-9-]{8,64}$/),
+  userId: z.string().regex(/^[a-zA-Z0-9-]{8,64}$/).optional(),
   sku: z.string().refine(isPaymentSkuId, 'Invalid sku'),
   memoryId: z.string().min(8).max(128).optional(),
   returnPath: z.string().max(256).optional(),
@@ -89,8 +90,8 @@ export default async function handler(req: Request): Promise<Response> {
   const sql = getNeonSql()
   const authResult = await resolveRequestAuth(req, sql)
   if ('error' in authResult) return authResult.error
-  const gate = await assertLocalUserIdAllowed(authResult, parsed.userId, sql)
-  if (!gate.ok) return jsonResponse(gate.status, { error: gate.error })
+  const identity = resolveLocalUserIdForProtectedRoute(authResult, parsed.userId ?? null)
+  if (!identity.ok) return jsonResponse(identity.status, { error: identity.error })
 
   const skuDef = PAYMENT_SKUS[parsed.sku as PaymentSkuId]
   if (skuDef.kind === 'fertilizer' && !parsed.memoryId) {
@@ -113,11 +114,12 @@ export default async function handler(req: Request): Promise<Response> {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: successUrl,
       cancel_url: cancelUrl,
-      client_reference_id: parsed.userId,
+      client_reference_id: identity.userId,
       metadata: {
-        userId: parsed.userId,
+        userId: identity.userId,
         sku: parsed.sku,
         memoryId: parsed.memoryId ?? '',
+        neonUserId: authResult.mode === 'verified' ? authResult.session.neonUserId : '',
       },
     })
 

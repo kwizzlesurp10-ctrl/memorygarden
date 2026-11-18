@@ -62,6 +62,8 @@ import { redirectToCheckout } from '@/lib/payments/client'
 import { resolvePaidCheckoutSession } from '@/lib/payments/apply-return'
 const NeonAuthPanel = lazy(() => import('@/components/auth/NeonAuthPanel').then((m) => ({ default: m.NeonAuthPanel })))
 import { isNeonAuthConfigured } from '@/lib/auth/config'
+import { getNeonAuthBearerToken } from '@/lib/auth/session-token'
+import { SiteFooter } from '@/components/SiteFooter'
 import { applyRestoredEntitlementsToUnlockState } from '@/lib/auth/restore-purchases'
 
 function describeSyncStatus(status: SyncStatus): string | null {
@@ -983,8 +985,18 @@ function App() {
     [applyFertilizerToMemory, memoryToBoost],
   )
 
+  const ensureSignedInForProtectedAction = useCallback(async (): Promise<boolean> => {
+    if (!neonAuthAvailable) return true
+    const token = await getNeonAuthBearerToken()
+    if (token) return true
+    setNeonAuthOpen(true)
+    toast.message('Sign in to continue. Your local garden stays on this device until you link it.')
+    return false
+  }, [neonAuthAvailable])
+
   const handlePurchaseBoost = useCallback(
     async (boostLevel: 'premium' | 'legendary', memoryId: string) => {
+      if (!(await ensureSignedInForProtectedAction())) return
       await redirectToCheckout({
         userId: localUser.id,
         sku: skuForFertilizerLevel(boostLevel),
@@ -992,16 +1004,17 @@ function App() {
         returnPath: window.location.pathname,
       })
     },
-    [localUser.id],
+    [ensureSignedInForProtectedAction, localUser.id],
   )
 
   const handlePurchaseStarlightPack = useCallback(async () => {
+    if (!(await ensureSignedInForProtectedAction())) return
     await redirectToCheckout({
       userId: localUser.id,
       sku: 'cosmetic-starlight-pack',
       returnPath: window.location.pathname,
     })
-  }, [localUser.id])
+  }, [ensureSignedInForProtectedAction, localUser.id])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -1420,19 +1433,29 @@ function App() {
             }))
           }}
           onToggleCloudSync={(checked) => {
-            setPreferences((c) => ({
-              ...(c ?? {
-                hasCompletedOnboarding: false,
-                soundEnabled: false,
-                lastVisit: new Date().toISOString(),
-              }),
-              cloudSyncEnabled: checked,
-            }))
-            if (checked) {
-              toast.info('Cloud sync enabled — connecting…')
-            } else {
-              toast.info('Cloud sync disabled. Local memories are unchanged.')
-            }
+            void (async () => {
+              if (checked && neonAuthAvailable) {
+                const token = await getNeonAuthBearerToken()
+                if (!token) {
+                  setNeonAuthOpen(true)
+                  toast.message('Sign in to sync garden metadata to the cloud.')
+                  return
+                }
+              }
+              setPreferences((c) => ({
+                ...(c ?? {
+                  hasCompletedOnboarding: false,
+                  soundEnabled: false,
+                  lastVisit: new Date().toISOString(),
+                }),
+                cloudSyncEnabled: checked,
+              }))
+              if (checked) {
+                toast.info('Cloud sync enabled — connecting…')
+              } else {
+                toast.info('Cloud sync disabled. Local memories are unchanged.')
+              }
+            })()
           }}
           onOpenUnlocks={() => setIsUnlocksOpen(true)}
           onOpenExport={() => setIsExportModalOpen(true)}
@@ -1464,6 +1487,9 @@ function App() {
         />
 
         <AppBottomNav viewMode={viewMode} onViewModeChange={handleViewModeChange} />
+        <div className="hidden md:block fixed bottom-3 left-4 z-10 max-w-md">
+          <SiteFooter compact />
+        </div>
 
         <main className="relative flex-1 outline-none pb-[calc(3.75rem+env(safe-area-inset-bottom))] md:pb-0" tabIndex={-1}>
           <AnimatePresence>

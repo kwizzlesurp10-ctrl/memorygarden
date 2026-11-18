@@ -4,10 +4,11 @@ import {
   markEntitlementConsumed,
   parseEntitlementList,
 } from './lib/entitlements'
-import { assertLocalUserIdAllowed, resolveRequestAuth } from '../lib/auth-guard'
+import { resolveRequestAuth } from '../lib/auth-guard'
+import { resolveLocalUserIdForProtectedRoute } from '../lib/session-user-id'
 import { getNeonSql } from '../lib/db'
 import { isValidStripeCheckoutSessionId } from '../lib/api-ids'
-import { getKvEnv, isValidUserId, readEntitlementsRaw, writeEntitlementsRaw } from './lib/kv'
+import { getKvEnv, readEntitlementsRaw, writeEntitlementsRaw } from './lib/kv'
 
 export const config = { runtime: 'edge' }
 
@@ -59,15 +60,12 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonResponse(400, { error: message ?? 'Invalid body' })
   }
 
-  if (!isValidUserId(parsed.userId)) {
-    return jsonResponse(400, { error: 'Invalid userId' })
-  }
-
   const sql = getNeonSql()
   const authResult = await resolveRequestAuth(req, sql)
   if ('error' in authResult) return authResult.error
-  const gate = await assertLocalUserIdAllowed(authResult, parsed.userId, sql)
-  if (!gate.ok) return jsonResponse(gate.status, { error: gate.error })
+  const identity = resolveLocalUserIdForProtectedRoute(authResult, parsed.userId)
+  if (!identity.ok) return jsonResponse(identity.status, { error: identity.error })
+  const userId = identity.userId
   if (
     parsed.stripeSessionId != null &&
     !isValidStripeCheckoutSessionId(parsed.stripeSessionId)
@@ -75,7 +73,7 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonResponse(400, { error: 'Invalid stripeSessionId' })
   }
 
-  const raw = await readEntitlementsRaw(kv, parsed.userId)
+  const raw = await readEntitlementsRaw(kv, userId)
   const list = raw ? parseEntitlementList(JSON.parse(raw)) : createEmptyEntitlementList()
   const target = list.entitlements.find((e) => e.id === parsed.entitlementId)
   if (!target) {
@@ -89,7 +87,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const updated = markEntitlementConsumed(list, parsed.entitlementId)
-  const saved = await writeEntitlementsRaw(kv, parsed.userId, JSON.stringify(updated))
+  const saved = await writeEntitlementsRaw(kv, userId, JSON.stringify(updated))
   if (!saved) {
     return jsonResponse(500, { error: 'Failed to update entitlement' })
   }
