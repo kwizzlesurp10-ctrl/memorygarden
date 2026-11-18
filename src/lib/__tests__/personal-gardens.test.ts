@@ -112,7 +112,8 @@ describe('personal gardens cloud sync round-trip', () => {
     }
     saveShed(userId, shed, DEFAULT_PERSONAL_GARDEN_ID)
 
-    const pulled = mergePulledMemories([sampleMemory], [{ ...sampleMemory, text: 'From cloud' }])
+    const { photoUrl: _photo, audioRecordings: _audio, ...syncMemory } = sampleMemory
+    const pulled = mergePulledMemories([sampleMemory], [{ ...syncMemory, text: 'From cloud' }])
     expect(pulled[0].text).toBe('From cloud')
     expect(pulled[0].photoUrl).toBe(photo)
     expect(loadShed(userId, DEFAULT_PERSONAL_GARDEN_ID).shedStyle).toBe('glass')
