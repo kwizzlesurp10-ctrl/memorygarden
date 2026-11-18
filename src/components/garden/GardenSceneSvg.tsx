@@ -287,12 +287,15 @@ export interface GardenSkyLayerProps {
   motion: boolean
   rngData: SceneRngData
   landscapeView: GardenLandscapeView
+  viewBoxRect?: { x: number; y: number; w: number; h: number }
 }
 
 export const GardenSkyLayer = forwardRef<SVGGElement, GardenSkyLayerProps>(function GardenSkyLayer(
-  { palette: C, sceneKey: k, motion, rngData, landscapeView },
+  { palette: C, sceneKey: k, motion, rngData, landscapeView, viewBoxRect },
   ref,
 ) {
+  const skyX = viewBoxRect?.x ?? 0
+  const skyW = viewBoxRect?.w ?? SCENE_W
   const pondGeom = getPondGeometry(landscapeView)
   const bandTopY = pondGeom.bandWater ? pondGeom.waterTopY : LANDSCAPE_HORIZON_Y
   const birdAlpha = C.birdAlpha ?? 1
@@ -333,7 +336,7 @@ export const GardenSkyLayer = forwardRef<SVGGElement, GardenSkyLayerProps>(funct
         </linearGradient>
       </defs>
 
-      <rect width={SCENE_W} height={SCENE_HZ + 4} fill={`url(#sky${k})`} />
+      <rect x={skyX} y={0} width={skyW} height={SCENE_HZ + 4} fill={`url(#sky${k})`} />
 
       <g opacity={C.starAlpha ?? 1}>
         {rngData.stars.map((s, i) => (
@@ -992,14 +995,6 @@ export function GardenSceneSvg({
       aria-label="Garden landscape"
       data-landscape-view={resolvedView}
     >
-      <rect
-        x={viewBoxRect.x}
-        y={viewBoxRect.y}
-        width={viewBoxRect.w}
-        height={viewBoxRect.h}
-        fill={palette.sky[0]}
-        aria-hidden
-      />
       <PlantArtStyleDefs />
       <GardenSkyLayer
         ref={layerRefs?.sky}
@@ -1008,6 +1003,7 @@ export function GardenSceneSvg({
         motion={motion}
         rngData={rngData}
         landscapeView={resolvedView}
+        viewBoxRect={viewBoxRect}
       />
       <GardenFarLayer
         ref={layerRefs?.far}

@@ -187,16 +187,18 @@ function scaleLayoutUniform(
   return nextLayout
 }
 
-function mobileFramingWithComposition(
+/** Main-branch mobile pond fit — plants only (Keith reference). */
+function mainLegacyMobilePondFraming(
   layout: Map<string, ResolvedMemoryScenePlacement>,
   memories: readonly Memory[],
   viewport: { w: number; h: number },
-  view: GardenLandscapeView,
-  edgePad: number,
 ): { layout: Map<string, ResolvedMemoryScenePlacement>; viewBox: string; fitScale: number } | null {
-  const bounds = compositionBounds(layout, memories, view, edgePad)
+  const bounds = sceneBounds(layout, memories)
+  if (!bounds) return null
+
   const centerX = (bounds.minX + bounds.maxX) / 2
-  const span = bounds.maxX - bounds.minX
+  const edgePad = viewport.w < 400 ? 48 : EDGE_PAD
+  const span = bounds.maxX - bounds.minX + edgePad * 2
   const visibleW = visibleSceneWidthForSlice(viewport)
   const fitScale = Math.min(1, visibleW / span)
 
@@ -211,9 +213,58 @@ function mobileFramingWithComposition(
     })
   }
 
-  const scaledBounds = compositionBounds(nextLayout, memories, view, edgePad)
-  const viewBox = sliceViewBoxForBounds(scaledBounds, viewport)
+  let fitMin = Infinity
+  let fitMax = -Infinity
+  for (const memory of memories) {
+    const pos = nextLayout.get(memory.id)
+    if (!pos) continue
+    const half = plantHalfWidth(memory, pos)
+    fitMin = Math.min(fitMin, pos.x - half)
+    fitMax = Math.max(fitMax, pos.x + half)
+  }
+
+  const viewMin = Math.max(FULL_MIN_X, fitMin - edgePad)
+  const viewW = Math.min(FULL_SPAN_X, fitMax + edgePad - viewMin)
+  const viewBox = `${viewMin} 0 ${viewW} ${SCENE_H}`
+
   return { layout: nextLayout, viewBox, fitScale }
+}
+
+function mobileViewBoxPondZoom(
+  activeBounds: { minX: number; maxX: number },
+  viewport: { w: number; h: number },
+  pondViewW: number,
+  edgePad: number,
+): string {
+  const contentMin = activeBounds.minX
+  const contentMax = activeBounds.maxX
+  const contentW = contentMax - contentMin
+  const cx = (contentMin + contentMax) / 2
+  const ar = viewport.w / Math.max(1, viewport.h)
+  const minVisibleW = SCENE_H * ar
+
+  let viewW = Math.max(pondViewW, contentW, minVisibleW)
+  viewW = Math.min(FULL_SPAN_X, viewW)
+
+  let minX = cx - viewW / 2
+  const clamped = clampViewWindow(minX, viewW)
+  minX = clamped.minX
+  viewW = clamped.viewW
+
+  if (contentMin < minX + edgePad * 0.25) {
+    minX = Math.max(FULL_MIN_X, contentMin - edgePad)
+    if (minX + viewW > FULL_MAX_X) minX = FULL_MAX_X - viewW
+  }
+  if (contentMax > minX + viewW - edgePad * 0.25) {
+    const needW = contentMax - contentMin + edgePad * 2
+    viewW = Math.min(FULL_SPAN_X, Math.max(viewW, needW, minVisibleW))
+    minX = cx - viewW / 2
+    const recentered = clampViewWindow(minX, viewW)
+    minX = recentered.minX
+    viewW = recentered.viewW
+  }
+
+  return `${minX} 0 ${viewW} ${SCENE_H}`
 }
 
 export function frameGardenSceneForViewport(
@@ -234,13 +285,20 @@ export function frameGardenSceneForViewport(
   }
 
   const pondLayout = layoutMemoryPlantsForView(memories, FRAMING_REFERENCE_VIEW)
-  const pondBounds = compositionBounds(pondLayout, memories, FRAMING_REFERENCE_VIEW, edgePad)
-  const pondViewBox = sliceViewBoxForBounds(pondBounds, viewport)
-  const pondViewW = parseSceneViewBox(pondViewBox).w
+  const pondDesktopW = parseSceneViewBox(DEFAULT_SCENE_VIEWBOX).w
 
   if (!isMobile) {
+    if (landscapeView === FRAMING_REFERENCE_VIEW) {
+      const pondBounds = compositionBounds(pondLayout, memories, FRAMING_REFERENCE_VIEW, edgePad)
+      const viewBox = sliceViewBoxForBounds(pondBounds, viewport, pondDesktopW)
+      return {
+        layout,
+        viewBox,
+        preserveAspectRatio: GARDEN_SCENE_ASPECT,
+      }
+    }
     const activeBounds = compositionBounds(layout, memories, landscapeView, edgePad)
-    const viewBox = sliceViewBoxForBounds(activeBounds, viewport, pondViewW)
+    const viewBox = sliceViewBoxForBounds(activeBounds, viewport, pondDesktopW)
     return {
       layout,
       viewBox,
@@ -248,27 +306,21 @@ export function frameGardenSceneForViewport(
     }
   }
 
-  const pondRef = mobileFramingWithComposition(
-    pondLayout,
-    memories,
-    viewport,
-    FRAMING_REFERENCE_VIEW,
-    edgePad,
-  )
-  const refViewW = pondRef ? parseSceneViewBox(pondRef.viewBox).w : pondViewW
+  const pondRef = mainLegacyMobilePondFraming(pondLayout, memories, viewport)
+  const refViewW = pondRef ? parseSceneViewBox(pondRef.viewBox).w : pondDesktopW
   const refFitScale = pondRef?.fitScale ?? 1
 
   if (landscapeView === FRAMING_REFERENCE_VIEW) {
     return {
       layout: pondRef?.layout ?? pondLayout,
-      viewBox: pondRef?.viewBox ?? pondViewBox,
+      viewBox: pondRef?.viewBox ?? DEFAULT_SCENE_VIEWBOX,
       preserveAspectRatio: GARDEN_SCENE_ASPECT,
     }
   }
 
   const scaled = scaleLayoutUniform(layout, memories, refFitScale)
   const activeBounds = compositionBounds(scaled, memories, landscapeView, edgePad)
-  const viewBox = sliceViewBoxForBounds(activeBounds, viewport, refViewW)
+  const viewBox = mobileViewBoxPondZoom(activeBounds, viewport, refViewW, edgePad)
 
   return {
     layout: scaled,

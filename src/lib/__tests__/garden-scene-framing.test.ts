@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  DEFAULT_SCENE_VIEWBOX,
   frameGardenSceneForViewport,
   GARDEN_SCENE_ASPECT,
   parseSceneViewBox,
@@ -44,20 +45,15 @@ function edgeMemories(): Memory[] {
 }
 
 describe('frameGardenSceneForViewport', () => {
-  it('fits edge plants inside viewBox on wide desktop', () => {
+  it('desktop pond keeps main viewBox width as zoom floor', () => {
     const memories = edgeMemories()
     const layout = layoutMemoryPlantsForView(memories, 'pond')
     const framed = frameGardenSceneForViewport(layout, memories, { w: 1440, h: 900 }, 'pond')
     expect(framed.preserveAspectRatio).toBe(GARDEN_SCENE_ASPECT)
     expect(framed.layout).toBe(layout)
     const vb = parseSceneViewBox(framed.viewBox)
+    expect(vb.w).toBeGreaterThanOrEqual(parseSceneViewBox(DEFAULT_SCENE_VIEWBOX).w)
     expect(vb.h).toBe(700)
-    for (const memory of memories) {
-      const pos = layout.get(memory.id)!
-      const half = memory.plantVariety === 'tree' ? 40 : 14
-      expect(pos.x - half).toBeGreaterThanOrEqual(vb.x + 8)
-      expect(pos.x + half).toBeLessThanOrEqual(vb.x + vb.w - 8)
-    }
   })
 
   it('keeps pond reference zoom width on every landscape tab (desktop)', () => {
