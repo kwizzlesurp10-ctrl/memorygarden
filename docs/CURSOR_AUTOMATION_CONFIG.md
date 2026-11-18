@@ -32,6 +32,8 @@ Copy the block below into your Cursor automation prompt on first run. Paths matc
 
 ## Checklist
 
+- **README markers (automated)**: Run `npm run verify:readme-content-markers` — exits **0** only when open/close counts and `id` order match the list below.
+- **README markers (manual)**: `rg '\[content-to-enhance id=' README.md` must list exactly **eight** lines, in this order: `introduction`, `memory-garden-concept`, `core-features`, `how-it-works`, `usage`, `configuration`, `roadmap`, `faq`.
 - **README markers**: `rg '\[content-to-enhance id=' README.md` must list exactly **eight** lines, in this order: `introduction`, `memory-garden-concept`, `core-features`, `how-it-works`, `usage`, `configuration`, `roadmap`, `faq`.
 - **Ordered IDs** (must print exactly those eight names, top to bottom, one per line):
 
