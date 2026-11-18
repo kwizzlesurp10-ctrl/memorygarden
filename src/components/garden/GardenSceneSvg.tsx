@@ -41,6 +41,7 @@ import { candle, cattail } from './scenery'
 import { PlantArtStyleDefs } from '@/components/plants/PlantArtStyleDefs'
 import { resolvePlantArtStyle } from '@/lib/garden/plant-art-style'
 export { SCENE_W, SCENE_H, SCENE_HZ } from '@/lib/garden/scene-constants'
+import { DEFAULT_SCENE_VIEWBOX } from '@/lib/garden/garden-scene-framing'
 import { SCENE_H, SCENE_HZ, SCENE_W } from '@/lib/garden/scene-constants'
 export interface GardenSceneSvgProps {
   palette: ScenePalette
@@ -973,10 +974,15 @@ export function GardenSceneSvg({
     () => computeSceneRngData(gardenSeed, sceneKey, palette, motion),
     [gardenSeed, sceneKey, palette, motion],
   )
+  const viewBoxRect = useMemo(() => {
+    const raw = sceneViewBox ?? DEFAULT_SCENE_VIEWBOX
+    const [x, y, w, h] = raw.split(/\s+/).map(Number)
+    return { x, y, w, h }
+  }, [sceneViewBox])
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox={sceneViewBox ?? `-120 0 ${SCENE_W + 240} ${SCENE_H}`}
+      viewBox={sceneViewBox ?? DEFAULT_SCENE_VIEWBOX}
       preserveAspectRatio={preserveAspectRatio}
       width={SCENE_W}
       height={SCENE_H}
@@ -985,6 +991,14 @@ export function GardenSceneSvg({
       role="group"
       aria-label="Garden landscape"
     >
+      <rect
+        x={viewBoxRect.x}
+        y={viewBoxRect.y}
+        width={viewBoxRect.w}
+        height={viewBoxRect.h}
+        fill={palette.sky[0]}
+        aria-hidden
+      />
       <PlantArtStyleDefs />
       <GardenSkyLayer
         ref={layerRefs?.sky}

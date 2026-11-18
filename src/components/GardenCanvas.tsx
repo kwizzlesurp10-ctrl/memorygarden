@@ -397,12 +397,7 @@ export function GardenCanvas({
   }, [lensOn, lensPos, lensZoom, sceneSize])
 
   return (
-    <div
-      className="relative h-full min-h-0 w-full overflow-hidden"
-      style={{
-        background: `linear-gradient(180deg, ${palette.sky[0] ?? '#1b0e33'} 0%, ${palette.sky[palette.sky.length - 1] ?? palette.bank} 42%, ${palette.bank} 100%)`,
-      }}
-    >
+    <div className="relative h-full min-h-0 w-full overflow-hidden bg-[#0d0913]">
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {searchHasNoMatches
           ? 'No memories match your search or filters in the garden view.'
@@ -538,7 +533,7 @@ export function GardenCanvas({
 
       <div
         ref={frameRef}
-        className="relative flex h-full min-h-0 w-full items-stretch justify-center"
+        className="relative flex h-full min-h-0 w-full items-stretch"
         // Perspective only when parallax is active — avoid 3D tilt while loupe tracking.
         style={{ perspective: motion && !lensOn ? '1100px' : undefined }}
         onPointerMove={onLensMove}
