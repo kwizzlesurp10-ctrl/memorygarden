@@ -234,16 +234,18 @@ try {
     await page.waitForTimeout(600)
     await page.screenshot({ path: resolve(outDir, `${prefix}-empty-new-garden.png`) })
 
-    await page.getByTestId('personal-garden-switcher').click({ force: true })
-    await page.waitForTimeout(350)
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
+    await page.getByTestId('personal-garden-switcher').click()
+    await page.waitForTimeout(400)
     await page.screenshot({ path: resolve(outDir, `${prefix}-garden-switcher-open.png`) })
 
-    await page.getByRole('menuitem', { name: 'My Garden' }).click()
-    await page.waitForTimeout(900)
+    const myGardenItem = page.getByRole('menuitem').filter({ hasText: 'My Garden' }).first()
+    await myGardenItem.click({ timeout: 15_000 })
+    await page.waitForTimeout(1200)
+    await page.getByTestId('garden-scene-wrap').waitFor({ state: 'visible', timeout: 15_000 })
+    await page.getByText('Far west elder').waitFor({ state: 'visible', timeout: 15_000 })
     await page.screenshot({ path: resolve(outDir, `${prefix}-restored-original-garden.png`) })
-
-    const west = page.getByText('Far west elder')
-    await west.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {})
     await context.close()
   }
 } finally {
