@@ -316,12 +316,15 @@ try {
     await uiPage.getByTestId('start-new-garden-confirm').click()
     await uiPage.locator('[data-slot="dialog-overlay"]').waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => {})
     await uiPage.waitForTimeout(500)
-    await assertCaptureReady(uiPage)
     await uiPage.screenshot({ path: resolve(outDir, `${prefix}-empty-new-garden.png`) })
 
-    await uiPage.keyboard.press('Escape')
-    await uiPage.waitForTimeout(150)
-    await uiPage.getByTestId('personal-garden-switcher').click()
+    for (let i = 0; i < 8; i++) {
+      await uiPage.keyboard.press('Escape')
+      await uiPage.waitForTimeout(120)
+    }
+    await uiPage.locator('[data-slot="dialog-overlay"]').waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => {})
+    await assertCaptureReady(uiPage)
+    await uiPage.getByTestId('personal-garden-switcher').click({ timeout: 15_000 })
     await uiPage.waitForTimeout(300)
     await assertCaptureReady(uiPage)
     await uiPage.screenshot({ path: resolve(outDir, `${prefix}-garden-switcher-open.png`) })
