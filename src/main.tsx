@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client'
 import { ErrorBoundary } from "react-error-boundary";
+import { Analytics } from '@vercel/analytics/react';
 
 import App from './App.tsx'
 import { ErrorFallback } from './ErrorFallback.tsx'
@@ -21,6 +22,7 @@ async function bootstrap() {
     createRoot(document.getElementById('root')!).render(
       <ErrorBoundary FallbackComponent={ErrorFallback}>
         <PlantStageGridCapture />
+        <Analytics />
       </ErrorBoundary>,
     )
     return
@@ -29,6 +31,7 @@ async function bootstrap() {
   createRoot(document.getElementById('root')!).render(
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <App />
+      <Analytics />
     </ErrorBoundary>,
   )
 }
