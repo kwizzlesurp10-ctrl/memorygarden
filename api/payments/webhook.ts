@@ -2,14 +2,18 @@ import Stripe from 'stripe'
 import { createEmptyEntitlementList, parseEntitlementList } from './lib/entitlements'
 import {
   fulfillCheckoutIntoEntitlements,
+  parseCheckoutPaymentIndex,
   parseCheckoutSessionMetadata,
+  revokeEntitlementsForStripeSession,
   shouldFulfillCheckoutSession,
 } from './lib/stripe-fulfillment'
 import {
   getKvEnv,
   hasProcessedStripeEvent,
   markStripeEventProcessed,
+  readCheckoutPaymentIndex,
   readEntitlementsRaw,
+  writeCheckoutPaymentIndex,
   writeEntitlementsRaw,
 } from './lib/kv'
 
@@ -87,6 +91,30 @@ export default async function handler(req: Request): Promise<Response> {
     const saved = await writeEntitlementsRaw(kv, metadata.userId, JSON.stringify(updated))
     if (!saved) {
       return jsonResponse(500, { error: 'Failed to persist entitlement' })
+    }
+
+    const paymentIntent =
+      typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id
+    if (paymentIntent) {
+      await writeCheckoutPaymentIndex(kv, paymentIntent, metadata.userId, session.id)
+    }
+  }
+
+  if (event.type === 'charge.refunded') {
+    const charge = event.data.object as Stripe.Charge
+    const paymentIntent =
+      typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id
+    if (paymentIntent) {
+      const indexRaw = await readCheckoutPaymentIndex(kv, paymentIntent)
+      const index = parseCheckoutPaymentIndex(indexRaw)
+      if (index) {
+        const existingRaw = await readEntitlementsRaw(kv, index.userId)
+        const list = existingRaw
+          ? parseEntitlementList(JSON.parse(existingRaw))
+          : createEmptyEntitlementList()
+        const updated = revokeEntitlementsForStripeSession(list, index.sessionId)
+        await writeEntitlementsRaw(kv, index.userId, JSON.stringify(updated))
+      }
     }
   }
 

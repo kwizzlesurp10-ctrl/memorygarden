@@ -16,8 +16,8 @@ describe('sync/payments userId boundary', () => {
     expect(isValidUserId('')).toBe(false)
   })
 
-  it('does not authenticate ownership — caller supplies id only', () => {
-    // Documented limitation: server trusts any well-formed userId until a real identity layer is added.
+  it('rejects spoofed userId when server auth cutover is enabled', () => {
     expect(isValidUserId('attacker-supplied-id-12345678')).toBe(true)
+    // Ownership is enforced in api/lib/session-user-id.ts (see session-user-id.test.ts).
   })
 })

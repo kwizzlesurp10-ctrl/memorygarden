@@ -24,7 +24,7 @@ One-time purchases use **Stripe Checkout** (hosted page). Fulfillment runs on th
 2. Copy each **Price ID** (`price_...`) into the matching Vercel env var.
 3. Developers → **Webhooks** → Add endpoint:
    - **URL:** `https://memorygarden.vercel.app/api/payments/webhook` (or your preview URL)
-   - **Events:** `checkout.session.completed`, `checkout.session.async_payment_succeeded`
+   - **Events:** `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `charge.refunded`
 4. Copy the webhook **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
 
 Use the Stripe CLI locally to forward webhooks:
@@ -51,7 +51,12 @@ stripe listen --forward-to localhost:5173/api/payments/webhook
 
 ## Client identity
 
-Purchases are keyed to the local profile id from `getLocalUser()` (`memorygarden:user` in localStorage). Entitlements are stored server-side under `mg:entitlements:<userId>`. When real auth ships, map the authenticated user id to the same KV key (or migrate records).
+Entitlements and sync KV keys use the **linked local profile id** for the signed-in Neon Auth account (`primary_local_user_id`), not a client-supplied id when `NEON_AUTH_BASE_URL` is set.
+
+- Sign in → **Link this browser & restore purchases** attaches this device’s local profile (and existing KV entitlements) to the account.
+- Checkout creation ignores spoofed `userId` values in production cutover mode.
+
+Without `NEON_AUTH_BASE_URL` (local dev only), the legacy format-only `userId` path remains for tests.
 
 ## API routes
 

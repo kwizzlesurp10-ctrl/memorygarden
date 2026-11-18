@@ -1,7 +1,7 @@
 {
-    "name": "spark-template",
+    "name": "memorygarden",
     "private": true,
-    "version": "0.0.0",
+    "version": "1.0.0",
     "type": "module",
     "packageManager": "pnpm@9.15.9",
     "engines": {
@@ -20,7 +20,8 @@
         "optimize": "vite optimize",
         "preview": "vite preview",
         "tailwind:build": "tailwindcss -i ./src/styles/tailwind.css -o ./dist/tailwind.css --minify",
-        "tailwind:watch": "tailwindcss -i ./src/styles/tailwind.css -o ./dist/tailwind.css --watch"
+        "tailwind:watch": "tailwindcss -i ./src/styles/tailwind.css -o ./dist/tailwind.css --watch",
+        "stripe:setup-live": "node --experimental-strip-types scripts/stripe-setup-live.ts"
     },
     "dependencies": {
         "@fontsource/crimson-pro": "^5.3.0",

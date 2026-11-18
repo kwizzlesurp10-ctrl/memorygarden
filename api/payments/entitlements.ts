@@ -1,4 +1,5 @@
-import { assertLocalUserIdAllowed, resolveRequestAuth } from '../lib/auth-guard'
+import { resolveRequestAuth } from '../lib/auth-guard'
+import { resolveLocalUserIdForProtectedRoute } from '../lib/session-user-id'
 import { getNeonSql } from '../lib/db'
 import { createEmptyEntitlementList, parseEntitlementList } from './lib/entitlements'
 import { resolveEntitlementsForQuery } from './lib/entitlements-access'
@@ -28,22 +29,22 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const url = new URL(req.url)
-  const userId = url.searchParams.get('userId')
   const sessionId = url.searchParams.get('sessionId')
 
   const sql = getNeonSql()
   const authResult = await resolveRequestAuth(req, sql)
   if ('error' in authResult) return authResult.error
 
+  const identity = resolveLocalUserIdForProtectedRoute(authResult, url.searchParams.get('userId'))
+  if (!identity.ok) return jsonResponse(identity.status, { error: identity.error })
+  const userId = identity.userId
+
   const pre = resolveEntitlementsForQuery({ userId, sessionId }, createEmptyEntitlementList())
   if (!pre.ok) {
     return jsonResponse(pre.status, { error: pre.error })
   }
 
-  const gate = await assertLocalUserIdAllowed(authResult, userId as string, sql)
-  if (!gate.ok) return jsonResponse(gate.status, { error: gate.error })
-
-  const raw = await readEntitlementsRaw(kv, userId as string)
+  const raw = await readEntitlementsRaw(kv, userId)
   const list = raw ? parseEntitlementList(JSON.parse(raw)) : createEmptyEntitlementList()
   const resolved = resolveEntitlementsForQuery({ userId, sessionId }, list)
   if (!resolved.ok) {

@@ -25,8 +25,8 @@
  *   POST /api/sync   { userId, document }  → 200 { updatedAt }
  */
 
-import { isValidUserId } from './lib/api-ids'
-import { assertLocalUserIdAllowed, resolveRequestAuth } from './lib/auth-guard'
+import { resolveRequestAuth } from './lib/auth-guard'
+import { resolveLocalUserIdForProtectedRoute } from './lib/session-user-id'
 import { getNeonSql } from './lib/db'
 import { sanitizeSyncDocument } from '../src/lib/sync-document'
 
@@ -101,12 +101,9 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (req.method === 'GET') {
     const url = new URL(req.url)
-    const userId = url.searchParams.get('userId')
-    if (!isValidUserId(userId)) {
-      return jsonResponse(400, { error: 'Invalid userId' })
-    }
-    const gate = await assertLocalUserIdAllowed(auth, userId, sql)
-    if (!gate.ok) return jsonResponse(gate.status, { error: gate.error })
+    const identity = resolveLocalUserIdForProtectedRoute(auth, url.searchParams.get('userId'))
+    if (!identity.ok) return jsonResponse(identity.status, { error: identity.error })
+    const userId = identity.userId
     const raw = await kvGet(env, userKey(userId))
     if (!raw) return jsonResponse(404, { error: 'No document' })
     try {
@@ -123,11 +120,12 @@ export default async function handler(req: Request): Promise<Response> {
     } catch {
       return jsonResponse(400, { error: 'Invalid JSON' })
     }
-    if (!isValidUserId(body.userId)) {
-      return jsonResponse(400, { error: 'Invalid userId' })
-    }
-    const gate = await assertLocalUserIdAllowed(auth, body.userId, sql)
-    if (!gate.ok) return jsonResponse(gate.status, { error: gate.error })
+    const identity = resolveLocalUserIdForProtectedRoute(
+      auth,
+      typeof body.userId === 'string' ? body.userId : null,
+    )
+    if (!identity.ok) return jsonResponse(identity.status, { error: identity.error })
+    const userId = identity.userId
     if (!body.document || typeof body.document !== 'object') {
       return jsonResponse(400, { error: 'Document required' })
     }
@@ -138,7 +136,7 @@ export default async function handler(req: Request): Promise<Response> {
     if (serialized.length > 1_000_000) {
       return jsonResponse(413, { error: 'Document too large' })
     }
-    const ok = await kvSet(env, userKey(body.userId), serialized)
+    const ok = await kvSet(env, userKey(userId), serialized)
     if (!ok) return jsonResponse(502, { error: 'KV write failed' })
     return jsonResponse(200, { updatedAt })
   }

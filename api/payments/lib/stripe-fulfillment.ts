@@ -59,3 +59,29 @@ export function fulfillCheckoutIntoEntitlements(
   const entitlement = buildEntitlementFromCheckout({ stripeSessionId, metadata })
   return appendEntitlementIfNew(list, entitlement)
 }
+
+export function revokeEntitlementsForStripeSession(
+  list: EntitlementList,
+  stripeSessionId: string,
+): EntitlementList {
+  const before = list.entitlements.length
+  const entitlements = list.entitlements.filter((e) => e.stripeSessionId !== stripeSessionId)
+  if (entitlements.length === before) return list
+  return { entitlements, updatedAt: new Date().toISOString() }
+}
+
+export interface CheckoutPaymentIndex {
+  userId: string
+  sessionId: string
+}
+
+export function parseCheckoutPaymentIndex(raw: string | null): CheckoutPaymentIndex | null {
+  if (!raw) return null
+  try {
+    const value = JSON.parse(raw) as Partial<CheckoutPaymentIndex>
+    if (typeof value.userId !== 'string' || typeof value.sessionId !== 'string') return null
+    return { userId: value.userId, sessionId: value.sessionId }
+  } catch {
+    return null
+  }
+}

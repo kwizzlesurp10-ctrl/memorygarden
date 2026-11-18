@@ -26,6 +26,18 @@ async function bootstrap() {
     return
   }
 
+  const legalPath = window.location.pathname
+  const { normalizeLegalPath } = await import('./pages/legal-content.ts')
+  if (normalizeLegalPath(legalPath)) {
+    const { LegalSitePage } = await import('./pages/LegalSitePage.tsx')
+    createRoot(document.getElementById('root')!).render(
+      <ErrorBoundary FallbackComponent={ErrorFallback}>
+        <LegalSitePage path={legalPath} />
+      </ErrorBoundary>,
+    )
+    return
+  }
+
   createRoot(document.getElementById('root')!).render(
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <App />
