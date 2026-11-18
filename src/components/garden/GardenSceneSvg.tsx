@@ -41,6 +41,7 @@ import { candle, cattail } from './scenery'
 import { PlantArtStyleDefs } from '@/components/plants/PlantArtStyleDefs'
 import { resolvePlantArtStyle } from '@/lib/garden/plant-art-style'
 export { SCENE_W, SCENE_H, SCENE_HZ } from '@/lib/garden/scene-constants'
+import { DEFAULT_SCENE_VIEWBOX } from '@/lib/garden/garden-scene-framing'
 import { SCENE_H, SCENE_HZ, SCENE_W } from '@/lib/garden/scene-constants'
 export interface GardenSceneSvgProps {
   palette: ScenePalette
@@ -63,6 +64,7 @@ export interface GardenSceneSvgProps {
     foreground: RefObject<SVGGElement | null>
   }
   plantArtStyle?: ArtStyle
+  preserveAspectRatio?: string
 }
 
 interface PlantAtProps {
@@ -285,12 +287,15 @@ export interface GardenSkyLayerProps {
   motion: boolean
   rngData: SceneRngData
   landscapeView: GardenLandscapeView
+  viewBoxRect?: { x: number; y: number; w: number; h: number }
 }
 
 export const GardenSkyLayer = forwardRef<SVGGElement, GardenSkyLayerProps>(function GardenSkyLayer(
-  { palette: C, sceneKey: k, motion, rngData, landscapeView },
+  { palette: C, sceneKey: k, motion, rngData, landscapeView, viewBoxRect },
   ref,
 ) {
+  const skyX = viewBoxRect?.x ?? 0
+  const skyW = viewBoxRect?.w ?? SCENE_W
   const pondGeom = getPondGeometry(landscapeView)
   const bandTopY = pondGeom.bandWater ? pondGeom.waterTopY : LANDSCAPE_HORIZON_Y
   const birdAlpha = C.birdAlpha ?? 1
@@ -331,7 +336,7 @@ export const GardenSkyLayer = forwardRef<SVGGElement, GardenSkyLayerProps>(funct
         </linearGradient>
       </defs>
 
-      <rect width={SCENE_W} height={SCENE_HZ + 4} fill={`url(#sky${k})`} />
+      <rect x={skyX} y={0} width={skyW} height={SCENE_HZ + 4} fill={`url(#sky${k})`} />
 
       <g opacity={C.starAlpha ?? 1}>
         {rngData.stars.map((s, i) => (
@@ -964,6 +969,7 @@ export function GardenSceneSvg({
   starterDecor,
   layerRefs,
   plantArtStyle,
+  preserveAspectRatio = 'xMidYMid slice',
 }: GardenSceneSvgProps) {
   const resolvedView = resolveGardenLandscapeView(landscapeView)
   const resolvedArtStyle = resolvePlantArtStyle(plantArtStyle)
@@ -971,17 +977,23 @@ export function GardenSceneSvg({
     () => computeSceneRngData(gardenSeed, sceneKey, palette, motion),
     [gardenSeed, sceneKey, palette, motion],
   )
+  const viewBoxRect = useMemo(() => {
+    const raw = sceneViewBox ?? DEFAULT_SCENE_VIEWBOX
+    const [x, y, w, h] = raw.split(/\s+/).map(Number)
+    return { x, y, w, h }
+  }, [sceneViewBox])
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox={sceneViewBox ?? `-120 0 ${SCENE_W + 240} ${SCENE_H}`}
-      preserveAspectRatio="xMidYMid slice"
+      viewBox={sceneViewBox ?? DEFAULT_SCENE_VIEWBOX}
+      preserveAspectRatio={preserveAspectRatio}
       width={SCENE_W}
       height={SCENE_H}
       className="garden-scene-svg block h-full w-full min-h-0 max-w-full"
       style={{ display: 'block' }}
       role="group"
       aria-label="Garden landscape"
+      data-landscape-view={resolvedView}
     >
       <PlantArtStyleDefs />
       <GardenSkyLayer
@@ -991,6 +1003,7 @@ export function GardenSceneSvg({
         motion={motion}
         rngData={rngData}
         landscapeView={resolvedView}
+        viewBoxRect={viewBoxRect}
       />
       <GardenFarLayer
         ref={layerRefs?.far}

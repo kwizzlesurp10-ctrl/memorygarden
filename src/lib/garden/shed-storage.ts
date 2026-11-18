@@ -11,8 +11,13 @@ export { StorageQuotaExceededError } from '../storage'
 
 export type SaveShedResult = { ok: true } | { ok: false; error: 'quota' }
 
-function shedKey(userId: string): string {
+function shedKey(userId: string, gardenId?: string): string {
+  if (gardenId) return `${userId}:garden:${gardenId}:storage-shed`
   return `${userId}:storage-shed`
+}
+
+export function defaultStorageShedData(): StorageShedData {
+  return { v: 1, seeds: [], planted: [], shedStyle: 'antique', candles: [] }
 }
 
 function clamp(n: number, min: number, max: number): number {
@@ -116,22 +121,24 @@ export function validateShedData(raw: unknown): StorageShedData {
   }
 }
 
-export function loadShed(userId: string): StorageShedData {
-  const raw = readRaw<unknown>(shedKey(userId))
+export function loadShed(userId: string, gardenId?: string): StorageShedData {
+  const scoped = gardenId ? shedKey(userId, gardenId) : shedKey(userId)
+  const raw = readRaw<unknown>(scoped) ?? (gardenId ? readRaw<unknown>(shedKey(userId)) : undefined)
   if (!raw) {
-    return { v: 1, seeds: [], planted: [], shedStyle: 'antique', candles: [] }
+    return defaultStorageShedData()
   }
   try {
     return validateShedData(raw)
   } catch {
-    return { v: 1, seeds: [], planted: [], shedStyle: 'antique', candles: [] }
+    return defaultStorageShedData()
   }
 }
 
-export function saveShed(userId: string, data: StorageShedData): SaveShedResult {
+export function saveShed(userId: string, data: StorageShedData, gardenId?: string): SaveShedResult {
   const safe = validateShedData(data)
+  const key = gardenId ? shedKey(userId, gardenId) : shedKey(userId)
   try {
-    writeRaw(shedKey(userId), safe)
+    writeRaw(key, safe)
     return { ok: true }
   } catch (err) {
     if (err instanceof StorageQuotaExceededError) return { ok: false, error: 'quota' }

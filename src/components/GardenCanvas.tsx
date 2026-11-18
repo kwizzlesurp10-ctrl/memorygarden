@@ -12,7 +12,7 @@ import type {
 import { DEFAULT_PLANT_ART_STYLE } from '@/lib/garden/plant-art-style'
 import { resolveGardenLandscapeView } from '@/lib/garden/landscape-view'
 import { layoutMemoryPlantsForView } from '@/lib/garden/memory-scene-layout'
-import { frameMemoryPlantsForMobile } from '@/lib/garden/garden-mobile-framing'
+import { frameGardenSceneForViewport, GARDEN_SCENE_ASPECT } from '@/lib/garden/garden-scene-framing'
 import { GardenViewPicker } from '@/components/garden/GardenViewPicker'
 import { WeatherEffects } from './WeatherEffects'
 import { GardenClusterPaths } from './GardenClusterPaths'
@@ -67,6 +67,8 @@ interface GardenCanvasProps {
   searchHasNoMatches?: boolean
   onClearSearch?: () => void
   plantArtStyle?: ArtStyle
+  /** Scoped personal garden id for shed storage (memories stay in App). */
+  personalGardenId: string
 }
 
 export function GardenCanvas({
@@ -86,6 +88,7 @@ export function GardenCanvas({
   searchHasNoMatches = false,
   onClearSearch,
   plantArtStyle = DEFAULT_PLANT_ART_STYLE,
+  personalGardenId,
 }: GardenCanvasProps) {
   const reducedMotion = useReducedMotion()
   const motion = !reducedMotion
@@ -105,7 +108,9 @@ export function GardenCanvas({
   const [shedOpen, setShedOpen] = useState(false)
   const [dockPanelOpen, setDockPanelOpen] = useState(false)
   const [draggingMemory, setDraggingMemory] = useState<string | null>(null)
-  const [shedData, setShedData] = useState<StorageShedData>(() => loadShed(userId))
+  const [shedData, setShedData] = useState<StorageShedData>(() => loadShed(userId, personalGardenId))
+  const [fitViewNonce, setFitViewNonce] = useState(0)
+  const lastTapRef = useRef<{ t: number; x: number; y: number } | null>(null)
 
   const skyRef = useRef<SVGGElement>(null)
   const farRef = useRef<SVGGElement>(null)
@@ -165,7 +170,15 @@ export function GardenCanvas({
     const ro = new ResizeObserver(() => sync())
     ro.observe(wrap)
     return () => ro.disconnect()
-  }, [measureScene, landscapeView, memories.length])
+  }, [measureScene, landscapeView, memories.length, fitViewNonce])
+
+  const resetFittedView = useCallback(() => {
+    setLensOn(false)
+    setLensPos(null)
+    setLensZoom(LENS_ZOOM_DEFAULT)
+    setFitViewNonce((n) => n + 1)
+    queueMicrotask(() => setSceneSize(measureScene()))
+  }, [measureScene])
 
   const seedLensAtCenter = useCallback(() => {
     const size = measureScene()
@@ -196,7 +209,7 @@ export function GardenCanvas({
   const quotaWarnedRef = useRef(false)
 
   useEffect(() => {
-    const result = saveShed(userId, shedData)
+    const result = saveShed(userId, shedData, personalGardenId)
     if (!result.ok && result.error === 'quota') {
       if (!quotaWarnedRef.current) {
         quotaWarnedRef.current = true
@@ -205,7 +218,7 @@ export function GardenCanvas({
     } else if (result.ok) {
       quotaWarnedRef.current = false
     }
-  }, [shedData, userId])
+  }, [shedData, userId, personalGardenId])
 
   const persistShed = useCallback((patch: Partial<StorageShedData> | ((d: StorageShedData) => StorageShedData)) => {
     setShedData((d) => (typeof patch === 'function' ? patch(d) : { ...d, ...patch }))
@@ -273,12 +286,12 @@ export function GardenCanvas({
     [memories, resolvedView],
   )
 
-  const mobileFraming = useMemo(
-    () => frameMemoryPlantsForMobile(memorySceneLayout, memories, sceneSize),
-    [memorySceneLayout, memories, sceneSize],
+  const sceneFraming = useMemo(
+    () => frameGardenSceneForViewport(memorySceneLayout, memories, sceneSize, resolvedView),
+    [memorySceneLayout, memories, sceneSize, resolvedView, fitViewNonce],
   )
 
-  const activeLayout = mobileFraming?.layout ?? memorySceneLayout
+  const activeLayout = sceneFraming.layout
 
   const focusGardenPlant = useCallback((memoryId: string) => {
     const root = sceneWrapRef.current
@@ -337,6 +350,33 @@ export function GardenCanvas({
     focusGardenPlant,
     plantArtStyle,
   ])
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== 'f' || event.metaKey || event.ctrlKey || event.altKey) return
+      const tag = (event.target as HTMLElement | null)?.tagName?.toLowerCase()
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return
+      if (closeupMemoryId) return
+      event.preventDefault()
+      resetFittedView()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [closeupMemoryId, resetFittedView])
+
+  const onScenePointerUp = useCallback(
+    (event: React.PointerEvent) => {
+      if (lensOn) return
+      const now = Date.now()
+      const prev = lastTapRef.current
+      lastTapRef.current = { t: now, x: event.clientX, y: event.clientY }
+      if (!prev || now - prev.t > 400) return
+      const dist = Math.hypot(event.clientX - prev.x, event.clientY - prev.y)
+      if (dist > 24) return
+      resetFittedView()
+    },
+    [lensOn, resetFittedView],
+  )
 
   const onLensMove = useCallback((e: React.PointerEvent) => {
     if (!lensOn || !sceneWrapRef.current) return
@@ -437,6 +477,22 @@ export function GardenCanvas({
       {!dockPanelOpen ? (
         <button
           type="button"
+          aria-label="Fit garden to view"
+          title="Fit garden (F or double-tap)"
+          onClick={resetFittedView}
+          className="absolute right-3 top-[4.25rem] z-40 flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-[#f0e7da]/35 bg-black/55 text-[#f5efe6] backdrop-blur-sm hover:bg-black/65 sm:top-[4.6rem]"
+          data-testid="fit-garden-view"
+        >
+          <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
+            <path d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4" strokeLinecap="round" />
+            <rect x="7" y="7" width="10" height="10" rx="1.5" />
+          </svg>
+        </button>
+      ) : null}
+
+      {!dockPanelOpen ? (
+        <button
+          type="button"
           aria-label={lensOn ? 'Disable magnifying lens' : 'Enable magnifying lens'}
           aria-pressed={lensOn}
           onClick={toggleLens}
@@ -477,10 +533,11 @@ export function GardenCanvas({
 
       <div
         ref={frameRef}
-        className="relative flex h-full min-h-0 w-full items-stretch justify-center"
+        className="relative flex h-full min-h-0 w-full items-stretch"
         // Perspective only when parallax is active — avoid 3D tilt while loupe tracking.
         style={{ perspective: motion && !lensOn ? '1100px' : undefined }}
         onPointerMove={onLensMove}
+        onPointerUp={onScenePointerUp}
       >
         {/*
           CRITICAL: scene wrap must stay at scale(1). Scaling the whole garden was the
@@ -499,7 +556,8 @@ export function GardenCanvas({
             rimStrength={RIM_STRENGTH}
             motion={motion}
             landscapeView={resolvedView}
-            sceneViewBox={mobileFraming?.viewBox}
+            sceneViewBox={sceneFraming.viewBox}
+            preserveAspectRatio={sceneFraming.preserveAspectRatio ?? GARDEN_SCENE_ASPECT}
             shedStyle={shedData.shedStyle}
             onShedClick={() => setShedOpen(true)}
             planted={shedData.planted}

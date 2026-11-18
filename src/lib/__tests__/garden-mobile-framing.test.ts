@@ -52,7 +52,7 @@ describe('frameMemoryPlantsForMobile', () => {
   it('shrinks spread plants to fit the slice viewport', () => {
     const memories = edgeMemories()
     const layout = layoutMemoryPlantsForView(memories, 'pond')
-    const framed = frameMemoryPlantsForMobile(layout, memories, { w: 390, h: 520 })
+    const framed = frameMemoryPlantsForMobile(layout, memories, { w: 390, h: 520 }, 'pond')
     expect(framed).not.toBeNull()
     const west = framed!.layout.get('west')!
     const east = framed!.layout.get('east')!

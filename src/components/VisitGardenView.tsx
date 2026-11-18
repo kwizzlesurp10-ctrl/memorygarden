@@ -53,6 +53,7 @@ export function VisitGardenView({
           growingMemories={new Set()}
           memoryBoostTiers={new Map()}
           highlightedMemoryIds={null}
+          personalGardenId="visit"
         />
 
         {/* Floating watering hint */}

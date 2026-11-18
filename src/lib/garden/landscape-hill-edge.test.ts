@@ -27,6 +27,7 @@ function renderScenePng(view: (typeof GARDEN_LANDSCAPE_VIEWS)[number]): Uint8Arr
       candles: [],
       memoryPlants: [],
       starterDecor,
+      preserveAspectRatio: 'xMidYMid slice',
     }),
   )
   const wrapped = body.includes('xmlns=') ? body : body.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')

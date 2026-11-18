@@ -30,12 +30,14 @@ interface Options {
   memories: Memory[]
   preferences: UserPreferences
   onPulled: (memories: Memory[], preferences: UserPreferences) => void
+  /** Bump when the active personal garden changes so sync re-pulls. */
+  personalGardenRevision?: number
 }
 
 const PUSH_DEBOUNCE_MS = 1500
 
 export function useCloudSync(opts: Options): SyncStatus {
-  const { enabled, userId, memories, preferences, onPulled } = opts
+  const { enabled, userId, memories, preferences, onPulled, personalGardenRevision = 0 } = opts
   const [status, setStatus] = useState<SyncStatus>({ kind: 'disabled' })
   const memoriesRef = useRef(memories)
   const pullDoneRef = useRef(false)
@@ -80,7 +82,7 @@ export function useCloudSync(opts: Options): SyncStatus {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, userId])
+  }, [enabled, userId, personalGardenRevision])
 
   // Debounced push whenever data changes — but only after the initial
   // pull has settled, so we don't blow away the cloud copy with an

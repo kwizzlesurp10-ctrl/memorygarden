@@ -79,6 +79,7 @@ export function Onboarding({ open, onComplete }: OnboardingProps) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
+        data-testid="onboarding-dialog"
         className="max-w-lg [&>button]:min-h-8 [&>button]:min-w-8 [&>button]:size-8"
         onEscapeKeyDown={handleEscapeKeyDown}
       >

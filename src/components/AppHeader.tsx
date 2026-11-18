@@ -35,6 +35,7 @@ import { SeasonIndicator } from '@/components/SeasonIndicator'
 import { WeatherIndicator } from '@/components/WeatherIndicator'
 import { GardenSelector } from '@/components/GardenSelector'
 import type { CollaborativeGarden, GardenMood, Season } from '@/lib/types'
+import type { PersonalGardenEntry } from '@/lib/garden/personal-gardens'
 import type { LocalUser } from '@/lib/local-user'
 import { cn } from '@/lib/utils'
 
@@ -70,6 +71,10 @@ export interface AppHeaderProps {
   accountEmail?: string | null
   onOpenSignIn?: () => void
   onSignOut?: () => void
+  personalGardens?: PersonalGardenEntry[]
+  activePersonalGardenId?: string
+  onSelectPersonalGarden?: (gardenId: string) => void
+  onRequestStartNewGarden?: () => void
 }
 
 const VIEW_ITEMS: { value: ViewMode; label: string; title: string; Icon: PhosphorIcon }[] = [
@@ -112,6 +117,10 @@ export function AppHeader(props: AppHeaderProps) {
     accountEmail = null,
     onOpenSignIn,
     onSignOut,
+    personalGardens = [],
+    activePersonalGardenId,
+    onSelectPersonalGarden,
+    onRequestStartNewGarden,
   } = props
 
   const showProtocolTest = import.meta.env.DEV
@@ -128,7 +137,7 @@ export function AppHeader(props: AppHeaderProps) {
 
         <nav
           aria-label="Main views"
-          className="relative z-20 hidden w-full min-w-0 justify-center overflow-x-auto md:flex md:w-auto md:max-w-[min(100%,42rem)] md:justify-self-center"
+          className="relative z-20 hidden w-full min-w-0 justify-center overflow-x-auto md:flex md:w-auto md:max-w-[min(100%,36rem)] lg:max-w-[min(100%,38rem)] md:justify-self-center"
         >
           <div
             role="list"
@@ -160,12 +169,16 @@ export function AppHeader(props: AppHeaderProps) {
           </div>
         </nav>
 
-        <div className="flex min-w-0 flex-shrink-0 items-center justify-end gap-2 md:gap-2 md:justify-self-end lg:gap-3">
+        <div className="flex min-w-0 max-w-full shrink items-center justify-end gap-1.5 md:gap-2 md:justify-self-end">
           <GardenSelector
             gardens={gardens}
             activeGardenId={activeGardenId}
             onSelectGarden={onSelectGarden}
             onCreateGarden={onCreateGarden}
+            personalGardens={personalGardens}
+            activePersonalGardenId={activePersonalGardenId}
+            onSelectPersonalGarden={onSelectPersonalGarden}
+            onStartNewPersonalGarden={onRequestStartNewGarden}
           />
           {activeGarden && onToggleActivityPanel && (
             <Button
@@ -221,6 +234,12 @@ export function AppHeader(props: AppHeaderProps) {
                 <CloudArrowDown size={16} className="mr-2" />
                 Backup &amp; restore
               </DropdownMenuItem>
+              {onRequestStartNewGarden ? (
+                <DropdownMenuItem onClick={onRequestStartNewGarden}>
+                  <Tree size={16} className="mr-2" weight="duotone" />
+                  Start new garden
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuItem onClick={onOpenPlantStyle}>
                 <Palette size={16} className="mr-2" />
                 Plant Art Style
