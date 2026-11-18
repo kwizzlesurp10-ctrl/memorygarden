@@ -990,6 +990,7 @@ export function GardenSceneSvg({
       style={{ display: 'block' }}
       role="group"
       aria-label="Garden landscape"
+      data-landscape-view={resolvedView}
     >
       <rect
         x={viewBoxRect.x}
